@@ -21,43 +21,80 @@ Observed:
 
 Interpretation: **the test failed as a generic controller test, but the port is not behaving like an inert power-only connector.** More protocol-level investigation is needed.
 
-## Firmware evidence
+## Player 2 and USB strings
 
-The XGO `bisrv.asd` contains explicit Player 2 configuration strings, including:
+The XGO `bisrv.asd` contains emulator-side Player 2 configuration strings such as:
 
 ```text
 fba-neogeo-controls-p2
-Neo Geo P2 gamepad scheme; classic|newgen
 fba-lr-controls-p2
-L/R P2 gamepad scheme; normal|remap to R1/R2
 fba-controls-p2
 ```
 
-It also contains USB/device-management strings including:
+The image also contains:
 
 ```text
 usb device attach
 usb device detach
 [FS]USB lun_num = %d
+/dev/rda1
+/mnt/rda1
+/mnt/rda1/myfs
 ```
 
-This proves that Player 2 concepts and USB handling code exist in the firmware image. It does **not** yet prove that the Handle Interface presents Player 2 as generic USB HID.
+A closer locality check places these USB strings in filesystem/mount code. They are therefore best treated as evidence of a **USB mass-storage/filesystem path**, not evidence of USB HID gamepad support. Generic USB HID support for the Handle Interface remains unproven.
 
-## SF2000 comparison
+## Confirmed SF2000-like RF driver in XGO firmware
 
-Stock SF2000-family hardware supports external controllers through a 2.4 GHz receiver path. Modern UniFrog source code exposes this implementation in detail and decodes distinct controller ports.
+Disassembly materially changes the controller picture. The XGO firmware contains a called RF initialization routine whose GPIO bus and RF self-test sequence match the stock SF2000 path reconstructed by UniFrog.
 
-A useful model for XGO research is therefore:
+The XGO driver directly manipulates the H1512/HC15xx GPIO MMIO words:
 
 ```text
-SF2000:
-local controls + RF receiver -> input subsystem -> P1/P2 -> emulator
-
-XGO:
-local controls + Handle Interface -> ??? -> P1/P2 -> emulator
+0xb8800050
+0xb8800054
+0xb8800058
+0xb8800354
+0xb8800358
 ```
 
-The `???` is the primary target.
+with the same key bit masks used by UniFrog's SF2000 wireless driver:
+
+```text
+DATA  = 0x08000000
+CLOCK = 0x10000000
+CS    = 0x20000000
+```
+
+More importantly, the XGO executes the same RF self-test sequence:
+
+```text
+write 0x53 = 0x5a
+write 0x53 = 0xa5
+write 0x25 = 0xa5
+read  0x05
+compare result with 0xa5
+```
+
+Failure reaches `RF_IC Test Fail !`; success reaches `RF_IC Test Pass!` and proceeds into RF configuration. The RF-init routine appears at approximately `0x8035deb0` and has a real call site near `0x8034c7ac`, so this is not merely an orphaned diagnostic string.
+
+This is **CONFIRMED firmware evidence** that XGO retained a stock-SF2000-like RF controller driver. It does **not yet confirm** that the physical XGO PCB has the corresponding RF chip populated. PCB or runtime evidence is still needed before identifying the radio IC as XN297L-family hardware.
+
+The earlier failure to find UniFrog's complete GPIO shadow constants verbatim is now explained: XGO manipulates the same registers and masks dynamically rather than embedding all of UniFrog's reconstructed whole-register values as literals.
+
+## Revised architecture question
+
+The working model is now:
+
+```text
+XGO local controls ---------------------> input subsystem
+XGO inherited SF2000-like RF path ------> input subsystem -> P1/P2 -> emulator
+XGO Handle Interface -------------------> ???
+```
+
+The major question is no longer whether the firmware has an SF2000 RF path — it does. We now need to determine whether the XGO hardware actually populates that radio and whether the wired Handle Interface is a second controller path, a service/interface port, or some other adaptation.
+
+UniFrog also documents that stock SF2000 local controls and RF polling share the L23-L29 GPIO group. That gives a plausible precedent for one input path disrupting another, but it does **not** yet prove that this mechanism caused the GP2040 experiment to freeze the XGO's local buttons.
 
 ## Test/diagnostic ROM
 
@@ -65,12 +102,12 @@ The XGO card includes `Resources/Test.zsf`. SF2000 documentation identifies this
 
 ## Questions to answer
 
-1. What electrical signals are present on the Handle Interface?
-2. Does XGO expect USB host/device operation, or a proprietary protocol over a USB-shaped connector?
-3. Does the original XGO accessory controller identify with a specific VID/PID or packet protocol?
-4. What causes generic GP2040 attachment to suppress local controls?
-5. Which routines in XGO `bisrv.asd` consume external-controller data?
-6. Did XGO replace the SF2000 RF input path or merely add another path?
+1. Is the SF2000-family RF IC physically populated on the XGO PCB?
+2. Can the XGO receive an ordinary SF2000/SF900 wireless controller?
+3. What electrical/protocol signals are present on the Handle Interface?
+4. Does the Handle Interface implement USB host/device operation or a proprietary protocol over a USB-shaped connector?
+5. What causes GP2040 attachment to suppress local controls?
+6. Does XGO's RF receive routine use the same P1/P2 status/pipe decoding as stock SF2000?
 7. Can `Test.zsf` reliably display P1/P2 state?
 
 ## Rule for future testing
