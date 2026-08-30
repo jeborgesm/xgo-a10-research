@@ -10,31 +10,41 @@
 - Found `SF2000` literal in `Resources/Foldername.ini`.
 - Matched XGO resource/database naming conventions to documented SF2000 formats.
 - Recovered emulator/core identification strings from `bisrv.asd`.
-- Connected controller experiments with product-family documentation calling the mystery port `Handle Interface`.
+- Recovered explicit Player 2 and USB attach/detach strings.
+- Connected earlier controller experiments with product-family documentation calling the mystery port `Handle Interface`.
 - Identified `Resources/Test.zsf` as a likely explanation for the previously observed controller diagnostic screen.
+- Located active open-source SF2000-family work (particularly UniFrog) as a potential reference architecture for an eventual XGO-specific target.
 
-## 2026-08-30 — H1512 / RF-driver pass
+## 2026-08-30 — H1512/RF deep pass
 
-- Recovered `h1512_gpio_pinmux_sel`, `get_clock_h1512()` and MIPS SDE compiler strings from the XGO firmware.
-- Confirmed firmware targets the H1512/MIPS software family; the circulated RK3566 identification is contradicted for this specimen.
-- Recovered the shared `UpdateFirmware/Firmware.upk` internal SPI-NOR update path.
-- Disassembled a real RF initialization routine near `0x8035deb0` and identified a caller near `0x8034c7ac`.
-- Confirmed direct access to the same HC15xx GPIO MMIO words and DATA/CLOCK/CS bit masks used by the SF2000 wireless-controller path.
-- Confirmed the XGO performs the stock-style RF self-test: `0x53=0x5a`, `0x53=0xa5`, `0x25=0xa5`, read `0x05`, expect `0xa5`.
-- Traced the receive routine: RF status register `0x07` supplies packet-ready/status information and register `0x61` supplies a two-byte controller payload.
-- **Confirmed system-level P1/P2 selection:** status bit `0x02` selects one of two controller-state slots, matching known SF2000 `0x40` (P1) and `0x42` (P2) statuses.
-- Confirmed the routine loops over two controller slots and maps raw packet bits into internal button states.
-- Reclassified generic `usb device attach/detach` strings as mass-storage/filesystem evidence because they occur with LUN and mount-path code; they are not evidence of generic USB HID controller support.
-- Confirmed `0xb884c000` accesses belong to SDIO. Known H1512 USB windows are separate (`0xb8844000` and `0xb8850000`).
+- Confirmed `h1512_gpio_pinmux_sel` and MIPS SDE compiler/SDK strings in the XGO firmware.
+- Identified the shared SF2000-style `UpdateFirmware/Firmware.upk` internal SPI-NOR update path.
+- Disassembled the XGO RF routines as little-endian MIPS.
+- Confirmed the stock-style H1512 GPIO-bitbang RF bus at `0xb8800050/+54/+58/+354/+358` with DATA/CLOCK/CS masks `0x08000000`, `0x10000000`, and `0x20000000`.
+- Confirmed the RF self-test sequence `0x53=0x5a`, `0x53=0xa5`, `0x25=0xa5`, read `0x05`, expect `0xa5`.
+- Confirmed RF packet receive from status register `0x07` and two-byte payload register `0x61`.
+- Confirmed status bit `0x02` selects one of two controller slots, matching SF2000 P1=`0x40`, P2=`0x42` behavior.
+- Found exact stock SF2000 RF configuration/address tables in the XGO image:
+  - `0a 6d 67 9c 46`
+  - `f6 37 5d`
+  - `dc a8 f3 6b 74`
+  - `b2 9d 59 4f e3`
+- Found the exact stock four-channel sequence `04 1d 31 4f`.
+- Reviewed the transparent-case PCB photo. No obvious antenna or populated radio is identifiable at current resolution, while one small unpopulated QFN-like footprint is visible. Because XN297L exists as QFN20 3x3 mm, this is a useful future inspection target but is not yet an IC identification.
+- Corrected interpretation of generic USB attach/detach strings: they are strong filesystem/mass-storage evidence but not proof of USB HID support on the Handle Interface.
+
+## Current conclusions
+
+- H1512/MIPS SF2000-family lineage is now supported by direct executable-code evidence, not only resources/strings.
+- The XGO firmware retains the stock SF2000-family wireless-controller protocol path essentially intact, including radio tables, channels, receive behavior and P1/P2 decoding.
+- Whether the RF hardware is actually populated remains an independent physical question.
+- If radio hardware is present, stock-compatible SF2000/SF900 controllers are strong candidates for direct compatibility.
+- The wired Handle Interface remains unresolved and should now be treated as a separate input path rather than assuming it implements the confirmed RF protocol.
 
 ## Next research targets
 
-- Complete the XGO RF raw-button mapping and compare it with UniFrog.
-- Recover RF channel/address configuration and compare it to SF2000/SF900 protocol work.
-- Determine whether the RF IC is physically populated and whether an SF2000/SF900 controller can pair with the XGO.
-- Search separately for genuine USB HID/class-3 code and Handle Interface-specific routines.
+- Trace the wired Handle Interface independently: look for distinct polling, USB class/HID, UART, or GPIO-style input paths.
+- Compare the visible unpopulated PCB footprint and neighboring components with XN297L-family reference layouts when sharper board images are available.
 - Produce a reproducible binary comparison against known SF2000 firmware specimens.
 - Inspect MBR, FAT32 reserved sectors, and pre-partition area from a small extract of the preserved raw card image.
-- Characterize the Handle Interface electrically/protocol-wise.
-- Find photographs/listings/manuals for the original external XGO controller accessory.
 - Determine a reproducible way to launch `Test.zsf` and test P2 state.
