@@ -21,12 +21,16 @@
 - Disassembled a real RF initialization routine near `0x8035deb0` and identified a caller near `0x8034c7ac`.
 - Confirmed direct access to the same HC15xx GPIO MMIO words and DATA/CLOCK/CS bit masks used by the SF2000 wireless-controller path.
 - Confirmed the XGO performs the stock-style RF self-test: `0x53=0x5a`, `0x53=0xa5`, `0x25=0xa5`, read `0x05`, expect `0xa5`.
+- Traced the receive routine: RF status register `0x07` supplies packet-ready/status information and register `0x61` supplies a two-byte controller payload.
+- **Confirmed system-level P1/P2 selection:** status bit `0x02` selects one of two controller-state slots, matching known SF2000 `0x40` (P1) and `0x42` (P2) statuses.
+- Confirmed the routine loops over two controller slots and maps raw packet bits into internal button states.
 - Reclassified generic `usb device attach/detach` strings as mass-storage/filesystem evidence because they occur with LUN and mount-path code; they are not evidence of generic USB HID controller support.
 - Confirmed `0xb884c000` accesses belong to SDIO. Known H1512 USB windows are separate (`0xb8844000` and `0xb8850000`).
 
 ## Next research targets
 
-- Trace the XGO RF receive/poll routine and locate P1/P2 status/pipe decoding.
+- Complete the XGO RF raw-button mapping and compare it with UniFrog.
+- Recover RF channel/address configuration and compare it to SF2000/SF900 protocol work.
 - Determine whether the RF IC is physically populated and whether an SF2000/SF900 controller can pair with the XGO.
 - Search separately for genuine USB HID/class-3 code and Handle Interface-specific routines.
 - Produce a reproducible binary comparison against known SF2000 firmware specimens.
