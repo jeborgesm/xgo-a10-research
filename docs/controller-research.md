@@ -21,7 +21,9 @@ Observed:
 
 Interpretation: **the test failed as a generic USB-controller test, but the port is not behaving like an inert power-only connector.** More protocol-level investigation is needed.
 
-## USB evidence — corrected interpretation
+A separate PC-side experiment also produced USB detection followed by `USB\DEVICE_DESCRIPTOR_FAILURE`. This shows some USB-like electrical behavior occurred, but descriptor failure is not sufficient to prove a standards-compliant USB device implementation.
+
+## USB evidence — current interpretation
 
 The XGO `bisrv.asd` contains strings such as:
 
@@ -33,19 +35,30 @@ usb device detach
 /mnt/rda1
 ```
 
-These now look much more like storage/filesystem USB handling than controller HID evidence. No convincing `hid`, `usbhid`, gamepad-descriptor, or similar class-driver string has yet been found.
+These look primarily like storage/filesystem USB handling. No convincing `hid`, `usbhid`, controller-descriptor, or similar class-driver string has yet been found.
 
-Therefore the firmware currently provides **no direct evidence that the Handle Interface is generic USB HID**.
+However, SF2000/H1512 platform research adds an important architectural clue: the HC15xx platform has **two host/peripheral-capable USB controllers**. In the DB-B210-V1.1 reference design, micro-USB is wired to USB0 while USB-A is wired to USB1.
+
+That does **not** prove the XGO uses the same wiring, but it means the XGO Handle Interface can plausibly be a genuine native USB port even though generic HID support has not been found.
+
+Current wired-interface possibilities, in descending order of interest rather than confidence:
+
+1. native USB host with a narrow vendor-specific controller/descriptor expectation;
+2. native USB host with limited HID support that rejects the tested GP2040 presentation;
+3. USB peripheral/OTG role switching or ID/VBUS interaction that conflicts with the local input path;
+4. non-USB serial/GPIO-style protocol over a micro-USB connector.
+
+A direct scan of the XGO application image has not yet exposed obvious hard-coded USB0/USB1 controller base addresses or a clear HID class implementation. That negative result is useful but not decisive because USB controller addresses may be supplied indirectly through platform configuration/driver tables.
 
 ## Confirmed RF Player 1 / Player 2 path
 
-Disassembly of the XGO firmware has now established a complete stock-SF2000-like wireless-controller path:
+Disassembly of the XGO firmware has established a complete stock-SF2000 wireless-controller path:
 
 ```text
 H1512 GPIO bit-bang bus
         -> RF IC init/self-test
-        -> stock SF2000 address/config tables
-        -> channel set 04 / 1d / 31 / 4f
+        -> XN297L-style calibration/address setup
+        -> channels 04 / 1d / 31 / 4f
         -> status register 0x07
         -> two-byte payload from 0x61
         -> status bit 0x02 selects controller slot 0/1
@@ -53,50 +66,40 @@ H1512 GPIO bit-bang bus
         -> P1/P2 input state
 ```
 
-The XGO contains the exact radio tables currently used by UniFrog's reconstructed stock SF2000 path:
+The XGO contains the exact radio tables used by current SF2000/SF900 protocol research:
 
 ```text
-0a 6d 67 9c 46
-f6 37 5d
-dc a8 f3 6b 74
-b2 9d 59 4f e3
+BB_CAL:     0a 6d 67 9c 46
+RF_CAL:     f6 37 5d
+RX_ADDR_P0: dc a8 f3 6b 74
+RX_ADDR_P1: b2 9d 59 4f e3
+channels:   04 1d 31 4f
 ```
 
-and the exact stock channel sequence:
-
-```text
-04 1d 31 4f
-```
+Modern independent documentation identifies these as XN297L-family link parameters: 5-byte addresses, two-byte payloads, two receive pipes, and four hop channels corresponding to approximately 2404, 2429, 2449, and 2479 MHz.
 
 The receive code treats status `0x40` as controller slot 0 / P1 and status `0x42` as controller slot 1 / P2, matching independent SF2000 hardware observations.
 
-This means the XGO firmware retained the **actual SF2000-family wireless-controller protocol implementation**, not merely emulator-side Player 2 options.
+This means the XGO firmware retained the **actual SF2000/SF900 wireless-controller protocol implementation**, not merely emulator-side Player 2 options.
 
 ## Physical RF hardware remains uncertain
 
-The transparent enclosure provides a partial PCB view. At the current photo resolution:
+The transparent case initially seemed to argue against RF hardware, but the photographs need a more careful interpretation.
 
-- no obvious antenna or populated radio IC is confidently identifiable;
-- one small unpopulated QFN-like footprint is visible;
-- XN297L exists in a 3 x 3 mm QFN20 package, making that footprint an interesting inspection target, but package similarity is not identification.
+The clearest exposed rear PCB region sits directly beneath the wireless-charging coil and contains a large `2R2` inductor and power components. It appears to be primarily the **power-bank / charging board**, not necessarily the main gaming PCB. The LCD obscures a large portion of the likely gaming board on the front side.
 
-A very plausible architecture is therefore:
+Therefore:
 
-```text
-Built-in controls -------------------+
-                                     +--> input subsystem --> emulators
-Stock SF2000 RF path (firmware) -----+    [physical radio may be omitted]
-                                     |
-Handle Interface --------------------+--> ???
-```
-
-It is entirely possible that XGO reused the SF2000 firmware platform, left its RF implementation intact, but omitted the RF section on this PCB revision and provided the wired Handle Interface instead.
+- no RF antenna/chip is currently visible with confidence;
+- the earlier unpopulated QFN-like footprint on the rear board is no longer a strong RF candidate;
+- RF hardware could still exist on the main board beneath/around the LCD;
+- RF omission remains plausible, but the transparent case alone does not settle it.
 
 ## Compatibility prediction
 
-If the radio hardware is populated and connected, the exact firmware tables/channels strongly predict compatibility with SF2000/SF900-class controllers using the same protocol.
+If the radio hardware is populated and connected, the firmware configuration now strongly predicts compatibility with SF2000/SF900-class controllers using the documented XN297L protocol.
 
-If the RF hardware is absent, the confirmed driver is simply dormant inherited code and the Handle Interface becomes the practical Player 2 mechanism to reverse engineer.
+If the RF hardware is absent, the confirmed RF implementation is dormant inherited code and the Handle Interface becomes the practical Player 2 mechanism to reverse engineer.
 
 ## Test/diagnostic ROM
 
@@ -104,14 +107,14 @@ The XGO card includes `Resources/Test.zsf`. SF2000 documentation identifies this
 
 ## Questions to answer
 
-1. Is the RF IC physically populated anywhere on the XGO PCB?
-2. Is the visible unpopulated QFN-like footprint related to the omitted RF section or something unrelated?
-3. What electrical signals are present on the Handle Interface?
-4. Does the Handle Interface use USB signaling, serial/UART-like signaling, GPIO/shift-register signaling, or another proprietary protocol?
-5. What causes generic GP2040 attachment to suppress local controls?
+1. Is the RF IC physically populated on the main gaming PCB under/around the LCD?
+2. Does the Handle Interface route to H1512 USB0, or to another controller/interface block?
+3. What electrical signals appear on D+/D-/ID when no accessory is present and when a controller is attached?
+4. Does the expected accessory enumerate with a narrow VID/PID/report format or use a vendor-specific transfer protocol?
+5. What causes GP2040 attachment to suppress the local controls?
 6. Which XGO routines consume Handle-Interface data?
 7. Can `Test.zsf` reliably display P1/P2 state?
 
 ## Rule for future testing
 
-Do not connect unknown pins or inject voltages based solely on SF2000 pinouts. Establish XGO electrical behavior first.
+Do not connect unknown pins or inject voltages based solely on SF2000 reference-board pinouts. Establish XGO electrical behavior first.
