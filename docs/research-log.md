@@ -10,16 +10,26 @@
 - Found `SF2000` literal in `Resources/Foldername.ini`.
 - Matched XGO resource/database naming conventions to documented SF2000 formats.
 - Recovered emulator/core identification strings from `bisrv.asd`.
-- Recovered explicit Player 2 and USB attach/detach strings.
-- Connected earlier controller experiments with product-family documentation calling the mystery port `Handle Interface`.
+- Connected controller experiments with product-family documentation calling the mystery port `Handle Interface`.
 - Identified `Resources/Test.zsf` as a likely explanation for the previously observed controller diagnostic screen.
-- Located active open-source SF2000-family work (particularly UniFrog) as a potential reference architecture for an eventual XGO-specific target.
+
+## 2026-08-30 — H1512 / RF-driver pass
+
+- Recovered `h1512_gpio_pinmux_sel`, `get_clock_h1512()` and MIPS SDE compiler strings from the XGO firmware.
+- Confirmed firmware targets the H1512/MIPS software family; the circulated RK3566 identification is contradicted for this specimen.
+- Recovered the shared `UpdateFirmware/Firmware.upk` internal SPI-NOR update path.
+- Disassembled a real RF initialization routine near `0x8035deb0` and identified a caller near `0x8034c7ac`.
+- Confirmed direct access to the same HC15xx GPIO MMIO words and DATA/CLOCK/CS bit masks used by the SF2000 wireless-controller path.
+- Confirmed the XGO performs the stock-style RF self-test: `0x53=0x5a`, `0x53=0xa5`, `0x25=0xa5`, read `0x05`, expect `0xa5`.
+- Reclassified generic `usb device attach/detach` strings as mass-storage/filesystem evidence because they occur with LUN and mount-path code; they are not evidence of generic USB HID controller support.
+- Confirmed `0xb884c000` accesses belong to SDIO. Known H1512 USB windows are separate (`0xb8844000` and `0xb8850000`).
 
 ## Next research targets
 
+- Trace the XGO RF receive/poll routine and locate P1/P2 status/pipe decoding.
+- Determine whether the RF IC is physically populated and whether an SF2000/SF900 controller can pair with the XGO.
+- Search separately for genuine USB HID/class-3 code and Handle Interface-specific routines.
 - Produce a reproducible binary comparison against known SF2000 firmware specimens.
-- Map `bisrv.asd` sections/signatures and locate external-input-related code regions.
-- Determine the XGO SoC from direct evidence rather than reseller claims.
 - Inspect MBR, FAT32 reserved sectors, and pre-partition area from a small extract of the preserved raw card image.
 - Characterize the Handle Interface electrically/protocol-wise.
 - Find photographs/listings/manuals for the original external XGO controller accessory.
