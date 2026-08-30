@@ -4,9 +4,9 @@ Status: **confirmed firmware behavior; physical radio hardware not yet confirmed
 
 ## Summary
 
-The XGO A10 `bios/bisrv.asd` contains a real, called RF initialization, receive, Player 1/Player 2 decode, and GPIO-bitbang implementation that closely matches the stock SF2000 wireless-controller path reconstructed by UniFrog.
+The XGO A10 `bios/bisrv.asd` contains a real, called RF initialization, receive, Player 1/Player 2 decode, and GPIO-bitbang implementation that matches the stock SF2000 wireless-controller path at a very deep level.
 
-This is stronger than string similarity. It is based on executable MIPS code, MMIO addresses, signal masks, RF register transactions, a live initialization call site, and receive-path player selection.
+This is stronger than string similarity. It is based on executable MIPS code, MMIO addresses, signal masks, RF register transactions, a live initialization call site, receive-path player selection, and now the exact radio configuration/address/channel tables used by current SF2000 reverse engineering.
 
 ## Address model
 
@@ -87,9 +87,9 @@ Representative disassembly:
 
 The failure branch references `RF_IC Test Fail !`; the success branch references `RF_IC Test Pass!` and enters additional RF configuration. Current UniFrog reverse engineering independently documents the same stock self-test sequence.
 
-## Configuration after successful self-test
+## Radio configuration — exact stock table match
 
-Observed subsequent register activity includes:
+The successful-init path writes the same register sequence currently reconstructed by UniFrog:
 
 ```text
 0x3d <- 0x20
@@ -97,15 +97,41 @@ Observed subsequent register activity includes:
 0xe1 <- 0x00
 0xe2 <- 0x00
 0x27 <- 0x70
-read buffer 0x3f
-read buffer 0x3e
 0x39 <- 0x01
 0x20 <- 0x8e
+0x21 <- 0x03
+0x22 <- 0x03
+0x23 <- 0x03
+0x24 <- 0x02
+0x31 <- 0x02
+0x32 <- 0x02
+0x3c <- 0x00
+0x26 <- 0x3f
 ```
 
-## Player 1 / Player 2 receive path — confirmed
+More importantly, the XGO binary contains these byte tables **exactly once**, byte-for-byte:
 
-The next disassembly pass found the missing connection from RF hardware to two logical controller slots.
+```text
+register 0x3f: 0a 6d 67 9c 46
+register 0x3e: f6 37 5d
+register 0x2a: dc a8 f3 6b 74
+register 0x2b: b2 9d 59 4f e3
+channels:      04 1d 31 4f
+```
+
+The corresponding region in the XGO image is around file offset `0x00c2d0e8` through `0x00c2d110`.
+
+Current UniFrog source independently defines the **same four tables and the same four RF channels** for stock SF2000 wireless controllers. The XGO init routine references these tables through GP-relative pointers and writes them to the same RF registers.
+
+This upgrades the firmware-lineage conclusion considerably: the XGO did not merely retain a generic radio driver. It contains the stock SF2000-family radio configuration, pipe/address values, and hopping/channel set.
+
+### Compatibility implication
+
+If the corresponding radio hardware is physically present and connected to the GPIO bus, the firmware-side evidence now strongly predicts compatibility with the same over-the-air controller protocol used by stock SF2000/SF900-class controllers.
+
+That remains a prediction until physical RF hardware is identified or a compatible controller is tested.
+
+## Player 1 / Player 2 receive path — confirmed
 
 The receive routine reads RF status register `0x07`:
 
@@ -134,7 +160,7 @@ Crucially, the status byte saved in `$16` is tested for bit `0x02`:
 
 The resulting `0` or `4` byte offset selects one of **two 32-bit controller-state slots**. The two-byte packet is converted into a raw button word and stored in the selected slot.
 
-This is a direct match for the current SF2000 interpretation:
+This directly matches current SF2000 observations:
 
 ```text
 status 0x40 -> status bit 0x02 clear -> controller slot 0 / Player 1
@@ -143,7 +169,7 @@ status 0x42 -> status bit 0x02 set   -> controller slot 1 / Player 2
 
 UniFrog independently observed real SF2000 hardware producing `status=0x40` for P1 and `status=0x42` for P2. The XGO binary therefore contains the same two-player RF selection mechanism at the system-input layer.
 
-The same routine then iterates over **two controller slots** (`sltiu ..., 2`) and translates raw bits into an internal button mask. This includes directional, Start/Select, face, shoulder, and high-bit states. The precise internal mask names still need labeling, but the two-port structure is now clear.
+The same routine then iterates over **two controller slots** (`sltiu ..., 2`) and translates raw bits into an internal button mask. This includes directional, Start/Select, face, shoulder, and high-bit states.
 
 ## Confidence statement
 
@@ -152,24 +178,27 @@ The same routine then iterates over **two controller slots** (`sltiu ..., 2`) an
 - XGO firmware is MIPS/H1512-family code.
 - It contains a called RF initialization routine.
 - That routine uses the same GPIO MMIO region and DATA/CLOCK/CS masks as the SF2000 RF bus.
-- It performs the same key RF IC self-test sequence documented by UniFrog.
+- It performs the same RF IC self-test sequence documented by UniFrog.
+- It contains and uses the exact stock SF2000 radio tables for registers `0x3f`, `0x3e`, `0x2a`, and `0x2b`.
+- It contains the exact stock SF2000 four-channel sequence `04 1d 31 4f`.
 - The RF receive routine reads status register `0x07`, reads a two-byte packet from `0x61`, and uses status bit `0x02` to choose between two controller-state slots.
-- This maps naturally to the known SF2000 `0x40` P1 / `0x42` P2 status behavior.
+- This maps directly to the known SF2000 `0x40` P1 / `0x42` P2 status behavior.
 
 ### STRONG EVIDENCE
 
-- XGO retained the stock SF2000 wireless-controller software path through actual system-level P1/P2 decoding, not merely emulator-side Player 2 settings.
+- XGO retained the stock SF2000 wireless-controller software/protocol path essentially intact.
+- If the RF hardware is populated, stock-compatible SF2000/SF900 controllers are strong candidates for direct compatibility.
 
 ### NOT YET CONFIRMED
 
 - Whether the corresponding RF IC is physically populated on the XGO PCB.
 - Whether an SF2000/SF900 controller can pair with the XGO as shipped.
-- Whether the physical radio is specifically XN297L/XN297LBW/XN297LBN or a compatible part.
+- Whether the physical radio, if present, is specifically XN297L/XN297LBW/XN297LBN or a compatible part.
 - How, if at all, the separate wired `Handle Interface` relates to this RF path.
 
 ## Next targets
 
-1. Label the XGO RF raw-button mapping completely and compare it with UniFrog's stock mapping.
-2. Identify the channel table written to RF register `0x25` and compare its bytes to stock SF2000 channels.
-3. Search for the RF pairing/address configuration and compare it with known SF2000/SF900 protocol work.
-4. Independently trace the wired Handle Interface and genuine USB HID/class code, if present.
+1. Compare visible PCB population against known XN297L-family package footprints and surrounding crystal/RF matching requirements.
+2. Label the XGO RF raw-button mapping completely and compare it with UniFrog's stock mapping.
+3. Trace the wired Handle Interface independently of the now-confirmed stock RF path.
+4. Search the binary for a distinct wired-controller polling routine, class/protocol identifiers, or GPIO/UART-style handling associated with that connector.
