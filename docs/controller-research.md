@@ -66,7 +66,7 @@ CLOCK = 0x10000000
 CS    = 0x20000000
 ```
 
-More importantly, the XGO executes the same RF self-test sequence:
+The XGO also executes the same RF self-test sequence:
 
 ```text
 write 0x53 = 0x5a
@@ -76,11 +76,26 @@ read  0x05
 compare result with 0xa5
 ```
 
-Failure reaches `RF_IC Test Fail !`; success reaches `RF_IC Test Pass!` and proceeds into RF configuration. The RF-init routine appears at approximately `0x8035deb0` and has a real call site near `0x8034c7ac`, so this is not merely an orphaned diagnostic string.
+Failure reaches `RF_IC Test Fail !`; success reaches `RF_IC Test Pass!` and proceeds into RF configuration. The RF-init routine appears near `0x8035deb0` and has a real call site near `0x8034c7ac`.
 
-This is **CONFIRMED firmware evidence** that XGO retained a stock-SF2000-like RF controller driver. It does **not yet confirm** that the physical XGO PCB has the corresponding RF chip populated. PCB or runtime evidence is still needed before identifying the radio IC as XN297L-family hardware.
+This is **CONFIRMED firmware evidence** that XGO retained a stock-SF2000-like RF controller driver. It does **not yet confirm** that the physical XGO PCB has the corresponding RF chip populated.
 
-The earlier failure to find UniFrog's complete GPIO shadow constants verbatim is now explained: XGO manipulates the same registers and masks dynamically rather than embedding all of UniFrog's reconstructed whole-register values as literals.
+## Player 1 / Player 2 RF decoding — confirmed
+
+The receive routine closes an important gap. It reads RF status register `0x07` and treats bit `0x40` as packet-ready. It then reads two payload bytes from RF register `0x61`.
+
+The saved RF status byte is tested for bit `0x02`. That bit selects one of two controller-state slots:
+
+```text
+status 0x40 -> bit 0x02 clear -> slot 0 / Player 1
+status 0x42 -> bit 0x02 set   -> slot 1 / Player 2
+```
+
+This precisely matches UniFrog's independent observations from stock SF2000 hardware: P1 packets arrive with status `0x40`, while P2 packets arrive with status `0x42`. The XGO firmware therefore has **system-level two-player RF input handling**, not merely Player 2 labels inherited inside emulator cores.
+
+The routine then iterates across two controller-state slots and maps raw bits into the internal button representation.
+
+See [`../findings/rf-driver.md`](../findings/rf-driver.md) for addresses and representative disassembly.
 
 ## Revised architecture question
 
@@ -88,13 +103,13 @@ The working model is now:
 
 ```text
 XGO local controls ---------------------> input subsystem
-XGO inherited SF2000-like RF path ------> input subsystem -> P1/P2 -> emulator
+XGO SF2000-like RF P1/P2 path ----------> input subsystem -> P1/P2 -> emulator
 XGO Handle Interface -------------------> ???
 ```
 
-The major question is no longer whether the firmware has an SF2000 RF path — it does. We now need to determine whether the XGO hardware actually populates that radio and whether the wired Handle Interface is a second controller path, a service/interface port, or some other adaptation.
+The major question is no longer whether the firmware has an SF2000 RF path — it clearly does, including P1/P2 selection. We need to determine whether the XGO PCB actually populates that radio and whether the wired Handle Interface is an additional controller path, service interface, or another adaptation.
 
-UniFrog also documents that stock SF2000 local controls and RF polling share the L23-L29 GPIO group. That gives a plausible precedent for one input path disrupting another, but it does **not** yet prove that this mechanism caused the GP2040 experiment to freeze the XGO's local buttons.
+UniFrog documents that stock SF2000 local controls and RF polling share the L23-L29 GPIO group. That gives a plausible precedent for one input path disrupting another, but it does **not** prove that this mechanism caused the GP2040 experiment to freeze the XGO's local buttons.
 
 ## Test/diagnostic ROM
 
@@ -107,7 +122,7 @@ The XGO card includes `Resources/Test.zsf`. SF2000 documentation identifies this
 3. What electrical/protocol signals are present on the Handle Interface?
 4. Does the Handle Interface implement USB host/device operation or a proprietary protocol over a USB-shaped connector?
 5. What causes GP2040 attachment to suppress local controls?
-6. Does XGO's RF receive routine use the same P1/P2 status/pipe decoding as stock SF2000?
+6. Does XGO use the same RF channel/address configuration as stock SF2000?
 7. Can `Test.zsf` reliably display P1/P2 state?
 
 ## Rule for future testing
