@@ -53,6 +53,7 @@ The binary contains:
 
 ```text
 h1512_gpio_pinmux_sel
+get_clock_h1512() parameter error, nothing to do!!!!
 ```
 
 and the SDK/compiler identification string:
@@ -87,6 +88,45 @@ This is important because stock SF2000 hardware uses a 2.4 GHz RF receiver for i
 
 An initial search for several exact GPIO shadow constants currently used by UniFrog's reconstructed SF2000 RF sequence did **not** find those constants verbatim in the XGO image. This negative result is useful but not decisive: the XGO code may use a different SDK routine, compiler-generated register programming, another RF implementation, or different board initialization values.
 
+## Internal flash updater path
+
+The XGO firmware contains a complete-looking internal flash update path, including these strings:
+
+```text
+/mnt/sda1/UpdateFirmware/Firmware.upk
+STO_SFLASH_0
+NOR flash id_buf[0]=0x%08X, id_buf[1]=0x%08X, id_buf[2]=0x%08X
+spi_nor_cmd_read
+spi_nor_cmd_write
+Update success.
+Update fail.
+```
+
+This is an especially strong SF2000-family match. The documented SF2000 permanent bootloader patch uses the **same** SD-card path: `UpdateFirmware/Firmware.upk`. In other words, the XGO's application firmware appears to retain the same mechanism used by SF2000 firmware to program internal SPI NOR flash.
+
+This does **not** mean that an SF2000 `Firmware.upk` is safe to run on the XGO. The update mechanism may be shared while the contents of internal flash differ by board revision. A mismatched update could make the device unbootable and require an external SPI programmer for recovery.
+
+For now the updater should be treated as a reverse-engineering opportunity, not an installation method. Useful future work includes:
+
+1. documenting the `Firmware.upk` container format;
+2. determining which NOR regions the XGO updater writes;
+3. comparing a known SF2000 bootloader patch with the XGO updater's expectations;
+4. identifying the XGO SPI NOR chip and obtaining a hardware backup before any write experiment.
+
+## Display-driver clues
+
+The image contains a broad vendor display-driver library with strings including:
+
+```text
+LCD_TYPE_320_240_CONFIGE
+LCD_TYPE_320_240_8347B_CONFIGE
+ili9341.c
+lcd_ili9341_320_240_init start
+lcd_ili9341_320_240_init end
+```
+
+These strings show that the linked SDK contains 320x240 display support, including an ILI9341 path, but they do **not** yet identify which panel driver the XGO actually selects at runtime. The library also contains many unrelated panel definitions, so runtime/PCB evidence is required before assigning an LCD controller model.
+
 ## `Resources/`
 
 The resource directory contains intentionally misleading Windows-like filenames (`pagefile.sys`, DLL-like names, etc.). Comparison with documented SF2000 resources shows that this naming convention is inherited from that platform.
@@ -103,8 +143,9 @@ The XGO uses unusual ROM-list/database filenames also documented in the SF2000 e
 
 Strong working model:
 
-1. internal boot code initializes enough hardware to access the microSD card;
+1. internal boot code in SPI NOR initializes enough hardware to access the microSD card;
 2. an SF2000-family `LCFG` application image (`bios/bisrv.asd`) is loaded;
-3. the application uses the FAT32 card for resources, emulator data, ROM lists, BIOS files and games.
+3. the application uses the FAT32 card for resources, emulator data, ROM lists, BIOS files and games;
+4. the application also contains an SD-triggered mechanism capable of rewriting internal SPI NOR using `UpdateFirmware/Firmware.upk`.
 
-The exact internal bootloader and any data in pre-partition/reserved sectors remain to be examined from the preserved full-card image.
+The exact internal bootloader contents remain to be recovered from the XGO hardware. The preserved full-card image can still answer questions about the card's partition/reserved-sector layout, but the strongest current evidence indicates that the bootloader itself lives in internal flash rather than on the microSD card.
