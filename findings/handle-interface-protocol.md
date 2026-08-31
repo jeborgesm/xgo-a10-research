@@ -40,6 +40,8 @@ B7  -> driven high at idle
 
 The initialization then continues into the RF GPIO setup and radio self-test. This shows the local serial bus and wireless input path are intentionally initialized together as parts of the controller subsystem.
 
+A later static re-check confirmed that this setup is unconditional in the controller initialization path: there is no Handle-Interface-present test before B15/L0/B7 are put into their controller roles.
+
 ## Load/reset phase
 
 The firmware clears both software controller states, then performs this sequence:
@@ -115,6 +117,18 @@ The XGO implementation therefore looks more like a relative of the HC15xx local-
 
 The scanner is part of the persistent controller task and runs periodically without waiting for USB attachment or enumeration. A poll counter selects the scan phase approximately every fourth task phase.
 
+Representative scheduling code:
+
+```text
+0x8035d50c  load poll counter
+0x8035d510  counter & 3
+0x8035d514  if zero -> enter serial scanner at 0x8035d770
+...
+0x8035d6c8  load same counter
+0x8035d6cc  increment
+0x8035d6d0  store
+```
+
 This means the GPIO bus remains active even with no external controller attached.
 
 ## No software-side P2 connection gate found
@@ -126,11 +140,34 @@ gp - 0x0d2c   serial/local slot 0
 gp - 0x0d28   serial/local slot 1
 ```
 
-Direct accesses to those two words occur inside the serial scan routine itself: the function clears the words and sets button bits as B15/L0 are sampled. Outside that scanner, the states are consumed through the two-element array pointer and merged with RF P1/P2.
+Direct reads/writes of those two words occur in the serial scanner itself: it clears the words and sets button bits as B15/L0 are sampled. Outside that scanner, the states are consumed through the two-element array pointer and merged with RF P1/P2.
 
-No separate flag was found that says "P2 connected", no branch skips the second serial channel when the connector is empty, and no USB-attach condition gates the scan. The firmware simply samples both data lines every scan cycle.
+The exhaustive direct-reference scan found no USB callback, connector-detect routine, or mode handler writing these local P1/P2 words.
+
+No separate flag was found that says `P2 connected`, no branch skips the second serial channel when the connector is empty, and no USB-attach condition gates the scan. The firmware simply samples both data lines every scan cycle.
 
 This strongly suggests that an absent second controller is represented electrically by an inactive/all-high serial stream rather than by a separate enumeration or connection event.
+
+## Detect/mode hypothesis re-check
+
+After the OTG-adapter experiment, the application firmware was re-checked specifically for evidence that grounding a connector contact causes a software-side controller mode switch.
+
+### What was found
+
+- controller GPIO initialization configures B15/L0/B7 without testing for an external controller;
+- the serial scanner continues to run from its normal periodic scheduling path;
+- both local controller slots are always scanned;
+- the local state words are only directly populated by that scanner;
+- the firmware contains generic `usb device attach` / `usb device detach` strings, but no convincing application-level `OTG`, `ID pin`, `host mode`, or `device mode` string associated with the controller path;
+- the previously identified USB strings are associated with broader USB/filesystem handling and do not connect to the local P1/P2 state array in the static code examined.
+
+### Interpretation
+
+This does **not** rule out a hardware-level or lower USB-stack response to the micro-USB ID pin. However, no application-level mechanism has been found that says, in effect, `ID grounded -> switch the controller subsystem into external-controller mode`.
+
+That makes the simpler electrical-contention/stuck-data explanation stronger than it was before: grounding a contact may directly alter one of the signals that the continuously running scanner already samples.
+
+The strongest candidate remains the external/P2 active-low data stream. This is still an inference until connector routing is measured.
 
 ## Idle-line implication
 
@@ -144,7 +181,7 @@ The firmware scanner itself does not perform a per-scan pull-up configuration; i
 
 ## Cable/adapter differential experiment — very strong physical evidence
 
-Two physically similar micro-USB attachments now produce opposite results:
+Two physically similar micro-USB attachments produce opposite results:
 
 ```text
 normal micro-USB male -> USB-A male cable
@@ -156,15 +193,13 @@ micro-USB OTG adapter -> USB-A female
     -> built-in controls freeze immediately
 ```
 
-This differential result is substantially more informative than the original GP2040 experiment.
+A normal micro-USB cable typically leaves the micro-USB **ID** contact unconnected, while an OTG host adapter commonly grounds the ID contact to request host mode. The adapter was also probed with fine needle extensions; resistance-mode probing produced a ground-related reading on pin 4, consistent with the expected OTG ID-to-ground connection, although the awkward probe setup means this should not be treated as a precision resistance measurement.
 
-A normal micro-USB cable typically leaves the micro-USB **ID** contact unconnected, while an OTG host adapter commonly grounds the ID contact to request host mode. Because the ordinary cable does not disturb the XGO but the OTG adapter does, the ID-contact difference is now the leading explanation for the freeze.
+Because the ordinary cable does not disturb the XGO but the empty OTG adapter does, the ID-contact difference is now the leading physical discriminator.
 
 This does **not** yet prove that XGO micro-USB pin 4 is P2 DATA. It does, however, sharply reduce the likelihood that ordinary VBUS/D+/D-/GND contact presence alone causes the fault, because those conventional USB contacts are present on both cable types.
 
 ### Current leading electrical interpretation
-
-The strongest working model is now:
 
 ```text
 ordinary cable:
@@ -173,18 +208,25 @@ ordinary cable:
 
 OTG adapter:
     ID grounded
-    -> an XGO-repurposed signal is forced/asserted
+    -> an XGO-repurposed or sensed signal is forced/asserted
     -> controller subsystem becomes unusable / appears frozen
 ```
 
-If that repurposed signal is the active-low external/P2 DATA line, grounding it would make all twelve P2 samples read as pressed. If instead it is a mode/control signal, grounding it could alter pinmux or controller behavior. The observed differential cannot distinguish these two mechanisms by itself.
+If that contact is the active-low external/P2 DATA line, grounding it would make all twelve P2 samples read as pressed. If instead it is a lower-level mode/control signal, grounding it could change hardware/pinmux behavior. Static application analysis has not found a software-side controller-mode gate supporting the second explanation, so direct signal interference is currently favored.
 
-### What is now strongly disfavored
+## Reference-board USB context
+
+The documented SF2000 DB-B210-V1.1 reference schematic connects its micro-USB connector to VBUS and the SoC USB0 D+/D- pair. Public reconstruction of that schematic does not identify the micro-USB ID contact as part of the ordinary USB0 data connection.
+
+This is **reference-board evidence only**; the XGO PCB is a different product and may deliberately repurpose the fifth contact. It does show that an HC15xx design can have conventional USB0 signals while leaving the accessory-specific meaning of the fifth micro-USB contact to the board implementation.
+
+## What is now strongly disfavored
 
 - GP2040-specific incompatibility as the cause of the freeze;
 - generic USB-HID enumeration failure as the primary trigger;
 - simple mechanical insertion or VBUS presence as the sole cause;
-- the idea that any micro-USB attachment disrupts the port.
+- the idea that any micro-USB attachment disrupts the port;
+- an application-level P2-present gate controlling whether the serial scanner runs.
 
 ## What a compatible external controller would need to do
 
@@ -211,6 +253,7 @@ If the Handle Interface is physically wired to this scanner, a compatible contro
 - periodic operation independent of USB attachment state;
 - both serial slots are scanned unconditionally;
 - no separate software-side P2 connection gate was found in the local-state path;
+- direct references to the two local state words are confined to the serial scanner;
 - channel states merge directly into P1/P2 alongside RF input.
 
 ### CONFIRMED physically
@@ -229,27 +272,34 @@ If the Handle Interface is physically wired to this scanner, a compatible contro
 - the empty external channel must have some stable-high bias mechanism rather than being left electrically floating;
 - the OTG adapter is altering at least one electrically meaningful Handle-Interface contact even with its USB-A side empty;
 - the distinguishing micro-USB ID behavior of OTG adapters is now the leading physical discriminator;
-- ordinary USB connector semantics cannot safely be assumed for this port.
+- direct signal interference is better supported by the current application firmware than an application-level ID-triggered controller mode switch.
 
 ### LEADING HYPOTHESIS
 
-- XGO connector pin 4 / micro-USB ID is repurposed or sensed by the controller subsystem;
+- XGO connector pin 4 / micro-USB ID is repurposed or otherwise electrically coupled to the controller subsystem;
 - grounding it through an OTG adapter causes the freeze;
-- one especially attractive possibility is that pin 4 is external/P2 DATA, but a mode/control role remains possible.
+- the strongest specific possibility is that pin 4 is external/P2 DATA, so grounding it produces an all-active-low P2 stream.
+
+### STILL POSSIBLE
+
+- pin 4 is handled by lower-level USB/OTG hardware or code outside the reconstructed application-level controller path and grounding it changes a hardware mode;
+- the Handle Interface is hybrid/multiplexed and exposes both proprietary serial-controller behavior and some USB functionality.
 
 ### NOT YET CONFIRMED
 
 - whether B15 or L0 is the external stream;
 - whether B7 reaches the Handle Interface connector directly;
 - the exact micro-USB contact assignment;
-- whether pin 4 is P2 DATA versus a mode/control signal;
+- whether pin 4 is P2 DATA versus a lower-level mode/control signal;
 - connector voltage and pull-up/pull-down network;
 - whether the Handle Interface also exposes a real USB mode in addition to the serial bus.
 
-## Safest discriminator
+## Best next discriminator
 
-The highest-value next test is no longer another controller. It is to confirm the cable/adapter ID behavior electrically while unpowered, using a fine probe, needle, breakout, or sacrificial cable if available.
+The highest-value next experiment is to observe *what input state the firmware sees* when the bare OTG adapter is inserted.
 
-If the normal cable leaves ID open and the OTG adapter shorts ID to ground, the behavioral difference above becomes exceptionally strong evidence that XGO pin 4 is meaningful to the Handle Interface.
+If a controller-test program or two-player input diagnostic shows Player 2 suddenly asserting many/all buttons while Player 1 remains electrically alive, that would strongly favor `pin 4 -> P2 active-low DATA` over a generic mode-switch explanation.
 
-Until the routing is established, do not assume a normal USB pinout simply because the connector shell is micro-USB.
+If instead the entire controller task stops updating or the serial clock disappears, a lower-level mode/pinmux switch becomes more plausible.
+
+A logic analyzer or oscilloscope on a breakout would answer this directly, but useful behavioral evidence may be obtainable first with the existing `Resources/Test.zsf` controller-test ROM or another two-player input test.
