@@ -2,15 +2,20 @@
 
 ## Summary
 
-A deeper trace resolves several ambiguities in the XGO audio path. The board configuration carries separate DAC precision and DAC-format bytes, while the runtime SND state explicitly configures a two-channel transport even though the handheld has only one physical speaker.
+The XGO sound path is now sufficiently characterized for alternative-firmware board work. The board configuration carries separate DAC precision and DAC-format bytes, while the runtime SND state explicitly configures a two-channel transport even though the handheld has only one physical speaker.
 
-The relevant XGO configuration is:
+The practical stock baseline is:
 
-- `dac_precision = 0x10` = **16 bits**
-- `dac_format = 0x01`
-- active SND channel count = **2**
+- internal HC15xx SND/I2SO transport: **2 channels**
+- sample precision: **16-bit**
+- normal hardware rates: **44.1 kHz and 48 kHz**
+- normal working block: **960 samples**
+- board DAC-format selector: **1**
+- speaker/amp output gate: **GPIO L23**
+- built-in acoustic output: **one physical speaker / mono**
+- user volume states: **0 / 33 / 66 / 99 = mute / low / medium / high**
 
-The active audio setup routine at `0x80306cdc` receives requested sample rate, sample count, and the precision value. Normal callers use 44.1 or 48 kHz, 960 samples, and the board-configured 16-bit precision.
+The remaining serial-framing and analog summing details are interesting implementation details, but they no longer block a conservative XGO board profile: a port should preserve two-channel 16-bit PCM transport and the XGO-specific L23 output gate rather than assuming a mono hardware PCM device.
 
 ## Correction to the earlier interpretation
 
@@ -31,13 +36,13 @@ During platform initialization around `0x80309fc0`, the firmware copies adjacent
 
 The corresponding bytes in the XGO LCFG configuration are `10 01`.
 
-This ordering is independently consistent with older public ALi SDK definitions of `struct snd_output_cfg`, whose first fields include `dac_precision` followed by `dac_format`. The older SDK explicitly describes precision as 24- or 16-bit and DAC format as the serial codec framing selection.
+This ordering is independently consistent with older public ALi SDK definitions of `struct snd_output_cfg`, whose first fields include `dac_precision` followed by `dac_format`. That older family exposes I2S, left-justified, and right-justified serial-format choices and separately configures precision.
 
 **CONFIRMED:** XGO stock audio uses 16-bit SND precision.
 
 **CONFIRMED:** XGO board configuration selects DAC-format value `1`.
 
-**STRONG EVIDENCE:** the value `1` belongs to the ALi-family I2S/left/right serial framing selector. The exact HC15xx enum name for raw value `1` remains to be proven before calling it I2S, left-justified, or right-justified.
+**STRONG EVIDENCE:** the value `1` is an HC15xx descendant of the ALi-family serial framing selector. The exact HC15xx symbolic name for raw value `1` has not been recovered, so it should not be labeled I2S, left-justified, or right-justified without further evidence.
 
 ## Two-channel transport confirmed
 
@@ -49,24 +54,11 @@ The normal setup path writes the constant `2` to two related runtime fields befo
 80306e38: sb    $2, 0x110($17)
 ```
 
-The `0x1c` field is independently validated elsewhere in the same SND subsystem. The validation logic accepts exactly the values:
+The channel field is validated elsewhere in the SND subsystem against the supported set `1`, `2`, `4`, and `8`; unsupported values enter the driver's error/assertion path. Normal XGO initialization selects **2**.
 
-- 1
-- 2
-- 4
-- 8
+**CONFIRMED:** stock XGO uses a **two-channel internal SND transport**.
 
-and enters an assertion/error path for other values. That value set is the characteristic supported audio-channel-count set used by this driver family.
-
-Normal XGO initialization sets this field to **2** every time the standard audio path is configured.
-
-This resolves the earlier uncertainty:
-
-**CONFIRMED:** the stock XGO HC15xx SND path is configured for **two audio channels** internally.
-
-The physical device has one built-in speaker, so the final acoustic output is mono. The exact point at which two-channel PCM is reduced, selected, or duplicated into the single speaker path remains unresolved.
-
-This distinction is important for alternative firmware: the safe baseline is a two-channel hardware transport, not a one-channel PCM device merely because the handheld contains one speaker.
+This resolves the apparent contradiction with the physical unit: the handheld has only one built-in speaker, but its digital PCM path is not a one-channel device. The collapse from two digital channels to one acoustic output can happen by mixing, channel selection/duplication, or analog summing downstream; the exact stage is not required to reproduce the known-working digital transport.
 
 ## Hardware programming
 
@@ -77,11 +69,11 @@ The lower-level helper at `0x8030a268` accepts:
 - 24
 - 32
 
-and maps those values to a compact SND hardware field. The XGO path reaches it with `16`; under another runtime condition the code also explicitly forces `16`, reinforcing that 16-bit precision is intentional rather than accidental.
+and maps those values to a compact SND hardware field. The XGO path reaches it with `16`; another runtime condition also explicitly forces `16`, reinforcing that 16-bit precision is intentional.
 
-A separate helper at `0x8030a528` accepts values `0..3` and writes a two-bit SND field. The XGO board's DAC-format global is `1`, so the stock board selects field value `1` here.
+A separate helper at `0x8030a528` accepts values `0..3` and writes a two-bit SND field. The XGO board's DAC-format global is `1`, so stock selects field value `1` here.
 
-Another helper at `0x8030a5ac` configures a related frame/clock field using the `0x20`/`0x30`/`0x40` family. Its exact semantic name remains unresolved.
+Another helper at `0x8030a5ac` configures a related frame/clock field using the `0x20`/`0x30`/`0x40` family. Its exact symbolic meaning has not been recovered.
 
 ## Sample-rate normalization
 
@@ -106,21 +98,17 @@ so the working block is exactly 20 ms. At 44.1 kHz it is about 21.77 ms.
 
 ## Physical observations and volume behavior
 
-Direct observation of the XGO hardware establishes that the unit has **one physical speaker**. This confirms that the final built-in analog acoustic output is mono, while the executable trace above confirms that the internal SND transport is two-channel.
-
-The physical volume button cycles through four audible/user-visible states:
+Direct observation establishes that the XGO contains **one physical speaker**. The physical volume button cycles through:
 
 1. none / mute
 2. low
 3. medium
 4. high
-5. then back to none / mute
+5. back to none / mute
 
-This exactly matches the firmware behavior already recovered from the L29 volume-button path, which cycles the persisted software values:
+This exactly matches the firmware L29 volume-button path:
 
 `0 -> 33 -> 66 -> 99 -> 0`
-
-Therefore the four firmware values can be tied directly to the observed user control:
 
 | Firmware value | Observed setting |
 | ---: | --- |
@@ -129,15 +117,13 @@ Therefore the four firmware values can be tied directly to the observed user con
 | 66 | medium |
 | 99 | high |
 
-The device's built-in speaker quality is observed to be poor at all volume settings. This is useful practical evidence when evaluating alternative firmware: software may improve resampling, clipping, gain handling, latency, or emulator audio behavior, but the physical mono speaker/amplifier/enclosure remains a likely fidelity limitation.
+The built-in speaker quality is observed to be poor at all levels. Alternative firmware may improve resampling, clipping, gain handling, latency, or emulator behavior, but the small mono speaker/amplifier/enclosure is likely a substantial fidelity limit.
 
-**CONFIRMED (physical observation):** one built-in speaker and therefore mono final acoustic output.
+## Output gate
 
-**CONFIRMED (firmware):** the internal HC15xx SND path is configured for two channels.
+Separate executable tracing identifies GPIO **L23** as the XGO-specific speaker/amp gate. Volume-zero and transition paths drive this line to mute/disable the analog output; nonzero-volume paths enable it before applying software volume.
 
-**CONFIRMED (physical + firmware correlation):** the single volume button implements four cyclic states corresponding to firmware values 0/33/66/99.
-
-**OBSERVED:** built-in speaker quality is poor across the available volume levels.
+This is board-specific and differs from known related devices: an XGO port must not blindly inherit the SF2000 or GB300 speaker-gate GPIO.
 
 ## Current XGO audio contract
 
@@ -146,14 +132,14 @@ emulator / frontend PCM
         |
         +-- two-channel transport         CONFIRMED
         +-- 16-bit precision              CONFIRMED
-        +-- DAC serial-format value 1     CONFIRMED
-        +-- 44.1 / 48 kHz normally
-        +-- 11.025 / 22.05 normalized through 44.1 kHz
-        +-- 960-sample working blocks
+        +-- DAC serial-format value 1     CONFIRMED raw value
+        +-- 44.1 / 48 kHz normally        CONFIRMED
+        +-- 11.025 / 22.05 via 44.1 kHz   CONFIRMED behavior
+        +-- 960-sample working blocks     CONFIRMED
         |
         +-- HC15xx SND / I2SO hardware
         |
-        +-- XGO-specific L23 output gate
+        +-- XGO-specific L23 output gate  STRONG executable evidence
                |
                -> one physical speaker / mono acoustic output
 
@@ -161,11 +147,13 @@ Volume button (L29):
 0 (mute) -> 33 (low) -> 66 (medium) -> 99 (high) -> 0
 ```
 
-## What remains unresolved
+## Investigation status
 
-The main remaining audio-format questions are now narrower:
+For board-port purposes, the **sound investigation is considered complete enough to proceed**. The unresolved items below are non-blocking refinements rather than architectural unknowns:
 
-1. the exact HC15xx name/meaning of DAC-format value `1`;
-2. whether the software feeds genuinely different left/right samples or duplicates/mono-mixes content before the two-channel transport;
-3. where the two-channel transport becomes the single-speaker analog path;
-4. exact semantics of the secondary `0x20`/`0x30`/`0x40` frame/clock selector.
+- exact HC15xx symbolic name for DAC-format raw value `1`;
+- whether left/right samples remain distinct all the way to the DAC or are mixed/duplicated earlier;
+- exact downstream stage that converts the two-channel digital path to the one-speaker analog output;
+- symbolic name of the secondary `0x20`/`0x30`/`0x40` frame/clock selector.
+
+If future runtime testing exposes an audio-routing problem, these are the first details to revisit. Until then, the conservative compatibility baseline is **2-channel, 16-bit, 44.1/48-kHz HC15xx SND/I2SO with the XGO L23 output gate**.
