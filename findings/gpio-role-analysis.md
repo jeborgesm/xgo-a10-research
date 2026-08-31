@@ -58,11 +58,33 @@ Why this assignment is stronger now:
 
 This still stops short of physical confirmation because the board trace from L0 to the micro-USB-looking connector has not been observed directly. In principle, intermediary logic or an unusual remap could exist.
 
-## Other nearby GPIO activity
+## GPIO L29 is the volume button — correction of an earlier false lead
 
-A separate read of `0xb8800050` with mask `0x20000000` appears in the same broad controller task, but control flow leads to LCD/TV mode handling rather than controller decoding. It should not be treated as Handle Interface detection.
+A deeper software pass resolves the separate read of `0xb8800050` mask `0x20000000` unambiguously.
 
-This removes one nearby false lead and keeps the controller bus itself narrowly defined around B15, L0, and B7.
+At `0x8035d648` the controller task reads GPIO bank L and tests bit 29. When asserted, the routine:
+
+```text
+loads persisted volume state gp-0xd20
+adds 0x21 (33)
+wraps to zero after 99
+calls the audio-volume helper with the new value
+persists Archive.sys
+```
+
+The resulting cycle is:
+
+```text
+0 -> 33 -> 66 -> 99 -> 0
+```
+
+Therefore:
+
+```text
+L29 -> physical one-button volume control (very likely the case-marked V+ control)
+```
+
+This supersedes the earlier speculation that L29 might be RF IRQ/status, Handle-Interface detection, or LCD/TV mode handling. It is not part of the P1/P2 serial bus.
 
 ## Relationship to RF initialization
 
@@ -80,11 +102,13 @@ This mixed initialization is consistent with a single joystick/input subsystem b
 - B15 and L0 are initialized as inputs by the controller subsystem.
 - B7 is initialized as an output and driven to its idle state.
 - the two serial slots merge with the two RF slots position-for-position.
+- L29 is the four-step volume-button GPIO and is not a controller-data/Handle-detect signal.
 
 ### VERY STRONG INFERENCE
 
 - B15 is the built-in Player 1 stream.
 - L0 is the external Player 2 stream intended for the Handle Interface.
+- the physical case-marked `V+` button is wired to L29.
 
 ### NOT YET PHYSICALLY CONFIRMED
 
@@ -95,4 +119,12 @@ This mixed initialization is consistent with a single joystick/input subsystem b
 
 ## Practical implication
 
-The next physical test can now target only the likely P2 side. If the Handle Interface exposes the reconstructed serial bus directly, one non-power contact should correspond to L0 data and another to B7 clock. Passive probing or continuity should be enough to distinguish this from ordinary USB before connecting additional controllers.
+The software model now cleanly separates the controls:
+
+```text
+B15 + L0 + B7 -> two-player local serial controller bus
+L29           -> volume button
+RF GPIO set   -> wireless-controller subsystem
+```
+
+This eliminates L29 from future Handle-Interface hypotheses and narrows any eventual physical tracing to the serial-bus pins and connector multiplexing behavior already documented elsewhere.
