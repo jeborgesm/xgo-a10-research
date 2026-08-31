@@ -1,10 +1,18 @@
 # XGO Save-State Container and Core Dispatch
 
-Status: **save-state wrapper format and core-specific dispatch confirmed by static analysis**.
+Status: **save-state bundle format, preview thumbnail, Arcade auto-state behavior, and core-specific dispatch confirmed by static analysis and SF2000-family corroboration**.
 
 ## Scope
 
-This pass follows the XGO save/load path around `0x8035f3f0..0x80360840` and the game launcher around `0x80360b88..0x80360e48`. No hardware probing was required.
+This analysis follows the XGO save/load path, its zlib compression path, the pause-menu preview reader, the game launcher, and the runtime `.skp` loader. No hardware probing was required.
+
+## Correction to the initial trace
+
+An earlier pass stopped too early in the state writer and incorrectly concluded that `.saN` contained only a four-byte size followed by raw serialized emulator state. That interpretation was incomplete.
+
+Following the compression and thumbnail writer shows that XGO uses the same general save-state bundle architecture documented for the SF2000 family: compressed emulator state followed by a compressed RGB565 preview image and a final offset pointing back to the thumbnail metadata.
+
+The earlier statement that no thumbnail was appended is therefore withdrawn.
 
 ## Save-state file format
 
@@ -14,55 +22,47 @@ The frontend constructs state paths with:
 %s/save/%s.sa%d
 ```
 
-The save routines for the individual emulator families all use the same outer file wrapper.
+with four ordinary slots, `.sa0` through `.sa3`.
 
-The generic sequence is:
-
-1. call the active core's state-size/serialize-size function;
-2. allocate a working buffer (the code reserves roughly twice the reported state size);
-3. invoke that core's serializer into the buffer;
-4. open the `.saN` file with `wb`;
-5. write one 32-bit state-size value;
-6. write exactly that many serialized-state bytes;
-7. close the file and free the buffer.
-
-Therefore the XGO `.saN` outer container is:
+The complete outer bundle is:
 
 ```c
 struct XgoStateFile {
-    uint32_t serialized_size;   // little-endian on this MIPS target
-    uint8_t  serialized_state[serialized_size];
+    uint32_t compressed_state_size;
+    uint8_t  compressed_state[compressed_state_size];
+
+    uint32_t thumbnail_width;
+    uint32_t thumbnail_height;
+    uint32_t compressed_thumbnail_size;
+    uint8_t  compressed_thumbnail[compressed_thumbnail_size];
+
+    uint32_t thumbnail_metadata_offset;
 };
 ```
 
-There is no separate frontend screenshot/thumbnail block written by this wrapper.
+The final offset points to the thumbnail metadata beginning at the width field, allowing the preview reader to find the image without decoding the emulator-state block first.
+
+The firmware contains zlib 1.2.5 and the save path reaches the compressor around `0x80365e64`.
+
+**CONFIRMED:** emulator state is compressed before being stored in the `.saN` bundle.
+
+**CONFIRMED:** the bundle contains a separately compressed raw RGB565 thumbnail.
+
+## Save-slot preview
+
+The pause-menu preview path around `0x80354150` reopens the selected `.saN`, locates the thumbnail metadata using the trailing offset, reads its width/height and compressed length, decompresses the RGB565 image, and renders it in the save/load UI.
+
+This directly explains the visible per-slot preview behavior and removes the earlier need to hypothesize reconstruction from emulator RAM or a static background.
 
 ## Load behavior
 
-The matching load routines:
+The normal state loader reads the compressed emulator-state block, decompresses it, and passes the resulting serializer payload to the active core's load/unserialize callback.
 
-1. open the `.saN` file;
-2. read the leading 4-byte size;
-3. allocate a buffer of that size;
-4. read the serialized payload;
-5. close the file;
-6. pass the payload to the active core's unserialize/load-state callback;
-7. free the buffer.
-
-This explains why state files on the preserved card have highly variable sizes: the outer XGO format is only a four-byte length prefix around each emulator's own serialized state.
+The thumbnail is frontend metadata; it is not required to restore the emulated machine state.
 
 ## Core-specific save/load implementations
 
-The frontend does not use one universal emulator serializer. It installs different callback sets for each core family and then routes them through the same XGO wrapper.
-
-Repeated save/load wrapper pairs are visible for the embedded cores, with the same logging strings:
-
-```text
-memsize:%d
-save_state:%s
-load_state:%s
-load_state complete
-```
+The frontend does not use one universal emulator serializer. It installs different callback sets for each core family and routes them through the common XGO state-bundle layer.
 
 The launcher chooses the emulator family using the bitmask accumulated by the extension dispatcher. Confirmed native family bits remain:
 
@@ -75,31 +75,38 @@ The launcher chooses the emulator family using the bitmask accumulated by the ex
 0x40 Arcade / FBA
 ```
 
-This is useful for a future firmware port because the XGO frontend is effectively an adapter layer around six independent core callback sets rather than a monolithic emulator implementation.
+This is useful for a future firmware port because the XGO frontend is effectively an adapter layer around independent core callback sets rather than one monolithic emulator implementation.
 
-## Preview implication
+## Arcade `.skp` files are automatic save states
 
-Because the frontend save wrapper writes only `uint32 size + serialized core state`, the save-slot preview artwork is **not stored as a distinct XGO thumbnail appended to `.saN`**.
-
-Possible preview sources therefore narrow to:
-
-- rendering/deriving a frame from emulator state at runtime;
-- a core-specific framebuffer or video-memory component contained inside serialized state;
-- a generic/static slot background when no preview can be reconstructed.
-
-The exact preview-generation path remains open and should not yet be claimed.
-
-## `.skp` path is runtime-active
-
-The main emulator loop constructs:
+The main emulator path constructs:
 
 ```text
 %s/skp/%s.skp
 ```
 
-and attempts to open it after a periodic/event condition in the running-game path. This confirms `.skp` is not merely a dead filename string. The card inventory contains 167 such files under `ARCADE/skp`, strongly associating this mechanism with FBA/arcade per-game auxiliary state/configuration.
+checks whether the file exists, and if present invokes the active core callback through the trampoline at `0x8035e5b0`.
 
-The exact `.skp` payload semantics remain to be decoded.
+For the Arcade/FBA path this callback is the state loader.
+
+Therefore `.skp` files are not generic configuration blobs: they are **automatic Arcade save states loaded immediately after game startup**.
+
+The preserved card inventory contains:
+
+- 185 Arcade `bin/*.zip` archives;
+- 167 `.zip.skp` files under `ARCADE/skp`.
+
+This behavior is independently consistent with documented SF2000-family firmware, where the stock Arcade library ships with per-game `.skp` states that are automatically loaded, often placing the game into a vendor-prepared state such as having a credit already inserted.
+
+The exact vendor motivation can vary by title and should not be overstated; plausible reasons include skipping boot/setup sequences, avoiding problematic startup behavior, or presenting a known ready-to-play state.
+
+Inventory mismatches remain useful archaeology:
+
+- some current Arcade ZIPs have no matching `.skp`;
+- some `.skp` names have no matching current ZIP;
+- at least one malformed-looking inherited name exists (`gaia.zipip.skp`).
+
+These are consistent with an inherited/revised stock game set rather than a perfectly regenerated XGO-specific inventory.
 
 ## Architecture implication
 
@@ -117,10 +124,14 @@ XGO frontend
    |      +-- unserialize
    |      +-- shutdown
    |
-   +-- common XGO save wrapper
-          +-- path: <folder>/save/<rom>.saN
-          +-- uint32 payload length
-          +-- core-native serialized bytes
+   +-- common save-state bundle
+   |      +-- zlib-compressed core state
+   |      +-- zlib-compressed RGB565 thumbnail
+   |      +-- trailing thumbnail metadata offset
+   |
+   +-- Arcade startup path
+          +-- optional <rom>.skp
+          +-- automatic FBA state load
 ```
 
 This modularity is one reason an SF2000/HC15xx multicore-style firmware is technically plausible on XGO: the vendor firmware already separates frontend services from emulator-specific state callbacks.
@@ -129,14 +140,17 @@ This modularity is one reason an SF2000/HC15xx multicore-style firmware is techn
 
 ### CONFIRMED
 
-- `.saN` outer wrapper begins with a 4-byte serialized payload size;
-- the remaining bytes are the core serializer output;
-- save and load wrappers are repeated for different emulator families;
-- no separate frontend thumbnail block is appended by the XGO state writer;
-- `.skp` path construction/opening is active at runtime.
+- four ordinary `.sa0`-`.sa3` slots;
+- compressed emulator-state block;
+- appended compressed RGB565 thumbnail and dimensions;
+- final offset to thumbnail metadata;
+- pause-menu preview reads/decompresses that thumbnail;
+- save/load wrappers dispatch through core-specific callbacks;
+- `.skp` path is active at runtime;
+- Arcade/FBA `.skp` files are automatically loaded save states.
 
 ### OPEN
 
-- exact save-slot preview-generation mechanism;
-- exact `.skp` format and purpose;
-- whether state payloads are byte-compatible with the corresponding upstream libretro core revisions on another platform.
+- whether XGO state payloads are byte-compatible with state files generated by corresponding upstream/libretro core revisions on another platform;
+- title-by-title reason the vendor supplied or omitted each Arcade `.skp`;
+- whether any XGO-specific state metadata differs subtly from other SF2000-family revisions.
