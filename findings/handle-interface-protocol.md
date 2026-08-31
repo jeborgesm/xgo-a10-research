@@ -25,6 +25,21 @@ L bank direction/control: 0xb8800058
 
 The two data streams are active-low: a low sample means the corresponding button bit is asserted.
 
+## GPIO initialization
+
+The controller/RF initialization routine at approximately `0x8035deb0` configures the same GPIO block used later by the serial scanner before running the RF self-test.
+
+The relevant effects are consistent with the scan routine:
+
+```text
+B15 -> input at idle
+L0  -> input at idle
+B7  -> output
+B7  -> driven high at idle
+```
+
+The initialization then continues into the RF GPIO setup and radio self-test. This shows the local serial bus and wireless input path are intentionally initialized together as parts of the controller subsystem.
+
 ## Load/reset phase
 
 The firmware clears both software controller states, then performs this sequence:
@@ -104,6 +119,23 @@ This means the GPIO bus remains active even with no external controller attached
 
 That matters when interpreting the earlier GP2040 test: a conventional USB controller connected through a passive/OTG adapter may drive connector contacts at the same time the XGO firmware is attempting to use its serial GPIO bus.
 
+## No software-side P2 connection gate found
+
+A full disassembly search for direct accesses to the two local serial state words found the following pattern:
+
+```text
+gp - 0x0d2c   serial/local slot 0
+gp - 0x0d28   serial/local slot 1
+```
+
+Direct accesses to those two words occur inside the serial scan routine itself: the function clears the words and sets button bits as B15/L0 are sampled. Outside that scanner, the states are consumed through the two-element array pointer and merged with RF P1/P2.
+
+No separate flag was found that says "P2 connected", no branch skips the second serial channel when the connector is empty, and no USB-attach condition gates the scan. The firmware simply samples both data lines every scan cycle.
+
+This strongly suggests that an absent second controller is represented electrically by an inactive/all-high serial stream rather than by a separate enumeration or connection event.
+
+This does **not** yet prove the Handle Interface has no detect/ID wiring at the board level; it means the reconstructed controller path itself does not require a software-side connection handshake before reading Player 2.
+
 ## What a compatible external controller would need to do
 
 If the Handle Interface is physically wired to this scanner, a compatible controller must at minimum:
@@ -123,18 +155,22 @@ A simple lightweight controller could absolutely implement this with inexpensive
 
 - two parallel active-low data streams;
 - one shared clock;
+- B15/L0 idle as inputs and B7 is initialized as the clock output;
 - host-driven data-low load/reset phase;
 - approximately 4 us explicit load delay;
 - approximately 2 us explicit clock-low delay;
 - twelve samples per stream in a known button order;
 - periodic operation independent of USB attachment state;
+- both serial slots are scanned unconditionally;
+- no separate software-side P2 connection gate was found in the local-state path;
 - channel states merge directly into P1/P2 alongside RF input.
 
 ### STRONG EVIDENCE
 
 - this is a hardware controller bus rather than an abstract emulator-only data structure;
 - one stream is likely the built-in controls and the other the external Handle Interface;
-- the protocol belongs to the same general HC15xx controller-bus family as related SF2000/GB300 hardware.
+- the protocol belongs to the same general HC15xx controller-bus family as related SF2000/GB300 hardware;
+- an absent external controller is likely represented by an idle/high data stream rather than USB-style enumeration.
 
 ### NOT YET CONFIRMED
 
