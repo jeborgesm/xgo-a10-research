@@ -142,64 +142,49 @@ The firmware scanner itself does not perform a per-scan pull-up configuration; i
 - a pin pull configured once elsewhere in pinmux/pad setup;
 - intermediary accessory-interface logic.
 
-## Bare OTG-adapter experiment — strong physical evidence
+## Cable/adapter differential experiment — very strong physical evidence
 
-A commercially sold micro-USB OTG adapter was inserted into the powered XGO Handle Interface **with nothing connected to the adapter's USB-A socket**.
-
-Observed behavior:
+Two physically similar micro-USB attachments now produce opposite results:
 
 ```text
-XGO controls working normally
-      ↓
-insert empty OTG adapter
-      ↓
-built-in controls freeze immediately
-      ↓
-remove adapter
-      ↓
-normal control returns
+normal micro-USB male -> USB-A male cable
+    inserted into Handle Interface
+    -> built-in controls continue working normally
+
+micro-USB OTG adapter -> USB-A female
+    inserted empty, nothing connected to USB-A side
+    -> built-in controls freeze immediately
 ```
 
-This is a materially stronger result than the earlier GP2040 test because the USB controller is no longer part of the experiment. The adapter alone changes the XGO input behavior.
+This differential result is substantially more informative than the original GP2040 experiment.
 
-### What this rules down
+A normal micro-USB cable typically leaves the micro-USB **ID** contact unconnected, while an OTG host adapter commonly grounds the ID contact to request host mode. Because the ordinary cable does not disturb the XGO but the OTG adapter does, the ID-contact difference is now the leading explanation for the freeze.
 
-The earlier failure can no longer be explained primarily as "GP2040 is unsupported USB HID." The GP2040 may still be incompatible, but it is unnecessary to produce the fault.
+This does **not** yet prove that XGO micro-USB pin 4 is P2 DATA. It does, however, sharply reduce the likelihood that ordinary VBUS/D+/D-/GND contact presence alone causes the fault, because those conventional USB contacts are present on both cable types.
 
-The behavior strongly supports one of these electrical mechanisms:
+### Current leading electrical interpretation
 
-1. the adapter ties a repurposed Handle-Interface contact to ground, very plausibly the micro-USB ID contact;
-2. the adapter bridges or biases a proprietary clock/data signal through its normal USB-A wiring;
-3. the XGO intentionally senses a micro-USB contact and changes controller behavior when that contact is asserted.
-
-Given the firmware-side evidence that P2 is scanned continuously without an attach gate, option 1 or another direct signal-contention mechanism currently fits especially well.
-
-### OTG ID hypothesis strengthened
-
-A conventional micro-USB OTG host adapter normally asserts host mode by tying the micro-USB ID contact to ground. If the XGO repurposes that contact as external/P2 DATA, inserting the bare adapter would force the active-low stream low before any USB peripheral is connected.
-
-Under that exact mapping the serial scanner would decode all twelve P2 buttons as pressed on every scan:
+The strongest working model is now:
 
 ```text
-R Y X L A B SELECT START UP DOWN LEFT RIGHT
+ordinary cable:
+    ID open
+    -> proprietary controller bus remains in normal idle state
+
+OTG adapter:
+    ID grounded
+    -> an XGO-repurposed signal is forced/asserted
+    -> controller subsystem becomes unusable / appears frozen
 ```
 
-That could make the UI or emulator appear frozen/uncontrollable even while the built-in P1 electrical channel itself remains intact.
+If that repurposed signal is the active-low external/P2 DATA line, grounding it would make all twelve P2 samples read as pressed. If instead it is a mode/control signal, grounding it could alter pinmux or controller behavior. The observed differential cannot distinguish these two mechanisms by itself.
 
-This remains a **strong hypothesis**, not a connector-pin confirmation. A grounded or otherwise loaded clock/control contact could also produce the observed freeze.
+### What is now strongly disfavored
 
-### High-value next discriminator
-
-The adapter should now be treated as a test instrument rather than a controller accessory. The next useful question is which electrical feature of the adapter causes the freeze.
-
-Because normal multimeter probes are too large for the micro-USB contacts, practical options are:
-
-- use fine sewing needles / Dupont jumper pins as temporary probe extenders with the adapter unpowered;
-- insert a micro-USB breakout board if one is already available;
-- continuity-map from the USB-A socket and connector shell where possible;
-- later, passively observe the XGO connector contacts with a fine logic-analyzer probe.
-
-Do not intentionally short unknown Handle-Interface contacts on the powered XGO.
+- GP2040-specific incompatibility as the cause of the freeze;
+- generic USB-HID enumeration failure as the primary trigger;
+- simple mechanical insertion or VBUS presence as the sole cause;
+- the idea that any micro-USB attachment disrupts the port.
 
 ## What a compatible external controller would need to do
 
@@ -231,7 +216,9 @@ If the Handle Interface is physically wired to this scanner, a compatible contro
 ### CONFIRMED physically
 
 - inserting the bare micro-USB OTG adapter, with no USB peripheral attached, immediately causes the XGO controls to freeze;
-- therefore the GP2040 is not required to trigger the failure.
+- inserting a normal micro-USB male to USB-A male cable does **not** disturb the controls;
+- therefore the GP2040 is not required to trigger the failure;
+- not every micro-USB attachment triggers the failure.
 
 ### STRONG EVIDENCE
 
@@ -241,23 +228,28 @@ If the Handle Interface is physically wired to this scanner, a compatible contro
 - an absent external controller is likely represented by an idle/high data stream rather than USB-style enumeration;
 - the empty external channel must have some stable-high bias mechanism rather than being left electrically floating;
 - the OTG adapter is altering at least one electrically meaningful Handle-Interface contact even with its USB-A side empty;
+- the distinguishing micro-USB ID behavior of OTG adapters is now the leading physical discriminator;
 - ordinary USB connector semantics cannot safely be assumed for this port.
 
-### HYPOTHESIS TO TEST
+### LEADING HYPOTHESIS
 
-- the grounded micro-USB ID contact from the OTG adapter may be forcing the external/P2 data signal low;
-- alternatively, another adapter-wired contact may be loading the P2 data or shared clock.
+- XGO connector pin 4 / micro-USB ID is repurposed or sensed by the controller subsystem;
+- grounding it through an OTG adapter causes the freeze;
+- one especially attractive possibility is that pin 4 is external/P2 DATA, but a mode/control role remains possible.
 
 ### NOT YET CONFIRMED
 
 - whether B15 or L0 is the external stream;
 - whether B7 reaches the Handle Interface connector directly;
-- the micro-USB contact assignment;
+- the exact micro-USB contact assignment;
+- whether pin 4 is P2 DATA versus a mode/control signal;
 - connector voltage and pull-up/pull-down network;
 - whether the Handle Interface also exposes a real USB mode in addition to the serial bus.
 
 ## Safest discriminator
 
-The highest-value physical observation is now the connector itself. With a sufficiently fine passive probe, identify which contact changes state when the empty OTG adapter is inserted and compare that against the expected idle-high data and pulsed-clock behavior.
+The highest-value next test is no longer another controller. It is to confirm the cable/adapter ID behavior electrically while unpowered, using a fine probe, needle, breakout, or sacrificial cable if available.
 
-Until that routing is established, do not assume a normal USB pinout simply because the connector shell is micro-USB.
+If the normal cable leaves ID open and the OTG adapter shorts ID to ground, the behavioral difference above becomes exceptionally strong evidence that XGO pin 4 is meaningful to the Handle Interface.
+
+Until the routing is established, do not assume a normal USB pinout simply because the connector shell is micro-USB.
