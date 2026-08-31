@@ -66,7 +66,34 @@ bcdDevice/revision = 1.07
 
 Independent Linux reports for the same `0079:0006` / revision-family device enumerate it as **low-speed USB HID**. This is not inferred merely from the friendly name; it is supported by host enumeration logs for the same VID/PID family.
 
-USB low-speed devices advertise attachment with a nominal 1.5 kOhm pull-up on **D-**. Therefore the tested encoder contributes a known D- bias/state when powered.
+USB low-speed devices advertise attachment with a nominal 1.5 kOhm pull-up on **D-**.
+
+## Powered data-line measurements
+
+Using the non-OTG path and DC voltage mode, the accessible USB-A data contacts were measured relative to ground while the XGO was powered:
+
+```text
+                         D-       D+
+nothing attached        0.01 V   0.01 V
+DragonRise 0079:0006    3.20 V   2.80 V
+```
+
+This is a major new discriminator.
+
+With no peripheral attached, both nominal USB data contacts sit essentially at ground potential. When the DragonRise board is attached and powered, **both data contacts rise strongly**, not only D-.
+
+The 3.20 V level on D- is consistent in magnitude with a low-speed USB attach pull-up. The simultaneous ~2.80 V reading on D+ is not what a simple conventional idle low-speed USB bus would predict, where D+ should remain near the host-side low state.
+
+Therefore the XGO Handle Interface should not be modeled as a straightforward standards-compliant USB host port based on these DC readings alone.
+
+Possible explanations for the elevated D+ reading include:
+
+- the XGO is actively driving or biasing the contact for its proprietary controller scan;
+- the contact carries a fast digital waveform and the handheld multimeter is reporting only its time-averaged value;
+- there is resistive/protection-network coupling between the DragonRise USB interface and XGO-side controller circuitry;
+- the USB-shaped connector is electrically multiplexed between USB-like and proprietary-controller functions.
+
+A multimeter cannot distinguish these waveform possibilities; oscilloscope/logic-analyzer capture would be required for direct timing proof.
 
 ## Why R matters
 
@@ -89,15 +116,16 @@ The reconstructed XGO serial scan samples buttons in this order:
 
 The firmware drives both serial DATA lines low for roughly 4 microseconds, releases them to input, and **immediately reads sample 0 / R**. Only afterward does it begin the shared-clock sequence for the remaining samples.
 
-The combination of these two observations is now important:
+The combination of these observations is important:
 
 ```text
 DragonRise 0079:0006
-    -> known low-speed USB device family
-    -> D- has the low-speed attach pull-up/state
+    -> low-speed USB family
+    -> D- reaches ~3.20 V when attached
+    -> D+ simultaneously measures ~2.80 V
 
 XGO serial scanner
-    -> drives DATA low during load
+    -> drives controller DATA low during load
     -> releases DATA
     -> immediately samples R
 
@@ -105,11 +133,11 @@ Observed
     -> R stays asserted while encoder is attached
 ```
 
-A simple static `D- == active-low DATA` mapping would actually predict a high/inactive level from the USB pull-up, so the result should **not** be overinterpreted that way.
+A simple static `D- == active-low DATA` mapping would predict a high/inactive level from the USB pull-up, so the result should **not** be interpreted as a direct D-=DATA proof.
 
-The stronger interpretation is that the DragonRise transceiver/pull network interacts with a contact used by the XGO scanner during the host-drive-low / release transition. A delayed recovery, transceiver clamp, protection network, or multiplexed path could leave the first post-release sample low while later samples recover high.
+The stronger interpretation is that the DragonRise transceiver/pull network interacts dynamically with one or more contacts used by the XGO scanner during the drive-low / release / first-sample transition. A brief low interval can be captured as R even while a multimeter reports a high average DC level.
 
-Thus **D- is now the strongest ordinary-USB-contact candidate for electrical coupling to the controller scan**, but direct pin mapping is still unconfirmed.
+Because **both D- and D+ change substantially**, D- can no longer be singled out solely from the voltage experiment. D- remains notable because of the DragonRise low-speed pull-up, but D+ is clearly electrically active in the same attached state and may be a scan clock/control contact or a coupled signal.
 
 ## Revised interpretation
 
@@ -118,22 +146,23 @@ The experiment matrix disfavors:
 - GP2040-specific incompatibility as the primary issue;
 - generic USB HID being the intended Handle Interface protocol;
 - a whole-system crash caused by OTG insertion;
-- simple VBUS or mechanical insertion alone causing the OTG input failure.
+- simple VBUS or mechanical insertion alone causing the OTG input failure;
+- a naive model in which only one conventional USB data line changes while the other remains at a normal USB-host idle level.
 
-The evidence now points to a **hybrid electrical overlap** model more strongly than before:
+The evidence now points to a **hybrid/multiplexed electrical overlap** model more strongly than before:
 
 ```text
 micro-USB shell
-    conventional USB contacts exist electrically
-    but one or more contacts are also coupled to / shared with
-    the HC15xx-style controller scan or its supporting pinmux/interface circuitry
+    conventional USB contacts are physically present
+    but D-/D+ electrical states are influenced by proprietary controller-scan circuitry
+    and ID grounding affects the wider input subsystem
 ```
 
 For the OTG case, ID grounding appears to disrupt the wider input subsystem.
 
-For the DragonRise non-OTG case, the known low-speed D- electrical state perturbs specifically the first serial sample.
+For the DragonRise non-OTG case, both nominal USB data contacts become active/high in DC measurement while the first controller sample (R) is corrupted.
 
-These two effects need not have the same mechanism.
+These effects may be produced by separate but overlapping hardware paths.
 
 ## Confidence
 
@@ -146,7 +175,9 @@ These two effects need not have the same mechanism.
 - PS-shaped generic USB controller through non-OTG is not recognized and does not globally freeze controls;
 - GP2040-CE through non-OTG is not recognized and does not globally freeze controls;
 - zero-delay USB encoder through non-OTG is not recognized but causes R to remain asserted in `Test.zsf`;
-- the tested zero-delay encoder identifies as `VID_0079&PID_0006&REV_0107`.
+- the tested zero-delay encoder identifies as `VID_0079&PID_0006&REV_0107`;
+- with nothing attached through the non-OTG path, D- and D+ each measure approximately 0.01 V;
+- with the DragonRise board attached, D- measures approximately 3.20 V and D+ approximately 2.80 V.
 
 ### STRONG EVIDENCE
 
@@ -154,32 +185,27 @@ These two effects need not have the same mechanism.
 - the same VID/PID family enumerates as low-speed USB in independent host logs;
 - low-speed USB places its attach pull-up on D-;
 - generic USB HID is unlikely to be the intended Handle Interface protocol;
+- the Handle Interface does not present a simple conventional USB-host idle electrical signature in this test;
 - the OTG-specific micro-USB wiring difference is electrically meaningful to the XGO;
 - the OTG failure is within the input subsystem rather than a general system hang;
-- ordinary USB data-line electrical state can influence the serial-input result;
-- D- is currently the leading ordinary-USB contact to investigate for coupling with the serial scanner.
+- ordinary USB-device electrical state can influence the serial-input result;
+- both D- and D+ participate electrically when the DragonRise board is connected.
 
 ### NOT YET CONFIRMED
 
-- exact connector pinout;
+- exact connector pinout beyond conventional shell/contact numbering;
 - direct continuity from pin 4 to any controller GPIO;
 - whether B15 or L0 is physically the external controller channel;
-- whether D- is directly connected, resistively coupled, multiplexed, or only indirectly affecting serial DATA;
+- which of D-/D+ corresponds to controller DATA, shared CLOCK, control, or only coupled/multiplexed signals;
+- waveform shape on D-/D+ during the serial scan;
 - whether OTG ID grounding changes pinmux, shared clock behavior, or other accessory-interface hardware.
 
 ## Best next discriminator
 
-The next high-value test should distinguish **D- from D+ without shorting either line**.
+The most useful no-purchase comparison is now another already-available USB controller whose USB signaling differs from the DragonRise board.
 
-A safe method is a high-impedance DC-voltage comparison at the Handle Interface while powered, using a breakout or otherwise stable fine probes if available:
+The GP2040-CE is especially valuable because it previously produced **no R-stuck symptom** through the same non-OTG path. Measure D- and D+ in DC-voltage mode with the GP2040 connected under the same conditions.
 
-```text
-state A: nothing attached
-state B: non-OTG adapter only
-state C: non-OTG + DragonRise 0079:0006
-state D: bare OTG adapter
-```
+If the GP2040 produces a different D-/D+ voltage pair while `Test.zsf` remains normal, that differential signature may tell us which contact/state correlates with the R-only corruption.
 
-The DragonRise case should create a distinctive D- bias if ordinary USB pin numbering is preserved. Comparing which XGO contact changes in that state can identify the electrically relevant data contact without deliberately grounding it.
-
-Do not use resistance/continuity mode on the powered XGO and do not bridge adjacent micro-USB contacts.
+Do not use resistance/continuity mode on the powered XGO and do not bridge adjacent contacts.
