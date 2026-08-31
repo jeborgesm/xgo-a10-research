@@ -47,7 +47,28 @@ A micro-USB OTG adapter conventionally ties the ID contact (pin 4) to ground, wh
 
 Fine sewing-needle probe extensions were used to check the adapter unpowered. Resistance-mode probing produced a ground-related reading on pin 4. The short cable and two-hand probing setup made precision resistance measurement difficult, so this is recorded as qualitative confirmation rather than an exact resistance value.
 
-## Zero-delay encoder: why R matters
+## Zero-delay encoder identification
+
+Windows identifies the tested zero-delay encoder as:
+
+```text
+Generic USB Joystick
+HID\VID_0079&PID_0006&REV_0107
+```
+
+This establishes:
+
+```text
+VID  = 0x0079  DragonRise Inc.
+PID  = 0x0006
+bcdDevice/revision = 1.07
+```
+
+Independent Linux reports for the same `0079:0006` / revision-family device enumerate it as **low-speed USB HID**. This is not inferred merely from the friendly name; it is supported by host enumeration logs for the same VID/PID family.
+
+USB low-speed devices advertise attachment with a nominal 1.5 kOhm pull-up on **D-**. Therefore the tested encoder contributes a known D- bias/state when powered.
+
+## Why R matters
 
 The reconstructed XGO serial scan samples buttons in this order:
 
@@ -68,28 +89,31 @@ The reconstructed XGO serial scan samples buttons in this order:
 
 The firmware drives both serial DATA lines low for roughly 4 microseconds, releases them to input, and **immediately reads sample 0 / R**. Only afterward does it begin the shared-clock sequence for the remaining samples.
 
-That gives the R-only result a plausible electrical explanation:
+The combination of these two observations is now important:
 
 ```text
-XGO drives candidate DATA contact low
-        -> releases it
-        -> attached USB encoder / pull network delays its rise
-        -> immediate sample 0 still reads low = R pressed
-        -> line reaches high before later samples
-        -> remaining buttons inactive
+DragonRise 0079:0006
+    -> known low-speed USB device family
+    -> D- has the low-speed attach pull-up/state
+
+XGO serial scanner
+    -> drives DATA low during load
+    -> releases DATA
+    -> immediately samples R
+
+Observed
+    -> R stays asserted while encoder is attached
 ```
 
-This is a timing hypothesis, not yet a pinout identification.
+A simple static `D- == active-low DATA` mapping would actually predict a high/inactive level from the USB pull-up, so the result should **not** be overinterpreted that way.
 
-However, it means ordinary USB-contact electrical behavior is not completely irrelevant: a non-OTG USB device can perturb the serial scanner without ID grounding and without being recognized as USB HID.
+The stronger interpretation is that the DragonRise transceiver/pull network interacts with a contact used by the XGO scanner during the host-drive-low / release transition. A delayed recovery, transceiver clamp, protection network, or multiplexed path could leave the first post-release sample low while later samples recover high.
 
-Many inexpensive `DragonRise` / `Generic USB Joystick` zero-delay encoders are documented by Linux systems as **low-speed USB HID** devices. Low-speed USB devices advertise themselves with a 1.5 kOhm pull-up on D-, whereas full-speed devices use D+. The exact encoder in this experiment has not yet been enumerated and identified, so its USB speed should not be assumed from appearance alone.
-
-If this particular board is also low-speed, the R-only symptom would make **D- an especially interesting connector contact to compare against the suspected serial DATA line**. If it is full-speed instead, D+ becomes the corresponding candidate. This can be resolved safely by enumerating the encoder on a PC or by passive voltage measurement.
+Thus **D- is now the strongest ordinary-USB-contact candidate for electrical coupling to the controller scan**, but direct pin mapping is still unconfirmed.
 
 ## Revised interpretation
 
-The experiment matrix now disfavors these explanations:
+The experiment matrix disfavors:
 
 - GP2040-specific incompatibility as the primary issue;
 - generic USB HID being the intended Handle Interface protocol;
@@ -107,7 +131,7 @@ micro-USB shell
 
 For the OTG case, ID grounding appears to disrupt the wider input subsystem.
 
-For the zero-delay non-OTG case, one ordinary USB data-line state appears able to perturb only the first serial sample.
+For the DragonRise non-OTG case, the known low-speed D- electrical state perturbs specifically the first serial sample.
 
 These two effects need not have the same mechanism.
 
@@ -121,29 +145,41 @@ These two effects need not have the same mechanism.
 - generic USB SNES-style controller through non-OTG is not recognized and does not globally freeze controls;
 - PS-shaped generic USB controller through non-OTG is not recognized and does not globally freeze controls;
 - GP2040-CE through non-OTG is not recognized and does not globally freeze controls;
-- zero-delay USB encoder through non-OTG is not recognized but causes R to remain asserted in `Test.zsf`.
+- zero-delay USB encoder through non-OTG is not recognized but causes R to remain asserted in `Test.zsf`;
+- the tested zero-delay encoder identifies as `VID_0079&PID_0006&REV_0107`.
 
 ### STRONG EVIDENCE
 
+- `0079:0006` is a DragonRise `Generic USB Joystick` family device;
+- the same VID/PID family enumerates as low-speed USB in independent host logs;
+- low-speed USB places its attach pull-up on D-;
 - generic USB HID is unlikely to be the intended Handle Interface protocol;
 - the OTG-specific micro-USB wiring difference is electrically meaningful to the XGO;
 - the OTG failure is within the input subsystem rather than a general system hang;
 - ordinary USB data-line electrical state can influence the serial-input result;
-- the zero-delay board's R-only result is consistent with a transient/recovery effect at the first post-load sample.
+- D- is currently the leading ordinary-USB contact to investigate for coupling with the serial scanner.
 
 ### NOT YET CONFIRMED
 
 - exact connector pinout;
 - direct continuity from pin 4 to any controller GPIO;
 - whether B15 or L0 is physically the external controller channel;
-- whether D+ or D- overlaps/couples to serial DATA;
+- whether D- is directly connected, resistively coupled, multiplexed, or only indirectly affecting serial DATA;
 - whether OTG ID grounding changes pinmux, shared clock behavior, or other accessory-interface hardware.
 
 ## Best next discriminator
 
-Two safe options now have unusually high value:
+The next high-value test should distinguish **D- from D+ without shorting either line**.
 
-1. enumerate the exact zero-delay board on a PC and record its VID/PID and USB speed; or
-2. with the XGO powered, use only high-impedance DC-voltage measurements to compare the micro-USB contacts across: empty port, non-OTG cable, zero-delay encoder, and bare OTG adapter.
+A safe method is a high-impedance DC-voltage comparison at the Handle Interface while powered, using a breakout or otherwise stable fine probes if available:
+
+```text
+state A: nothing attached
+state B: non-OTG adapter only
+state C: non-OTG + DragonRise 0079:0006
+state D: bare OTG adapter
+```
+
+The DragonRise case should create a distinctive D- bias if ordinary USB pin numbering is preserved. Comparing which XGO contact changes in that state can identify the electrically relevant data contact without deliberately grounding it.
 
 Do not use resistance/continuity mode on the powered XGO and do not bridge adjacent micro-USB contacts.
