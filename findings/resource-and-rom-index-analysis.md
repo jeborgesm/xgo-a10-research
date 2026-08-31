@@ -199,7 +199,25 @@ menu/list ID 9  -> PGM/IGS curated group (observed indices fit 0..5)
 menu/list ID 10 -> Neo Geo (observed indices fit the 117-entry list)
 ```
 
-List ID 11 remains the unexplained fifth arcade section and is a useful future target. The card also contains a large set of raw `.zip` arcade files, making a dynamically scanned/raw-arcade section a plausible hypothesis, but this is not yet confirmed.
+### Fifth Arcade slot has no fixed metadata resources
+
+A deeper read of the direct resource table resolves an important part of list ID 11.
+
+The filename/title/search-key triplets are laid out consecutively beginning at `0x80a3c32c`, one 12-byte triplet per menu/list ID. For IDs 0 through 10 they contain the resources described above. The next triplet — corresponding naturally to list ID 11 / the fifth `ARCADE` entry — is:
+
+```text
+0x80a3c3b0 -> "None"
+0x80a3c3b4 -> "None"
+0x80a3c3b8 -> "None"
+```
+
+The generic built-in-list loader at `0x803536ec` indexes this table as `menu_id * 12`, constructs `%s/Resources/%s`, and attempts to open the selected resource. Therefore list ID 11 does **not** have a normal fixed filename/title/search-key metadata set like CPS1/CPS2/PGM/Neo Geo.
+
+This upgrades the earlier conclusion:
+
+**CONFIRMED:** the fifth Arcade menu slot has no fixed resource-backed ROM list in the standard metadata table.
+
+The card contains a substantial raw `.zip` arcade inventory, so a separately generated/dynamic/raw-arcade path remains plausible, but the null triplet alone does not prove that behavior. It may instead be an intentionally empty/placeholder section. The special-case menu control flow for ID 11 remains a target for further analysis.
 
 ## Favorites and history record IDs map directly to menu sections
 
@@ -228,14 +246,14 @@ The observed IDs support this menu numbering:
 8  Arcade CPS2
 9  Arcade PGM/IGS
 10 Arcade Neo Geo
-11 fifth Arcade section, unresolved
+11 fifth Arcade section: standard fixed metadata absent
 ```
 
 The lack of list ID 0 in the 200-entry history is consistent with the SF2000-family behavior that user-folder ROMs are not stored in the built-in history database.
 
 ## User-ROM index `tsmfk.tax`
 
-`tsmfk.tax` is structurally different from the fixed built-in lists and corresponds to the `ROMS` user folder.
+`tsmfk.tax` corresponds to the freely scanned `ROMS` user folder.
 
 On the preserved card:
 
@@ -316,17 +334,17 @@ State sizes vary substantially by emulator/game, consistent with serialized emul
 - four save-state slot suffixes `.sa0` through `.sa3`;
 - hundreds of physically present but unindexed console ROM files;
 - seven physically present but unindexed packaged arcade `.zfb` files;
-- `seltMap.key`, `dectMap.key`, and `dsreg.bvs` are referenced by firmware but absent from the preserved card.
+- `seltMap.key`, `dectMap.key`, and `dsreg.bvs` are referenced by firmware but absent from the preserved card;
+- the fifth Arcade slot's normal filename/title/search-key resource triplet is three literal `None` entries.
 
 ### STRONG EVIDENCE
 
 - list ID 11 is the fifth repeated Arcade section from `Foldername.ini`;
-- the fifth Arcade section may relate to the card's raw `.zip` arcade inventory;
 - `gpapi.bvs` plus absent controller-era resources are remnants of a partially removed older remapping/test UI.
 
 ### OPEN
 
-- exact role and backing data for arcade list ID 11;
+- whether arcade list ID 11 is dynamically populated from raw `.zip` files or is simply an empty placeholder;
 - exact save-state compression/container format;
 - why the vendor shipped hundreds of unindexed ROM files;
 - whether editing built-in list resources is sufficient to expose every omitted file safely;
