@@ -10,6 +10,8 @@ Strong comparative evidence relevant to the XGO Handle Interface.
 - an **Hamy Max** wired controller works after replacing/rewiring its connector to the SF2000 connector;
 - controllers supplied with **X60** or **DY12** also work through an adapter using their **micro-USB** connector.
 
+Independent X60 retail specifications explicitly list **External Controller Interface: Micro USB**, while its charging interface is listed separately as **Mini USB**. This removes an important ambiguity: on at least this X60 variant, micro-USB is deliberately the controller connector rather than merely a charging/data port.
+
 This is directly relevant to XGO because its external `Handle Interface` is physically micro-USB and its firmware contains a two-stream synchronous GPIO controller scanner rather than a conventional USB HID input path.
 
 ## External evidence
@@ -32,6 +34,13 @@ Hamy Max retail controllers use a 9-pin proprietary connector and expose D-pad, 
 ### X60 / DY12 micro-USB controllers
 In the same 2024-04-01 answer, `bnister` states that included controllers from X60 or DY12 also work with SF2000 through a **micro-USB adapter**.
 
+Independent X60 product metadata describes the device with:
+
+- `EXTERNAL CONTROLLER INTERFACE: Micro USB`
+- `CHARGING INTERFACE TYPE: Mini USB`
+
+Product imagery also shows X60 sold with one or two wired controllers.
+
 This is especially significant for XGO because XGO's Handle Interface is itself a micro-USB receptacle.
 
 ## Interpretation for XGO
@@ -41,6 +50,7 @@ This is especially significant for XGO because XGO's Handle Interface is itself 
 - USB-shaped connector contacts can carry a proprietary simplified controller protocol.
 - Hamy Max wired controller can operate with SF2000 after connector rewiring.
 - X60 and DY12 supplied controllers have been reported to operate with SF2000 through a micro-USB adapter.
+- At least one documented X60 retail variant explicitly uses **micro-USB as its external-controller interface**, distinct from its Mini-USB charging connector.
 
 ### CONFIRMED ON XGO
 - XGO uses a micro-USB physical connector labeled/documented as `Handle Interface`.
@@ -51,7 +61,9 @@ This is especially significant for XGO because XGO's Handle Interface is itself 
 ### STRONG INFERENCE
 The XGO Handle Interface is likely part of the same broader OEM concept as SF2000/X60/DY12: a USB-shaped connector carrying a proprietary controller bus rather than USB HID.
 
-The X60/DY12 micro-USB controller report is now a more direct accessory lead than the older 3TH-GAME trail because it identifies a controller with the **same physical connector class** and demonstrated interoperability with an SF2000-family proprietary wired-controller input.
+The X60 lead is now substantially stronger than a generic form-factor resemblance: a sibling `frog`-family handheld is explicitly sold with **micro-USB designated as the external-controller interface**, and its supplied controller has been reported to work on SF2000 through an adapter.
+
+This makes an X60 controller one of the best currently known candidate accessories for electrically probing XGO.
 
 ### NOT YET CONFIRMED
 - XGO is electrically pin-compatible with X60 or DY12 controllers.
@@ -77,3 +89,4 @@ A recovered X60/DY12 controller or documented adapter wiring could potentially m
 - 4PDA SF2000 technical summary: `https://4pda.to/forum/index.php?showtopic=1067862&st=3300`
 - Hamy Max 4PDA discussion: `https://4pda.to/forum/index.php?showtopic=1108072`
 - Hamy Max controller listing: `https://showgames.ru/gamepad-hamy-max`
+- X60 product metadata identifying Micro USB as external controller interface: `https://uquid.com/shop/product/2023-new-version-handheld-game-player-8gb-rom-portable-retro-x60-video-game-console-player-built-in-4849-games-for-md-gba-cps1-color-2-iOVATEzlxKwtX`
