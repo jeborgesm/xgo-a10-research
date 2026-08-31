@@ -12,6 +12,14 @@ Public technical information about the XGO A10 / XGO Plus is extremely limited. 
 
 The goals are to preserve reproducible findings, map the SF2000 relationship, understand the ports (especially the external controller / "Handle Interface"), document safe experiments, and investigate whether SF2000 community software can eventually be adapted to the XGO.
 
+## Hidden controller diagnostic
+
+From the normal XGO menu, press **L + SELECT** simultaneously to launch the built-in Super Famicom controller diagnostic stored as `Resources/Test.zsf`.
+
+This shortcut is **confirmed both by static firmware analysis and physical reproduction**. The firmware checks for the exact translated input value `0x1001` (`L` + `SELECT`) and branches directly to the `Test.zsf` launcher, so press only those two buttons together.
+
+See [`findings/hidden-controller-test-trigger.md`](findings/hidden-controller-test-trigger.md) for the disassembly, button-event mapping, and Handle Interface experiments performed with the diagnostic.
+
 ## Current headline findings
 
 | Finding | Confidence |
