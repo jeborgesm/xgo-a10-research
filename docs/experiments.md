@@ -18,9 +18,39 @@ When the small controller port was connected to a Windows PC, Windows detected a
 
 This is evidence of electrical/USB-related activity, not proof of a standards-compliant USB device implementation.
 
-## GP2040-CE controller
+## OTG versus non-OTG behavior
 
-A GP2040-CE controller received 5 V from the port but produced no usable controller input. Connecting it caused the XGO's built-in controls to become unresponsive until the controller was disconnected.
+A bare micro-USB OTG adapter was inserted into the Handle Interface with nothing connected to its USB-A side.
+
+**Result:** the XGO built-in controls froze immediately. Removing the adapter restored normal operation.
+
+A normal/non-OTG micro-USB connection was then tested through the same physical Handle Interface.
+
+**Result:** built-in controls continued to function normally.
+
+The OTG adapter was probed unpowered using fine sewing-needle meter extensions. Pin 4 produced a resistance-to-ground reading consistent with the usual micro-USB OTG ID-to-ground connection. The setup was physically awkward, so this is treated as qualitative confirmation rather than a precision resistance measurement.
+
+## Generic USB controller matrix through non-OTG path
+
+Three different active USB controllers were connected through a non-OTG converter:
+
+- generic USB SNES-style controller;
+- inexpensive PS-shaped USB gamepad;
+- GP2040-CE controller.
+
+**Result for all three:**
+
+- no controller input was recognized by the XGO;
+- the XGO's built-in controls continued to function normally;
+- none reproduced the freeze seen with the OTG adapter.
+
+This cleanly separates the earlier GP2040 freeze from the GP2040 itself. The freeze can be triggered by the empty OTG adapter, while several active USB devices on a non-OTG path are ignored without disturbing local controls.
+
+## GP2040-CE controller — original test
+
+A GP2040-CE controller received 5 V from the port but produced no usable controller input. In the original test path, connecting it caused the XGO's built-in controls to become unresponsive until disconnected.
+
+The later adapter-only and non-OTG controller matrix show that this result should now be attributed primarily to the OTG adapter/path rather than to GP2040-specific USB activity.
 
 ## Controller diagnostic screen
 
