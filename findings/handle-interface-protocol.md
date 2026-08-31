@@ -136,6 +136,50 @@ This strongly suggests that an absent second controller is represented electrica
 
 This does **not** yet prove the Handle Interface has no detect/ID wiring at the board level; it means the reconstructed controller path itself does not require a software-side connection handshake before reading Player 2.
 
+## Idle-line implication
+
+Because an empty Player-2 channel is scanned continuously, its data input cannot be allowed to float randomly in normal operation. Something must hold the external-channel input at the inactive/high level when no controller is present.
+
+The firmware scanner itself does not perform a per-scan pull-up configuration; it only changes direction and output latch state. Therefore the stable idle level is likely supplied by one of the following:
+
+- a board-level pull-up resistor;
+- a pin pull configured once elsewhere in pinmux/pad setup;
+- intermediary accessory-interface logic.
+
+This is useful physically: an empty Handle Interface data contact should probably measure as a stable logic-high level rather than a floating/noisy line.
+
+## OTG-adapter hypothesis for the GP2040 freeze
+
+The earlier `5 V present + GP2040 not recognized + built-in controls appear frozen until unplugged` result now has a second, very specific explanation that does not require generic USB HID support.
+
+A normal micro-USB OTG host adapter commonly ties the micro-USB **ID** contact to ground. If the XGO repurposes that fifth connector contact as part of its proprietary controller interface, the adapter can change the electrical state before the USB controller itself matters.
+
+The most interesting case is:
+
+```text
+micro-USB ID contact -> external/P2 DATA
+OTG adapter          -> ID hard-grounded
+```
+
+If that mapping is true, the XGO scanner would see the external active-low data stream stuck at zero. Because it performs twelve samples unconditionally, that would decode as **all twelve P2 buttons asserted simultaneously on every scan**.
+
+That could make menus/emulators appear frozen or uncontrollable even though the built-in P1 electrical stream is still working. It would also explain why unplugging the adapter immediately restores normal control.
+
+This is currently a **hypothesis**, not a pinout claim. Other mappings could also cause trouble — for example an adapter/controller could contend with the clock or another repurposed contact — but the stuck-low P2-data model is especially testable.
+
+### Zero-cost discriminator
+
+Before connecting another controller, test the adapter itself unpowered with a continuity meter:
+
+1. identify micro-USB ground;
+2. test the micro-USB ID contact to ground;
+3. record whether ID is open or shorted;
+4. if ID is grounded, treat the GP2040 experiment as an adapter+controller experiment, not a controller-only compatibility test.
+
+If the adapter's ID pin is grounded, a second experiment later can compare device behavior with the adapter inserted **without any controller attached**. If the built-in controls already malfunction with the bare adapter, that would be powerful evidence that connector pin state — not USB enumeration — is what disrupts input.
+
+Do not perform that powered experiment until the connector pinout/voltage assumptions are considered safe; the unpowered continuity test is the first step.
+
 ## What a compatible external controller would need to do
 
 If the Handle Interface is physically wired to this scanner, a compatible controller must at minimum:
@@ -170,7 +214,13 @@ A simple lightweight controller could absolutely implement this with inexpensive
 - this is a hardware controller bus rather than an abstract emulator-only data structure;
 - one stream is likely the built-in controls and the other the external Handle Interface;
 - the protocol belongs to the same general HC15xx controller-bus family as related SF2000/GB300 hardware;
-- an absent external controller is likely represented by an idle/high data stream rather than USB-style enumeration.
+- an absent external controller is likely represented by an idle/high data stream rather than USB-style enumeration;
+- the empty external channel must have some stable-high bias mechanism rather than being left electrically floating.
+
+### HYPOTHESIS TO TEST
+
+- a grounded micro-USB ID pin from an OTG adapter may be forcing one proprietary Handle-Interface signal low;
+- if that signal is external/P2 DATA, the firmware would decode all P2 buttons as continuously pressed, which could explain the observed apparent control freeze.
 
 ### NOT YET CONFIRMED
 
@@ -178,11 +228,15 @@ A simple lightweight controller could absolutely implement this with inexpensive
 - whether B7 reaches the Handle Interface connector directly;
 - the micro-USB contact assignment;
 - connector voltage and pull-up/pull-down network;
-- whether an adapter's micro-USB ID contact affects operation;
 - whether the Handle Interface also exposes a real USB mode in addition to the serial bus.
 
 ## Safest discriminator
 
-The highest-value physical observation is now very small: with the XGO powered normally and no accessory attached, passively observe the Handle Interface contacts. If one non-power contact shows a repeating narrow clock-like pulse train and another sits at an input idle level, that would strongly connect the external connector to this reconstructed bus.
+The highest-value physical observations are now small and non-invasive:
+
+1. characterize the adapter's ID-to-ground continuity while everything is unpowered;
+2. with the XGO powered normally and no accessory attached, passively observe the Handle Interface contacts;
+3. look for one repeating clock-like signal and one stable-high data-like signal;
+4. only after the pinout is understood, compare the bare adapter versus adapter+controller behavior.
 
 Until that routing is established, do not assume a normal USB pinout simply because the connector shell is micro-USB.
