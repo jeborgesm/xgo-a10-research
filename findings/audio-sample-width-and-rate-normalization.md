@@ -1,116 +1,104 @@
-# Audio sample width and rate normalization
+# Audio sample width, DAC format, and rate normalization
 
 ## Summary
 
-The XGO audio initialization path exposes a clearer HC15xx PCM contract than was previously documented.
+A deeper trace resolves an ambiguity in the earlier audio analysis. The XGO board configuration carries separate DAC precision and DAC-format bytes, matching the long-lived ALi sound-driver architecture.
 
-The active setup routine at `0x80306cdc` receives:
+The relevant XGO configuration bytes are:
 
-- requested sample rate in `$a1`
-- sample count in `$a2`
-- an 8-bit audio-format/config value in `$a3`
+- `dac_precision = 0x10` = **16 bits**
+- `dac_format = 0x01`
 
-Known callers pass either `48000` (`0xBB80`) or `44100` (`0xAC44`) as the sample rate and `960` (`0x3C0`) as the working sample count.
+The active audio setup routine at `0x80306cdc` receives requested sample rate, sample count, and the precision value. Normal callers use 44.1 or 48 kHz, 960 samples, and the board-configured 16-bit precision.
 
-A debug string embedded in the firmware matches this call exactly:
+## Correction to the earlier interpretation
+
+The embedded debug string says:
 
 `i2so sample_rate=%d->%d sample_num=%d snd_dac_format=%d`
 
-This strongly confirms that the fourth argument is the vendor's `snd_dac_format` configuration value.
+Taken alone, that label suggested the fourth argument was the serial DAC format. Following the value into `0x80306514` shows that it is passed to the hardware precision helper `0x8030a268`, which accepts exactly `8`, `16`, `24`, or `32`.
 
-## Accepted sample-width values
+Therefore the debug label is misleading or uses `snd_dac_format` loosely. In the active XGO path the fourth argument is the **sample precision / word width**, and the normal board value is **16**.
 
-A lower-level SND register helper at `0x8030a268` accepts exactly four width-like values:
+## Direct board-configuration evidence
 
-- `8`
-- `16`
-- `24`
-- `32`
+During platform initialization around `0x80309fc0`, the firmware copies adjacent board-configuration bytes into globals:
 
-and converts them to a two-bit register field in the SND block.
+- source byte `+0x02` -> precision global
+- source byte `+0x03` -> DAC-format global
 
-The main setup path calls this helper with the incoming format-derived width, except under one board/runtime condition where it explicitly forces `16`.
+The corresponding bytes in the XGO LCFG configuration are `10 01`.
 
-**Confirmed:** the HC15xx SND driver embedded in the XGO firmware has explicit hardware support for 8-, 16-, 24-, and 32-bit audio word-width selections.
+This ordering is independently consistent with older public ALi SDK definitions of `struct snd_output_cfg`, whose first fields include `dac_precision` followed by `dac_format`. The older SDK explicitly describes precision as 24- or 16-bit and DAC format as the serial codec framing selection.
 
-**Not yet confirmed:** which of these widths the normal XGO frontend/emulator path uses at runtime. The active `snd_dac_format` byte originates in board/runtime configuration loaded earlier, so it should not be guessed from the speaker count or from generic SDK defaults.
+**CONFIRMED:** XGO stock audio uses 16-bit SND precision.
 
-## Related DAC/frame-format field
+**CONFIRMED:** XGO board configuration selects DAC-format value `1`.
 
-Another SND helper at `0x8030a5ac` accepts the values:
+**STRONG EVIDENCE:** the value `1` belongs to the ALi-family I2S/left/right serial framing selector. The exact HC15xx enum name for raw value `1` remains to be proven before calling it I2S, left-justified, or right-justified.
 
-- `0x20`
-- `0x30`
-- `0x40`
+## Hardware programming
 
-and translates them to another compact register field.
+The lower-level helper at `0x8030a268` accepts:
 
-The main setup routine chooses `0x40` when one incoming format value equals `0x20`; otherwise it chooses `0x30`.
+- 8
+- 16
+- 24
+- 32
 
-This is clearly part of the DAC/frame transport configuration, but the exact semantic names of `0x20`, `0x30`, and `0x40` have not yet been established from XGO-local evidence. They should not be labeled mono/stereo or I2S/LJ/RJ without additional proof.
+and maps those values to a compact SND hardware field. The XGO path reaches it with `16`; under another runtime condition the code also explicitly forces `16`, reinforcing that 16-bit precision is intentional rather than accidental.
+
+A separate helper at `0x8030a528` accepts values `0..3` and writes a two-bit SND field. The XGO board's DAC-format global is `1`, so the stock board selects field value `1` here.
+
+Another helper at `0x8030a5ac` configures a related frame/clock field using the `0x20`/`0x30`/`0x40` family. Its exact semantic name remains unresolved.
 
 ## Sample-rate normalization
 
-The same initialization routine contains an important special case for low sample rates.
+The vendor layer normalizes low source rates through the 44.1-kHz hardware path:
 
-If the requested rate is:
+- 11025 -> 44100 hardware-facing rate
+- 22050 -> 44100 hardware-facing rate
+- 44100 -> 44100
+- 48000 -> 48000
 
-- `11025` (`0x2B11`), or
-- `22050` (`0x5622`)
+The original low rate is retained separately, consistent with ratio/interpolation handling.
 
-then the hardware-facing rate stored in the primary SND state is rewritten to:
+## Working block size
 
-- `44100` (`0xAC44`)
-
-while the original requested rate is retained separately.
-
-For ordinary `44100` and `48000` requests, no such rewrite is performed.
-
-This is strong evidence that the vendor SND layer uses a 44.1 kHz hardware clock path plus internal ratio/interpolation handling for 11.025 and 22.05 kHz sources rather than programming the hardware directly to those lower rates.
-
-## 960-sample period
-
-All currently traced normal callers of `0x80306cdc` pass `960` samples.
+Normal callers pass `960` samples.
 
 At 48 kHz:
 
 `960 / 48000 = 0.020 s`
 
-so this corresponds exactly to a 20 ms audio block.
+so the working block is exactly 20 ms. At 44.1 kHz it is about 21.77 ms.
 
-At 44.1 kHz the same 960-sample block is about 21.77 ms.
-
-**Strong evidence:** `960` is the vendor's normal working transfer/period count for this path, not a bit-depth or channel-count value.
-
-## Current XGO audio model
-
-The evidence now supports this model:
+## Current XGO audio contract
 
 ```text
 emulator / frontend PCM
         |
-        +-- requested sample rate
-        |      44.1 kHz / 48 kHz normally
-        |      11.025 / 22.05 kHz normalized through 44.1 kHz path
-        |
+        +-- 16-bit precision             CONFIRMED
+        +-- DAC serial-format value 1    CONFIRMED
+        +-- 44.1 / 48 kHz normally
+        +-- 11.025 / 22.05 normalized through 44.1 kHz
         +-- 960-sample working blocks
         |
-        +-- HC15xx SND/I2SO configuration
-        |      explicit 8/16/24/32-bit width selector support
-        |      additional DAC/frame-format selector
+        +-- HC15xx SND / I2SO hardware
         |
-        +-- XGO board-specific L23 output gate
+        +-- XGO-specific L23 output gate
                |
-               -> analog speaker/amplifier path
+               -> speaker / amplifier
 ```
 
 ## What remains unresolved
 
-For an XGO-specific alternative-firmware audio profile, the remaining high-value unknowns are:
+The main remaining audio-format questions are now narrower:
 
-1. the normal runtime value of `snd_dac_format` on the XGO board;
-2. the effective transport channel count (mono vs stereo slots);
-3. the exact meaning of the second DAC/frame-format selector (`0x20`/`0x30`/`0x40` family);
-4. whether PCM is duplicated to two hardware slots even if the physical output is mono, as happens on some related HC15xx boards.
+1. the exact HC15xx name/meaning of DAC-format value `1`;
+2. effective transport channel count and slot layout;
+3. whether mono content is duplicated into stereo hardware slots;
+4. exact semantics of the secondary `0x20`/`0x30`/`0x40` frame/clock selector.
 
-Until these are traced, do not infer the transport format from the number of physical speakers.
+Do not infer transport channel count merely from the physical speaker count.
