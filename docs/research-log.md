@@ -30,21 +30,53 @@
   - `dc a8 f3 6b 74`
   - `b2 9d 59 4f e3`
 - Found the exact stock four-channel sequence `04 1d 31 4f`.
-- Reviewed the transparent-case PCB photo. No obvious antenna or populated radio is identifiable at current resolution, while one small unpopulated QFN-like footprint is visible. Because XN297L exists as QFN20 3x3 mm, this is a useful future inspection target but is not yet an IC identification.
 - Corrected interpretation of generic USB attach/detach strings: they are strong filesystem/mass-storage evidence but not proof of USB HID support on the Handle Interface.
+
+## 2026-08-30 — Local controller / Handle Interface deep pass
+
+- Confirmed two parallel active-low serial controller data channels in executable MIPS code: B15 and L0, with shared clock B7.
+- Confirmed both local channels are scanned periodically and unconditionally.
+- Reconstructed the host-driven load phase: firmware drives both data lines low for roughly 4 us, returns them to input, then clocks twelve button positions with roughly 2 us low clock pulses.
+- Confirmed twelve-bit order: R, Y, X, L, A, B, SELECT, START, UP, DOWN, LEFT, RIGHT.
+- Confirmed local slot 0 OR RF slot 0 -> P1 and local slot 1 OR RF slot 1 -> P2.
+- Found no separate application-level P2-present gate or USB-attach gate controlling the local serial scanner.
+- Found no convincing controller-side HID class path in the static application analysis.
+- Established the strongest hardware interpretation as one local serial channel for built-in P1 and the other for the external Handle Interface/P2, while keeping exact B15/L0-to-connector routing unconfirmed.
+
+## 2026-08-30 — OTG/non-OTG differential experiments
+
+- Empty micro-USB OTG adapter inserted into the powered Handle Interface immediately freezes built-in controls.
+- Removing the OTG adapter restores normal controls.
+- A normal/non-OTG micro-USB connection does not disturb built-in controls.
+- Fine-needle resistance probing of the OTG adapter produced a ground-related reading on micro-USB pin 4, consistent with the conventional OTG ID-to-ground connection. Treat as qualitative rather than precision resistance evidence.
+- Through a non-OTG converter, tested three active USB controllers:
+  - generic USB SNES-style controller;
+  - inexpensive PS-shaped USB gamepad;
+  - GP2040-CE.
+- None of those controllers was recognized by the XGO.
+- None froze or disturbed the XGO built-in controls.
+- Therefore the original GP2040 freeze is no longer attributable to GP2040 USB activity itself; the OTG adapter/path is sufficient to trigger it.
+- This sharply lowers generic USB HID as an explanation for the Handle Interface.
+- The leading physical discriminator is now the micro-USB ID contact: open on non-OTG wiring versus grounded on the OTG adapter.
+- Strongest current hypothesis: pin 4 is repurposed or electrically coupled to the external/P2 active-low serial DATA path, so grounding it forces the continuously scanned signal into an asserted state.
+- Alternate lower-confidence possibility: pin 4 triggers a lower-level USB/pinmux mode not visible in the reconstructed application-level controller code.
 
 ## Current conclusions
 
-- H1512/MIPS SF2000-family lineage is now supported by direct executable-code evidence, not only resources/strings.
+- H1512/MIPS SF2000-family lineage is supported by direct executable-code evidence, not only resources/strings.
 - The XGO firmware retains the stock SF2000-family wireless-controller protocol path essentially intact, including radio tables, channels, receive behavior and P1/P2 decoding.
-- Whether the RF hardware is actually populated remains an independent physical question.
-- If radio hardware is present, stock-compatible SF2000/SF900 controllers are strong candidates for direct compatibility.
-- The wired Handle Interface remains unresolved and should now be treated as a separate input path rather than assuming it implements the confirmed RF protocol.
+- The firmware also implements a distinct two-channel local synchronous controller bus.
+- One local channel is a strong candidate for the built-in controls and the second for the external Handle Interface.
+- Three generic USB controller implementations fail cleanly through a non-OTG path, while an empty OTG adapter alone freezes controls.
+- Generic USB HID is therefore the weakest current Handle Interface model.
+- Proprietary synchronous serial over the micro-USB shell is the strongest current model.
+- Micro-USB pin 4 / ID is now the highest-value physical signal to map.
 
 ## Next research targets
 
-- Trace the wired Handle Interface independently: look for distinct polling, USB class/HID, UART, or GPIO-style input paths.
-- Compare the visible unpopulated PCB footprint and neighboring components with XN297L-family reference layouts when sharper board images are available.
+- Establish a reproducible way to launch `Resources/Test.zsf` and observe P1/P2 state while inserting the bare OTG adapter.
+- Map Handle Interface contacts to B15/L0/B7 using passive continuity, voltage measurement, or existing logic-analysis equipment if available.
+- Determine connector voltage and idle bias before attempting any custom controller interface.
+- Investigate whether micro-USB pin 4 is directly connected or coupled to the external serial data line.
 - Produce a reproducible binary comparison against known SF2000 firmware specimens.
 - Inspect MBR, FAT32 reserved sectors, and pre-partition area from a small extract of the preserved raw card image.
-- Determine a reproducible way to launch `Test.zsf` and test P2 state.
