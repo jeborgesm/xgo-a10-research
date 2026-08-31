@@ -8,20 +8,35 @@ Product-family documentation for closely matching XGO A10 hardware labels the sm
 
 The exact connector pinout still needs to be established. Physical appearance alone must not be taken to mean standards-compliant USB HID.
 
-## Physical experiment: GP2040-CE
+## Physical experiment matrix
 
-A GP2040-CE controller was connected to the XGO's small controller port.
+The adapter/controller tests now separate two behaviors that were originally conflated.
 
-Observed:
+```text
+normal micro-USB cable / non-OTG path
+    -> built-in controls remain normal
 
-- the controller received 5 V power;
-- no usable Player 2 input was obtained;
-- while connected, the XGO's own controls became unresponsive/froze;
-- unplugging the controller restored normal behavior.
+non-OTG + generic USB SNES controller
+    -> controller not recognized
+    -> built-in controls remain normal
 
-A separate PC-side experiment also produced USB detection followed by `USB\DEVICE_DESCRIPTOR_FAILURE`.
+non-OTG + inexpensive PS-shaped USB controller
+    -> controller not recognized
+    -> built-in controls remain normal
 
-Originally this looked like possible narrow/failed USB-host behavior. New disassembly gives us a stronger alternative explanation: the XGO has a **two-channel synchronous serial gamepad scan path** at the GPIO level, and one of those channels is a strong candidate for the Handle Interface.
+non-OTG + GP2040-CE
+    -> controller not recognized
+    -> built-in controls remain normal
+
+bare OTG adapter, nothing attached to USB-A side
+    -> built-in controls freeze immediately
+```
+
+The original GP2040 experiment had used an OTG path and therefore initially suggested that an active USB controller could corrupt the XGO input subsystem. The new matrix shows that the GP2040 itself is not required: the empty OTG adapter is sufficient, while three active USB controllers through a non-OTG path are simply ignored.
+
+This is strong evidence against generic USB-HID controller support on the tested Handle Interface path and strongly favors an electrical difference introduced by OTG wiring.
+
+Unpowered probing of the OTG adapter with fine needle extensions produced a ground-related resistance reading on micro-USB pin 4, consistent with the normal OTG convention in which the ID pin is tied to ground. Because the physical setup was awkward, this is qualitative rather than precision measurement evidence.
 
 ## Newly confirmed: two serial controller channels
 
@@ -63,15 +78,29 @@ serial scan channel 1 -> Handle Interface / P2
 
 The B15/L0 assignment to built-in versus external is not yet known, and continuity to the connector has not been measured, so the physical mapping remains **strong evidence rather than confirmed**.
 
-See `findings/input-path.md` for the disassembly details.
+See `findings/input-path.md` and `findings/handle-interface-protocol.md` for the disassembly and protocol details.
 
-### Why the GP2040 result now makes more sense
+## Why pin 4 is now especially interesting
 
-A five-contact micro-USB connector does not have to carry USB D+/D-. It can physically carry power, ground, clock, controller data, and another control/ID line.
+A conventional non-OTG USB cable or adapter leaves the micro-USB ID contact open. A conventional OTG adapter grounds it. The XGO's opposite behavior under those two conditions is now the cleanest physical discriminator we have.
 
-If the XGO expects a simple synchronous controller scan but a GP2040 actively drives what it believes are USB data lines, the scan bus can be corrupted. Since the two serial controller channels share timing/control resources, that provides a plausible explanation for why the XGO's built-in controls stop responding while the GP2040 is attached.
+The leading model is:
 
-This is not yet proof of the connector pinout, but it currently fits the firmware and observed behavior better than the generic-HID hypothesis.
+```text
+ID open
+    -> proprietary controller bus remains electrically idle
+    -> built-in controls work
+
+ID grounded
+    -> an XGO-repurposed or electrically coupled signal is forced low/asserted
+    -> controller subsystem appears frozen
+```
+
+Static application-firmware analysis found no software-side `P2 connected` gate, USB-attach gate, or controller-mode switch controlling whether the dual serial scan runs. Both local channels are scanned continuously.
+
+That makes direct electrical interference with the existing serial controller bus more plausible than an application-level "enter controller mode" event.
+
+One particularly strong hypothesis is that micro-USB pin 4 is, or is coupled to, the external/P2 active-low DATA signal. If so, grounding it would make the scanner observe a continuously asserted stream. This remains a hypothesis until connector routing or diagnostic input behavior confirms it.
 
 ## USB evidence — current interpretation
 
@@ -85,19 +114,16 @@ usb device detach
 /mnt/rda1
 ```
 
-These look primarily like storage/filesystem USB handling. No convincing `hid`, `usbhid`, controller-descriptor, or similar class-driver string has yet been found.
+These look primarily like storage/filesystem USB handling. No convincing `hid`, `usbhid`, controller-descriptor, or similar class-driver string has been found in the reconstructed controller path.
 
-SF2000/H1512 platform research still matters: the HC15xx platform has **two host/peripheral-capable USB controllers**. In the DB-B210-V1.1 reference design, micro-USB is wired to USB0 while USB-A is wired to USB1.
+HC15xx hardware has native USB capability, so some USB functionality on the product cannot be ruled out. However, the tested Handle Interface does not recognize three different generic USB controller implementations through a non-OTG path.
 
-That does not prove the XGO uses the same wiring, and a direct XGO-binary scan has not exposed a clear USB HID path or straightforward hard-coded USB0/USB1 controller bases.
+Current ranking:
 
-Current ranking after the dual-serial discovery:
-
-1. **proprietary synchronous serial controller interface over the micro-USB connector** — now strongest firmware-side hypothesis;
-2. native USB host with a narrow vendor-specific controller protocol;
-3. limited HID/OTG behavior that rejects or conflicts with the tested GP2040.
-
-Physical continuity or passive logic analysis is required to choose among them.
+1. **proprietary synchronous serial controller interface over the micro-USB shell** — strongest model;
+2. hybrid/multiplexed serial plus some lower-level USB/ID behavior;
+3. narrow vendor-specific USB controller mode;
+4. generic USB HID — now weakest.
 
 ## Confirmed RF Player 1 / Player 2 path
 
@@ -125,9 +151,7 @@ RX_ADDR_P1: b2 9d 59 4f e3
 channels:   04 1d 31 4f
 ```
 
-Independent protocol documentation identifies these as XN297L-family link parameters: 5-byte addresses, two-byte payloads, two receive pipes, and four hop channels around 2404, 2429, 2449, and 2479 MHz.
-
-The receive code treats status `0x40` as P1 and `0x42` as P2, matching independent SF2000 hardware observations.
+The receive code treats status `0x40` as P1 and `0x42` as P2, matching independent SF2000-family observations.
 
 ## Physical RF hardware remains uncertain
 
@@ -152,22 +176,22 @@ likely: built-in controls        likely/possible: Handle Interface
         on one serial line                         on the other
 ```
 
-This architecture explains why both wired/local and wireless paths can coexist without emulator changes: they converge before the internal button mapping.
-
 ## Test/diagnostic ROM
 
-The XGO card includes `Resources/Test.zsf`, the SF2000 controller-test SNES ROM. Establishing a reproducible launch method would give us a useful P1/P2 diagnostic environment for the Handle Interface once its electrical behavior is known.
+The XGO card includes `Resources/Test.zsf`, the SF2000 controller-test SNES ROM. Establishing a reproducible launch method would give us a useful P1/P2 diagnostic environment.
+
+The highest-value behavioral discriminator is now to launch that test and insert the bare OTG adapter. If P2 suddenly presents many/all buttons as active while P1 remains otherwise alive, that would strongly favor the stuck-low P2 DATA model. If the entire scan stops updating, a lower-level mode/pinmux interaction becomes more plausible.
 
 ## Questions to answer
 
 1. Which serial data line, B15 or L0, is the built-in controls?
 2. Does the other data line physically reach the Handle Interface?
 3. Which connector contact carries B7 or equivalent scan clock?
-4. Is there a separate load/control contact, or is the data-line drive-low phase used for load as in related HC15xx designs?
-5. Does any Handle-Interface contact route to native USB0 as well, or is the connector purely GPIO/proprietary?
+4. Is micro-USB pin 4 directly connected or coupled to the P2 serial data line?
+5. What voltage and idle bias are present on each Handle Interface contact?
 6. Is the RF IC physically populated on the main gaming PCB?
-7. Can `Test.zsf` reliably display P1/P2 state?
+7. Can `Test.zsf` reliably display P1/P2 state during the OTG freeze?
 
 ## Rule for future testing
 
-Do not connect unknown pins or inject voltages based solely on SF2000 reference-board pinouts. The next useful experiment is **passive continuity/logic observation**, not another random USB controller.
+Do not connect unknown pins or inject voltages based solely on conventional USB or SF2000 reference-board pinouts. Generic USB-controller testing has now provided diminishing returns. The next useful work is passive signal mapping or diagnostic observation of the P2 state.

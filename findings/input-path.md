@@ -75,6 +75,28 @@ The code first drives the two data lines low and then changes them back to input
 
 This pattern is strikingly similar in *electrical shape* to the dual-data-line shift-register scan reconstructed for GB300-family controls: data lines are briefly driven low for the load phase, switched to input, then sampled while a common clock advances the shift register. The XGO pin assignment is different, and—critically—the XGO keeps the two data streams as separate Player 1 / Player 2 states instead of combining them.
 
+### Host-driven load phase — important protocol detail
+
+The scan does **not** look exactly like a standard SNES controller interface with a separate dedicated LATCH wire. The firmware itself briefly changes both controller data GPIOs from input to output, drives them low, then returns them to input before reading the first bit.
+
+Representative sequence:
+
+```text
+B15 direction -> output
+L0  direction -> output
+B15 output    -> low
+L0  output    -> low
+short delay
+B15 direction -> input
+L0  direction -> input
+sample both data lines
+pulse B7 clock
+```
+
+This means any external controller connected directly to the serial path must tolerate the host temporarily pulling its DATA line low as part of the load/reset phase. That is closer to the related HC15xx/GB300 scan scheme than to a literal SNES electrical interface.
+
+It therefore remains possible that a cheap SNES-style **USB** pad works through a separate supported USB path, but a native SNES controller should not yet be treated as a pin-compatible raw-serial accessory.
+
 ## Full 12-button sequence
 
 The scan constructs the standard SF2000 raw button bitmap in this order:
@@ -104,6 +126,28 @@ pulse shared B7 clock
 
 This is not a one-off accessory status signal. Both lines carry a complete gamepad-sized 12-button stream.
 
+## Poll scheduling — serial scan is part of the core input loop
+
+A further pass resolved an important ambiguity: the two-channel serial scanner is **not entered only after a USB attach event**.
+
+The main input loop keeps a poll counter at `gp - 0x5f0c`. Its low bits schedule work inside the same persistent controller task. When `(poll_counter & 3) == 0`, firmware branches directly into the two-line serial scan at approximately `0x8035d770`. Other phases process the already-collected controller state and service the RF path.
+
+Later in the same loop the counter is incremented and execution repeats:
+
+```text
+8035d6c8  lw     ..., -0x5f0c($gp)
+8035d6cc  addiu  ..., ..., 1
+8035d6d0  sw     ..., -0x5f0c($gp)
+...
+8035d50c  lw     ..., -0x5f0c($gp)
+8035d510  andi   ..., ..., 3
+8035d514  beqz   ..., 0x8035d770   ; run serial scan every fourth phase
+```
+
+This materially strengthens the direct-GPIO interpretation. The serial channels are continuously serviced as part of the normal controller task; no USB attach state is required to activate the scanner.
+
+The same task also interleaves RF polling, which explains the architecture cleanly: periodic local/wired scan plus periodic wireless receive, followed by per-player OR/merge.
+
 ## Why this matters for the Handle Interface
 
 This is currently the strongest firmware-side clue about the wired controller port.
@@ -113,7 +157,8 @@ The XGO has:
 - one built-in physical control set;
 - two complete serial controller channels in firmware;
 - a dedicated external `Handle Interface` connector;
-- separate RF P1/P2 states that are merged slot-for-slot with those serial channels.
+- separate RF P1/P2 states that are merged slot-for-slot with those serial channels;
+- a serial scanner that runs periodically in the normal controller task without requiring USB attach state.
 
 A very plausible mapping is therefore:
 
@@ -133,25 +178,29 @@ The reverse assignment of B15/L0 is also possible; the important point is that t
 - the firmware scans two active-low GPIO data lines in parallel;
 - one shared GPIO clock advances the scan;
 - each data line independently produces the full 12-button SF2000 raw bitmap;
-- these two states map to Player 1 / Player 2 positions and are ORed with RF P1 / P2 respectively.
+- these two states map to Player 1 / Player 2 positions and are ORed with RF P1 / P2 respectively;
+- the serial scan is scheduled periodically inside the normal controller loop rather than being conditionally enabled by a USB attach event;
+- the host temporarily drives both data lines low before sampling them.
 
 **STRONG EVIDENCE**
 
-- one serial stream is the built-in controls and the second is the wired external-controller mechanism.
-- the Handle Interface likely carries a simple synchronous controller scan protocol rather than requiring a general-purpose USB HID stack.
+- one serial stream is the built-in controls and the second is the wired external-controller mechanism;
+- the Handle Interface likely carries, directly or through very small intermediary logic, this synchronous controller scan protocol rather than requiring a general-purpose USB HID stack.
 
 **NOT YET CONFIRMED**
 
 - whether B15 or L0 is the built-in-control data line;
 - whether the other line physically reaches the Handle Interface;
 - which connector contact carries data and which carries the shared clock/load behavior;
-- whether the connector also uses any H1512 USB-controller functionality.
+- whether the connector also exposes any H1512 USB-controller functionality in parallel or in another mode.
 
 ## GP2040 experiment reinterpretation
 
 The GP2040 result now has a plausible electrical explanation.
 
 A micro-USB shell provides five contacts, but the connector does not have to carry USB D+/D-. A proprietary gamepad interface could use power, ground, clock, data, and another control/ID contact. If an ordinary USB gamepad drives contacts that XGO firmware expects to use as an active-low serial scan bus, the scan can be corrupted. Because the two serial channels share timing/control resources, that could also interfere with the built-in controls until the accessory is removed.
+
+The periodic/unconditional nature of the serial scan makes this contention model more plausible than before. The firmware continues manipulating its serial GPIOs whether or not a USB accessory has enumerated.
 
 This interpretation fits the observed `5 V present + no controller input + local controls freeze` behavior better than a simple unsupported-HID model, but physical pin tracing is still required.
 
