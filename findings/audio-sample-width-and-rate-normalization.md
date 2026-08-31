@@ -74,6 +74,41 @@ At 48 kHz:
 
 so the working block is exactly 20 ms. At 44.1 kHz it is about 21.77 ms.
 
+## Physical observations and volume behavior
+
+Direct observation of the XGO hardware establishes that the unit has **one physical speaker**. This confirms that the final built-in analog acoustic output is mono, but it does **not** by itself establish whether the HC15xx SND/I2SO transport is mono, stereo, or stereo with duplication/mixing before the amplifier.
+
+The physical volume button cycles through four audible/user-visible states:
+
+1. none / mute
+2. low
+3. medium
+4. high
+5. then back to none / mute
+
+This exactly matches the firmware behavior already recovered from the L29 volume-button path, which cycles the persisted software values:
+
+`0 -> 33 -> 66 -> 99 -> 0`
+
+Therefore the four firmware values can now be tied directly to the observed user control:
+
+| Firmware value | Observed setting |
+| ---: | --- |
+| 0 | none / mute |
+| 33 | low |
+| 66 | medium |
+| 99 | high |
+
+The device's built-in speaker quality is observed to be poor at all volume settings. This is useful practical evidence when evaluating alternative firmware: software may improve resampling, clipping, gain handling, latency, or emulator audio behavior, but the physical mono speaker/amplifier/enclosure remains a likely fidelity limitation.
+
+**CONFIRMED (physical observation):** one built-in speaker and therefore mono final acoustic output.
+
+**CONFIRMED (physical + firmware correlation):** the single volume button implements four cyclic states corresponding to firmware values 0/33/66/99.
+
+**OBSERVED:** built-in speaker quality is poor across the available volume levels.
+
+**UNRESOLVED:** internal PCM/I2SO channel and slot layout.
+
 ## Current XGO audio contract
 
 ```text
@@ -86,10 +121,14 @@ emulator / frontend PCM
         +-- 960-sample working blocks
         |
         +-- HC15xx SND / I2SO hardware
+        |      internal channel layout unresolved
         |
         +-- XGO-specific L23 output gate
                |
-               -> speaker / amplifier
+               -> mono built-in speaker / amplifier
+
+Volume button (L29):
+0 (mute) -> 33 (low) -> 66 (medium) -> 99 (high) -> 0
 ```
 
 ## What remains unresolved
