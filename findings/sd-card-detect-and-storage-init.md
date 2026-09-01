@@ -1,6 +1,6 @@
 # XGO SD Card Detect and Storage Initialization
 
-Status: **XGO root configuration disables the optional GPIO SD-card-detect path; storage initialization otherwise enters the normal HC15xx SD stack.**
+Status: **XGO root configuration disables the optional GPIO SD-card-detect path; lower-level SDIO initialization explicitly selects DMA mode.**
 
 ## Major finding
 
@@ -64,7 +64,35 @@ A separate lower-level SD stack still contains generic support and diagnostics s
 [Info] SDIO mode : %s mode
 ```
 
-Those strings represent capabilities of the shared SDK, not proof that the XGO enables each feature.
+Those strings represent capabilities of the shared SDK, but the executable path lets us resolve one of them directly.
+
+## SDIO transfer mode is DMA
+
+The lower-level SD initialization block around `0x802fc5e0..0x802fc668` builds the active controller configuration and then executes:
+
+```text
+printf("[Info] SDIO mode : %s mode", "DMA")
+```
+
+The second format argument is loaded unconditionally from the literal string:
+
+```text
+DMA
+```
+
+There is no alternate string selected at that call site.
+
+The same initialization block also writes a transfer/block-size value of:
+
+```text
+0x200 = 512 bytes
+```
+
+into the active SD controller structure before continuing with device/task initialization.
+
+Therefore the shipped XGO SD stack is explicitly configured for **DMA transfer mode with a 512-byte block unit**.
+
+This is useful for future emulation or custom-firmware bring-up because the storage path should not be modeled as a simple programmed-I/O loop.
 
 ## Relationship to observed XGO behavior
 
@@ -76,10 +104,12 @@ This does not by itself prove that removal while running is electrically impossi
 
 A future XGO UniFrog/HCRTOS board profile should not blindly copy a sibling board's SD card-detect GPIO.
 
-The vendor baseline is:
+The vendor baseline is now:
 
 ```text
-SD/TF transport: HC15xx SD stack
+SD/TF transport: HC15xx SDIO stack
+transfer mode:   DMA
+block unit:      512 bytes
 GPIO card detect: disabled at root configuration
 ```
 
@@ -94,15 +124,19 @@ If custom firmware wants hotplug behavior, it should first establish whether the
 - GPIO detect setup is conditional on enable value `1`;
 - the XGO image contains exactly one direct call to this wrapper;
 - that call passes `0,0,0`;
-- therefore the shipped XGO firmware disables this optional GPIO SD-card-detect path.
+- therefore the shipped XGO firmware disables this optional GPIO SD-card-detect path;
+- lower SDIO initialization prints the transfer mode using the literal `DMA` argument;
+- active SD controller structure receives a 512-byte transfer/block-size value.
 
 ### STRONG EVIDENCE
 
-- XGO treats the microSD as expected persistent platform storage rather than relying on an SDK GPIO hotplug detector.
+- XGO treats the microSD as expected persistent platform storage rather than relying on an SDK GPIO hotplug detector;
+- XGO's normal SD data path is DMA-oriented.
 
 ### OPEN
 
 - whether the physical microSD socket has a mechanical card-detect contact at all;
 - whether another lower-level controller status can detect removal without this GPIO feature;
-- exact SD bus width and maximum clock selected at runtime on XGO;
+- exact SD bus width selected after card negotiation;
+- exact maximum SD clock selected at runtime on XGO;
 - exact behavior if the card is removed after successful boot.
