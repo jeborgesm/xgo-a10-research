@@ -15,6 +15,7 @@
 /* ---- libc / stdio ------------------------------------------------------ */
 /* XGO reproduces the SF2000 08/03/1.6 library block at +0x634c. */
 
+sbrk        = 0x80291944;
 malloc      = 0x80291c04;
 free        = 0x80292814;
 realloc     = 0x802928d8;
@@ -69,10 +70,11 @@ fwrite      = 0x802b42ac;
 
 /* ---- TDS / scheduler --------------------------------------------------- */
 
-os_disable_interrupt = 0x802e0750;
-os_enable_interrupt  = 0x802e0778;
-dly_tsk              = 0x8030f480;
-os_get_tick_count    = 0x8030fec8;
+osal_tds2_cache_flush = 0x80049214;
+os_disable_interrupt  = 0x802e0750;
+os_enable_interrupt   = 0x802e0778;
+dly_tsk               = 0x8030f480;
+os_get_tick_count     = 0x8030fec8;
 
 /* ---- XGO stock frontend transport ------------------------------------- */
 /*
@@ -114,16 +116,25 @@ XGO_IRQ_GP_PATCH_ADDIU = 0x80049748;
 /* ---- XGO globals ------------------------------------------------------- */
 
 /*
- * Heap state:
- *   initial current break = 0x813b4bb4 (written during system init)
- *   heap ceiling         = 0x87cdae00 (written by allocator init)
+ * XGO sbrk at 0x80291944 implements:
  *
- * Multicore's 0x87000000 core-load convention can be implemented by lowering
- * RAMSIZE to 0x87000000 before loading an external core, leaving the stock
- * heap below the external-core window.
+ *   old = *XGO_HEAP_BREAK;
+ *   new = old + increment;
+ *   if ((unsigned)new < (unsigned)*RAMSIZE) {
+ *       *XGO_HEAP_BREAK = new;
+ *       return old;
+ *   }
+ *   g_errno = 12; // ENOMEM
+ *   return (void *)-1;
+ *
+ * Allocator initialization writes:
+ *   initial current break = 0x813b4bb4
+ *   heap ceiling          = 0x87cdae00
  */
 XGO_HEAP_START = 0x813b4bb4;
+XGO_HEAP_BREAK = 0x80c337b0;
 RAMSIZE        = 0x80c2ce6c;
+g_errno        = 0x80c2d640;
 
 /* Sound-task control word. Emulator wrappers clear bit 0 and wait for 0. */
 g_snd_task_flags = 0x80c2e80c;
@@ -151,11 +162,14 @@ g_input_port0 = 0x80c33ac4;  /* GPIO B15 -> Player 1 */
 g_input_port1 = 0x80c33ac8;  /* GPIO L0  -> Player 2 */
 
 /*
- * Still to resolve before attempting an XGO Multicore build:
- *   - any extra libc/newlib/VFS symbols required by the selected test core
+ * Still to resolve before attempting a full XGO Multicore build:
+ *   - any extra libc/newlib symbols required by the selected production core
+ *   - board-driver imports needed only by advanced Multicore video options
  *   - debug/LCD helper symbols only if on-screen loader diagnostics are kept
- *   - runtime confirmation that no XGO-specific long-lived allocation has
- *     already crossed 0x87000000 before Multicore lowers RAMSIZE
+ *
+ * The loader can now runtime-check *XGO_HEAP_BREAK < 0x87000000 before
+ * lowering RAMSIZE, eliminating the previous static assumption that the stock
+ * heap has not already entered the external-core window.
  *
  * Already resolved:
  *   - loader injection window 0x1500..0x217f
