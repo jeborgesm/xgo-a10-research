@@ -93,13 +93,8 @@ static retro_input_state_t input_cb;
 
 #define FB ((volatile unsigned short *)0x87100000u)
 
-static void core_init(void)
-{
-    video_cb = 0;
-    poll_cb = 0;
-    input_cb = 0;
-}
-
+/* Standard libretro order installs callbacks before retro_init(). */
+static void core_init(void) {}
 static void core_deinit(void) {}
 static unsigned core_api_version(void) { return 1; }
 
@@ -233,6 +228,9 @@ static struct retro_core_t api = {
 __attribute__((section(".entry"), used))
 struct retro_core_t *xgo_probe_core_entry(void)
 {
-    core_init();
+    /* The raw core image has a NOLOAD BSS, so initialize callback state here. */
+    video_cb = 0;
+    poll_cb = 0;
+    input_cb = 0;
     return &api;
 }
