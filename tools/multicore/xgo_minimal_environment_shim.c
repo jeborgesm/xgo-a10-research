@@ -24,6 +24,8 @@ typedef bool (*environment_cb)(unsigned, void *);
 #define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT      10u
 #define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE   17u
 #define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY    31u
+#define RETRO_ENVIRONMENT_EXPERIMENTAL           0x10000u
+#define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /* libretro enum retro_pixel_format */
 #define RETRO_PIXEL_FORMAT_0RGB1555 0u
@@ -65,6 +67,18 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
             return false;
         *(bool *)data = xgo_variable_update;
         xgo_variable_update = false;
+        return true;
+
+    case RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE:
+        if (!data)
+            return false;
+        /*
+         * XGO run_emulator's per-frame audio byte budgets are derived from
+         * stereo 16-bit 44.1-kHz PCM (3528 B @ 50 Hz, 2940 B @ 60 Hz).
+         * Advertising 44100 makes modern cores with an Auto rate policy align
+         * their generated audio with that stock scheduler.
+         */
+        *(unsigned *)data = 44100u;
         return true;
 
     case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:
