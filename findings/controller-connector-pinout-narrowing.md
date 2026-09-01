@@ -8,13 +8,9 @@ The remaining Handle Interface problem is now primarily **physical routing**, no
 
 XGO firmware implements the same 12-position active-low serial button contract as SF2000, but exposes two parallel data streams (B15 and L0) on shared clock B7. External evidence independently shows that X60/DY12 wired controllers interoperate with SF2000 as Player 2 through a connector adapter, and X60 uses micro-USB specifically as an external-controller connector.
 
-The strongest current model is therefore that the XGO micro-USB Handle Interface exposes or couples into some subset of the XGO GPIO scanner signals directly. The exact micro-USB contact mapping remains unconfirmed.
+The strongest current model is that the XGO micro-USB Handle Interface exposes or couples into some subset of the XGO GPIO scanner signals directly. The exact micro-USB contact mapping remains unconfirmed.
 
 ## Important correction: OTG diagnostic result is R-only, not all-buttons
-
-A previous version of this note carried an obsolete prediction that grounding micro-USB ID through an OTG adapter would hold an external DATA line low and therefore assert all twelve buttons.
-
-That prediction is contradicted by the already-observed hidden controller diagnostic.
 
 **Confirmed physical observation:** with the anonymous empty OTG adapter inserted, the controller diagnostic reports **R pressed**, not all buttons pressed.
 
@@ -35,23 +31,47 @@ Because the confirmed serial order is:
 11 RIGHT
 ```
 
-R-only means the disturbance is specific to the **first sampled bit** of the serial transaction. A simple permanently grounded DATA line is therefore no longer a good model.
+R-only means the disturbance is specific to the **first sampled bit** of the serial transaction. A simple permanently grounded DATA line is therefore not a good model.
 
-This is substantially more informative than the original menu-freeze observation.
+## New narrowing from the X60 -> SF2000 adapter test
 
-## Important new comparator: reference USB wiring is not retail controller wiring
+The X60 owner `dc_ScAn` reported using a normal Type-C-to-micro-USB adapter to connect an X60 wired controller to an SF2000; the SF2000 recognized it as Player 2.
+
+That matters because a standards-compliant USB Type-C to USB 2.0 Micro-B passive cable/adapter carries:
+
+- VBUS
+- D-
+- D+
+- GND
+
+while the Micro-B **ID pin is not part of the ordinary transport path**. USB-IF Type-C wiring tables explicitly show Micro-B pin 4 (ID) separate from the D+/D-/VBUS/GND conductors.
+
+Therefore, assuming the owner's adapter was an ordinary passive consumer adapter rather than a specially rewired one, the working X60 -> SF2000 path strongly implies that the controller protocol itself travels over the contacts corresponding to **D+ and D- plus power/reference/ground**, not through Micro-B ID.
+
+This is not yet a literal pinout proof because the adapter was not opened and traced, but it materially lowers the probability that ID is one of the actual serial transport wires.
+
+### Consequence for XGO
+
+The XGO OTG result should now be interpreted differently:
+
+- the controller bus is most likely carried on **D-/D+** as DATA/CLOCK;
+- Micro-B **ID is more likely detect, reset/load, gating, bias, or a coupled control input**;
+- grounding ID with an OTG plug perturbs the first-bit timing/state and produces R-only.
+
+This fits the family evidence better than treating ID itself as DATA or CLOCK.
+
+## Important comparator: reference USB wiring is not retail controller wiring
 
 Current FrogQEMU documentation contains the HC15xx DB-B210-V1.1 **reference-board** USB schematic mapping:
 
 - USB0PP/USB0PN -> reference micro-USB connector
 - USB1PP/USB1PN -> reference USB-A connector
-- these are genuine HC15xx USB-controller signals on the reference design
 
-However, the same project explicitly warns that the reference schematic is **not guaranteed to match retail boards**. Runtime probes on tested retail hardware are treated as authoritative.
+However, FrogQEMU explicitly warns that the reference schematic is **not guaranteed to match retail boards**. Runtime probes on retail hardware are treated as authoritative.
 
-This matters because independent SF2000 retail reverse-engineering says its Type-C data contacts are used for a proprietary wired-gamepad poll rather than ordinary USB HID, and X60 retail hardware explicitly dedicates micro-USB to the external controller while charging uses a separate Mini-USB connector.
+Independent SF2000 retail reverse-engineering says its Type-C data contacts are used for a proprietary wired-gamepad poll rather than ordinary USB HID, and X60 retail hardware explicitly dedicates micro-USB to the external controller while charging uses a separate Mini-USB connector.
 
-Therefore we must not infer XGO Handle Interface pinout from the DB-B210 reference USB schematic. The OEM family demonstrably repurposes USB-shaped connectors and changes board routing between products.
+Therefore the OEM family demonstrably reuses USB-shaped connectors and the nominal USB D+/D- contacts for non-USB controller signaling.
 
 ## Family evidence convergence
 
@@ -81,8 +101,7 @@ Community hardware evidence:
 - retail external-controller connector is micro-USB on documented variants
 - controller-facing connector observed at roughly 3 V rather than ordinary USB expectations
 - supplied wired controller tested successfully on SF2000 and recognized as Player 2
-
-Modern FrogQEMU device-family notes also list direct hardware LCD captures for `X60`, `DY12`, `DY12_MY2024`, `DY19`, Q19 and related boards, reinforcing that these are being treated as board variants inside the same HC15xx/SF2000 family rather than unrelated products.
+- test used a Type-C/micro-USB adapter, strongly suggesting the interoperable signal path is carried on the ordinary passive adapter conductors
 
 ### XGO
 Confirmed:
@@ -96,26 +115,6 @@ Confirmed:
 - both streams are active-low and loaded by host-driven-low pulse
 - exact SF2000 12-button serial ordering
 
-## Minimum electrical signals required
-
-For one external XGO serial stream, the protocol needs at minimum:
-
-1. DATA — bidirectional at the host during load/reset, then input while sampling
-2. CLOCK — host output
-3. GND/reference
-
-A controller may additionally require a power/reference supply, making four useful conductors.
-
-A micro-USB receptacle provides five contacts:
-
-1. VBUS
-2. D-
-3. D+
-4. ID
-5. GND
-
-Therefore the connector has enough contacts for this proprietary bus with one spare/detect contact even without using it as USB.
-
 ## What R-only tells us about the electrical disturbance
 
 The XGO transaction sequence is important:
@@ -128,13 +127,11 @@ The XGO transaction sequence is important:
 6. pulses the shared clock;
 7. samples bit 1 (Y), then subsequent bits.
 
-Unlike the hardened UniFrog SF2000 implementation, where a separate 4 us input-settle delay is intentionally inserted after returning DATA to input, no equivalent explicit settle delay has yet been identified in the XGO stock scanner.
-
-That makes the R-only OTG result especially significant.
+Unlike the hardened UniFrog SF2000 implementation, where a separate 4 us input-settle delay is deliberately inserted after returning DATA to input, no equivalent explicit settle delay has yet been identified in the XGO stock scanner.
 
 ### Strong inference: delayed DATA release / first-sample contamination
 
-If grounding ID through the OTG adapter is electrically coupled to one XGO DATA path through a resistor, transistor, protection structure, mux, pull network, or other board circuitry, the host-driven-low load phase may not release cleanly when the GPIO switches back to input.
+If grounding ID through the OTG adapter is electrically coupled to one XGO DATA/load path through a resistor, transistor, protection structure, mux, pull network, or detect circuit, the host-driven-low load phase may not release cleanly when the GPIO switches back to input.
 
 A short low-going tail lasting only until the first sample would produce exactly:
 
@@ -146,66 +143,67 @@ bit 2 X      = high -> released
 bit 11 RIGHT = high -> released
 ```
 
-This is a much better fit for the observed R-only diagnostic state than a permanently grounded DATA line.
+The lack of an explicit settle delay makes this one-bit artifact technically plausible.
 
-The fact that XGO apparently samples immediately after the direction change, while the modern SF2000 open implementation deliberately adds a settle delay, provides a concrete timing mechanism for such a one-bit artifact.
+## Pinout hypotheses ranked after the adapter evidence
 
-### Alternative: first-bit load/reset state is being altered
+### H1 — D-/D+ carry DATA/CLOCK; ID affects detect/load/gating
+**Plausibility: strongest current model.**
 
-The accessory/ID contact may participate in the controller encoder's parallel-load/reset behavior rather than being DATA itself. Grounding it could force only the freshly loaded bit-0 state low, after which ordinary clocking shifts high values through the remaining positions.
+This now fits both device-family interoperability and XGO behavior:
 
-This also predicts R-only without requiring DATA to remain clamped.
+- X60 controller works through an ordinary-looking Type-C/micro-USB adapter;
+- passive adapters carry D+/D-, VBUS and GND as the useful cross-connector conductors;
+- SF2000 documentation says its USB-shaped data contacts are used for controller polling;
+- normal XGO cable with ID open is harmless;
+- OTG plug grounds ID and produces the R-only first-bit artifact.
 
-### Alternative: clock/start-of-frame disturbance
+### H2 — ID is coupled to DATA/load circuitry and causes first-bit contamination
+**Plausibility: strong as a control/coupling mechanism, not as the primary transport wire.**
 
-A disturbed clock/load edge could cause the scanner to sample a stale low state at position zero before the serial source reaches its normal idle state. This remains possible, especially if B7 or a load-equivalent signal is exposed or coupled through the connector.
+This explains why grounding ID changes only bit 0 without requiring ID to carry the serial stream.
 
-## Pinout hypotheses ranked after the R-only observation
+### H3 — ID directly carries DATA or CLOCK
+**Plausibility: reduced.**
 
-### H1 — ID is coupled to DATA/load circuitry and causes first-bit contamination
-**Plausibility: strong.**
+The X60 -> SF2000 passive-adapter interoperability makes ID-as-primary-transport harder to reconcile because ordinary Type-C/Micro-B adapters do not use Micro-B ID as one of the USB 2.0 data conductors.
 
-This now best explains all current observations:
+It remains possible only if the specific adapter was nonstandard or if the devices exploit some unusual internal connection.
 
-- normal cable: ID open -> no disturbance;
-- OTG adapter: ID grounded -> disturbance;
-- diagnostic: only first serial position R becomes active;
-- scanner: first sample follows immediately after output-low -> input transition.
-
-This does **not** require ID to be a hard direct connection to DATA. A resistive/transistor/protection or detect coupling is sufficient.
-
-### H2 — D-/D+ carry DATA/CLOCK, ID affects reset/load/detect
-**Plausibility: strong.**
-
-The main controller transport could still use D-/D+ while ID participates in controller presence, reset, load, or electrical gating. This fits the family tendency to reuse USB-shaped data contacts while also explaining why the OTG-specific ID state matters.
-
-### H3 — ID is CLOCK or directly perturbs CLOCK
-**Plausibility: moderate.**
-
-A clock/start-of-frame disturbance can produce an incorrect first sample, but a simple hard-low clock model would normally be expected to disrupt the whole transaction rather than cleanly generate R-only. More complex coupling remains possible.
-
-### H4 — ID selects/pinmuxes an external-controller mode below the application scanner
+### H4 — lower-level pinmux/USB-OTG mode response
 **Plausibility: possible but weaker.**
 
-No convincing application-level XGO path has been found that checks USB/OTG attach before running the B15/L0/B7 scanner; scanner initialization and polling are unconditional. A lower-level HC15xx pinmux/USB block response to ID remains possible, but the clean bit-0 artifact is now easier to explain as direct electrical/timing coupling.
+No convincing application-level XGO path has been found that gates the B15/L0/B7 scanner on USB/OTG state. A lower-level hardware effect remains possible, but direct electrical coupling now requires fewer assumptions.
 
 ### Discarded simple model — ID hard-grounded DATA
 **Plausibility: poor / contradicted.**
 
-A permanently grounded active-low DATA stream predicts all twelve sampled positions asserted. The hidden diagnostic instead reports R-only. Do not use the all-buttons prediction as the active model unless new contradictory physical evidence appears.
+A permanently grounded active-low DATA stream predicts all twelve sampled positions asserted. The hidden diagnostic instead reports R-only.
+
+## Current working physical model
+
+The best-supported model to test is now:
+
+```text
+micro-USB D- / D+   -> proprietary DATA / CLOCK (order unknown)
+micro-USB GND       -> controller reference
+micro-USB VBUS      -> controller supply/reference, likely ~3 V family behavior rather than normal USB semantics
+micro-USB ID        -> detect/load/gate/bias or coupled control; grounding it perturbs sample 0
+```
+
+The D-/D+ DATA/CLOCK assignment remains unordered. Either could be B7 clock or the external B15/L0 data stream.
 
 ## Strongest next measurements
 
-The R-only result already gives us a temporal fingerprint. The best next measurements are therefore electrical rather than repeating the diagnostic:
-
-1. measure idle DC voltage on micro-USB pins 1-4 relative to GND with no cable;
+1. measure idle DC voltage on micro-USB pins 1-4 relative to GND with nothing inserted;
 2. repeat with a normal micro-USB plug inserted but otherwise disconnected;
 3. repeat with the empty OTG adapter inserted;
-4. look specifically for a contact whose voltage changes only under OTG/ID-ground condition;
-5. with a logic analyzer, trigger on the B7-like polling burst and inspect whether one connector contact stays low only through the first sample window;
-6. compare the first DATA release edge against subsequent clock edges.
+4. logic-analyze D- and D+ while the controller diagnostic is running;
+5. identify which line has periodic shared-clock activity and which carries active-low serial samples;
+6. compare DATA release immediately after the 4 us load pulse with the first R sample;
+7. inspect ID simultaneously to see whether grounding it lengthens the first DATA-low interval.
 
-A waveform showing DATA low through sample 0 and high before sample 1 would almost directly explain the observed R-only state.
+A D+/D- waveform showing one clock line and one 12-bit active-low data line would effectively solve the Handle Interface transport mapping.
 
 ## What would constitute pinout confirmation
 
@@ -218,20 +216,21 @@ A connector pin can be assigned to an XGO GPIO only after at least one of:
 
 ## Research consequence
 
-The firmware/protocol question is substantially solved. The OTG behavior should no longer be treated as a generic freeze or an all-buttons event. It is a **bit-0/R-specific timing clue**.
+The firmware/protocol question is substantially solved. The new adapter evidence narrows the likely transport from five micro-USB contacts to the ordinary passive-adapter path, with **D+/D- now the leading DATA/CLOCK pair** and ID demoted to a control/coupling role.
 
 Highest-value work is now:
 
-- recover exact X60-to-SF2000 adapter wiring;
-- recover/analyze X60 or DY19 firmware when available;
-- map XGO micro-USB contacts electrically;
+- map XGO D+/D- electrically;
+- recover exact X60-to-SF2000 adapter wiring if possible;
+- recover/analyze X60 or DY19 firmware;
 - compare connector waveforms to the known B15/L0/B7 scanner;
 - only then build an adapter or controller emulator.
 
 ## Sources
+- USB-IF, USB Type-C Cable and Connector Specification, Type-C to USB 2.0 Micro-B cable assembly wiring table
 - `axgdev/UniFrog`, `foundation/src/platform/sf2000/input/unifrog_input.c`
 - `axgdev/frogqemu`, `docs/SF2000.md`
 - `axgdev/frogqemu`, `docs/DEVICE_FAMILY.md`
-- 4PDA SF2000 posts #394/#398/#404: X60 platform, ~3 V connector observation, X60 controller -> SF2000 P2 test
+- 4PDA SF2000 posts #394/#404: X60 ~3 V connector observation and X60 controller -> SF2000 P2 through Type-C/micro adapter
 - 4PDA SF2000 post #2468: Hamy Max and X60/DY12 wired-controller compatibility
 - XGO firmware scanner reconstruction and physical OTG/controller-diagnostic experiment documented in this repository
