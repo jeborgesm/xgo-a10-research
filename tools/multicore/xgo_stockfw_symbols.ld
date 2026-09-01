@@ -76,6 +76,36 @@ os_enable_interrupt   = 0x802e0778;
 dly_tsk               = 0x8030f480;
 os_get_tick_count     = 0x8030fec8;
 
+/* ---- optional direct display-driver imports --------------------------- */
+/*
+ * These are not required by the minimal XGO external-core path, which can
+ * remain behind the stock libretro callbacks. They are mapped for carrying
+ * over SF2000 Multicore's advanced scaling/TV/tearing features.
+ *
+ * This region is intentionally NOT derived from one global address delta.
+ * Each block was verified semantically in XGO executable code.
+ */
+
+get_vp_init_low_lcd_para = 0x801b9c84;
+switch_lcd_or_tv         = 0x801b9de4;
+
+/* ALi vpo_device->ioctl wrapper: vtable slot +0x3c. */
+vpo_ioctl = 0x802777bc;
+
+/* Generic HLD device-list lookup by type/id. */
+dev_get_by_id = 0x802779a8;
+
+/* XGO OSD driver wrapper block. */
+osddrv_open             = 0x80278028;
+osddrv_close            = 0x80278108;
+osddrv_3x_create_region = 0x8027881c;
+osddrv_3x_region_write  = 0x80279114;
+osddrv_scale            = 0x80279438;
+
+/* Active ST7789V MCU-8080 panel driver helpers. */
+st7789v_caset_raset = 0x802a09e8;
+st7789v_ramwr       = 0x802a0a8c;
+
 /* ---- XGO stock frontend transport ------------------------------------- */
 /*
  * These are the stock XGO display/audio transport helpers used below the
@@ -162,18 +192,16 @@ g_input_port0 = 0x80c33ac4;  /* GPIO B15 -> Player 1 */
 g_input_port1 = 0x80c33ac8;  /* GPIO L0  -> Player 2 */
 
 /*
- * Still to resolve before attempting a full XGO Multicore build:
- *   - any extra libc/newlib symbols required by the selected production core
- *   - board-driver imports needed only by advanced Multicore video options
- *   - debug/LCD helper symbols only if on-screen loader diagnostics are kept
- *
- * The loader can now runtime-check *XGO_HEAP_BREAK < 0x87000000 before
- * lowering RAMSIZE, eliminating the previous static assumption that the stock
- * heap has not already entered the external-core window.
+ * For the stripped/basic XGO Multicore path that uses stock callbacks, the
+ * essential stock-firmware surface is now substantially mapped. Remaining
+ * work is primarily production-core/newlib compatibility and hardware test
+ * validation, rather than missing fundamental XGO board APIs.
  *
  * Already resolved:
  *   - loader injection window 0x1500..0x217f
  *   - debug-font window 0x2260..0x24ff
  *   - GBA redirect call site 0x80360cf4 / file offset 0x360cf4
  *   - IRQ GP repair slot 0x80049744/48
+ *   - live heap break and heap ceiling
+ *   - minimal and advanced video import sets
  */
