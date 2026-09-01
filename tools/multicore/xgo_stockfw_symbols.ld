@@ -36,6 +36,27 @@ strcmp      = 0x80294dec;
 strlen      = 0x80294e30;
 atoi        = 0x80294e58;
 
+/* ---- filesystem / VFS ------------------------------------------------- */
+/*
+ * These wrappers preserve the same ABI and the same +0x634c relocation from
+ * the SF2000 08/03 firmware. fs_access is also independently observed in XGO
+ * frontend path checks, strengthening the block identification.
+ */
+
+fs_sync     = 0x802abc30;
+fs_open     = 0x802abd58;
+fs_opendir  = 0x802abe28;
+fs_mkdir    = 0x802abeb4;
+fs_access   = 0x802abfe8;
+fs_fstat    = 0x802ac080;
+fs_stat     = 0x802ac0a4;
+fs_read     = 0x802ac150;
+fs_write    = 0x802ac274;
+fs_lseek    = 0x802ac394;
+fs_readdir  = 0x802ac438;
+fs_close    = 0x802ac4d4;
+fs_closedir = 0x802ac4f0;
+
 fclose      = 0x802b2f40;
 fflush      = 0x802b30b0;
 fgets       = 0x802b320c;
@@ -52,6 +73,17 @@ os_disable_interrupt = 0x802e0750;
 os_enable_interrupt  = 0x802e0778;
 dly_tsk              = 0x8030f480;
 os_get_tick_count    = 0x8030fec8;
+
+/* ---- XGO stock frontend transport ------------------------------------- */
+/*
+ * These are the stock XGO display/audio transport helpers used below the
+ * libretro callbacks. Keeping external cores behind these routines avoids
+ * teaching a first Multicore port about XGO-specific LCD/audio drivers.
+ */
+
+run_osd_region_write = 0x8035c31c;
+run_screen_write     = 0x8035c398;
+run_sound_advance    = 0x8035cba0;
 
 /* ---- XGO libretro frontend --------------------------------------------- */
 
@@ -114,11 +146,20 @@ gfn_retro_run              = 0x80c33ae4;
 
 g_run_file_size            = 0x80c33a7c;
 
+/* Final mapped controller words consumed by retro_input_state_cb. */
+g_input_port0 = 0x80c33ac4;  /* GPIO B15 -> Player 1 */
+g_input_port1 = 0x80c33ac8;  /* GPIO L0  -> Player 2 */
+
 /*
  * Still to resolve before attempting an XGO Multicore build:
- *   - additional libc/VFS symbols required by a selected external core
- *   - debug/LCD helper symbols if UART-less on-screen diagnostics are retained
+ *   - any extra libc/newlib/VFS symbols required by the selected test core
+ *   - debug/LCD helper symbols only if on-screen loader diagnostics are kept
  *   - runtime confirmation that no XGO-specific long-lived allocation has
  *     already crossed 0x87000000 before Multicore lowers RAMSIZE
- *   - exact stock hook site used to redirect GBA launch into Multicore loader
+ *
+ * Already resolved:
+ *   - loader injection window 0x1500..0x217f
+ *   - debug-font window 0x2260..0x24ff
+ *   - GBA redirect call site 0x80360cf4 / file offset 0x360cf4
+ *   - IRQ GP repair slot 0x80049744/48
  */
