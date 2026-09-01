@@ -125,8 +125,23 @@ retro_input_poll_cb          = 0x8035ea30;
 retro_input_state_cb         = 0x8035eb20;
 retro_environment_cb         = 0x8035eb64;
 
+/* Applies the compiled six-button mapping table. */
+set_keymap = 0x8035e83c;
+
 run_emulator = 0x8035ed48;
 run_gba      = 0x80360110;
+
+/*
+ * Main content dispatcher. The function emits "run_game %s,%s,%x", parses
+ * the file extension/system mask, opens packaged content, and dispatches to
+ * the appropriate stock emulator wrapper.
+ */
+run_game = 0x80360b88;
+
+/* WQW package helpers used directly by run_game's packaged-content path. */
+unwqw_init       = 0x80365c4c;
+unwqw_decompress = 0x80365d70;
+unwqw_free       = 0x80365de4;
 
 /* ---- XGO startup / IRQ compatibility ---------------------------------- */
 
@@ -142,6 +157,10 @@ XGO_STOCK_GP      = 0x80c34774;
  */
 XGO_IRQ_GP_PATCH_LUI   = 0x80049744;
 XGO_IRQ_GP_PATCH_ADDIU = 0x80049748;
+
+/* Semantically verified Multicore diagnostic hook targets. */
+XGO_WATCHDOG_HOOK_SITE = 0x800030d4;
+XGO_EXCEPTION_HOOK_SITE = 0x800495a0;
 
 /* ---- XGO globals ------------------------------------------------------- */
 
@@ -166,6 +185,9 @@ XGO_HEAP_BREAK = 0x80c337b0;
 RAMSIZE        = 0x80c2ce6c;
 g_errno        = 0x80c2d640;
 
+/* Battery classifier output (-1,0..4). */
+g_battery_level = 0x80c2d0d8;
+
 /* Sound-task control word. Emulator wrappers clear bit 0 and wait for 0. */
 g_snd_task_flags = 0x80c2e80c;
 
@@ -187,6 +209,13 @@ gfn_retro_run              = 0x80c33ae4;
 
 g_run_file_size            = 0x80c33a7c;
 
+/*
+ * Controller task and final mapped state arrays. Their 0x68-byte separation
+ * matches the same two-stage state model documented by SF2000 Multicore.
+ */
+g_joy_task_state = 0x80c33a5c;
+g_joy_state      = 0x80c33ac4;
+
 /* Final mapped controller words consumed by retro_input_state_cb. */
 g_input_port0 = 0x80c33ac4;  /* GPIO B15 -> Player 1 */
 g_input_port1 = 0x80c33ac8;  /* GPIO L0  -> Player 2 */
@@ -202,6 +231,9 @@ g_input_port1 = 0x80c33ac8;  /* GPIO L0  -> Player 2 */
  *   - debug-font window 0x2260..0x24ff
  *   - GBA redirect call site 0x80360cf4 / file offset 0x360cf4
  *   - IRQ GP repair slot 0x80049744/48
+ *   - watchdog and general-exception hook sites
  *   - live heap break and heap ceiling
+ *   - main run_game dispatcher and WQW package helpers
+ *   - global keymap application routine
  *   - minimal and advanced video import sets
  */
