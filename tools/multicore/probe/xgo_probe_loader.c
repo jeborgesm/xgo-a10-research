@@ -1,0 +1,70 @@
+/*
+ * Minimal XGO external-payload loader research prototype.
+ *
+ * This is intentionally smaller than SF2000 Multicore. It exists to validate
+ * the already-mapped XGO loader window and stock callback addresses before a
+ * full Multicore port is attempted.
+ *
+ * No Firmware.upk / SPI-NOR operation is involved.
+ */
+
+typedef unsigned int u32;
+typedef unsigned long size_t;
+typedef struct FILE_ FILE;
+
+static FILE *(*const fw_fopen)(const char *, const char *) = (void *)0x802b3524;
+static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b3698;
+static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
+static void (*const stock_run_gba)(const char *, int) = (void *)0x80360110;
+static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
+
+static int has_semicolon(const char *s)
+{
+    while (*s) {
+        if (*s++ == ';')
+            return 1;
+    }
+    return 0;
+}
+
+static void cache_flush_all(void)
+{
+    u32 p;
+
+    for (p = 0x80000000; p <= 0x80004000; p += 16)
+        __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
+
+    __asm__ volatile("sync; nop; nop");
+
+    for (p = 0x80000000; p <= 0x80004000; p += 16)
+        __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
+}
+
+void load_and_run_core(const char *path, int load_state)
+{
+    FILE *f;
+    u32 old_limit;
+    void (*entry)(void) = (void *)0x87000000;
+
+    /* Preserve normal stock GBA behavior unless this is an explicit probe stub. */
+    if (!has_semicolon(path)) {
+        stock_run_gba(path, load_state);
+        return;
+    }
+
+    f = fw_fopen("/mnt/sda1/cores/xgoprobe/core_87000000", "rb");
+    if (!f)
+        return;
+
+    /* Probe payload is deliberately bounded to 1 MiB. */
+    fw_fread((void *)0x87000000, 1, 0x00100000, f);
+    fw_fclose(f);
+
+    cache_flush_all();
+
+    /* Reserve Multicore's external-core window only for the duration of probe. */
+    old_limit = *RAMSIZE;
+    *RAMSIZE = 0x87000000;
+    entry();
+    *RAMSIZE = old_limit;
+}
