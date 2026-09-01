@@ -64,11 +64,34 @@ retro_environment_cb         = 0x8035eb64;
 run_emulator = 0x8035ed48;
 run_gba      = 0x80360110;
 
-/* ---- XGO globals ------------------------------------------------------- */
-/* XGO startup establishes $gp = 0x80c34774. */
+/* ---- XGO startup / IRQ compatibility ---------------------------------- */
 
-/* Heap ceiling used by sbrk/allocator. Allocator init writes 0x87cdae00. */
-RAMSIZE = 0x80c2ce6c;
+/* Startup establishes the firmware GP using these two instructions. */
+XGO_GP_INIT_LUI   = 0x80001270;
+XGO_GP_INIT_ADDIU = 0x80001274;
+XGO_STOCK_GP      = 0x80c34774;
+
+/*
+ * Same IRQ-path patch slot used by SF2000/GB300 Multicore.
+ * Preferred patch strategy: copy the two instructions at 0x80001270/74 into
+ * 0x80049744/48 and flush the I-cache, rather than hard-coding the GP opcode.
+ */
+XGO_IRQ_GP_PATCH_LUI   = 0x80049744;
+XGO_IRQ_GP_PATCH_ADDIU = 0x80049748;
+
+/* ---- XGO globals ------------------------------------------------------- */
+
+/*
+ * Heap state:
+ *   initial current break = 0x813b4bb4 (written during system init)
+ *   heap ceiling         = 0x87cdae00 (written by allocator init)
+ *
+ * Multicore's 0x87000000 core-load convention can be implemented by lowering
+ * RAMSIZE to 0x87000000 before loading an external core, leaving the stock
+ * heap below the external-core window.
+ */
+XGO_HEAP_START = 0x813b4bb4;
+RAMSIZE        = 0x80c2ce6c;
 
 /* Sound-task control word. Emulator wrappers clear bit 0 and wait for 0. */
 g_snd_task_flags = 0x80c2e80c;
@@ -93,11 +116,9 @@ g_run_file_size            = 0x80c33a7c;
 
 /*
  * Still to resolve before attempting an XGO Multicore build:
- *   - exact cache-flush/IRQ-hook patch site used by Multicore init_once()
- *   - any additional libc symbols required by selected cores
+ *   - additional libc/VFS symbols required by a selected external core
  *   - debug/LCD helper symbols if UART-less on-screen diagnostics are retained
- *   - confirmation that 0x87000000..core-end is safe against XGO-specific RAM use
- *
- * Important: the upstream SF2000 Multicore hard-codes stock $gp=0x80c114f4.
- * XGO MUST restore $gp=0x80c34774 before entering stock interrupt handlers.
+ *   - runtime confirmation that no XGO-specific long-lived allocation has
+ *     already crossed 0x87000000 before Multicore lowers RAMSIZE
+ *   - exact stock hook site used to redirect GBA launch into Multicore loader
  */
