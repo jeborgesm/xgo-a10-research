@@ -62,15 +62,14 @@ jobs:
       - name: Garbage-collect reachable XGO core graph without finalizing JALs
         run: |
           set -euo pipefail
-          # A final MIPS executable cannot represent a JAL to an unresolved
-          # symbol (ld temporarily treats it as address zero, causing
-          # R_MIPS_26 truncation from 0x87xxxxxx). A relocatable -r link still
-          # performs archive extraction and --gc-sections from __core_entry__,
-          # but preserves unresolved calls as relocations. This is therefore
-          # the authoritative dependency-reachability audit.
+          # Keep unresolved calls as relocations so R_MIPS_26 targets are not
+          # falsely finalized to address zero. GNU ld requires an explicit GC
+          # root in relocatable mode; __core_entry__ is defined by our frontend
+          # in .init.core_entry and is the real external-core entry contract.
           mipsel-linux-gnu-ld \
             -r \
             --gc-sections \
+            -e __core_entry__ \
             -u __core_entry__ \
             -T tools/multicore/native_nes/xgo_external_stock_services.ld \
             -o xgo-fceumm-reachable.o \
