@@ -96,12 +96,16 @@ STOCK_BRIDGE  xgo_stock_fs_closedir, 0x802ac4f0
 STOCK_BRIDGE xgo_stock_dly_tsk,           0x8030f480
 STOCK_BRIDGE xgo_stock_os_get_tick_count, 0x8030fec8
 
-STOCK_BRIDGE xgo_stock_video_refresh,      0x8035e70c
-STOCK_BRIDGE xgo_stock_audio_sample_batch, 0x8035e7d8
-STOCK_BRIDGE xgo_stock_input_poll,         0x8035ea30
-STOCK_BRIDGE xgo_stock_input_state,        0x8035eb20
-STOCK_BRIDGE xgo_stock_environment,        0x8035eb64
-STOCK_BRIDGE xgo_stock_run_emulator,       0x8035ed48
+/*
+ * Raw bisrv.asd disassembly establishes the actual function prologues below.
+ * Earlier labels landed in the tails/epilogues of preceding functions.
+ */
+STOCK_BRIDGE xgo_stock_video_refresh,      0x8035e73c
+STOCK_BRIDGE xgo_stock_audio_sample_batch, 0x8035e808
+STOCK_BRIDGE xgo_stock_input_poll,         0x8035ea68
+STOCK_BRIDGE xgo_stock_input_state,        0x8035eb50
+STOCK_BRIDGE xgo_stock_environment,        0x8035eb94
+STOCK_BRIDGE xgo_stock_run_emulator,       0x8035ed78
 
 /* ---- stock XGO -> external core -------------------------------------- */
     .extern xgo_diag_get_region
