@@ -178,7 +178,7 @@ static int build_real_rom_path(const char *stub)
     return 1;
 }
 
-static int load_real_rom(void)
+static int load_real_rom(unsigned *loaded_size)
 {
     FILE *f;
     int size;
@@ -206,7 +206,7 @@ static int load_real_rom(void)
         return 0;
     }
     FW_FCLOSE(f);
-    RUN_FILE_SIZE = (unsigned)size;
+    *loaded_size = (unsigned)size;
     return 1;
 }
 
@@ -256,6 +256,7 @@ int __core_entry__(const char *filename, int load_state)
 {
     struct retro_game_info old_game_info;
     unsigned old_run_file_size;
+    unsigned real_rom_size;
     unsigned short old_system_family;
     int (*old_state_save)(const char *);
     int (*old_state_load)(const char *);
@@ -268,12 +269,7 @@ int __core_entry__(const char *filename, int load_state)
 
     init_core_runtime();
 
-    if (!build_real_rom_path(filename) || !load_real_rom())
-        return -1;
-
-    repair_irq_gp();
-
-    /* Save every stock frontend value that this bridge replaces. */
+    /* Save stock values before loading the real ROM changes any shared state. */
     old_game_info.path = GAME_INFO.path;
     old_game_info.data = GAME_INFO.data;
     old_game_info.size = GAME_INFO.size;
@@ -288,6 +284,12 @@ int __core_entry__(const char *filename, int load_state)
     old_unload_game = GFN_UNLOAD_GAME;
     old_run = GFN_RUN;
     old_frameskip = GFN_FRAMESKIP;
+
+    if (!build_real_rom_path(filename) || !load_real_rom(&real_rom_size))
+        return -1;
+
+    RUN_FILE_SIZE = real_rom_size;
+    repair_irq_gp();
 
     /*
      * The dispatch hook is physically inside the GBA path, but the stock
