@@ -1,0 +1,97 @@
+name: XGO entry return probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/xgo-entry-return-probe.yml
+      - tools/multicore/native_nes/xgo_entry_return_probe.s
+      - tools/multicore/probe/pack_xgoc.py
+      - tools/multicore/probe/inspect_xgoc.py
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+
+      - name: Build four-instruction entry probe
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          ld="$tools/mips-mti-elf-ld"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+          nm="$tools/mips-mti-elf-nm"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -c tools/multicore/native_nes/xgo_entry_return_probe.s -o entry-probe.o
+
+          cat > entry-probe.ld <<'EOF'
+          ENTRY(__core_entry__)
+          SECTIONS {
+            .text 0x87000000 : { KEEP(*(.text.entry)) }
+            /DISCARD/ : {
+              *(.MIPS.abiflags)
+              *(.reginfo)
+              *(.gnu.attributes)
+              *(.comment)
+              *(.note*)
+              *(.data*)
+              *(.got*)
+              *(.bss*)
+            }
+          }
+          EOF
+
+          "$ld" -EL -T entry-probe.ld -o entry-probe.elf entry-probe.o
+          "$objcopy" -O binary -j .text entry-probe.elf entry-probe.bin
+          "$objdump" -d entry-probe.elf | tee entry-probe.disasm.txt
+          "$nm" -n entry-probe.elf | tee entry-probe.nm.txt
+
+          # Codescape nm sign-extends 32-bit KSEG addresses on this host and
+          # prints ffffffff87000000. Both spellings denote the same MIPS32
+          # address; objdump below independently asserts the exact 0x87000000
+          # execution address.
+          test "$(stat -c %s entry-probe.bin)" -eq 16
+          grep -Eq '^(ffffffff)?87000000 [Tt] __core_entry__$' entry-probe.nm.txt
+          grep -Eq '^87000000 <__core_entry__>:$' entry-probe.disasm.txt
+          grep -Eq 'lui[[:space:]]+v0,0x5847' entry-probe.disasm.txt
+          grep -Eq 'ori[[:space:]]+v0,v0,0x4f31' entry-probe.disasm.txt
+          grep -Eq 'jr[[:space:]]+ra' entry-probe.disasm.txt
+
+          python3 tools/multicore/probe/pack_xgoc.py \
+            entry-probe.bin core-entry-return-probe.xgc \
+            --entry-offset 0 --memory-size 16 \
+            | tee entry-probe-pack.txt
+          python3 tools/multicore/probe/inspect_xgoc.py core-entry-return-probe.xgc \
+            | tee entry-probe-inspection.txt
+          sha256sum entry-probe.elf entry-probe.bin core-entry-return-probe.xgc \
+            | tee entry-probe.sha256
+
+      - name: Upload continuity probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-entry-return-probe
+          path: |
+            entry-probe.elf
+            entry-probe.bin
+            core-entry-return-probe.xgc
+            entry-probe.disasm.txt
+            entry-probe.nm.txt
+            entry-probe-pack.txt
+            entry-probe-inspection.txt
+            entry-probe.sha256

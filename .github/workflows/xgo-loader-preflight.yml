@@ -1,0 +1,114 @@
+name: XGO loader preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - '.github/workflows/xgo-loader-preflight.yml'
+      - 'tools/multicore/probe/xgo_probe_loader.c'
+      - 'tools/multicore/probe/xgo_probe_init.s'
+      - 'tools/multicore/probe/xgo_probe_loader.ld'
+      - 'tools/multicore/probe/build_probe_asd.py'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/xgo-loader-preflight.yml'
+      - 'tools/multicore/probe/xgo_probe_loader.c'
+      - 'tools/multicore/probe/xgo_probe_init.s'
+      - 'tools/multicore/probe/xgo_probe_loader.ld'
+      - 'tools/multicore/probe/build_probe_asd.py'
+
+jobs:
+  build-loader:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          echo 'd35717f24a67ed2091c32d9fb3d79dc5ebe84c38ac8872736aa018860a724807  /tmp/codescape-mips32.tar.gz' | sha256sum -c -
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+
+      - name: Build injected XGOC loader
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          nm="$tools/mips-mti-elf-nm"
+          objdump="$tools/mips-mti-elf-objdump"
+          readelf="$tools/mips-mti-elf-readelf"
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffreestanding -fno-builtin -ffunction-sections -fdata-sections -Os'
+
+          $cc $flags -c tools/multicore/probe/xgo_probe_loader.c -o xgo_probe_loader.o
+          $cc $flags -c tools/multicore/probe/xgo_probe_init.s -o xgo_probe_init.o
+
+          $cc -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -nostdlib -static \
+            -Wl,--gc-sections \
+            -Wl,-Map,xgo_probe_loader.map \
+            -Wl,-T,tools/multicore/probe/xgo_probe_loader.ld \
+            xgo_probe_init.o xgo_probe_loader.o \
+            -o xgo_probe_loader.elf
+
+          $objcopy -O binary -j .text -j .rodata -j .data \
+            xgo_probe_loader.elf xgo_probe_loader.bin
+
+          $nm -n xgo_probe_loader.elf > xgo_probe_loader.nm
+          $readelf -h -S -l xgo_probe_loader.elf > xgo_probe_loader.readelf.txt
+          $objdump -d xgo_probe_loader.elf > xgo_probe_loader.disasm.txt
+
+          size=$(stat -c %s xgo_probe_loader.bin)
+          capacity=$((0x2180 - 0x1500))
+          headroom=$((capacity - size))
+          start=$($nm -n xgo_probe_loader.elf | awk '$3 == "__start" {h=$1; if(length(h)>8) h=substr(h,length(h)-7); print "0x" h; exit}')
+
+          {
+            printf 'loader_start=%s\n' "$start"
+            printf 'loader_size=%d\n' "$size"
+            printf 'loader_capacity=%d\n' "$capacity"
+            printf 'loader_headroom=%d\n' "$headroom"
+          } | tee xgo_probe_loader_layout.txt
+
+          test "$start" = '0x80001500'
+          if (( size <= 0 || size > capacity )); then
+            echo "ERROR: XGOC loader is $size bytes; stock injection hole is $capacity" >&2
+            exit 1
+          fi
+
+          # The injected loader has no runtime startup that clears BSS of its
+          # own, so reject any allocatable NOBITS section with nonzero size.
+          if $readelf -S -W xgo_probe_loader.elf | awk '$3 == "NOBITS" && $7 != "000000" {found=1} END {exit found ? 0 : 1}'; then
+            echo 'ERROR: injected loader unexpectedly contains non-empty NOBITS/BSS' >&2
+            $readelf -S -W xgo_probe_loader.elf >&2
+            exit 1
+          fi
+
+          sha256sum xgo_probe_loader.elf xgo_probe_loader.bin \
+            | tee xgo_probe_loader.sha256
+
+      - name: Upload loader audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-loader-preflight
+          if-no-files-found: warn
+          path: |
+            xgo_probe_loader.elf
+            xgo_probe_loader.bin
+            xgo_probe_loader.map
+            xgo_probe_loader.nm
+            xgo_probe_loader.readelf.txt
+            xgo_probe_loader.disasm.txt
+            xgo_probe_loader_layout.txt
+            xgo_probe_loader.sha256

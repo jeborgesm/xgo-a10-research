@@ -44,8 +44,8 @@ void __start(void)
 
         run_screen_write(fb, 320, 240, 640);
 
-        /* START is 0x0010 in the preserved XGO logical button contract. */
-        if ((p1 | p2) & 0x0010)
+        /* Final mapped joypad word uses libretro START mask 0x0008. */
+        if ((p1 | p2) & 0x0008)
             break;
 
         dly_tsk(16);

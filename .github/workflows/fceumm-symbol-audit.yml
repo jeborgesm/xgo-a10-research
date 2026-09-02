@@ -1,0 +1,159 @@
+name: FCEUmm MIPS symbol audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/fceumm-symbol-audit.yml
+      - tools/multicore/native_nes/**
+      - tools/multicore/xgo_minimal_environment_shim.c
+      - tools/multicore/xgo_preloaded_rom_sbrk.c
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
+      - name: Install MIPS cross tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-mipsel-linux-gnu g++-mipsel-linux-gnu \
+            binutils-mipsel-linux-gnu make git
+          sudo touch /usr/mipsel-linux-gnu/include/gnu/stubs-o32_soft.h
+
+      - name: Fetch pinned HC15xx sources
+        run: |
+          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git /tmp/fceumm
+          (cd /tmp/fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
+          git clone --no-checkout https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          (cd /tmp/libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
+
+      - name: Build pinned FCEUmm archive
+        working-directory: /tmp/fceumm
+        run: |
+          make clean || true
+          make -j2 platform=sf2000 \
+            'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
+            'CXX=mipsel-linux-gnu-g++ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
+            AR=mipsel-linux-gnu-ar
+
+      - name: Build pinned Multicore libretro-common archive
+        working-directory: /tmp/libretro-common
+        run: |
+          make clean || true
+          make -j2 \
+            'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
+            AR=mipsel-linux-gnu-ar
+
+      - name: Build XGO native frontend objects
+        run: |
+          set -euo pipefail
+          CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2'
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_core_entry.s -o xgo_core_entry.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_gp_bridges.s -o xgo_gp_bridges.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o xgo_nes_native_frontend.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
+
+      - name: Garbage-collect reachable XGO core graph without finalizing JALs
+        run: |
+          set -euo pipefail
+          # Keep unresolved library calls as relocations so R_MIPS_26 targets
+          # are not falsely finalized to zero. The production linker computes
+          # _gp from xgo_core.ld; this relocatable audit supplies a harmless
+          # audit-only absolute value solely to resolve veneer %hi/%lo(_gp).
+          mipsel-linux-gnu-ld \
+            -r \
+            --gc-sections \
+            --defsym=_gp=0x87008000 \
+            -e __core_entry__ \
+            -u __core_entry__ \
+            -T tools/multicore/native_nes/xgo_external_stock_services.ld \
+            -o xgo-fceumm-reachable.o \
+            xgo_core_entry.o \
+            xgo_gp_bridges.o \
+            xgo_nes_native_frontend.o \
+            xgo_minimal_environment_shim.o \
+            xgo_preloaded_rom_sbrk.o \
+            --start-group \
+              /tmp/fceumm/fceumm_libretro_sf2000.a \
+              /tmp/libretro-common/libretro-common.a \
+            --end-group
+
+          mipsel-linux-gnu-nm -u xgo-fceumm-reachable.o \
+            | awk '{print $NF}' | sort -u > reachable-unresolved.txt
+          mipsel-linux-gnu-size -A xgo-fceumm-reachable.o > reachable-size.txt
+          mipsel-linux-gnu-readelf -h xgo-fceumm-reachable.o > reachable-elf-header.txt
+          mipsel-linux-gnu-readelf -S xgo-fceumm-reachable.o > reachable-sections.txt
+          mipsel-linux-gnu-readelf -r xgo-fceumm-reachable.o > reachable-relocations.txt
+
+          # A bridge implementation accidentally omitted from this audit would
+          # otherwise look like an ordinary external runtime dependency.
+          if grep -Eq '^xgo_(stock|core)_' reachable-unresolved.txt; then
+            echo 'ERROR: GP bridge symbol escaped the reachable audit' >&2
+            grep -E '^xgo_(stock|core)_' reachable-unresolved.txt >&2
+            exit 1
+          fi
+
+          {
+            echo '# Garbage-collected XGO native FCEUmm relocatable link'
+            echo
+            printf 'reachable unresolved: '; wc -l < reachable-unresolved.txt
+            echo
+            cat reachable-unresolved.txt
+            echo
+            echo '## reachable object size'
+            cat reachable-size.txt
+          } | tee reachable-audit.txt
+
+      - name: Classify reachable external runtime surface
+        run: |
+          set -euo pipefail
+          grep -E '^(__add|__sub|__mul|__div|__udiv|__mod|__umod|__fix|__float|__extend|__trunc|__eq|__ne|__lt|__le|__gt|__ge)' \
+            reachable-unresolved.txt > reachable-compiler-runtime.txt || true
+          grep -E '^(atan|atan2|cos|cosf|exp|exp2|expf|log|log10|pow|sin|sinf|sincos|sincosf|sqrt|sqrtf|floor|floorf|ceil|ceilf|fabs|fabsf)$' \
+            reachable-unresolved.txt > reachable-libm.txt || true
+          grep -E '^(adler32|crc32|gz|inflate|deflate|zlib)' \
+            reachable-unresolved.txt > reachable-zlib.txt || true
+
+      - name: Compute whole-archive comparison surface
+        run: |
+          set -euo pipefail
+          core=/tmp/fceumm/fceumm_libretro_sf2000.a
+          common=/tmp/libretro-common/libretro-common.a
+          : > defined.txt
+          : > referenced-undefined.txt
+          for archive in "$core" "$common"; do
+            mipsel-linux-gnu-nm -A -g --defined-only "$archive" | awk '{print $NF}' >> defined.txt
+            mipsel-linux-gnu-nm -A -u "$archive" | awk '{print $NF}' >> referenced-undefined.txt
+          done
+          sort -u -o defined.txt defined.txt
+          sort -u -o referenced-undefined.txt referenced-undefined.txt
+          comm -23 referenced-undefined.txt defined.txt > external-unresolved.txt
+          {
+            echo '# Whole-archive comparison only'
+            printf 'true external set: '; wc -l < external-unresolved.txt
+            cat external-unresolved.txt
+          } > whole-archive-audit.txt
+
+      - name: Upload audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: fceumm-symbol-audit
+          path: |
+            reachable-audit.txt
+            reachable-unresolved.txt
+            reachable-compiler-runtime.txt
+            reachable-libm.txt
+            reachable-zlib.txt
+            whole-archive-audit.txt
+            reachable-size.txt
+            reachable-elf-header.txt
+            reachable-sections.txt
+            reachable-relocations.txt

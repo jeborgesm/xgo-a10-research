@@ -1,0 +1,232 @@
+name: XGO native FCEUmm full link
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/xgo-native-fceumm-full-link.yml
+      - tools/multicore/native_nes/**
+      - tools/multicore/xgo_minimal_environment_shim.c
+      - tools/multicore/xgo_preloaded_rom_sbrk.c
+      - tools/multicore/include/dirent.h
+      - tools/multicore/probe/pack_xgoc.py
+      - tools/multicore/probe/inspect_xgoc.py
+
+jobs:
+  full-link:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sha256sum /tmp/codescape-mips32.tar.gz | tee toolchain.sha256
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
+
+      - name: Fetch pinned HC15xx sources
+        run: |
+          set -euxo pipefail
+          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git /tmp/fceumm
+          (cd /tmp/fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
+          git clone --no-checkout https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          (cd /tmp/libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
+          cp tools/multicore/include/dirent.h /tmp/libretro-common/include/dirent.h
+
+      - name: Build pinned FCEUmm and libretro-common
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          (cd /tmp/fceumm && make clean || true && make -j2 platform=sf2000)
+          (cd /tmp/libretro-common && make clean || true && make -j2 \
+            CC="$tools/mips-mti-elf-gcc" AR="$tools/mips-mti-elf-ar")
+          sha256sum /tmp/fceumm/fceumm_libretro_sf2000.a /tmp/libretro-common/libretro-common.a \
+            | tee native-archive.sha256
+
+      - name: Compile native XGO objects
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/libretro-common/include'
+          "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
+          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h \
+            -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Fully link native FCEUmm at 0x87000000
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+          readelf="$tools/mips-mti-elf-readelf"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -static -nostartfiles \
+            -Wl,--gc-sections \
+            -Wl,-Map,xgo-native-fceumm.map \
+            -Wl,-T,tools/multicore/native_nes/xgo_core.ld \
+            -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
+            core_entry.o gp_bridges.o frontend.o environment.o sbrk.o syscalls.o \
+            -Wl,--start-group \
+              /tmp/fceumm/fceumm_libretro_sf2000.a \
+              /tmp/libretro-common/libretro-common.a \
+              -lc -lm -lgcc \
+            -Wl,--end-group \
+            -o xgo-native-fceumm.elf \
+            2>&1 | tee xgo-native-fceumm-link.log
+
+          "$nm" -u xgo-native-fceumm.elf | tee xgo-native-fceumm-undefined.txt
+          unresolved=$(awk '$1 == "U" {n++} END {print n+0}' xgo-native-fceumm-undefined.txt)
+          if (( unresolved != 0 )); then
+            echo "ERROR: native FCEUmm still has $unresolved undefined symbols" >&2
+            exit 1
+          fi
+
+          "$nm" -n xgo-native-fceumm.elf > xgo-native-fceumm.nm
+          "$readelf" -h -S -l xgo-native-fceumm.elf > xgo-native-fceumm.readelf.txt
+          "$objdump" -d xgo-native-fceumm.elf > xgo-native-fceumm.disasm.txt
+          "$objcopy" -O binary xgo-native-fceumm.elf xgo-native-fceumm.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '
+              $3 == name {
+                h=$1
+                if (length(h) > 8) h=substr(h, length(h)-7)
+                printf "0x%s\n", h
+                exit
+              }' xgo-native-fceumm.nm
+          }
+
+          start=$(symbol_hex __image_start)
+          entry=$(symbol_hex __core_entry__)
+          c_entry=$(symbol_hex __core_entry_c)
+          core_gp=$(symbol_hex _gp)
+          file_end=$(symbol_hex __file_end)
+          bss_start=$(symbol_hex __bss_start)
+          image_end=$(symbol_hex __image_end)
+
+          test "$start" = '0x87000000'
+          test "$entry" = '0x87000000'
+          test -n "$c_entry"
+          test -n "$core_gp"
+          test -n "$file_end"
+          test -n "$bss_start"
+          test -n "$image_end"
+
+          gp_dec=$((core_gp))
+          gp_hi=$((((gp_dec + 0x8000) >> 16) & 0xffff))
+          gp_hi_hex=$(printf '%04x' "$gp_hi")
+          entry_disasm=$(awk '/<__core_entry__>:/,/^$/' xgo-native-fceumm.disasm.txt)
+          printf '%s\n' "$entry_disasm" | tee xgo-native-fceumm-entry-disasm.txt
+          printf 'core_gp=%s\ncore_gp_hi=0x%s\n' "$core_gp" "$gp_hi_hex" \
+            | tee xgo-native-fceumm-gp.txt
+          printf '%s\n' "$entry_disasm" | grep -Eiq "lui[[:space:]]+gp,0x${gp_hi_hex}"
+          printf '%s\n' "$entry_disasm" | grep -Eq 'sw[[:space:]]+gp,24\(sp\)'
+          printf '%s\n' "$entry_disasm" | grep -Eq 'lw[[:space:]]+gp,24\(sp\)'
+          printf '%s\n' "$entry_disasm" | grep -Eq '<__core_entry_c>'
+
+          # Prove both directions of the GP boundary exist in the linked image.
+          for sym in xgo_stock_video_refresh xgo_stock_fs_open xgo_stock_run_emulator; do
+            awk -v s="<$sym>:" '$0 ~ s {show=1} show {print} show && /^$/ {exit}' \
+              xgo-native-fceumm.disasm.txt
+          done > xgo-native-fceumm-stock-bridge-disasm.txt
+          grep -Eq 'lui[[:space:]]+gp,0x80c3' xgo-native-fceumm-stock-bridge-disasm.txt
+          grep -Eq 'addiu[[:space:]]+gp,gp,18292' xgo-native-fceumm-stock-bridge-disasm.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' xgo-native-fceumm-stock-bridge-disasm.txt
+
+          for sym in xgo_core_run xgo_core_load_game xgo_core_get_region; do
+            awk -v s="<$sym>:" '$0 ~ s {show=1} show {print} show && /^$/ {exit}' \
+              xgo-native-fceumm.disasm.txt
+          done > xgo-native-fceumm-core-bridge-disasm.txt
+          grep -Eiq "lui[[:space:]]+gp,0x${gp_hi_hex}" xgo-native-fceumm-core-bridge-disasm.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' xgo-native-fceumm-core-bridge-disasm.txt
+
+          entry_offset=$((entry - start))
+          linked_file_span=$((file_end - start))
+          memory_size=$((image_end - start))
+          payload_size=$(stat -c %s xgo-native-fceumm.bin)
+          reserved_size=$((0x87cdae00 - 0x87000000))
+
+          {
+            printf 'image_start=0x%08x\n' "$((start))"
+            printf 'entry=0x%08x\n' "$((entry))"
+            printf 'c_entry=0x%08x\n' "$((c_entry))"
+            printf 'core_gp=0x%08x\n' "$((core_gp))"
+            printf 'entry_offset=0x%x\n' "$entry_offset"
+            printf 'file_end=0x%08x\n' "$((file_end))"
+            printf 'linked_file_span=%d\n' "$linked_file_span"
+            printf 'payload_size=%d\n' "$payload_size"
+            printf 'bss_start=0x%08x\n' "$((bss_start))"
+            printf 'image_end=0x%08x\n' "$((image_end))"
+            printf 'memory_size=%d\n' "$memory_size"
+            printf 'reserved_size=%d\n' "$reserved_size"
+            printf 'headroom=%d\n' "$((reserved_size - memory_size))"
+          } | tee xgo-native-fceumm-layout.txt
+
+          if (( entry_offset != 0 )); then
+            echo 'ERROR: native __core_entry__ must be the first byte of the payload' >&2
+            exit 1
+          fi
+          if (( payload_size > linked_file_span )); then
+            echo 'ERROR: objcopy payload extends beyond linker __file_end' >&2
+            exit 1
+          fi
+          if (( memory_size < payload_size || memory_size > reserved_size )); then
+            echo 'ERROR: native runtime image does not fit XGO reserved core window' >&2
+            exit 1
+          fi
+
+          python3 tools/multicore/probe/pack_xgoc.py \
+            xgo-native-fceumm.bin core-native-nes.xgc \
+            --entry-offset "$entry_offset" \
+            --memory-size "$memory_size" \
+            | tee xgo-native-fceumm-pack.txt
+
+          python3 tools/multicore/probe/inspect_xgoc.py core-native-nes.xgc \
+            | tee xgo-native-fceumm-xgoc-inspection.txt
+
+          sha256sum xgo-native-fceumm.elf xgo-native-fceumm.bin core-native-nes.xgc \
+            | tee xgo-native-fceumm-output.sha256
+
+      - name: Upload first native NES core evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-native-fceumm-full-link
+          if-no-files-found: warn
+          path: |
+            xgo-native-fceumm.elf
+            xgo-native-fceumm.bin
+            core-native-nes.xgc
+            xgo-native-fceumm.map
+            xgo-native-fceumm.nm
+            xgo-native-fceumm.readelf.txt
+            xgo-native-fceumm.disasm.txt
+            xgo-native-fceumm-entry-disasm.txt
+            xgo-native-fceumm-gp.txt
+            xgo-native-fceumm-stock-bridge-disasm.txt
+            xgo-native-fceumm-core-bridge-disasm.txt
+            xgo-native-fceumm-link.log
+            xgo-native-fceumm-undefined.txt
+            xgo-native-fceumm-layout.txt
+            xgo-native-fceumm-pack.txt
+            xgo-native-fceumm-xgoc-inspection.txt
+            xgo-native-fceumm-output.sha256
+            native-archive.sha256
+            toolchain.sha256
+            toolchain-version.txt

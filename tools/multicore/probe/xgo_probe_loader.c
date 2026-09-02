@@ -1,9 +1,11 @@
 /*
- * Minimal XGO external-payload loader research prototype.
+ * Validated XGO external-core loader research prototype.
  *
- * This is intentionally smaller than SF2000 Multicore. It exists to validate
- * the already-mapped XGO loader window and stock callback addresses before a
- * full Multicore port is attempted.
+ * External payloads use the small XGOC container documented alongside this
+ * prototype. The loader validates metadata and payload integrity, reserves the
+ * core RAM window before file I/O, zeros BSS/runtime-only memory, shuts down
+ * the stock sound task using the same contract as XGO run_gba(), flushes the
+ * complete HC15xx cache index space, and only then transfers control.
  *
  * No Firmware.upk / SPI-NOR operation is involved.
  */
@@ -12,11 +14,31 @@ typedef unsigned int u32;
 typedef unsigned long size_t;
 typedef struct FILE_ FILE;
 
+#define CORE_BASE        0x87000000u
+#define CORE_LIMIT       0x87cdae00u
+#define XGOC_MAGIC       0x434f4758u /* bytes: "XGOC" */
+#define XGOC_VERSION     1u
+#define XGOC_HEADER_SIZE 32u
+
+typedef struct {
+    u32 magic;
+    u32 version_header; /* low 16: version, high 16: header size */
+    u32 load_addr;
+    u32 entry_offset;
+    u32 payload_size;
+    u32 memory_size;
+    u32 payload_crc32;  /* standard reflected CRC-32 / IEEE */
+    u32 header_crc32;   /* CRC over the first 28 header bytes */
+} xgoc_header;
+
 static FILE *(*const fw_fopen)(const char *, const char *) = (void *)0x802b3524;
 static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b3698;
 static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static void (*const stock_run_gba)(const char *, int) = (void *)0x80360110;
+static int (*const dly_tsk)(unsigned) = (void *)0x8030f480;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
+static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
+static volatile u32 *const SND_TASK_FLAGS = (void *)0x80c2e80c;
 
 static int has_semicolon(const char *s)
 {
@@ -27,44 +49,139 @@ static int has_semicolon(const char *s)
     return 0;
 }
 
-static void cache_flush_all(void)
+static u32 crc32_ieee(const unsigned char *p, u32 n)
+{
+    u32 crc = 0xffffffffu;
+    u32 i, j;
+
+    for (i = 0; i < n; ++i) {
+        crc ^= p[i];
+        for (j = 0; j < 8; ++j)
+            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
+static void zero_range(unsigned char *p, u32 n)
+{
+    while (n--)
+        *p++ = 0;
+}
+
+static void stop_stock_sound_task(void)
+{
+    /* Exact precondition used by stock run_gba() at 0x80360110. */
+    *SND_TASK_FLAGS &= 0xfffeu;
+    while (*SND_TASK_FLAGS != 0)
+        dly_tsk(1);
+}
+
+/*
+ * HC15xx/SF2000 Multicore uses cache 1 and cache 0 as INDEX operations over
+ * the complete 16 KiB cache-index window. These are not hit-by-address range
+ * operations. Keep the exact known-good pattern here instead of iterating over
+ * CORE_BASE..core_end, which would repeatedly wrap cache indices for a large
+ * core and could fail to cover all indices for a small one.
+ */
+static void full_cache_flush(void)
 {
     u32 p;
 
-    for (p = 0x80000000; p <= 0x80004000; p += 16)
+    /* Index_Writeback_Inv_D over the entire D-cache index space. */
+    for (p = 0x80000000u; p <= 0x80004000u; p += 16u)
         __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
 
     __asm__ volatile("sync; nop; nop");
 
-    for (p = 0x80000000; p <= 0x80004000; p += 16)
+    /* Index_Invalidate_I over the entire I-cache index space. */
+    for (p = 0x80000000u; p <= 0x80004000u; p += 16u)
         __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
+
+    __asm__ volatile("nop; nop; nop; nop; nop");
 }
 
 void load_and_run_core(const char *path, int load_state)
 {
     FILE *f;
+    xgoc_header h;
     u32 old_limit;
-    void (*entry)(void) = (void *)0x87000000;
+    u32 end_addr;
+    u32 entry_addr;
+    void (*entry)(const char *, int);
 
-    /* Preserve normal stock GBA behavior unless this is an explicit probe stub. */
     if (!has_semicolon(path)) {
         stock_run_gba(path, load_state);
         return;
     }
 
-    f = fw_fopen("/mnt/sda1/cores/xgoprobe/core_87000000", "rb");
-    if (!f)
+    /* Never lower the heap ceiling beneath an allocation already in use. */
+    if (*HEAP_BREAK >= CORE_BASE)
         return;
 
-    /* Probe payload is deliberately bounded to 1 MiB. */
-    fw_fread((void *)0x87000000, 1, 0x00100000, f);
-    fw_fclose(f);
-
-    cache_flush_all();
-
-    /* Reserve Multicore's external-core window only for the duration of probe. */
+    /* Reserve external-core RAM before stock stdio can allocate anything. */
     old_limit = *RAMSIZE;
-    *RAMSIZE = 0x87000000;
-    entry();
+    *RAMSIZE = CORE_BASE;
+
+    /* First production target: the pinned HC15xx-compatible FCEUmm core. */
+    f = fw_fopen("/mnt/sda1/cores/fceumm/core.xgc", "rb");
+    if (!f)
+        goto restore_heap;
+
+    if (fw_fread(&h, 1, sizeof(h), f) != sizeof(h))
+        goto close_file;
+
+    if (h.magic != XGOC_MAGIC ||
+        (h.version_header & 0xffffu) != XGOC_VERSION ||
+        (h.version_header >> 16) != XGOC_HEADER_SIZE ||
+        crc32_ieee((const unsigned char *)&h, 28) != h.header_crc32 ||
+        h.load_addr != CORE_BASE ||
+        h.payload_size == 0 ||
+        h.memory_size < h.payload_size ||
+        h.entry_offset >= h.payload_size ||
+        h.memory_size > (CORE_LIMIT - CORE_BASE))
+        goto close_file;
+
+    end_addr = CORE_BASE + h.memory_size;
+    entry_addr = CORE_BASE + h.entry_offset;
+
+    if (end_addr < CORE_BASE ||
+        entry_addr < CORE_BASE ||
+        entry_addr >= end_addr)
+        goto close_file;
+
+    if (fw_fread((void *)CORE_BASE, 1, h.payload_size, f) != h.payload_size)
+        goto close_file;
+
+    fw_fclose(f);
+    f = 0;
+
+    if (crc32_ieee((const unsigned char *)CORE_BASE, h.payload_size) !=
+        h.payload_crc32)
+        goto restore_heap;
+
+    zero_range((unsigned char *)(CORE_BASE + h.payload_size),
+               h.memory_size - h.payload_size);
+
+    /*
+     * run_gba() normally performs this before it installs a core and enters
+     * run_emulator(). Because the dispatch JAL is intercepted before run_gba()
+     * executes, the external path must reproduce it explicitly. Delay it until
+     * after all file/header/CRC checks so a missing or corrupt core can return
+     * without killing the current sound task.
+     */
+    stop_stock_sound_task();
+
+    full_cache_flush();
+
+    /* Pass the original stub and stock load-state request into the core bridge. */
+    entry = (void *)entry_addr;
+    entry(path, load_state);
+
+restore_heap:
     *RAMSIZE = old_limit;
+    return;
+
+close_file:
+    fw_fclose(f);
+    goto restore_heap;
 }

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Build a minimally patched XGO bisrv.asd for an external-payload probe.
+"""Build a guarded XGO bisrv.asd for an external-core experiment.
 
 This tool DOES NOT touch SPI NOR and does not create Firmware.upk.
 It only creates a new SD-loaded ASD file from the exact preserved XGO image.
 
 The selected stock emulator-family call is redirected to the loader at
-0x80001500. Every supported call site has an exact stock-byte signature, so a
-firmware mismatch causes a hard refusal before any output is written.
+0x80001500. The stock IRQ path is also repaired using the XGO firmware's own
+GP-initialization instruction pair, matching the safer modern Multicore
+strategy. Every modified executable site has an exact stock-byte signature, so
+a firmware mismatch causes a hard refusal before any output is written.
 """
 
 from __future__ import annotations
@@ -25,6 +27,20 @@ LCFG_CRC_OFFSET = 0x18C
 LOADER_OFFSET = 0x1500
 LOADER_END = 0x2180
 
+# XGO establishes the stock runtime $gp here at startup. The IRQ repair copies
+# these exact instructions into the already-mapped IRQ call/delay-slot pair.
+GP_INIT_OFFSET = 0x1270
+GP_INIT_EXPECTED = bytes.fromhex(
+    "c3 80 1c 3c "  # lui   $gp,0x80c3
+    "74 47 9c 27"   # addiu $gp,$gp,0x4774
+)
+
+IRQ_GP_PATCH_OFFSET = 0x49744
+IRQ_GP_PATCH_EXPECTED = bytes.fromhex(
+    "3a 41 0c 0c "  # stock IRQ-path jal at 0x80049744
+    "00 00 00 00"   # delay-slot nop
+)
+
 # run_game() family dispatch sites in this exact XGO firmware revision.
 # Values are (ASD file offset, expected original 4-byte little-endian JAL).
 DISPATCH_SITES = {
@@ -35,7 +51,6 @@ DISPATCH_SITES = {
     "snes":   (0x360E40, bytes.fromhex("76 7e 0d 0c")),  # jal 0x8035f9d8
 }
 
-# Friendly aliases accepted by the command line.
 FAMILY_ALIASES = {
     "gba": "gba",
     "gb": "gb",
@@ -69,6 +84,15 @@ def crc32_mpeg2(data: bytes) -> int:
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def require_bytes(image: bytes, offset: int, expected: bytes, what: str) -> None:
+    actual = image[offset:offset + len(expected)]
+    if actual != expected:
+        raise SystemExit(
+            f"Refusing to patch: {what} differs from known XGO stock bytes "
+            f"at 0x{offset:08x} ({actual.hex(' ')} != {expected.hex(' ')})"
+        )
 
 
 def main() -> None:
@@ -110,16 +134,22 @@ def main() -> None:
     if any(original[LOADER_OFFSET:LOADER_END]):
         raise SystemExit("Refusing to patch: XGO loader window is not all zero")
 
-    actual_jal = original[dispatch_offset:dispatch_offset + 4]
-    if actual_jal != expected_stock_jal:
-        raise SystemExit(
-            f"Refusing to patch: {family.upper()} dispatch instruction differs from known "
-            f"XGO stock bytes ({actual_jal.hex(' ')} != {expected_stock_jal.hex(' ')})"
-        )
+    require_bytes(original, dispatch_offset, expected_stock_jal,
+                  f"{family.upper()} dispatch instruction")
+    require_bytes(original, GP_INIT_OFFSET, GP_INIT_EXPECTED,
+                  "startup GP initialization pair")
+    require_bytes(original, IRQ_GP_PATCH_OFFSET, IRQ_GP_PATCH_EXPECTED,
+                  "IRQ GP repair destination")
+
+    # Source the repair bytes from the validated stock image rather than from a
+    # separately reconstructed opcode constant. This preserves the exact GP
+    # selected by this firmware revision.
+    gp_repair = original[GP_INIT_OFFSET:GP_INIT_OFFSET + 8]
 
     patched = bytearray(original)
     patched[LOADER_OFFSET:LOADER_OFFSET + len(loader)] = loader
     patched[dispatch_offset:dispatch_offset + 4] = PROBE_LOADER_JAL
+    patched[IRQ_GP_PATCH_OFFSET:IRQ_GP_PATCH_OFFSET + 8] = gp_repair
 
     payload_size = len(patched) - PAYLOAD_OFFSET
     struct.pack_into("<I", patched, LCFG_SIZE_OFFSET, payload_size)
@@ -134,8 +164,14 @@ def main() -> None:
         raise SystemExit("Internal error: LCFG CRC verification failed")
     if patched[dispatch_offset:dispatch_offset + 4] != PROBE_LOADER_JAL:
         raise SystemExit("Internal error: dispatch JAL write failed")
+    if patched[IRQ_GP_PATCH_OFFSET:IRQ_GP_PATCH_OFFSET + 8] != gp_repair:
+        raise SystemExit("Internal error: IRQ GP repair write failed")
 
-    # Ensure no *other* native emulator call site was modified by this operation.
+    # The startup GP source pair must remain untouched.
+    if patched[GP_INIT_OFFSET:GP_INIT_OFFSET + 8] != GP_INIT_EXPECTED:
+        raise SystemExit("Internal error: startup GP initialization changed")
+
+    # Ensure no other native emulator call site was modified.
     for other_family, (other_offset, other_expected) in DISPATCH_SITES.items():
         if other_family == family:
             continue
@@ -151,6 +187,8 @@ def main() -> None:
     print(f"dispatch off  : 0x{dispatch_offset:08x}")
     print(f"stock JAL     : {expected_stock_jal.hex(' ')}")
     print(f"patched JAL   : {PROBE_LOADER_JAL.hex(' ')}")
+    print(f"GP source     : 0x{GP_INIT_OFFSET:08x}  {gp_repair.hex(' ')}")
+    print(f"IRQ GP patch  : 0x{IRQ_GP_PATCH_OFFSET:08x}  {gp_repair.hex(' ')}")
     print(f"loader bytes  : {len(loader)} / {LOADER_END - LOADER_OFFSET}")
     print(f"payload size  : 0x{payload_size:08x}")
     print(f"payload CRC   : 0x{crc:08x}")
