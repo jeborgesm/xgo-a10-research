@@ -9,6 +9,7 @@ on:
       - .github/workflows/xgo-native-nes-loader-preflight.yml
       - tools/multicore/native_nes/xgo_nes_loader.c
       - tools/multicore/native_nes/build_native_nes_asd.py
+      - tools/multicore/native_nes/stage_native_nes_test.py
       - tools/multicore/probe/xgo_probe_init.s
       - tools/multicore/probe/xgo_probe_loader.ld
 
@@ -93,10 +94,14 @@ jobs:
             exit 1
           fi
 
-          # Guard the patcher's exact stock/JAL contract at source level too.
-          python3 -m py_compile tools/multicore/native_nes/build_native_nes_asd.py
+          # Guard both the firmware patcher and the native-only staging tool.
+          python3 -m py_compile \
+            tools/multicore/native_nes/build_native_nes_asd.py \
+            tools/multicore/native_nes/stage_native_nes_test.py
           grep -q 'NES_JAL_OFFSET = 0x360E20' tools/multicore/native_nes/build_native_nes_asd.py
           grep -q 'EXPECTED_STOCK_NES_JAL = bytes.fromhex("8f 7d 0d 0c")' tools/multicore/native_nes/build_native_nes_asd.py
+          grep -q 'THIS IS THE NATIVE NES PATH' tools/multicore/native_nes/stage_native_nes_test.py
+          grep -q 'ordinary known-good NES ROM' tools/multicore/native_nes/stage_native_nes_test.py
 
           sha256sum xgo_nes_loader.elf xgo_nes_loader.bin | tee xgo_nes_loader.sha256
 
