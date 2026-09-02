@@ -40,15 +40,15 @@ jobs:
       - name: Compile XGO native bridge objects
         run: |
           set -euo pipefail
-          # Use the XGO bare-metal dirent contract even in this Linux-MIPS
-          # reachability lab. Otherwise glibc's readdir64 prototype changes the
-          # platform ABI being measured.
           CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2 -Itools/multicore/include'
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
-          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+          mipsel-linux-gnu-gcc $CFLAGS \
+            -include tools/multicore/native_nes/xgo_stock_gp_redirects.h \
+            -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
 
       - name: Compare reachable unresolved surface before and after syscall bridge
         run: |
@@ -56,9 +56,11 @@ jobs:
           link_reachable() {
             out=$1
             shift
-            mipsel-linux-gnu-ld -r --gc-sections -e __core_entry__ -u __core_entry__ \
+            mipsel-linux-gnu-ld -r --gc-sections \
+              --defsym=_gp=0x87008000 \
+              -e __core_entry__ -u __core_entry__ \
               -T tools/multicore/native_nes/xgo_external_stock_services.ld \
-              -o "$out" core_entry.o frontend.o environment.o sbrk.o "$@" \
+              -o "$out" core_entry.o gp_bridges.o frontend.o environment.o sbrk.o "$@" \
               --start-group /tmp/fceumm/fceumm_libretro_sf2000.a /tmp/libretro-common/libretro-common.a --end-group
           }
 
@@ -68,6 +70,12 @@ jobs:
           mipsel-linux-gnu-nm -u after.o  | awk '{print $NF}' | sort -u > after-unresolved.txt
           comm -23 before-unresolved.txt after-unresolved.txt > resolved-by-syscalls.txt
           comm -13 before-unresolved.txt after-unresolved.txt > introduced-by-syscalls.txt
+
+          if grep -Eq '^xgo_(stock|core)_' after-unresolved.txt; then
+            echo 'ERROR: GP bridge symbol escaped runtime closure audit' >&2
+            grep -E '^xgo_(stock|core)_' after-unresolved.txt >&2
+            exit 1
+          fi
 
           {
             echo '# FCEUmm reachable runtime closure audit'
