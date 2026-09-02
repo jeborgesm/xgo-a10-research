@@ -6,6 +6,7 @@ on:
       - research-external-core-integration
     paths:
       - .github/workflows/xgo-fceumm-compile-diagnostic.yml
+      - tools/multicore/**
   workflow_dispatch:
 
 jobs:
@@ -38,6 +39,7 @@ jobs:
       - name: Compile each XGO source and preserve diagnostics
         shell: bash
         run: |
+          set +e
           set -uo pipefail
           TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
           CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -Os -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -DXGO_WITH_NEWLIB'
