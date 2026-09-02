@@ -10,8 +10,8 @@
  *
  * xgo_core_entry.s owns the true 0x87000000 external entry. It switches from
  * the stock firmware $gp to this image's linker-provided _gp before entering
- * this C frontend, then restores the stock $gp on return. The injected loader
- * separately repairs the stock IRQ $gp path before external execution.
+ * this C frontend, then restores the stock $gp on return. xgo_gp_bridges.s
+ * performs the same transition at every stock/core callback boundary.
  */
 
 #ifdef XGO_WITH_NEWLIB
@@ -57,18 +57,26 @@ extern void retro_run(void);
 extern unsigned retro_get_region(void);
 extern bool xgo_minimal_environment(unsigned, void *);
 
-#define STOCK_VIDEO ((video_cb)0x8035e70cu)
-#define STOCK_AUDIO ((audio_batch_cb)0x8035e7d8u)
-#define STOCK_POLL  ((poll_cb)0x8035ea30u)
-#define STOCK_INPUT ((input_cb)0x8035eb20u)
-
-#define FW_RUN_EMULATOR ((void (*)(int))0x8035ed48u)
+/* Transparent core -> stock veneers. */
+extern void xgo_stock_video_refresh(const void *, unsigned, unsigned, size_t);
+extern size_t xgo_stock_audio_sample_batch(const short *, size_t);
+extern void xgo_stock_input_poll(void);
+extern short xgo_stock_input_state(unsigned, unsigned, unsigned, unsigned);
+extern void xgo_stock_run_emulator(int);
 
 typedef struct FILE_ FILE;
-#define FW_FOPEN  ((FILE *(*)(const char *, const char *))0x802b3524u)
-#define FW_FSEEKO ((int (*)(FILE *, int, int))0x802b3804u)
-#define FW_FTELL  ((int (*)(FILE *))0x802b3f1cu)
-#define FW_FCLOSE ((int (*)(FILE *))0x802b2f40u)
+extern FILE *xgo_stock_fopen(const char *, const char *);
+extern int xgo_stock_fseeko(FILE *, int, int);
+extern int xgo_stock_ftell(FILE *);
+extern int xgo_stock_fclose(FILE *);
+
+/* Transparent stock run_emulator -> core veneers. */
+extern unsigned xgo_core_get_region(void);
+extern void xgo_core_get_av(struct retro_system_av_info *);
+extern bool xgo_core_load_game(const struct retro_game_info *);
+extern void xgo_core_unload_game(void);
+extern void xgo_core_run(void);
+extern int xgo_core_state_io(const char *);
 
 #define GAME_INFO     (*(volatile struct retro_game_info *)0x80c2e914u)
 #define ROM_BUFFER    (*(void **)0x80c33ad8u)
@@ -88,7 +96,9 @@ typedef struct FILE_ FILE;
 #define GFN_FRAMESKIP   (*(void **)0x80c33ae0u)
 #define GFN_RUN         (*(void (**)(void))0x80c33ae4u)
 
-static int disabled_state_io(const char *path)
+/* Called only through xgo_core_state_io, which establishes the external GP
+ * before entering C from stock run_emulator(). */
+int xgo_disabled_state_io(const char *path)
 {
     (void)path;
     return 0;
@@ -100,15 +110,15 @@ static int exact_rom_size(const char *filename, unsigned *size_out)
     FILE *f;
     int size;
 
-    f = FW_FOPEN(filename, "rb");
+    f = xgo_stock_fopen(filename, "rb");
     if (!f)
         return 0;
-    if (FW_FSEEKO(f, 0, 2) != 0) {
-        FW_FCLOSE(f);
+    if (xgo_stock_fseeko(f, 0, 2) != 0) {
+        xgo_stock_fclose(f);
         return 0;
     }
-    size = FW_FTELL(f);
-    FW_FCLOSE(f);
+    size = xgo_stock_ftell(f);
+    xgo_stock_fclose(f);
 
     if (size <= 0 || (unsigned)size > MAX_ROM_SIZE)
         return 0;
@@ -146,11 +156,8 @@ int __core_entry_c(const char *filename, int load_state)
     void (*old_run)(void);
     void *old_frameskip;
 
-    /*
-     * g_run_file_size is already populated before entry and is used by the
-     * preloaded-ROM sbrk implementation to reserve the ROM prefix. Initialize
-     * newlib only after that stock preload has happened.
-     */
+    /* g_run_file_size is already populated before entry and is used by the
+     * preloaded-ROM sbrk implementation to reserve the ROM prefix. */
     init_core_runtime();
 
     if (!ROM_BUFFER || !exact_rom_size(filename, &rom_size))
@@ -173,15 +180,15 @@ int __core_entry_c(const char *filename, int load_state)
 
     SYSTEM_FAMILY = XGO_SYSTEM_NES;
 
-    /* Match stock run_nes: every stock core wrapper clears this shared loop
-     * accumulator before retro_init()/run_emulator(), preventing stale timing
-     * state from the previously active core from leaking into a new launch. */
+    /* Match stock run_nes shared timing state. */
     EMULATOR_LOOP_COUNTER = 0;
 
-    retro_set_video_refresh(STOCK_VIDEO);
-    retro_set_audio_sample_batch(STOCK_AUDIO);
-    retro_set_input_poll(STOCK_POLL);
-    retro_set_input_state(STOCK_INPUT);
+    /* FCEUmm executes with external _gp. Every callback it invokes into stock
+     * therefore points at a veneer that installs XGO_STOCK_GP for the call. */
+    retro_set_video_refresh(xgo_stock_video_refresh);
+    retro_set_audio_sample_batch(xgo_stock_audio_sample_batch);
+    retro_set_input_poll(xgo_stock_input_poll);
+    retro_set_input_state(xgo_stock_input_state);
     retro_set_environment(xgo_minimal_environment);
     retro_init();
 
@@ -192,19 +199,21 @@ int __core_entry_c(const char *filename, int load_state)
     GAME_INFO.size = rom_size;
     GAME_INFO.meta = 0;
 
-    GFN_STATE_LOAD = disabled_state_io;
-    GFN_STATE_SAVE = disabled_state_io;
-    GFN_GET_REGION = retro_get_region;
-    GFN_GET_AV = retro_get_system_av_info;
-    GFN_LOAD_GAME = retro_load_game;
-    GFN_UNLOAD_GAME = retro_unload_game;
-    GFN_RUN = retro_run;
+    /* run_emulator executes under stock GP, so every function pointer that can
+     * lead back into the external image must first restore the core _gp. */
+    GFN_STATE_LOAD = xgo_core_state_io;
+    GFN_STATE_SAVE = xgo_core_state_io;
+    GFN_GET_REGION = xgo_core_get_region;
+    GFN_GET_AV = xgo_core_get_av;
+    GFN_LOAD_GAME = xgo_core_load_game;
+    GFN_UNLOAD_GAME = xgo_core_unload_game;
+    GFN_RUN = xgo_core_run;
     GFN_FRAMESKIP = 0;
 
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
-    FW_RUN_EMULATOR(load_state);
+    xgo_stock_run_emulator(load_state);
     retro_deinit();
 
     GFN_STATE_SAVE = old_state_save;
