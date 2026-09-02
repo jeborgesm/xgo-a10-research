@@ -2,7 +2,26 @@ ENTRY(__start)
 
 SECTIONS
 {
-    /DISCARD/ : { *(.reginfo) *(.MIPS.abiflags) *(.pdr) *(.comment) *(.note*) }
+    /*
+     * Injected loader code executes inside stock firmware without a private
+     * MIPS global-pointer setup. Keep it strictly -G0/-mno-abicalls/-fno-pic
+     * and reject accidental small-data/GOT dependencies at link time.
+     *
+     * LLD may synthesize an otherwise-unused 8-byte MIPS .got even when the
+     * emitted code contains no $gp references; discarding it is intentional.
+     * If future code genuinely references one of these discarded sections,
+     * relocation resolution must fail rather than producing a fragile loader.
+     */
+    /DISCARD/ : {
+        *(.reginfo)
+        *(.MIPS.abiflags)
+        *(.pdr)
+        *(.comment)
+        *(.note*)
+        *(.got*)
+        *(.sdata*)
+        *(.sbss*)
+    }
 
     . = 0x80001500;
     __loader_start = .;
