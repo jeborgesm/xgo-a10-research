@@ -1,28 +1,22 @@
 /*
  * Stripped XGO native-FCEUmm frontend prototype.
  *
- * This is the external image entry intended to be linked together with the
- * known HC15xx-compatible FCEUmm static archive, libretro-common, newlib, the
- * XGO environment shim, and xgo_preloaded_rom_sbrk.c.
+ * This external image is linked with the HC15xx-compatible FCEUmm archive,
+ * static newlib/libretro-common support, the XGO environment shim, and XGO
+ * newlib syscall/sbrk glue.
  *
  * Entry contract:
  *   - loader has validated/placed this image at 0x87000000
  *   - filename is a Multicore-style fake GBA stub, e.g.
- *       .../fceumm;Super Mario Bros.gba
+ *       .../fceumm;Super Mario Bros.nes.gba
  *   - the real ROM lives at
- *       /mnt/sda1/ROMS/fceumm/Super Mario Bros
+ *       /mnt/sda1/ROMS/fceumm/Super Mario Bros.nes
  *
- * First-bring-up policy:
- *   - preserve stock XGO video/audio/input transport
- *   - load the real NES ROM explicitly into gp_buf_64m
- *   - temporarily select stock NES family semantics (0x01)
- *   - repair IRQ $gp exactly as maintained Multicore does
- *   - disable stock save-state I/O to avoid feeding 2017 FCEUmm state files to
- *     the newer core
- *   - configure both libretro ports as ordinary joypads
- *   - restore every stock global borrowed by the bridge before returning
- *   - leave the enhanced Multicore pause-menu patch out until basic execution
- *     is proven
+ * Important memory rule:
+ *   gp_buf_64m is the external newlib heap arena. The ROM MUST NOT be copied
+ *   there before core initialization. Instead, the load-game wrapper allocates
+ *   a temporary ROM buffer from that heap, invokes FCEUmm retro_load_game(),
+ *   then frees it, matching maintained SF2000 Multicore behavior.
  *
  * This source does not touch SPI NOR or Firmware.upk.
  */
@@ -33,7 +27,7 @@ typedef int bool;
 #define false 0
 
 #define MAXPATH 255u
-#define MAX_ROM_SIZE 0x04000000u /* gp_buf_64m contract */
+#define MAX_ROM_SIZE 0x04000000u
 #define RETRO_DEVICE_JOYPAD 1u
 #define XGO_SYSTEM_NES 0x0001u
 
@@ -66,6 +60,10 @@ extern void retro_unload_game(void);
 extern void retro_run(void);
 extern unsigned retro_get_region(void);
 
+/* Supplied by external newlib. */
+extern void *malloc(size_t);
+extern void free(void *);
+
 /* Supplied by xgo_minimal_environment_shim.c. */
 extern bool xgo_minimal_environment(unsigned, void *);
 
@@ -87,7 +85,6 @@ typedef struct FILE_ FILE;
 #define FW_FCLOSE ((int (*)(FILE *))0x802b2f40u)
 
 #define GAME_INFO     (*(volatile struct retro_game_info *)0x80c2e914u)
-#define ROM_BUFFER    (*(void **)0x80c33ad8u)
 #define RUN_FILE_SIZE (*(volatile unsigned *)0x80c33a7cu)
 #define SYSTEM_FAMILY (*(volatile unsigned short *)0x80c33ad0u)
 
@@ -122,11 +119,8 @@ static int streq_n(const char *a, const char *b, unsigned n)
 
 /*
  * Convert the fake GBA dispatch token into the real first-core ROM path.
- *
- * Accepted basename contract:
- *     fceumm;<rom filename>.gba
- *
- * The .gba suffix belongs only to the stock-dispatch stub and is removed.
+ * Accepted basename contract: fceumm;<real ROM filename>.gba
+ * Only the final synthetic .gba suffix is removed.
  */
 static int build_real_rom_path(const char *stub)
 {
@@ -168,53 +162,88 @@ static int build_real_rom_path(const char *stub)
         rom_path[i] = prefix[i];
         ++i;
     }
-
     if (i + name_len > MAXPATH)
         return 0;
-
     while (name_len--)
         rom_path[i++] = *p++;
     rom_path[i] = 0;
     return 1;
 }
 
-static int load_real_rom(unsigned *loaded_size)
+static int get_real_rom_size(unsigned *rom_size)
 {
     FILE *f;
     int size;
 
-    if (!ROM_BUFFER)
-        return 0;
-
     f = FW_FOPEN(rom_path, "rb");
     if (!f)
         return 0;
-
-    if (FW_FSEEKO(f, 0, 2) != 0) { /* SEEK_END */
+    if (FW_FSEEKO(f, 0, 2) != 0) {
         FW_FCLOSE(f);
         return 0;
     }
     size = FW_FTELL(f);
-    if (size <= 0 || (unsigned)size > MAX_ROM_SIZE ||
-        FW_FSEEKO(f, 0, 0) != 0) { /* SEEK_SET */
-        FW_FCLOSE(f);
-        return 0;
-    }
-
-    if (FW_FREAD(ROM_BUFFER, 1, (unsigned)size, f) != (unsigned)size) {
-        FW_FCLOSE(f);
-        return 0;
-    }
     FW_FCLOSE(f);
-    *loaded_size = (unsigned)size;
+
+    if (size <= 0 || (unsigned)size > MAX_ROM_SIZE)
+        return 0;
+    *rom_size = (unsigned)size;
     return 1;
 }
 
 /*
- * Maintained SF2000 Multicore repairs $gp in the IRQ path by copying the two
- * firmware startup instructions rather than embedding a firmware-specific GP
- * constant. XGO has independently confirmed the same source/destination sites.
+ * FCEUmm does not require the ROM path to remain open. Maintained Multicore
+ * loads non-fullpath cores into a temporary malloc() buffer, calls
+ * retro_load_game(), then frees the buffer. Do the same here so gp_buf_64m can
+ * remain exclusively the external newlib heap arena.
  */
+static bool xgo_fceumm_load_game(const struct retro_game_info *info)
+{
+    FILE *f;
+    int size;
+    void *buffer;
+    bool ok;
+    struct retro_game_info tmp;
+
+    if (!info || !info->path)
+        return false;
+
+    f = FW_FOPEN(info->path, "rb");
+    if (!f)
+        return false;
+    if (FW_FSEEKO(f, 0, 2) != 0) {
+        FW_FCLOSE(f);
+        return false;
+    }
+    size = FW_FTELL(f);
+    if (size <= 0 || (unsigned)size > MAX_ROM_SIZE ||
+        FW_FSEEKO(f, 0, 0) != 0) {
+        FW_FCLOSE(f);
+        return false;
+    }
+
+    buffer = malloc((unsigned)size);
+    if (!buffer) {
+        FW_FCLOSE(f);
+        return false;
+    }
+
+    if (FW_FREAD(buffer, 1, (unsigned)size, f) != (unsigned)size) {
+        FW_FCLOSE(f);
+        free(buffer);
+        return false;
+    }
+    FW_FCLOSE(f);
+
+    tmp.path = info->path;
+    tmp.data = buffer;
+    tmp.size = (unsigned)size;
+    tmp.meta = 0;
+    ok = retro_load_game(&tmp);
+    free(buffer);
+    return ok;
+}
+
 static void repair_irq_gp(void)
 {
     volatile unsigned *src = (volatile unsigned *)0x80001270u;
@@ -224,14 +253,12 @@ static void repair_irq_gp(void)
     FW_OS_DISABLE();
     dst[0] = src[0];
     dst[1] = src[1];
-
     for (p = 0x80049740u; p < 0x80049750u; p += 16)
         __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
     __asm__ volatile("sync; nop; nop");
     for (p = 0x80049740u; p < 0x80049750u; p += 16)
         __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
     __asm__ volatile("nop; nop; nop; nop; nop");
-
     FW_OS_ENABLE();
 }
 
@@ -239,7 +266,6 @@ static void repair_irq_gp(void)
 #include <reent.h>
 extern void __libc_init_array(void);
 extern void __sinit(struct _reent *);
-
 static void init_core_runtime(void)
 {
     /* XGOC loader already zeroes file_size..memory_size, including .bss. */
@@ -269,7 +295,7 @@ int __core_entry__(const char *filename, int load_state)
 
     init_core_runtime();
 
-    /* Save stock values before loading the real ROM changes any shared state. */
+    /* Capture stock frontend state before changing any shared values. */
     old_game_info.path = GAME_INFO.path;
     old_game_info.data = GAME_INFO.data;
     old_game_info.size = GAME_INFO.size;
@@ -285,17 +311,12 @@ int __core_entry__(const char *filename, int load_state)
     old_run = GFN_RUN;
     old_frameskip = GFN_FRAMESKIP;
 
-    if (!build_real_rom_path(filename) || !load_real_rom(&real_rom_size))
+    if (!build_real_rom_path(filename) || !get_real_rom_size(&real_rom_size))
         return -1;
 
-    RUN_FILE_SIZE = real_rom_size;
     repair_irq_gp();
-
-    /*
-     * The dispatch hook is physically inside the GBA path, but the stock
-     * frontend must behave as NES while FCEUmm is active (keymap/timing family).
-     */
     SYSTEM_FAMILY = XGO_SYSTEM_NES;
+    RUN_FILE_SIZE = real_rom_size;
 
     retro_set_video_refresh(STOCK_VIDEO);
     retro_set_audio_sample_batch(STOCK_AUDIO);
@@ -304,16 +325,17 @@ int __core_entry__(const char *filename, int load_state)
     retro_set_environment(xgo_minimal_environment);
     retro_init();
 
+    /* ROM data is loaded lazily by xgo_fceumm_load_game from this real path. */
     GAME_INFO.path = rom_path;
-    GAME_INFO.data = ROM_BUFFER;
-    GAME_INFO.size = RUN_FILE_SIZE;
+    GAME_INFO.data = 0;
+    GAME_INFO.size = real_rom_size;
     GAME_INFO.meta = 0;
 
     GFN_STATE_LOAD = disabled_state_io;
     GFN_STATE_SAVE = disabled_state_io;
     GFN_GET_REGION = retro_get_region;
     GFN_GET_AV = retro_get_system_av_info;
-    GFN_LOAD_GAME = retro_load_game;
+    GFN_LOAD_GAME = xgo_fceumm_load_game;
     GFN_UNLOAD_GAME = retro_unload_game;
     GFN_RUN = retro_run;
     GFN_FRAMESKIP = 0;
@@ -321,7 +343,7 @@ int __core_entry__(const char *filename, int load_state)
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
-    /* run_emulator() invokes GFN_UNLOAD_GAME itself on normal exit. */
+    /* run_emulator() calls GFN_UNLOAD_GAME at 0x8035f284 on normal exit. */
     FW_RUN_EMULATOR(load_state);
     retro_deinit();
 
