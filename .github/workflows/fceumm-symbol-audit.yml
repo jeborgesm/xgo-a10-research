@@ -10,7 +10,6 @@ on:
       - tools/multicore/native_nes/**
       - tools/multicore/xgo_minimal_environment_shim.c
       - tools/multicore/xgo_preloaded_rom_sbrk.c
-      - tools/multicore/xgo_stockfw_symbols.ld
 
 jobs:
   audit:
@@ -68,7 +67,7 @@ jobs:
             --gc-sections \
             --unresolved-symbols=ignore-all \
             -T tools/multicore/native_nes/xgo_core.ld \
-            -T tools/multicore/xgo_stockfw_symbols.ld \
+            -T tools/multicore/native_nes/xgo_external_stock_services.ld \
             -o xgo-fceumm-partial.elf \
             xgo_nes_native_frontend.o \
             xgo_minimal_environment_shim.o \
