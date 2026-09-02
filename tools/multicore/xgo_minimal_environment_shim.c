@@ -51,16 +51,17 @@ struct retro_game_info {
 #define XGO_REGION_MODE (*(volatile unsigned *)0x80c2e878u)
 #define XGO_GAME_INFO (*(volatile struct retro_game_info *)0x80c2e914u)
 
-#define RETRO_ENVIRONMENT_SET_ROTATION            1u
-#define RETRO_ENVIRONMENT_GET_CAN_DUPE            3u
-#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY    9u
-#define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT       10u
-#define RETRO_ENVIRONMENT_GET_VARIABLE           15u
-#define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE    17u
-#define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY     31u
-#define RETRO_ENVIRONMENT_GET_GAME_INFO_EXT      66u
-#define RETRO_ENVIRONMENT_EXPERIMENTAL           0x10000u
-#define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
+#define RETRO_ENVIRONMENT_SET_ROTATION               1u
+#define RETRO_ENVIRONMENT_GET_CAN_DUPE               3u
+#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY       9u
+#define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT          10u
+#define RETRO_ENVIRONMENT_GET_VARIABLE              15u
+#define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE       17u
+#define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY        31u
+#define RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE 65u
+#define RETRO_ENVIRONMENT_GET_GAME_INFO_EXT         66u
+#define RETRO_ENVIRONMENT_EXPERIMENTAL              0x10000u
+#define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE    (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /* libretro enum retro_pixel_format */
 #define RETRO_PIXEL_FORMAT_0RGB1555 0u
@@ -119,6 +120,18 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
         if (!data)
             return false;
         *(const char **)data = xgo_save_directory;
+        return true;
+
+    case RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE:
+        /*
+         * The pinned FCEUmm core registers an override for
+         * "fds|nes|unf|unif" with need_fullpath=false. The native XGO handoff
+         * genuinely supports that mode: run_game() has already loaded the
+         * selected NES content, and GET_GAME_INFO_EXT below exposes that same
+         * buffer when retro_load_game() asks for it. A NULL data pointer is a
+         * capability probe in libretro and is therefore also successful.
+         */
+        (void)data;
         return true;
 
     case RETRO_ENVIRONMENT_GET_GAME_INFO_EXT:
