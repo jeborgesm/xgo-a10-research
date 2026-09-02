@@ -60,10 +60,12 @@ jobs:
           }
 
           compile_one core_entry tools/multicore/native_nes/xgo_core_entry.s
+          compile_one gp_bridges tools/multicore/native_nes/xgo_gp_bridges.s
           compile_one native_frontend tools/multicore/native_nes/xgo_nes_native_frontend.c
           compile_one environment_shim tools/multicore/xgo_minimal_environment_shim.c
           compile_one preloaded_sbrk tools/multicore/xgo_preloaded_rom_sbrk.c
-          compile_one newlib_syscalls tools/multicore/xgo_newlib_syscalls.c
+          compile_one newlib_syscalls tools/multicore/native_nes/xgo_newlib_syscalls.c \
+            -include tools/multicore/native_nes/xgo_stock_gp_redirects.h
 
           echo "$overall" > compile-diagnostics/overall.status
           exit 0
