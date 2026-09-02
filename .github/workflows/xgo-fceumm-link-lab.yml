@@ -1,0 +1,85 @@
+name: XGO FCEUmm link lab
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - '.github/workflows/xgo-fceumm-link-lab.yml'
+      - 'tools/multicore/**'
+      - 'findings/xgoc-self-describing-external-core-format.md'
+
+jobs:
+  build-fceumm-archive:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout XGO research branch
+        uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sha256sum /tmp/codescape-mips32.tar.gz | tee toolchain.sha256
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
+
+      - name: Fetch pinned HC15xx FCEUmm source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/madcock/libretro-fceumm.git upstream-fceumm
+          cd upstream-fceumm
+          git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
+          test "$(git rev-parse HEAD)" = 'e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
+
+      - name: Build exact SF2000 static core archive
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make -C upstream-fceumm platform=sf2000 -j2
+          test -f upstream-fceumm/fceumm_libretro_sf2000.a
+          cp upstream-fceumm/fceumm_libretro_sf2000.a .
+          ls -lh fceumm_libretro_sf2000.a
+
+      - name: Extract authoritative unresolved-symbol surface
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          "$tools/mips-mti-elf-nm" -u fceumm_libretro_sf2000.a \
+            | awk '{print $NF}' \
+            | sed '/^$/d' \
+            | sort -u \
+            | tee fceumm-undefined-symbols.txt
+          printf '\nUndefined symbol count: '
+          wc -l < fceumm-undefined-symbols.txt
+          "$tools/mips-mti-elf-ar" t fceumm_libretro_sf2000.a \
+            | tee fceumm-archive-members.txt
+
+      - name: Build and validate XGOC probe tooling
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd tools/multicore/probe
+          ./build_probe.sh
+          python3 inspect_xgoc.py core.xgc
+
+      - name: Upload link-lab artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-fceumm-link-lab
+          if-no-files-found: error
+          path: |
+            fceumm_libretro_sf2000.a
+            fceumm-undefined-symbols.txt
+            fceumm-archive-members.txt
+            toolchain.sha256
+            toolchain-version.txt
+            tools/multicore/probe/core.xgc
+            tools/multicore/probe/xgo_probe_loader.bin
