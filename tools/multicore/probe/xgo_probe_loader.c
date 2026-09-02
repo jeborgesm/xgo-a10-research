@@ -18,6 +18,9 @@ static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static void (*const stock_run_gba)(const char *, int) = (void *)0x80360110;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
 
+#define CORE_BASE  0x87000000u
+#define PROBE_LIMIT 0x00100000u
+
 static int has_semicolon(const char *s)
 {
     while (*s) {
@@ -27,24 +30,35 @@ static int has_semicolon(const char *s)
     return 0;
 }
 
-static void cache_flush_all(void)
+/*
+ * Make bytes written by fread visible to instruction fetch before jumping to
+ * CORE_BASE.  The original prototype accidentally operated on 0x80000000..
+ * 0x80004000, which does not cover the external payload at 0x87000000.
+ *
+ * Keep this deliberately bounded to the same 1 MiB research window used by
+ * the probe fread.  A production Multicore loader should use the actual image
+ * span (and explicitly account for BSS) rather than inheriting this limit.
+ */
+static void cache_sync_core_window(void)
 {
     u32 p;
 
-    for (p = 0x80000000; p <= 0x80004000; p += 16)
+    for (p = CORE_BASE; p < CORE_BASE + PROBE_LIMIT; p += 16)
         __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
 
     __asm__ volatile("sync; nop; nop");
 
-    for (p = 0x80000000; p <= 0x80004000; p += 16)
+    for (p = CORE_BASE; p < CORE_BASE + PROBE_LIMIT; p += 16)
         __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
+
+    __asm__ volatile("sync; nop; nop");
 }
 
 void load_and_run_core(const char *path, int load_state)
 {
     FILE *f;
     u32 old_limit;
-    void (*entry)(void) = (void *)0x87000000;
+    void (*entry)(void) = (void *)CORE_BASE;
 
     /* Preserve normal stock GBA behavior unless this is an explicit probe stub. */
     if (!has_semicolon(path)) {
@@ -57,14 +71,14 @@ void load_and_run_core(const char *path, int load_state)
         return;
 
     /* Probe payload is deliberately bounded to 1 MiB. */
-    fw_fread((void *)0x87000000, 1, 0x00100000, f);
+    fw_fread((void *)CORE_BASE, 1, PROBE_LIMIT, f);
     fw_fclose(f);
 
-    cache_flush_all();
+    cache_sync_core_window();
 
     /* Reserve Multicore's external-core window only for the duration of probe. */
     old_limit = *RAMSIZE;
-    *RAMSIZE = 0x87000000;
+    *RAMSIZE = CORE_BASE;
     entry();
     *RAMSIZE = old_limit;
 }
