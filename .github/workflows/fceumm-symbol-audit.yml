@@ -19,11 +19,10 @@ jobs:
             gcc-mipsel-linux-gnu g++-mipsel-linux-gnu \
             binutils-mipsel-linux-gnu make git
 
-          # Ubuntu's mipsel-linux-gnu sysroot is built for hard-float and omits
-          # this glibc bookkeeping header. We only need libc declarations while
-          # compiling the static core archive; the final XGO image will not link
-          # Linux glibc. Supplying the empty soft-float selector lets GCC honor
-          # -msoft-float and continue the compile-only ABI/symbol audit.
+          # Compile-only archive audit: Ubuntu's Linux MIPS sysroot omits the
+          # soft-float glibc selector header. The final XGO core will not link
+          # Linux glibc; this only permits the source to be compiled with the
+          # same -msoft-float ABI used by the HC15xx target.
           sudo touch /usr/mipsel-linux-gnu/include/gnu/stubs-o32_soft.h
 
       - name: Fetch pinned HC15xx FCEUmm
@@ -41,12 +40,33 @@ jobs:
             CXX=mipsel-linux-gnu-g++ \
             AR=mipsel-linux-gnu-ar
 
-      - name: Audit archive ABI and undefined symbols
+      - name: Compute true archive-wide unresolved symbols
         working-directory: fceumm
         run: |
-          set -e
+          set -euo pipefail
           archive=fceumm_libretro_sf2000.a
           test -f "$archive"
+
+          # nm -A gives one line per symbol with an archive/member prefix. Keep
+          # only the symbol field. A static archive may reference symbols that
+          # another member of the same archive defines, so subtract the archive's
+          # complete defined-global set from the complete undefined-reference set.
+          mipsel-linux-gnu-nm -A -g --defined-only "$archive" \
+            | awk '{print $NF}' | sort -u > ../defined.txt
+          mipsel-linux-gnu-nm -A -u "$archive" \
+            | awk '{print $NF}' | sort -u > ../referenced-undefined.txt
+          comm -23 ../referenced-undefined.txt ../defined.txt > ../external-unresolved.txt
+
+          # Broad classification is informational; external-unresolved.txt is
+          # the authoritative set. Keep categories deliberately simple so odd
+          # dependencies remain visible instead of being hidden by heuristics.
+          grep -E '^(__add|__sub|__mul|__div|__udiv|__fix|__float|__extend|__trunc|__eq|__ne|__lt|__le|__gt|__ge)' \
+            ../external-unresolved.txt > ../compiler-runtime.txt || true
+          grep -E '^(atan|atan2|cos|cosf|exp|exp2|expf|log|log10|pow|sin|sinf|sincos|sincosf|sqrt|sqrtf)$' \
+            ../external-unresolved.txt > ../libm.txt || true
+          grep -E '^(crc32|gz|inflate|deflate|zlib)' \
+            ../external-unresolved.txt > ../zlib.txt || true
+
           {
             echo '# FCEUmm pinned HC15xx archive audit'
             echo
@@ -64,21 +84,31 @@ jobs:
               mipsel-linux-gnu-readelf -h "/tmp/$obj" | grep -E 'Class:|Data:|Machine:|Flags:' || true
             done
             echo
-            echo '## unique undefined symbols'
-            mipsel-linux-gnu-nm -u "$archive" \
-              | sed -E 's/^.* U //' \
-              | sed '/^$/d' \
-              | sort -u
+            echo '## archive-wide counts'
+            printf 'defined globals:      '; wc -l < ../defined.txt
+            printf 'undefined references: '; wc -l < ../referenced-undefined.txt
+            printf 'true external set:    '; wc -l < ../external-unresolved.txt
             echo
-            echo '## symbol count'
-            mipsel-linux-gnu-nm -u "$archive" \
-              | sed -E 's/^.* U //' \
-              | sed '/^$/d' \
-              | sort -u | wc -l
+            echo '## true external unresolved symbols'
+            cat ../external-unresolved.txt
+            echo
+            echo '## likely compiler-runtime symbols'
+            cat ../compiler-runtime.txt || true
+            echo
+            echo '## likely libm symbols'
+            cat ../libm.txt || true
+            echo
+            echo '## likely zlib symbols'
+            cat ../zlib.txt || true
           } | tee ../fceumm-symbol-audit.txt
 
       - name: Upload audit
         uses: actions/upload-artifact@v4
         with:
           name: fceumm-symbol-audit
-          path: fceumm-symbol-audit.txt
+          path: |
+            fceumm-symbol-audit.txt
+            external-unresolved.txt
+            compiler-runtime.txt
+            libm.txt
+            zlib.txt
