@@ -42,29 +42,33 @@ def main() -> int:
     if args.memory_size > CORE_LIMIT - LOAD_ADDR:
         raise SystemExit("memory image exceeds reserved XGO external-core window")
 
-    crc = binascii.crc32(payload) & 0xFFFFFFFF
+    payload_crc = binascii.crc32(payload) & 0xFFFFFFFF
     version_header = VERSION | (HEADER_SIZE << 16)
 
-    header = struct.pack(
-        "<4s7I",
+    # First seven words are protected by the eighth word's header CRC.
+    header_prefix = struct.pack(
+        "<4s6I",
         MAGIC,
         version_header,
         args.load_address,
         args.entry_offset,
         payload_size,
         args.memory_size,
-        crc,
-        0,  # flags; version 1 defines no flags
+        payload_crc,
     )
+    assert len(header_prefix) == 28
+    header_crc = binascii.crc32(header_prefix) & 0xFFFFFFFF
+    header = header_prefix + struct.pack("<I", header_crc)
     assert len(header) == HEADER_SIZE
 
     args.output.write_bytes(header + payload)
     print(f"XGOC: {args.output}")
     print(f"  payload      {payload_size} bytes")
     print(f"  memory       {args.memory_size} bytes")
-    print(f"  BSS/runtime  {args.memory_size - payload_size} bytes")
+    print(f"  zero tail    {args.memory_size - payload_size} bytes")
     print(f"  entry        0x{args.load_address + args.entry_offset:08x}")
-    print(f"  CRC32        0x{crc:08x}")
+    print(f"  payload CRC  0x{payload_crc:08x}")
+    print(f"  header CRC   0x{header_crc:08x}")
     return 0
 
 
