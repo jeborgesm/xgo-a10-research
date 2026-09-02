@@ -52,15 +52,14 @@ jobs:
           tools=/opt/mips32-mti-elf/2019.09-03-2/bin
           cc="$tools/mips-mti-elf-gcc"
           ar="$tools/mips-mti-elf-ar"
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffast-math -fomit-frame-pointer -ffunction-sections -fdata-sections -O2 -DNDEBUG -DSF2000'
 
           make -C upstream-fceumm platform=sf2000 -j2
           cp upstream-fceumm/fceumm_libretro_sf2000.a .
 
-          "$cc" -EL -march=mips32 -mtune=mips32 -msoft-float -G0 \
-            -mno-abicalls -fno-pic -ffast-math -fomit-frame-pointer \
-            -ffunction-sections -fdata-sections -O2 -DNDEBUG -DSF2000 \
-            -c tools/multicore/xgo_fceumm_support.c -o xgo_fceumm_support.o
-          "$ar" rcs xgo_fceumm_support.a xgo_fceumm_support.o
+          $cc $flags -c tools/multicore/xgo_fceumm_support.c -o xgo_fceumm_support.o
+          $cc $flags -c tools/multicore/xgo_newlib_stubs.c -o xgo_newlib_stubs.o
+          "$ar" rcs xgo_fceumm_support.a xgo_fceumm_support.o xgo_newlib_stubs.o
 
           ls -lh fceumm_libretro_sf2000.a xgo_fceumm_support.a
           sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive.sha256
@@ -86,12 +85,8 @@ jobs:
             fceumm_libretro_sf2000.a xgo_fceumm_support.a \
             | tee fceumm-plus-xgo-support-symbol-analysis.txt
 
-          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar t \
-            fceumm_libretro_sf2000.a | tee fceumm-archive-members.txt
-
       - name: Resolve against XGO firmware symbols and Codescape runtime
         shell: bash
-        continue-on-error: true
         run: |
           set -euxo pipefail
           cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
@@ -106,26 +101,16 @@ jobs:
             -o fceumm-runtime-resolved.o \
             2>&1 | tee fceumm-runtime-link.log
 
-          if [[ -f fceumm-runtime-resolved.o ]]; then
-            "$nm" -u fceumm-runtime-resolved.o \
-              | awk '$1 == "U" {print $2}' | sort -u \
-              | tee fceumm-after-runtime-symbols.txt
-            "$nm" -n fceumm-runtime-resolved.o > fceumm-runtime-resolved.nm
-          fi
+          "$nm" -u fceumm-runtime-resolved.o \
+            | awk '$1 == "U" {print $2}' | sort -u \
+            | tee fceumm-after-runtime-symbols.txt
+          "$nm" -n fceumm-runtime-resolved.o > fceumm-runtime-resolved.nm
 
-      - name: Build XGOC probe with Codescape tools
-        shell: bash
-        continue-on-error: true
-        run: |
-          set -euxo pipefail
-          cd tools/multicore/probe
-          CLANG=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc \
-          LD_LLD=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ld \
-          OBJCOPY=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-objcopy \
-          NM=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-nm \
-            bash ./build_probe.sh 2>&1 | tee ../../../xgoc-build.log
-          if [[ -f core.xgc ]]; then
-            python3 inspect_xgoc.py core.xgc 2>&1 | tee ../../../xgoc-inspect.log
+          unresolved=$(wc -l < fceumm-after-runtime-symbols.txt)
+          echo "$unresolved" | tee fceumm-after-runtime-count.txt
+          if (( unresolved != 0 )); then
+            echo "ERROR: final partial link still has $unresolved unresolved symbols" >&2
+            exit 1
           fi
 
       - name: Upload link-lab artifacts
@@ -146,13 +131,9 @@ jobs:
             fceumm-plus-xgo-support-external-symbols-classified.txt
             fceumm-plus-xgo-support-symbol-analysis.txt
             fceumm-after-runtime-symbols.txt
+            fceumm-after-runtime-count.txt
             fceumm-runtime-link.log
             fceumm-runtime-resolved.o
             fceumm-runtime-resolved.nm
-            fceumm-archive-members.txt
             toolchain.sha256
             toolchain-version.txt
-            xgoc-build.log
-            xgoc-inspect.log
-            tools/multicore/probe/core.xgc
-            tools/multicore/probe/xgo_probe_loader.bin
