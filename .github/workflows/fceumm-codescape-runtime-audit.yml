@@ -54,14 +54,17 @@ jobs:
           compile_one() {
             src=$1
             out=$2
+            shift 2
             echo "=== $src ===" | tee -a native-compile.log
-            "$cc" $flags -c "$src" -o "$out" 2>&1 | tee -a native-compile.log
+            "$cc" $flags "$@" -c "$src" -o "$out" 2>&1 | tee -a native-compile.log
           }
           compile_one tools/multicore/native_nes/xgo_core_entry.s core_entry.o
+          compile_one tools/multicore/native_nes/xgo_gp_bridges.s gp_bridges.o
           compile_one tools/multicore/native_nes/xgo_nes_native_frontend.c frontend.o
           compile_one tools/multicore/xgo_minimal_environment_shim.c environment.o
           compile_one tools/multicore/xgo_preloaded_rom_sbrk.c sbrk.o
-          compile_one tools/multicore/native_nes/xgo_newlib_syscalls.c syscalls.o
+          compile_one tools/multicore/native_nes/xgo_newlib_syscalls.c syscalls.o \
+            -include tools/multicore/native_nes/xgo_stock_gp_redirects.h
 
       - name: Measure exact Codescape runtime closure
         run: |
@@ -70,11 +73,13 @@ jobs:
           cc="$tools/mips-mti-elf-gcc"
           nm="$tools/mips-mti-elf-nm"
 
-          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
-            -r -nostartfiles \
+          common_link='-EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -r -nostartfiles'
+
+          "$cc" $common_link \
             -Wl,--gc-sections -Wl,-e,__core_entry__ -Wl,-u,__core_entry__ \
+            -Wl,--defsym,_gp=0x87008000 \
             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
-            core_entry.o frontend.o environment.o sbrk.o syscalls.o \
+            core_entry.o gp_bridges.o frontend.o environment.o sbrk.o syscalls.o \
             -Wl,--start-group \
               /tmp/fceumm/fceumm_libretro_sf2000.a \
               /tmp/libretro-common/libretro-common.a \
@@ -83,11 +88,11 @@ jobs:
 
           "$nm" -u native-before-runtime.o | awk '$1 == "U" {print $2}' | sort -u > before-runtime.txt
 
-          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
-            -r -nostartfiles \
+          "$cc" $common_link \
             -Wl,--gc-sections -Wl,-e,__core_entry__ -Wl,-u,__core_entry__ \
+            -Wl,--defsym,_gp=0x87008000 \
             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
-            core_entry.o frontend.o environment.o sbrk.o syscalls.o \
+            core_entry.o gp_bridges.o frontend.o environment.o sbrk.o syscalls.o \
             -Wl,--start-group \
               /tmp/fceumm/fceumm_libretro_sf2000.a \
               /tmp/libretro-common/libretro-common.a \
@@ -98,6 +103,12 @@ jobs:
           "$nm" -u native-after-runtime.o | awk '$1 == "U" {print $2}' | sort -u > after-runtime.txt
           comm -23 before-runtime.txt after-runtime.txt > resolved-by-codescape.txt
           comm -13 before-runtime.txt after-runtime.txt > introduced-by-codescape.txt
+
+          if grep -Eq '^xgo_(stock|core)_' after-runtime.txt; then
+            echo 'ERROR: GP bridge symbol escaped Codescape runtime audit' >&2
+            grep -E '^xgo_(stock|core)_' after-runtime.txt >&2
+            exit 1
+          fi
 
           {
             echo '# Native FCEUmm exact Codescape runtime closure'
