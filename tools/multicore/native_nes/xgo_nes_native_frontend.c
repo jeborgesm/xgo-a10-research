@@ -73,6 +73,10 @@ typedef struct FILE_ FILE;
 #define RUN_FILE_SIZE (*(volatile unsigned *)0x80c33a7cu)
 #define SYSTEM_FAMILY (*(volatile unsigned short *)0x80c33ad0u)
 
+/* Stock run_nes clears this immediately before installing libretro callbacks.
+ * run_emulator then uses it in its timing/frameskip bookkeeping. */
+#define EMULATOR_LOOP_COUNTER (*(volatile unsigned *)0x80c2e964u)
+
 #define GFN_STATE_SAVE  (*(int (**)(const char *))0x80c33a70u)
 #define GFN_GET_REGION  (*(unsigned (**)(void))0x80c33a9cu)
 #define GFN_GET_AV      (*(void (**)(struct retro_system_av_info *))0x80c33aacu)
@@ -167,6 +171,11 @@ int __core_entry__(const char *filename, int load_state)
     old_frameskip = GFN_FRAMESKIP;
 
     SYSTEM_FAMILY = XGO_SYSTEM_NES;
+
+    /* Match stock run_nes: every stock core wrapper clears this shared loop
+     * accumulator before retro_init()/run_emulator(), preventing stale timing
+     * state from the previously active core from leaking into a new launch. */
+    EMULATOR_LOOP_COUNTER = 0;
 
     retro_set_video_refresh(STOCK_VIDEO);
     retro_set_audio_sample_batch(STOCK_AUDIO);
