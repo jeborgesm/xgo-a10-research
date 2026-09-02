@@ -3,7 +3,8 @@
  *
  * External payloads use the small XGOC container documented alongside this
  * prototype. The loader validates metadata and payload integrity, reserves the
- * core RAM window before file I/O, zeros BSS/runtime-only memory, flushes the
+ * core RAM window before file I/O, zeros BSS/runtime-only memory, shuts down
+ * the stock sound task using the same contract as XGO run_gba(), flushes the
  * complete HC15xx cache index space, and only then transfers control.
  *
  * No Firmware.upk / SPI-NOR operation is involved.
@@ -34,8 +35,10 @@ static FILE *(*const fw_fopen)(const char *, const char *) = (void *)0x802b3524;
 static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b3698;
 static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static void (*const stock_run_gba)(const char *, int) = (void *)0x80360110;
+static int (*const dly_tsk)(unsigned) = (void *)0x8030f480;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
 static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
+static volatile u32 *const SND_TASK_FLAGS = (void *)0x80c2e80c;
 
 static int has_semicolon(const char *s)
 {
@@ -63,6 +66,14 @@ static void zero_range(unsigned char *p, u32 n)
 {
     while (n--)
         *p++ = 0;
+}
+
+static void stop_stock_sound_task(void)
+{
+    /* Exact precondition used by stock run_gba() at 0x80360110. */
+    *SND_TASK_FLAGS &= 0xfffeu;
+    while (*SND_TASK_FLAGS != 0)
+        dly_tsk(1);
 }
 
 /*
@@ -150,6 +161,15 @@ void load_and_run_core(const char *path, int load_state)
 
     zero_range((unsigned char *)(CORE_BASE + h.payload_size),
                h.memory_size - h.payload_size);
+
+    /*
+     * run_gba() normally performs this before it installs a core and enters
+     * run_emulator(). Because the dispatch JAL is intercepted before run_gba()
+     * executes, the external path must reproduce it explicitly. Delay it until
+     * after all file/header/CRC checks so a missing or corrupt core can return
+     * without killing the current sound task.
+     */
+    stop_stock_sound_task();
 
     full_cache_flush();
 
