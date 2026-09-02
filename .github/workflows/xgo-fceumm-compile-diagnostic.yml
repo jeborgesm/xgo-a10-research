@@ -59,6 +59,7 @@ jobs:
             if [ "$status" != 0 ]; then overall=1; fi
           }
 
+          compile_one core_entry tools/multicore/native_nes/xgo_core_entry.s
           compile_one native_frontend tools/multicore/native_nes/xgo_nes_native_frontend.c
           compile_one environment_shim tools/multicore/xgo_minimal_environment_shim.c
           compile_one preloaded_sbrk tools/multicore/xgo_preloaded_rom_sbrk.c
