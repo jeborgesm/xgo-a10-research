@@ -1,0 +1,80 @@
+name: XGO FCEUmm frontend compile diagnostic
+
+on:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/xgo-fceumm-compile-diagnostic.yml
+  workflow_dispatch:
+
+jobs:
+  diagnose-xgo-sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact Codescape toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ARCHIVE=Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz
+          URL1='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          URL2='https://drive.usercontent.google.com/download?id=1MpsE__0Ra_BW3GGMfxvULeX5XeLQDSZR&authuser=0'
+          curl -fL --retry 3 -o "$ARCHIVE" "$URL1" || curl -fL --retry 3 -o "$ARCHIVE" "$URL2"
+          sudo tar -xzf "$ARCHIVE" -C /opt
+
+      - name: Fetch libretro-common headers
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          cd /tmp/libretro-common
+          git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af
+          cp "$GITHUB_WORKSPACE/tools/multicore/include/dirent.h" include/dirent.h
+
+      - name: Compile each XGO source and preserve diagnostics
+        shell: bash
+        run: |
+          set -uo pipefail
+          TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
+          CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -Os -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -DXGO_WITH_NEWLIB'
+          mkdir -p compile-diagnostics
+          overall=0
+
+          compile_one() {
+            name=$1
+            src=$2
+            shift 2
+            echo "=== $name ===" | tee "compile-diagnostics/$name.log"
+            "${TOOL}gcc" $CFLAGS -Itools/multicore/include -I/tmp/libretro-common/include "$@" -c "$src" -o "$name.o" \
+              >>"compile-diagnostics/$name.log" 2>&1
+            status=$?
+            echo "status=$status" | tee -a "compile-diagnostics/$name.log"
+            echo "$status" > "compile-diagnostics/$name.status"
+            if [ "$status" != 0 ]; then overall=1; fi
+          }
+
+          compile_one native_frontend tools/multicore/native_nes/xgo_nes_native_frontend.c
+          compile_one environment_shim tools/multicore/xgo_minimal_environment_shim.c
+          compile_one preloaded_sbrk tools/multicore/xgo_preloaded_rom_sbrk.c
+          compile_one newlib_syscalls tools/multicore/xgo_newlib_syscalls.c
+
+          echo "$overall" > compile-diagnostics/overall.status
+          exit 0
+
+      - name: Upload compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-fceumm-compile-diagnostics
+          path: compile-diagnostics/
+          if-no-files-found: error
+
+      - name: Fail if any XGO source failed
+        if: always()
+        shell: bash
+        run: |
+          test "$(cat compile-diagnostics/overall.status)" = 0
