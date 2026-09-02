@@ -85,6 +85,9 @@ extern int xgo_core_state_io(const char *);
 #ifndef XGO_BRINGUP_SUBSTAGE
 #error XGO_BRINGUP_SUBSTAGE must be defined as 51, 52, 53, or 54
 #endif
+#if XGO_BRINGUP_SUBSTAGE < 51 || XGO_BRINGUP_SUBSTAGE > 54
+#error XGO_BRINGUP_SUBSTAGE must be 51, 52, 53, or 54
+#endif
 
 extern void __libc_init_array(void);
 extern void __sinit(struct _reent *);
@@ -211,8 +214,7 @@ int __core_entry_c(const char *filename, int load_state)
 #if XGO_BRINGUP_SUBSTAGE == 51
     restore_game_info(&old);
     return 0;
-#endif
-
+#else
     GFN_STATE_LOAD = xgo_core_state_io;
     GFN_STATE_SAVE = xgo_core_state_io;
     GFN_GET_REGION = xgo_core_get_region;
@@ -221,28 +223,26 @@ int __core_entry_c(const char *filename, int load_state)
     GFN_UNLOAD_GAME = xgo_core_unload_game;
     GFN_RUN = xgo_core_run;
     GFN_FRAMESKIP = 0;
+#endif
 
 #if XGO_BRINGUP_SUBSTAGE == 52
     restore_gfn(&old);
     restore_game_info(&old);
     return 0;
-#endif
-
+#elif XGO_BRINGUP_SUBSTAGE >= 53
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
+#endif
 
 #if XGO_BRINGUP_SUBSTAGE == 53
     restore_gfn(&old);
     restore_game_info(&old);
     return 0;
-#endif
-
+#elif XGO_BRINGUP_SUBSTAGE == 54
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
-
-#if XGO_BRINGUP_SUBSTAGE == 54
     restore_gfn(&old);
     restore_game_info(&old);
     return 0;
 #endif
 
-#error Unsupported XGO_BRINGUP_SUBSTAGE
+    return 0;
 }
