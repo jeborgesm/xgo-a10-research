@@ -209,6 +209,9 @@ gfn_retro_run              = 0x80c33ae4;
 
 g_run_file_size            = 0x80c33a7c;
 
+/* Low family bits select NES/Sega/SNES/GBA/GB/Arcade frontend policy. */
+XGO_ACTIVE_SYSTEM_FAMILY = 0x80c33ad0;
+
 /*
  * Controller task and final mapped state arrays. Their 0x68-byte separation
  * matches the same two-stage state model documented by SF2000 Multicore.
