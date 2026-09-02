@@ -36,7 +36,7 @@ jobs:
           sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
           /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
 
-      - name: Fetch pinned HC15xx FCEUmm source
+      - name: Fetch pinned HC15xx sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -44,30 +44,69 @@ jobs:
           cd upstream-fceumm
           git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
           test "$(git rev-parse HEAD)" = 'e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
+          cd ..
+          git clone https://github.com/madcock/libretro-common.git upstream-libretro-common
 
-      - name: Build exact SF2000 static core archive
+      - name: Build exact SF2000 static archives
         shell: bash
         run: |
           set -euxo pipefail
           make -C upstream-fceumm platform=sf2000 -j2
           test -f upstream-fceumm/fceumm_libretro_sf2000.a
           cp upstream-fceumm/fceumm_libretro_sf2000.a .
-          ls -lh fceumm_libretro_sf2000.a
-          sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive.sha256
 
-      - name: Extract authoritative unresolved-symbol surface
+          make -C upstream-libretro-common -j2
+          test -f upstream-libretro-common/libretro-common.a
+          cp upstream-libretro-common/libretro-common.a .
+
+          ls -lh fceumm_libretro_sf2000.a libretro-common.a
+          sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive.sha256
+          sha256sum libretro-common.a | tee libretro-common-archive.sha256
+
+      - name: Analyze true external symbols
         shell: bash
         run: |
           set -euxo pipefail
-          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
-          "$tools/mips-mti-elf-nm" -u fceumm_libretro_sf2000.a \
-            | awk '{print $NF}' \
-            | sed '/^$/d' \
-            | sort -u \
-            | tee fceumm-undefined-symbols.txt
-          wc -l < fceumm-undefined-symbols.txt | tee fceumm-undefined-count.txt
-          "$tools/mips-mti-elf-ar" t fceumm_libretro_sf2000.a \
-            | tee fceumm-archive-members.txt
+          nm=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-nm
+
+          python3 tools/multicore/analyze_archive_symbols.py \
+            --nm "$nm" \
+            --output fceumm-external-symbols.txt \
+            --classified-output fceumm-external-symbols-classified.txt \
+            fceumm_libretro_sf2000.a \
+            | tee fceumm-symbol-analysis.txt
+
+          python3 tools/multicore/analyze_archive_symbols.py \
+            --nm "$nm" \
+            --output fceumm-plus-common-external-symbols.txt \
+            --classified-output fceumm-plus-common-external-symbols-classified.txt \
+            fceumm_libretro_sf2000.a libretro-common.a \
+            | tee fceumm-plus-common-symbol-analysis.txt
+
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar t \
+            fceumm_libretro_sf2000.a | tee fceumm-archive-members.txt
+
+      - name: Resolve archives against Codescape runtime libraries
+        shell: bash
+        continue-on-error: true
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          nm=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-nm
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -r -nostartfiles \
+            -Wl,--whole-archive fceumm_libretro_sf2000.a libretro-common.a \
+            -Wl,--no-whole-archive \
+            -Wl,--start-group -lc -lm -lgcc -Wl,--end-group \
+            -o fceumm-runtime-resolved.o \
+            2>&1 | tee fceumm-runtime-link.log
+
+          if [[ -f fceumm-runtime-resolved.o ]]; then
+            "$nm" -u fceumm-runtime-resolved.o \
+              | awk '$1 == "U" {print $2}' | sort -u \
+              | tee fceumm-after-runtime-symbols.txt
+          fi
 
       - name: Show XGOC probe build environment
         shell: bash
@@ -83,7 +122,6 @@ jobs:
           ld.lld --version || true
           llvm-objcopy --version || true
           nm --version || true
-          ls -la tools/multicore/probe
 
       - name: Build XGOC probe tooling
         shell: bash
@@ -104,9 +142,18 @@ jobs:
           if-no-files-found: warn
           path: |
             fceumm_libretro_sf2000.a
+            libretro-common.a
             fceumm-archive.sha256
-            fceumm-undefined-symbols.txt
-            fceumm-undefined-count.txt
+            libretro-common-archive.sha256
+            fceumm-external-symbols.txt
+            fceumm-external-symbols-classified.txt
+            fceumm-symbol-analysis.txt
+            fceumm-plus-common-external-symbols.txt
+            fceumm-plus-common-external-symbols-classified.txt
+            fceumm-plus-common-symbol-analysis.txt
+            fceumm-after-runtime-symbols.txt
+            fceumm-runtime-link.log
+            fceumm-runtime-resolved.o
             fceumm-archive-members.txt
             toolchain.sha256
             toolchain-version.txt
