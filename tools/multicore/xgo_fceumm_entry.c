@@ -63,6 +63,14 @@ extern void (*gfn_retro_run)(void);
 extern void (*gfn_frameskip)(int);
 extern volatile u32 XGO_ACTIVE_SYSTEM_FAMILY;
 
+/*
+ * Session-scoped run-loop phase/counter. Every stock run_* wrapper zeros this
+ * word immediately before installing/initializing its emulator core. The stock
+ * run_emulator() loop subsequently reads, increments and resets it, so an
+ * intercepted external-core path must not inherit the previous session value.
+ */
+#define XGO_RUN_PHASE_COUNTER (*(volatile u32 *)0x80c2e964u)
+
 static char g_rom_path[MAX_ROM_PATH];
 
 static int state_stub(const char *path)
@@ -167,6 +175,7 @@ static int build_real_rom_path(const char *stub)
 void __start(const char *stub_path, int load_state)
 {
     u32 old_family;
+    u32 old_run_phase;
     struct retro_game_info old_game_info;
     int (*old_state_save)(const char *);
     int (*old_state_load)(const char *);
@@ -181,6 +190,7 @@ void __start(const char *stub_path, int load_state)
         return;
 
     old_family = XGO_ACTIVE_SYSTEM_FAMILY;
+    old_run_phase = XGO_RUN_PHASE_COUNTER;
     old_game_info = g_retro_game_info;
     old_state_save = gfn_state_save;
     old_state_load = gfn_state_load;
@@ -194,6 +204,9 @@ void __start(const char *stub_path, int load_state)
     /* Preserve unrelated high bits while selecting stock NES frontend policy. */
     XGO_ACTIVE_SYSTEM_FAMILY =
         (old_family & ~FAMILY_MASK) | NES_FAMILY;
+
+    /* Exact per-session reset performed by every stock emulator wrapper. */
+    XGO_RUN_PHASE_COUNTER = 0;
 
     retro_set_video_refresh(retro_video_refresh_cb);
     retro_set_audio_sample_batch(retro_audio_sample_batch_cb);
@@ -241,5 +254,6 @@ void __start(const char *stub_path, int load_state)
     gfn_state_load = old_state_load;
     gfn_state_save = old_state_save;
     g_retro_game_info = old_game_info;
+    XGO_RUN_PHASE_COUNTER = old_run_phase;
     XGO_ACTIVE_SYSTEM_FAMILY = old_family;
 }
