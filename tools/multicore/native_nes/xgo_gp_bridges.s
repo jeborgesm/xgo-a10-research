@@ -96,6 +96,9 @@ STOCK_BRIDGE  xgo_stock_fs_closedir, 0x802ac4f0
 STOCK_BRIDGE xgo_stock_dly_tsk,           0x8030f480
 STOCK_BRIDGE xgo_stock_os_get_tick_count, 0x8030fec8
 
+/* Direct current-region writer used only for bring-up diagnostics. */
+STOCK_BRIDGE xgo_stock_osd_region_write,   0x8035c31c
+
 STOCK_BRIDGE xgo_stock_video_refresh,      0x8035e70c
 STOCK_BRIDGE xgo_stock_audio_sample_batch, 0x8035e7d8
 STOCK_BRIDGE xgo_stock_input_poll,         0x8035ea30
