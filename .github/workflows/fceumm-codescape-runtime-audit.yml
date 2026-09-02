@@ -57,6 +57,7 @@ jobs:
             echo "=== $src ===" | tee -a native-compile.log
             "$cc" $flags -c "$src" -o "$out" 2>&1 | tee -a native-compile.log
           }
+          compile_one tools/multicore/native_nes/xgo_core_entry.s core_entry.o
           compile_one tools/multicore/native_nes/xgo_nes_native_frontend.c frontend.o
           compile_one tools/multicore/xgo_minimal_environment_shim.c environment.o
           compile_one tools/multicore/xgo_preloaded_rom_sbrk.c sbrk.o
@@ -73,7 +74,7 @@ jobs:
             -r -nostartfiles \
             -Wl,--gc-sections -Wl,-e,__core_entry__ -Wl,-u,__core_entry__ \
             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
-            frontend.o environment.o sbrk.o syscalls.o \
+            core_entry.o frontend.o environment.o sbrk.o syscalls.o \
             -Wl,--start-group \
               /tmp/fceumm/fceumm_libretro_sf2000.a \
               /tmp/libretro-common/libretro-common.a \
@@ -86,7 +87,7 @@ jobs:
             -r -nostartfiles \
             -Wl,--gc-sections -Wl,-e,__core_entry__ -Wl,-u,__core_entry__ \
             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
-            frontend.o environment.o sbrk.o syscalls.o \
+            core_entry.o frontend.o environment.o sbrk.o syscalls.o \
             -Wl,--start-group \
               /tmp/fceumm/fceumm_libretro_sf2000.a \
               /tmp/libretro-common/libretro-common.a \
