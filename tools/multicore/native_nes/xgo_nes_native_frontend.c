@@ -7,6 +7,9 @@
  *
  * Link with xgo_preloaded_rom_sbrk.c so external newlib begins after the
  * preloaded ROM prefix instead of overwriting it.
+ *
+ * The injected native NES loader repairs the stock IRQ $gp path before this
+ * entry point is called. Keep that transition logic in one place.
  */
 
 typedef unsigned int size_t;
@@ -53,8 +56,6 @@ extern bool xgo_minimal_environment(unsigned, void *);
 #define STOCK_INPUT ((input_cb)0x8035eb20u)
 
 #define FW_RUN_EMULATOR ((void (*)(int))0x8035ed48u)
-#define FW_OS_DISABLE   ((void (*)(void))0x802e0750u)
-#define FW_OS_ENABLE    ((void (*)(void))0x802e0778u)
 
 typedef struct FILE_ FILE;
 #define FW_FOPEN  ((FILE *(*)(const char *, const char *))0x802b3524u)
@@ -102,24 +103,6 @@ static int exact_rom_size(const char *filename, unsigned *size_out)
         return 0;
     *size_out = (unsigned)size;
     return 1;
-}
-
-static void repair_irq_gp(void)
-{
-    volatile unsigned *src = (volatile unsigned *)0x80001270u;
-    volatile unsigned *dst = (volatile unsigned *)0x80049744u;
-    unsigned p;
-
-    FW_OS_DISABLE();
-    dst[0] = src[0];
-    dst[1] = src[1];
-    for (p = 0x80049740u; p < 0x80049750u; p += 16)
-        __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
-    __asm__ volatile("sync; nop; nop");
-    for (p = 0x80049740u; p < 0x80049750u; p += 16)
-        __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
-    __asm__ volatile("nop; nop; nop; nop; nop");
-    FW_OS_ENABLE();
 }
 
 #ifdef XGO_WITH_NEWLIB
@@ -178,7 +161,6 @@ int __core_entry__(const char *filename, int load_state)
     old_run = GFN_RUN;
     old_frameskip = GFN_FRAMESKIP;
 
-    repair_irq_gp();
     SYSTEM_FAMILY = XGO_SYSTEM_NES;
 
     retro_set_video_refresh(STOCK_VIDEO);
