@@ -47,10 +47,11 @@ jobs:
 
           "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
 
-          # A relocatable audit link resolves linker _gp without pretending to
-          # be the production image. Force every veneer live so the complete
-          # ABI surface can be inspected even when normal --gc-sections would
-          # discard currently unused directory helpers.
+          # Keep this as a relocatable audit object rather than pretending it
+          # is the production absolute image. The _gp HI16/LO16 relocations
+          # must remain visible here; the production full-link workflow is the
+          # authority for their final resolved 0x8718f450 machine encoding.
+          # Force every veneer live so the complete ABI surface can be audited.
           "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
             -r -nostartfiles \
             -Wl,--defsym,_gp=0x8718f450 \
@@ -78,8 +79,10 @@ jobs:
           grep -Eq 'lw[[:space:]]+gp,24\(sp\)' stock-bridge.txt
 
           function_block xgo_core_run > core-bridge.txt
-          grep -Eq 'lui[[:space:]]+gp,0x8719' core-bridge.txt
-          grep -Eq 'addiu[[:space:]]+gp,gp,-2992' core-bridge.txt
+          # At -r the linker must preserve the symbolic core-GP relocations.
+          # The final full-link separately proves they resolve to 0x8718f450.
+          grep -Eq 'R_MIPS_HI16[[:space:]]+_gp' core-bridge.txt
+          grep -Eq 'R_MIPS_LO16[[:space:]]+_gp' core-bridge.txt
           grep -Eq 'sw[[:space:]]+gp,24\(sp\)' core-bridge.txt
           grep -Eq 'lw[[:space:]]+gp,24\(sp\)' core-bridge.txt
 
