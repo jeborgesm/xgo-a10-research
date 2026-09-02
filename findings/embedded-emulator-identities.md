@@ -1,6 +1,6 @@
 # Embedded XGO emulator identities
 
-Status: **multiple stock libretro cores identified directly from the preserved XGO firmware; two exact upstream commits resolved**.
+Status: **multiple stock libretro cores identified directly from the preserved XGO firmware; four exact upstream commits resolved**.
 
 Firmware fingerprint:
 
@@ -78,7 +78,7 @@ add SF2000 platform
 A repository comparison from the exact XGO stock commit to that HC15xx-ready snapshot reports:
 
 ```text
-ahead_by     1055
+ahead_by      1055
 total_commits 1055
 ```
 
@@ -125,7 +125,7 @@ Thus XGO's embedded PicoDrive is also **CONFIRMED to descend from a 2017 libretr
 
 This is particularly interesting because the XGO frontend only exposes a subset of the formats that the embedded PicoDrive advertises internally. The dormant 32X/Sega-CD capability strings documented previously therefore belong to this exact old PicoDrive lineage rather than an unrelated OEM stub.
 
-## GBA: gpSP v0.91, short SHA present
+## GBA: gpSP v0.91, exact 2021 upstream revision
 
 Firmware strings identify:
 
@@ -135,13 +135,31 @@ v0.91 261b2db
 gba|bin|agb|gbz
 ```
 
+The short SHA resolves exactly in upstream `libretro/gpsp` to:
+
+```text
+261b2db9bb65b63d4968f89deecdf92f1975011f
+```
+
+Date:
+
+```text
+2021-05-19 18:09:44 UTC
+```
+
+Commit message:
+
+```text
+Cleanup Makefiles a bit
+```
+
 The embedded core also exposes gpSP-style options for save method, frameskip threshold/interval, color correction, frame mixing and turbo, and uses the confirmed `/mnt/sda1/bios/gba_bios.bin` path.
 
-The short Git SHA `261b2db` is present in the binary. Exact upstream/fork resolution is pending.
+This makes the XGO GBA core materially newer than its NES and Sega cores. Its exact resolved commit is also an ordinary upstream build-system change, which argues against the short SHA being an OEM-only identifier.
 
-Status: **core identity/version CONFIRMED; exact repository commit not yet resolved**.
+Status: **core identity/version/exact upstream commit CONFIRMED**.
 
-## Game Boy / Game Boy Color: TGB Dual v0.8.3, short SHA present
+## Game Boy / Game Boy Color: TGB Dual v0.8.3, exact 2020 upstream revision
 
 Firmware strings identify:
 
@@ -151,11 +169,27 @@ v0.8.3 9be31d3
 gb|gbc|sgb
 ```
 
+The short SHA resolves exactly in upstream `libretro/tgbdual-libretro` to:
+
+```text
+9be31d373224cbf288db404afc785df41e61b213
+```
+
+Date:
+
+```text
+2020-01-07 16:02:59 UTC
+```
+
+Commit message:
+
+```text
+(MSVC 2017) Buildfix
+```
+
 The embedded option surface includes link-cable emulation, screen layout/switching, single-screen multiplayer and audio-output controls characteristic of the TGB Dual libretro core.
 
-The short Git SHA `9be31d3` is present in the binary. Exact upstream/fork resolution is pending.
-
-Status: **core identity/version CONFIRMED; exact repository commit not yet resolved**.
+Status: **core identity/version/exact upstream commit CONFIRMED**.
 
 ## SNES: Snes9x 2005 v1.36
 
@@ -171,9 +205,21 @@ No short Git SHA has yet been found adjacent to this core's embedded metadata.
 
 Status: **core identity/version CONFIRMED; exact source revision pending**.
 
-## Architectural consequence
+## Confirmed generation spread
 
-The stock core set is heterogeneous and old. At least the NES and Sega cores are directly tied to 2017 upstream revisions, while the firmware itself was assembled much later.
+The resolved source dates show that the emulator bundle is heterogeneous rather than one frozen SDK snapshot:
+
+```text
+PicoDrive   2017-04-18
+FCEUmm      2017-08-11
+TGB Dual    2020-01-07
+gpSP        2021-05-19
+Snes9x2005  v1.36 (exact date/revision pending)
+```
+
+At minimum, the NES and Sega cores are several years older than the GBA core within the same XGO firmware image.
+
+## Architectural consequence
 
 This strongly supports a staged upgrade strategy:
 
@@ -183,11 +229,13 @@ stock main-list dispatcher
         +-- NES  -> old embedded FCEUmm 2017 | external newer FCEUmm
         +-- Sega -> old embedded PicoDrive   | external newer core
         +-- SNES -> embedded Snes9x 2005     | external replacement
-        +-- GBA  -> embedded gpSP            | external replacement
-        +-- GB   -> embedded TGB Dual        | external replacement
+        +-- GBA  -> embedded gpSP 2021       | external replacement if justified
+        +-- GB   -> embedded TGB Dual 2020   | external replacement if justified
 ```
 
 The already-confirmed independent `run_game()` call sites allow each family to be upgraded independently while preserving the stock XGO menu, LCD, audio, input, battery and SD infrastructure.
+
+For first experiments, NES remains the best target: its exact stock core is the oldest identified major console core after PicoDrive, a known HC15xx-ready newer FCEUmm lineage exists, and NES uses the generic stock `run_emulator()` path rather than SNES's special-case branch.
 
 ## Save-state warning
 
