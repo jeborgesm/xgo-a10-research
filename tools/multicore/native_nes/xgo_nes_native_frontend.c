@@ -5,13 +5,9 @@
  * point stock run_game() has already loaded the selected NES file into the
  * 64-MiB gp_buf_64m arena and stored an aligned length in g_run_file_size.
  *
- * Link with xgo_preloaded_rom_sbrk.c so external newlib begins after the
- * preloaded ROM prefix instead of overwriting it.
- *
- * xgo_core_entry.s owns the true 0x87000000 external entry. It switches from
- * the stock firmware $gp to this image's linker-provided _gp before entering
- * this C frontend, then restores the stock $gp on return. xgo_gp_bridges.s
- * performs the same transition at every stock/core callback boundary.
+ * Hardware bring-up uses a deliberately primitive SD trace written through
+ * already-GP-safe stock VFS veneers. No printf, malloc, stdio or raw stock
+ * callback pointers are used by the tracer.
  */
 
 #ifdef XGO_WITH_NEWLIB
@@ -27,6 +23,11 @@ typedef int bool;
 #define RETRO_DEVICE_JOYPAD 1u
 #define XGO_SYSTEM_NES 0x0001u
 #define MAX_ROM_SIZE 0x04000000u
+#define FS_O_WRONLY 0x0001
+#define FS_O_APPEND 0x0008
+#define FS_O_CREAT  0x0100
+#define FS_O_TRUNC  0x0200
+#define DIAG_PATH "/mnt/sda1/xgo-native.log"
 
 struct retro_game_info {
     const char *path;
@@ -63,6 +64,9 @@ extern size_t xgo_stock_audio_sample_batch(const short *, size_t);
 extern void xgo_stock_input_poll(void);
 extern short xgo_stock_input_state(unsigned, unsigned, unsigned, unsigned);
 extern void xgo_stock_run_emulator(int);
+extern int xgo_stock_fs_open(const char *, int, int);
+extern int xgo_stock_fs_write(int, const void *, unsigned);
+extern int xgo_stock_fs_close(int);
 
 /* Transparent stock run_emulator -> core veneers. */
 extern unsigned xgo_core_get_region(void);
@@ -76,9 +80,6 @@ extern int xgo_core_state_io(const char *);
 #define ROM_BUFFER    (*(void **)0x80c33ad8u)
 #define RUN_FILE_SIZE (*(volatile unsigned *)0x80c33a7cu)
 #define SYSTEM_FAMILY (*(volatile unsigned short *)0x80c33ad0u)
-
-/* Stock run_nes clears this immediately before installing libretro callbacks.
- * run_emulator then uses it in its timing/frameskip bookkeeping. */
 #define EMULATOR_LOOP_COUNTER (*(volatile unsigned *)0x80c2e964u)
 
 #define GFN_STATE_SAVE  (*(int (**)(const char *))0x80c33a70u)
@@ -90,8 +91,80 @@ extern int xgo_core_state_io(const char *);
 #define GFN_FRAMESKIP   (*(void **)0x80c33ae0u)
 #define GFN_RUN         (*(void (**)(void))0x80c33ae4u)
 
-/* Called only through xgo_core_state_io, which establishes the external GP
- * before entering C from stock run_emulator(). */
+static unsigned diag_len(const char *s)
+{
+    unsigned n = 0;
+    while (s[n]) ++n;
+    return n;
+}
+
+static void diag_write_flags(const char *s, int flags)
+{
+    int fd = xgo_stock_fs_open(DIAG_PATH, flags, 0666);
+    if (fd < 0)
+        return;
+    (void)xgo_stock_fs_write(fd, s, diag_len(s));
+    (void)xgo_stock_fs_close(fd);
+}
+
+static void diag_reset(const char *s)
+{
+    diag_write_flags(s, FS_O_WRONLY | FS_O_CREAT | FS_O_TRUNC);
+}
+
+static void diag(const char *s)
+{
+    diag_write_flags(s, FS_O_WRONLY | FS_O_CREAT | FS_O_APPEND);
+}
+
+/* These are the actual targets of the stock->core GP veneers during the
+ * diagnostic build. They prove entry and return around each libretro callback. */
+unsigned xgo_diag_get_region(void)
+{
+    unsigned r;
+    diag("R1 get_region enter\n");
+    r = retro_get_region();
+    diag("R2 get_region return\n");
+    return r;
+}
+
+void xgo_diag_get_av(struct retro_system_av_info *info)
+{
+    diag("A1 get_av enter\n");
+    retro_get_system_av_info(info);
+    diag("A2 get_av return\n");
+}
+
+bool xgo_diag_load_game(const struct retro_game_info *info)
+{
+    bool ok;
+    diag("L1 retro_load_game enter\n");
+    ok = retro_load_game(info);
+    diag(ok ? "L2 retro_load_game TRUE\n" : "L2 retro_load_game FALSE\n");
+    return ok;
+}
+
+void xgo_diag_unload_game(void)
+{
+    diag("U1 retro_unload_game enter\n");
+    retro_unload_game();
+    diag("U2 retro_unload_game return\n");
+}
+
+void xgo_diag_run(void)
+{
+    static unsigned first_run;
+    if (first_run == 0) {
+        first_run = 1;
+        diag("F1 first retro_run enter\n");
+    }
+    retro_run();
+    if (first_run == 1) {
+        first_run = 2;
+        diag("F2 first retro_run return\n");
+    }
+}
+
 int xgo_disabled_state_io(const char *path)
 {
     (void)path;
@@ -104,7 +177,6 @@ extern void __libc_init_array(void);
 extern void __sinit(struct _reent *);
 static void init_core_runtime(void)
 {
-    /* Loader has already zeroed the XGOC runtime-only region including BSS. */
     _REENT_INIT_PTR(_REENT);
     __sinit(_REENT);
     __libc_init_array();
@@ -128,25 +200,16 @@ int __core_entry_c(const char *filename, int load_state)
     void (*old_run)(void);
     void *old_frameskip;
 
-    /* g_run_file_size is already populated before entry and is used by the
-     * preloaded-ROM sbrk implementation to reserve the ROM prefix. */
+    diag_reset("E0 core C entry\n");
     init_core_runtime();
+    diag("E1 runtime initialized\n");
 
-    /*
-     * Stock run_game() rounds g_run_file_size up to four bytes before fread().
-     * Earlier revisions reopened the ROM with stock fopen/fseeko/ftell solely
-     * to recover the exact byte count. Hardware test #1 exposed that as an
-     * unnecessary ABI boundary: XGO's fseeko uses a 64-bit O32 offset and the
-     * helper had declared it incorrectly.
-     *
-     * Pinned FCEUmm's in-memory iNES loader accepts a buffer larger than the
-     * header-declared PRG+CHR data; it only reports the trailing bytes as
-     * unused. Therefore the stock aligned length is both sufficient and safer,
-     * and keeps the launch path genuinely zero-copy with no second file open.
-     */
     rom_size = RUN_FILE_SIZE;
-    if (!ROM_BUFFER || rom_size == 0 || rom_size > MAX_ROM_SIZE)
+    if (!ROM_BUFFER || rom_size == 0 || rom_size > MAX_ROM_SIZE) {
+        diag("E2 ROM validation FAILED\n");
         return -1;
+    }
+    diag("E2 ROM validation OK\n");
 
     old_game_info.path = GAME_INFO.path;
     old_game_info.data = GAME_INFO.data;
@@ -164,27 +227,22 @@ int __core_entry_c(const char *filename, int load_state)
     old_frameskip = GFN_FRAMESKIP;
 
     SYSTEM_FAMILY = XGO_SYSTEM_NES;
-
-    /* Match stock run_nes shared timing state. */
     EMULATOR_LOOP_COUNTER = 0;
 
-    /* FCEUmm executes with external _gp. Every callback it invokes into stock
-     * therefore points at a veneer that installs XGO_STOCK_GP for the call. */
     retro_set_video_refresh(xgo_stock_video_refresh);
     retro_set_audio_sample_batch(xgo_stock_audio_sample_batch);
     retro_set_input_poll(xgo_stock_input_poll);
     retro_set_input_state(xgo_stock_input_state);
     retro_set_environment(xgo_minimal_environment);
+    diag("E3 before retro_init\n");
     retro_init();
+    diag("E4 after retro_init\n");
 
-    /* Use the stock-preloaded ROM directly; no second ROM allocation/copy. */
     GAME_INFO.path = filename;
     GAME_INFO.data = ROM_BUFFER;
     GAME_INFO.size = rom_size;
     GAME_INFO.meta = 0;
 
-    /* run_emulator executes under stock GP, so every function pointer that can
-     * lead back into the external image must first restore the core _gp. */
     GFN_STATE_LOAD = xgo_core_state_io;
     GFN_STATE_SAVE = xgo_core_state_io;
     GFN_GET_REGION = xgo_core_get_region;
@@ -197,8 +255,11 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
+    diag("E5 before stock run_emulator\n");
     xgo_stock_run_emulator(load_state);
+    diag("E6 stock run_emulator returned\n");
     retro_deinit();
+    diag("E7 retro_deinit returned\n");
 
     GFN_STATE_SAVE = old_state_save;
     GFN_STATE_LOAD = old_state_load;
@@ -215,5 +276,6 @@ int __core_entry_c(const char *filename, int load_state)
     GAME_INFO.size = old_game_info.size;
     GAME_INFO.meta = old_game_info.meta;
 
+    diag("E8 frontend return\n");
     return 0;
 }
