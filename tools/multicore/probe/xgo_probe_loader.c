@@ -3,8 +3,8 @@
  *
  * External payloads use the small XGOC container documented alongside this
  * prototype. The loader validates metadata and payload integrity, reserves the
- * core RAM window before file I/O, zeros BSS/runtime-only memory, synchronizes
- * caches over the loaded executable range, and only then transfers control.
+ * core RAM window before file I/O, zeros BSS/runtime-only memory, flushes the
+ * complete HC15xx cache index space, and only then transfers control.
  *
  * No Firmware.upk / SPI-NOR operation is involved.
  */
@@ -65,22 +65,28 @@ static void zero_range(unsigned char *p, u32 n)
         *p++ = 0;
 }
 
-static void cache_sync_range(u32 start, u32 end)
+/*
+ * HC15xx/SF2000 Multicore uses cache 1 and cache 0 as INDEX operations over
+ * the complete 16 KiB cache-index window. These are not hit-by-address range
+ * operations. Keep the exact known-good pattern here instead of iterating over
+ * CORE_BASE..core_end, which would repeatedly wrap cache indices for a large
+ * core and could fail to cover all indices for a small one.
+ */
+static void full_cache_flush(void)
 {
     u32 p;
 
-    start &= ~15u;
-    end = (end + 15u) & ~15u;
-
-    for (p = start; p < end; p += 16)
-        __asm__ volatile("cache 1,0(%0)" : : "r"(p));
+    /* Index_Writeback_Inv_D over the entire D-cache index space. */
+    for (p = 0x80000000u; p <= 0x80004000u; p += 16u)
+        __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
 
     __asm__ volatile("sync; nop; nop");
 
-    for (p = start; p < end; p += 16)
-        __asm__ volatile("cache 0,0(%0)" : : "r"(p));
+    /* Index_Invalidate_I over the entire I-cache index space. */
+    for (p = 0x80000000u; p <= 0x80004000u; p += 16u)
+        __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
 
-    __asm__ volatile("sync; nop; nop");
+    __asm__ volatile("nop; nop; nop; nop; nop");
 }
 
 void load_and_run_core(const char *path, int load_state)
@@ -145,7 +151,7 @@ void load_and_run_core(const char *path, int load_state)
     zero_range((unsigned char *)(CORE_BASE + h.payload_size),
                h.memory_size - h.payload_size);
 
-    cache_sync_range(CORE_BASE, end_addr);
+    full_cache_flush();
 
     /* Pass the original stub and stock load-state request into the core bridge. */
     entry = (void *)entry_addr;
