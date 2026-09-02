@@ -36,6 +36,8 @@ static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b
 static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static int (*const dly_tsk)(unsigned) = (void *)0x8030f480;
 static void (*const stock_run_nes)(const char *, int) = (void *)0x8035f63c;
+static void (*const os_disable_interrupt)(void) = (void *)0x802e0750;
+static void (*const os_enable_interrupt)(void) = (void *)0x802e0778;
 
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
 static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
@@ -75,6 +77,31 @@ static void full_cache_flush(void)
     for (p = 0x80000000u; p <= 0x80004000u; p += 16u)
         __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
     __asm__ volatile("nop; nop; nop; nop; nop");
+}
+
+/*
+ * Maintained SF2000 Multicore repairs the stock IRQ path before entering an
+ * external core. Copy XGO's own startup GP-init instructions so the patch is
+ * firmware-native rather than embedding an assumed constant.
+ */
+static void repair_irq_gp(void)
+{
+    volatile u32 *src = (volatile u32 *)0x80001270u;
+    volatile u32 *dst = (volatile u32 *)0x80049744u;
+    u32 p;
+
+    os_disable_interrupt();
+    dst[0] = src[0];
+    dst[1] = src[1];
+
+    for (p = 0x80049740u; p < 0x80049750u; p += 16u)
+        __asm__ volatile("cache 1,0(%0); cache 1,0(%0)" : : "r"(p));
+    __asm__ volatile("sync; nop; nop");
+    for (p = 0x80049740u; p < 0x80049750u; p += 16u)
+        __asm__ volatile("cache 0,0(%0); cache 0,0(%0)" : : "r"(p));
+    __asm__ volatile("nop; nop; nop; nop; nop");
+
+    os_enable_interrupt();
 }
 
 void load_and_run_core(const char *filename, int load_state)
@@ -131,8 +158,13 @@ void load_and_run_core(const char *filename, int load_state)
     zero_range((unsigned char *)(CORE_BASE + h.payload_size),
                h.memory_size - h.payload_size);
 
-    /* Match the first operation of stock run_nes(), but only after validation. */
+    /* Match stock run_nes() only after the external image is fully validated. */
     stop_stock_sound_task();
+
+    /* No external/newlib instruction executes until stock IRQ GP is repaired. */
+    repair_irq_gp();
+
+    /* The loaded image and the patched IRQ instructions are now coherent. */
     full_cache_flush();
 
     entry = (void *)entry_addr;
