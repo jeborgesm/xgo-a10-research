@@ -1,0 +1,115 @@
+name: XGO GP bridge ABI audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/xgo-gp-bridge-abi.yml
+      - tools/multicore/native_nes/xgo_gp_bridges.s
+      - tools/multicore/native_nes/xgo_core_entry.s
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/xgo-gp-bridge-abi.yml
+      - tools/multicore/native_nes/xgo_gp_bridges.s
+      - tools/multicore/native_nes/xgo_core_entry.s
+
+jobs:
+  audit-gp-veneers:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
+      - name: Install exact HC15xx Codescape toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          echo 'd35717f24a67ed2091c32d9fb3d79dc5ebe84c38ac8872736aa018860a724807  /tmp/codescape-mips32.tar.gz' | sha256sum -c -
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+
+      - name: Compile and link bridge-only audit image
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          objdump="$tools/mips-mti-elf-objdump"
+          nm="$tools/mips-mti-elf-nm"
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffreestanding -fno-builtin'
+
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+
+          # A relocatable audit link resolves linker _gp without pretending to
+          # be the production image. Force every veneer live so the complete
+          # ABI surface can be inspected even when normal --gc-sections would
+          # discard currently unused directory helpers.
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -r -nostartfiles \
+            -Wl,--defsym,_gp=0x8718f450 \
+            -Wl,--whole-archive gp_bridges.o -Wl,--no-whole-archive \
+            -o gp-bridge-audit.o
+
+          "$objdump" -dr gp-bridge-audit.o > gp-bridge-audit.disasm.txt
+          "$nm" -n gp-bridge-audit.o > gp-bridge-audit.nm
+
+      - name: Assert stock-GP and core-GP transitions
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          function_block() {
+            local sym="$1"
+            awk -v s="<$sym>:" '$0 ~ s {show=1} show {print} show && /^$/ {exit}' \
+              gp-bridge-audit.disasm.txt
+          }
+
+          function_block xgo_stock_video_refresh > stock-bridge.txt
+          grep -Eq 'lui[[:space:]]+gp,0x80c3' stock-bridge.txt
+          grep -Eq 'addiu[[:space:]]+gp,gp,18292' stock-bridge.txt
+          grep -Eq 'sw[[:space:]]+gp,24\(sp\)' stock-bridge.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' stock-bridge.txt
+
+          function_block xgo_core_run > core-bridge.txt
+          grep -Eq 'lui[[:space:]]+gp,0x8719' core-bridge.txt
+          grep -Eq 'addiu[[:space:]]+gp,gp,-2992' core-bridge.txt
+          grep -Eq 'sw[[:space:]]+gp,24\(sp\)' core-bridge.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' core-bridge.txt
+
+      - name: Assert O32 fs_lseek fifth-argument preservation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          awk '/<xgo_stock_fs_lseek>:/,/^$/' gp-bridge-audit.disasm.txt \
+            | tee fs-lseek-bridge.txt
+
+          # After the veneer subtracts 32 from sp, caller old-sp+16 is now
+          # new-sp+48. The bridge must copy that fifth argument word into the
+          # callee's outgoing new-sp+16 slot before entering stock fs_lseek.
+          grep -Eq 'addiu[[:space:]]+sp,sp,-32' fs-lseek-bridge.txt
+          grep -Eq 'lw[[:space:]]+t0,48\(sp\)' fs-lseek-bridge.txt
+          grep -Eq 'sw[[:space:]]+t0,16\(sp\)' fs-lseek-bridge.txt
+          grep -Eq 'lui[[:space:]]+gp,0x80c3' fs-lseek-bridge.txt
+          grep -Eq 'addiu[[:space:]]+gp,gp,18292' fs-lseek-bridge.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' fs-lseek-bridge.txt
+
+      - name: Upload bridge ABI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-gp-bridge-abi
+          if-no-files-found: warn
+          path: |
+            gp-bridge-audit.o
+            gp-bridge-audit.disasm.txt
+            gp-bridge-audit.nm
+            stock-bridge.txt
+            core-bridge.txt
+            fs-lseek-bridge.txt
