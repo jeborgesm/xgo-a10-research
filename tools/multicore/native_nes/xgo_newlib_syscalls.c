@@ -324,6 +324,38 @@ __attribute__((noreturn)) void _exit(int status)
         dly_tsk(1000u);
 }
 
+/*
+ * Exact Codescape runtime closure leaves three bottom hooks after -lc -lm
+ * -lgcc: _init, link and unlink. None is a FCEUmm-specific service.
+ *
+ * _init is the optional legacy runtime-init hook reached from
+ * __libc_init_array(); our external image has no crt0-provided _init section,
+ * so a no-op is the correct standalone-core contract.
+ *
+ * link/unlink are newlib filesystem syscalls. Hard links are unsupported by
+ * the stock ALi VFS surface. The currently exposed XGO stock-service map also
+ * has no proven unlink primitive, so fail explicitly with ENOSYS rather than
+ * guessing at an unverified firmware address or silently reporting success.
+ */
+void _init(void)
+{
+}
+
+int link(const char *oldpath, const char *newpath)
+{
+    (void)oldpath;
+    (void)newpath;
+    errno = ENOSYS;
+    return -1;
+}
+
+int unlink(const char *path)
+{
+    (void)path;
+    errno = ENOSYS;
+    return -1;
+}
+
 /* Newlib ports differ on whether they reference underscored syscall names
  * directly. Provide aliases so either convention resolves to the same bridge. */
 int _open(const char *path, int flags, ...)
