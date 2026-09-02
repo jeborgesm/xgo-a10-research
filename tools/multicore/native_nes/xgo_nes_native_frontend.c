@@ -8,8 +8,10 @@
  * Link with xgo_preloaded_rom_sbrk.c so external newlib begins after the
  * preloaded ROM prefix instead of overwriting it.
  *
- * The injected native NES loader repairs the stock IRQ $gp path before this
- * entry point is called. Keep that transition logic in one place.
+ * xgo_core_entry.s owns the true 0x87000000 external entry. It switches from
+ * the stock firmware $gp to this image's linker-provided _gp before entering
+ * this C frontend, then restores the stock $gp on return. The injected loader
+ * separately repairs the stock IRQ $gp path before external execution.
  */
 
 #ifdef XGO_WITH_NEWLIB
@@ -129,8 +131,7 @@ static void init_core_runtime(void)
 static void init_core_runtime(void) {}
 #endif
 
-__attribute__((section(".init.core_entry"), used))
-int __core_entry__(const char *filename, int load_state)
+int __core_entry_c(const char *filename, int load_state)
 {
     struct retro_game_info old_game_info;
     unsigned old_run_file_size;
