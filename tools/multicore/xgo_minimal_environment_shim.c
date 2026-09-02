@@ -3,7 +3,8 @@
  *
  * Research-stage source. This deliberately implements only low-risk generic
  * queries that do not require direct XGO board-driver manipulation.
- * Unknown commands fall back to the stock environment handler.
+ * Unknown commands fall back to the stock environment handler through a
+ * stock-GP veneer.
  *
  * The stock XGO handler at 0x8035eb64 is intentionally NOT trusted for pixel
  * format or rotation negotiation. It returns success for pixel formats it does
@@ -47,7 +48,9 @@ struct retro_game_info {
     const char *meta;
 };
 
-#define STOCK_XGO_ENV ((environment_cb)0x8035eb64u)
+/* xgo_gp_bridges.s establishes XGO_STOCK_GP around this firmware call. */
+extern bool xgo_stock_environment(unsigned, void *);
+
 #define XGO_REGION_MODE (*(volatile unsigned *)0x80c2e878u)
 #define XGO_GAME_INFO (*(volatile struct retro_game_info *)0x80c2e914u)
 
@@ -75,10 +78,7 @@ static const char region_ntsc[] = "NTSC";
 static const char region_pal[]  = "PAL";
 static const char region_auto[] = "Auto";
 
-/*
- * Variable updates are currently static in this minimal shim. A future PC-side
- * configuration layer can back this with generated per-core option files.
- */
+/* Variable updates are currently static in this minimal shim. */
 static bool xgo_variable_update;
 static struct retro_game_info_ext xgo_game_info_ext;
 
@@ -97,11 +97,6 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
 {
     switch (cmd) {
     case RETRO_ENVIRONMENT_SET_ROTATION:
-        /*
-         * Stock XGO does not rotate frames. Its handler only permutes D-pad
-         * masks for rotation values 1 and 3, so returning success would claim
-         * a frontend capability that is not actually implemented.
-         */
         (void)data;
         return false;
 
@@ -124,25 +119,12 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
         return true;
 
     case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
-        /*
-         * The stock XGO retro_input_state_cb is a per-button table lookup. It
-         * has no RETRO_DEVICE_ID_JOYPAD_MASK (id 256) fast path. The stock
-         * environment currently returns false for this experimental command,
-         * but doing so here explicitly prevents a future/side-effectful stock
-         * handler path from making FCEUmm issue an unsupported id=256 query.
-         */
+        /* Stock input is per-button only; never advertise id=256 masks. */
         (void)data;
         return false;
 
     case RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE:
-        /*
-         * The pinned FCEUmm core registers an override for
-         * "fds|nes|unf|unif" with need_fullpath=false. The native XGO handoff
-         * genuinely supports that mode: run_game() has already loaded the
-         * selected NES content, and GET_GAME_INFO_EXT below exposes that same
-         * buffer when retro_load_game() asks for it. A NULL data pointer is a
-         * capability probe in libretro and is therefore also successful.
-         */
+        /* Pinned FCEUmm requests memory-backed fds|nes|unf|unif content. */
         (void)data;
         return true;
 
@@ -151,17 +133,8 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
             XGO_GAME_INFO.size == 0)
             return false;
 
-        /*
-         * Pinned FCEUmm e6111e6 ignores ordinary retro_game_info::data when
-         * GET_GAME_INFO_EXT is unavailable: it copies info->path and calls
-         * FCEUI_LoadGame() with content_data == NULL, causing a second ROM
-         * open/read. Expose the already-stock-preloaded ROM explicitly so the
-         * native path actually consumes gp_buf_64m as designed.
-         *
-         * The buffer is persistent for the complete core lifetime. The native
-         * sbrk implementation reserves the preloaded ROM prefix and allocates
-         * newlib only above it until retro_deinit() returns.
-         */
+        /* Expose the already-stock-preloaded ROM. The native sbrk reserves this
+         * prefix and allocates external newlib only above it. */
         xgo_game_info_ext.full_path = XGO_GAME_INFO.path;
         xgo_game_info_ext.archive_path = 0;
         xgo_game_info_ext.archive_file = 0;
@@ -180,12 +153,6 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
         if (data) {
             struct retro_variable *var = (struct retro_variable *)data;
             if (str_equal(var->key, "fceumm_region")) {
-                /*
-                 * Stock XGO uses {"NTSC","PAL","AUTO"}; current FCEUmm's
-                 * parser expects the automatic value as case-sensitive
-                 * "Auto". Preserve XGO's region state while normalizing that
-                 * one legacy spelling mismatch.
-                 */
                 if (XGO_REGION_MODE == 0)
                     var->value = region_ntsc;
                 else if (XGO_REGION_MODE == 1)
@@ -195,7 +162,7 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
                 return true;
             }
         }
-        return STOCK_XGO_ENV(cmd, data);
+        return xgo_stock_environment(cmd, data);
 
     case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
         if (!data)
@@ -207,26 +174,17 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE:
         if (!data)
             return false;
-        /*
-         * XGO run_emulator's per-frame audio byte budgets are derived from
-         * stereo 16-bit 44.1-kHz PCM (3528 B @ 50 Hz, 2940 B @ 60 Hz).
-         * Advertising 44100 makes modern cores with an Auto rate policy align
-         * their generated audio with that stock scheduler.
-         */
+        /* Stock scheduler budgets imply stereo 16-bit 44.1-kHz PCM. */
         *(unsigned *)data = 44100u;
         return true;
 
     case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:
         if (!data)
             return false;
-        /*
-         * XGO's proven stock video path is RGB565. Do not repeat the stock
-         * callback's false-positive success for XRGB8888/0RGB1555.
-         */
         return *(const unsigned *)data == RETRO_PIXEL_FORMAT_RGB565;
 
     default:
-        /* Preserve stock logging and its small set of genuinely useful calls. */
-        return STOCK_XGO_ENV(cmd, data);
+        /* The wrapper temporarily installs stock $gp before entering firmware. */
+        return xgo_stock_environment(cmd, data);
     }
 }
