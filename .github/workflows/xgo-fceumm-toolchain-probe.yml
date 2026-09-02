@@ -1,0 +1,71 @@
+name: XGO FCEUmm toolchain probe
+
+on:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/xgo-fceumm-toolchain-probe.yml
+  workflow_dispatch:
+
+jobs:
+  build-fceumm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out XGO research branch
+        uses: actions/checkout@v4
+
+      - name: Install exact SF2000 Codescape toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ARCHIVE=Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz
+          URL1='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          URL2='https://drive.usercontent.google.com/download?id=1MpsE__0Ra_BW3GGMfxvULeX5XeLQDSZR&authuser=0'
+          curl -fL --retry 3 -o "$ARCHIVE" "$URL1" || curl -fL --retry 3 -o "$ARCHIVE" "$URL2"
+          sudo tar -xzf "$ARCHIVE" -C /opt
+          TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
+          test -x "${TOOL}gcc"
+          "${TOOL}gcc" --version | tee toolchain-version.txt
+
+      - name: Check out pinned HC15xx FCEUmm
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/madcock/libretro-fceumm.git /tmp/libretro-fceumm
+          cd /tmp/libretro-fceumm
+          git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
+          test "$(git rev-parse HEAD)" = e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
+
+      - name: Build pinned FCEUmm SF2000 archive
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd /tmp/libretro-fceumm
+          make clean || true
+          make platform=sf2000 -j2
+          test -f fceumm_libretro_sf2000.a
+          cp fceumm_libretro_sf2000.a "$GITHUB_WORKSPACE/"
+
+      - name: Audit FCEUmm archive symbols
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
+          "${TOOL}nm" -u fceumm_libretro_sf2000.a | sort -u | tee fceumm-undefined-symbols.txt
+          "${TOOL}size" -A fceumm_libretro_sf2000.a > fceumm-size.txt
+          sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive-sha256.txt
+
+      - name: Upload exact FCEUmm archive and audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-fceumm-toolchain-probe
+          path: |
+            fceumm_libretro_sf2000.a
+            fceumm-undefined-symbols.txt
+            fceumm-size.txt
+            fceumm-archive-sha256.txt
+            toolchain-version.txt
+          if-no-files-found: error
