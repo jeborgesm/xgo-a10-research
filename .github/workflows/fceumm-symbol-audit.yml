@@ -18,89 +18,81 @@ jobs:
           sudo apt-get install -y \
             gcc-mipsel-linux-gnu g++-mipsel-linux-gnu \
             binutils-mipsel-linux-gnu make git
-
-          # Compile-only archive audit: Ubuntu's Linux MIPS sysroot omits the
-          # soft-float glibc selector header. The final XGO core will not link
-          # Linux glibc; this only permits the source to be compiled with the
-          # same -msoft-float ABI used by the HC15xx target.
           sudo touch /usr/mipsel-linux-gnu/include/gnu/stubs-o32_soft.h
 
-      - name: Fetch pinned HC15xx FCEUmm
+      - name: Fetch pinned HC15xx sources
         run: |
           git clone --no-checkout https://github.com/madcock/libretro-fceumm.git fceumm
-          cd fceumm
-          git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
+          (cd fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
+          git clone --no-checkout https://github.com/madcock/libretro-common.git libretro-common
+          (cd libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
 
-      - name: Build SF2000 static archive with compatible MIPS compiler
+      - name: Build pinned FCEUmm archive
         working-directory: fceumm
         run: |
           make clean || true
           make -j2 platform=sf2000 \
-            CC=mipsel-linux-gnu-gcc \
-            CXX=mipsel-linux-gnu-g++ \
+            'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
+            'CXX=mipsel-linux-gnu-g++ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
             AR=mipsel-linux-gnu-ar
 
-      - name: Compute true archive-wide unresolved symbols
-        working-directory: fceumm
+      - name: Build pinned Multicore libretro-common archive
+        working-directory: libretro-common
+        run: |
+          make clean || true
+          make -j2 \
+            'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
+            AR=mipsel-linux-gnu-ar
+
+      - name: Compute combined external runtime surface
         run: |
           set -euo pipefail
-          archive=fceumm_libretro_sf2000.a
-          test -f "$archive"
+          core=fceumm/fceumm_libretro_sf2000.a
+          common=libretro-common/libretro-common.a
+          test -f "$core" && test -f "$common"
 
-          # nm -A gives one line per symbol with an archive/member prefix. Keep
-          # only the symbol field. A static archive may reference symbols that
-          # another member of the same archive defines, so subtract the archive's
-          # complete defined-global set from the complete undefined-reference set.
-          mipsel-linux-gnu-nm -A -g --defined-only "$archive" \
-            | awk '{print $NF}' | sort -u > ../defined.txt
-          mipsel-linux-gnu-nm -A -u "$archive" \
-            | awk '{print $NF}' | sort -u > ../referenced-undefined.txt
-          comm -23 ../referenced-undefined.txt ../defined.txt > ../external-unresolved.txt
+          : > defined.txt
+          : > referenced-undefined.txt
+          for archive in "$core" "$common"; do
+            mipsel-linux-gnu-nm -A -g --defined-only "$archive" | awk '{print $NF}' >> defined.txt
+            mipsel-linux-gnu-nm -A -u "$archive" | awk '{print $NF}' >> referenced-undefined.txt
+          done
+          sort -u -o defined.txt defined.txt
+          sort -u -o referenced-undefined.txt referenced-undefined.txt
+          comm -23 referenced-undefined.txt defined.txt > external-unresolved.txt
 
-          # Broad classification is informational; external-unresolved.txt is
-          # the authoritative set. Keep categories deliberately simple so odd
-          # dependencies remain visible instead of being hidden by heuristics.
           grep -E '^(__add|__sub|__mul|__div|__udiv|__fix|__float|__extend|__trunc|__eq|__ne|__lt|__le|__gt|__ge)' \
-            ../external-unresolved.txt > ../compiler-runtime.txt || true
-          grep -E '^(atan|atan2|cos|cosf|exp|exp2|expf|log|log10|pow|sin|sinf|sincos|sincosf|sqrt|sqrtf)$' \
-            ../external-unresolved.txt > ../libm.txt || true
-          grep -E '^(crc32|gz|inflate|deflate|zlib)' \
-            ../external-unresolved.txt > ../zlib.txt || true
+            external-unresolved.txt > compiler-runtime.txt || true
+          grep -E '^(atan|atan2|cos|cosf|exp|exp2|expf|log|log10|pow|sin|sinf|sincos|sincosf|sqrt|sqrtf|floor|floorf|ceil|ceilf)$' \
+            external-unresolved.txt > libm.txt || true
+          grep -E '^(adler32|crc32|gz|inflate|deflate|zlib)' external-unresolved.txt > zlib.txt || true
 
           {
-            echo '# FCEUmm pinned HC15xx archive audit'
+            echo '# XGO pinned FCEUmm + libretro-common runtime audit'
             echo
-            echo 'commit: e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
-            echo "archive: $archive"
+            echo 'FCEUmm: e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
+            echo 'libretro-common: 9362316bf1da38160b324a1515bfb83e44ebd7af'
             echo
-            echo '## archive size'
-            stat -c '%s bytes' "$archive"
+            printf 'FCEUmm archive:         '; stat -c '%s bytes' "$core"
+            printf 'libretro-common archive:'; stat -c ' %s bytes' "$common"
             echo
-            echo '## ELF architecture samples'
-            first=$(mipsel-linux-gnu-ar t "$archive" | head -n 5)
-            for obj in $first; do
-              mipsel-linux-gnu-ar p "$archive" "$obj" > "/tmp/$obj"
-              file "/tmp/$obj"
-              mipsel-linux-gnu-readelf -h "/tmp/$obj" | grep -E 'Class:|Data:|Machine:|Flags:' || true
-            done
-            echo
-            echo '## archive-wide counts'
-            printf 'defined globals:      '; wc -l < ../defined.txt
-            printf 'undefined references: '; wc -l < ../referenced-undefined.txt
-            printf 'true external set:    '; wc -l < ../external-unresolved.txt
+            echo '## combined counts'
+            printf 'defined globals:      '; wc -l < defined.txt
+            printf 'undefined references: '; wc -l < referenced-undefined.txt
+            printf 'true external set:    '; wc -l < external-unresolved.txt
             echo
             echo '## true external unresolved symbols'
-            cat ../external-unresolved.txt
+            cat external-unresolved.txt
             echo
-            echo '## likely compiler-runtime symbols'
-            cat ../compiler-runtime.txt || true
+            echo '## likely compiler runtime'
+            cat compiler-runtime.txt || true
             echo
-            echo '## likely libm symbols'
-            cat ../libm.txt || true
+            echo '## likely libm'
+            cat libm.txt || true
             echo
-            echo '## likely zlib symbols'
-            cat ../zlib.txt || true
-          } | tee ../fceumm-symbol-audit.txt
+            echo '## likely zlib still external'
+            cat zlib.txt || true
+          } | tee fceumm-symbol-audit.txt
 
       - name: Upload audit
         uses: actions/upload-artifact@v4
