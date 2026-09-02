@@ -119,15 +119,17 @@ void load_and_run_core(const char *filename, int load_state)
         return;
     }
 
-    old_limit = *RAMSIZE;
-    *RAMSIZE = CORE_BASE;
-
+    /*
+     * Validate the tiny XGOC header while stock memory/task state is untouched.
+     * XGO's own run_nes() begins by stopping the sound task; do the same before
+     * changing RAMSIZE or writing the large external image into upper RAM.
+     */
     f = fw_fopen("/mnt/sda1/cores/fceumm/core.xgc", "rb");
     if (!f)
-        goto stock_fallback;
+        goto stock_fallback_undisturbed;
 
     if (fw_fread(&h, 1, sizeof(h), f) != sizeof(h))
-        goto close_fallback;
+        goto close_fallback_undisturbed;
 
     if (h.magic != XGOC_MAGIC ||
         (h.version_header & 0xffffu) != XGOC_VERSION ||
@@ -138,28 +140,35 @@ void load_and_run_core(const char *filename, int load_state)
         h.memory_size < h.payload_size ||
         h.entry_offset >= h.payload_size ||
         h.memory_size > (CORE_LIMIT - CORE_BASE))
-        goto close_fallback;
+        goto close_fallback_undisturbed;
 
     end_addr = CORE_BASE + h.memory_size;
     entry_addr = CORE_BASE + h.entry_offset;
     if (end_addr < CORE_BASE || entry_addr < CORE_BASE || entry_addr >= end_addr)
-        goto close_fallback;
+        goto close_fallback_undisturbed;
+
+    /* Match the first action of the real XGO run_nes() before memory takeover. */
+    stop_stock_sound_task();
+
+    /* The heap may have moved while the header was being read. Re-check now. */
+    if (*HEAP_BREAK >= CORE_BASE)
+        goto close_fallback_sound_stopped;
+
+    old_limit = *RAMSIZE;
+    *RAMSIZE = CORE_BASE;
 
     if (fw_fread((void *)CORE_BASE, 1, h.payload_size, f) != h.payload_size)
-        goto close_fallback;
+        goto close_fallback_restore_limit;
 
     fw_fclose(f);
     f = 0;
 
     if (crc32_ieee((const unsigned char *)CORE_BASE, h.payload_size) !=
         h.payload_crc32)
-        goto stock_fallback;
+        goto stock_fallback_restore_limit;
 
     zero_range((unsigned char *)(CORE_BASE + h.payload_size),
                h.memory_size - h.payload_size);
-
-    /* Match stock run_nes() only after the external image is fully validated. */
-    stop_stock_sound_task();
 
     /* No external/newlib instruction executes until stock IRQ GP is repaired. */
     repair_irq_gp();
@@ -173,10 +182,22 @@ void load_and_run_core(const char *filename, int load_state)
     *RAMSIZE = old_limit;
     return;
 
-close_fallback:
+close_fallback_restore_limit:
     fw_fclose(f);
 
-stock_fallback:
+stock_fallback_restore_limit:
     *RAMSIZE = old_limit;
+    stock_run_nes(filename, load_state);
+    return;
+
+close_fallback_sound_stopped:
+    fw_fclose(f);
+    stock_run_nes(filename, load_state);
+    return;
+
+close_fallback_undisturbed:
+    fw_fclose(f);
+
+stock_fallback_undisturbed:
     stock_run_nes(filename, load_state);
 }
