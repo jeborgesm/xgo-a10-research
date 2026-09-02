@@ -57,10 +57,12 @@ jobs:
           cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
           flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/libretro-common/include'
           "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
           "$cc" $flags -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
           "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
           "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
-          "$cc" $flags -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h \
+            -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
 
       - name: Fully link native FCEUmm at 0x87000000
         run: |
@@ -78,7 +80,7 @@ jobs:
             -Wl,-Map,xgo-native-fceumm.map \
             -Wl,-T,tools/multicore/native_nes/xgo_core.ld \
             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
-            core_entry.o frontend.o environment.o sbrk.o syscalls.o \
+            core_entry.o gp_bridges.o frontend.o environment.o sbrk.o syscalls.o \
             -Wl,--start-group \
               /tmp/fceumm/fceumm_libretro_sf2000.a \
               /tmp/libretro-common/libretro-common.a \
@@ -126,24 +128,33 @@ jobs:
           test -n "$bss_start"
           test -n "$image_end"
 
-          # The external entry must establish this ELF's GP before its first C
-          # call. Verify the actual immediate pair in machine code rather than
-          # trusting source intent. For an address A, MIPS %hi relocation uses
-          # (A + 0x8000) >> 16 and %lo uses signed A[15:0].
           gp_dec=$((core_gp))
           gp_hi=$((((gp_dec + 0x8000) >> 16) & 0xffff))
-          gp_lo=$((gp_dec & 0xffff))
           gp_hi_hex=$(printf '%04x' "$gp_hi")
-          gp_lo_hex=$(printf '%04x' "$gp_lo")
           entry_disasm=$(awk '/<__core_entry__>:/,/^$/' xgo-native-fceumm.disasm.txt)
           printf '%s\n' "$entry_disasm" | tee xgo-native-fceumm-entry-disasm.txt
-          printf 'core_gp=%s\ncore_gp_hi=0x%s\ncore_gp_lo=0x%s\n' \
-            "$core_gp" "$gp_hi_hex" "$gp_lo_hex" | tee xgo-native-fceumm-gp.txt
+          printf 'core_gp=%s\ncore_gp_hi=0x%s\n' "$core_gp" "$gp_hi_hex" \
+            | tee xgo-native-fceumm-gp.txt
           printf '%s\n' "$entry_disasm" | grep -Eiq "lui[[:space:]]+gp,0x${gp_hi_hex}"
-          printf '%s\n' "$entry_disasm" | grep -Eiq "addiu[[:space:]]+gp,gp,(-?0x)?${gp_lo_hex}|addiu[[:space:]]+gp,gp,[-]?[0-9]+"
           printf '%s\n' "$entry_disasm" | grep -Eq 'sw[[:space:]]+gp,24\(sp\)'
           printf '%s\n' "$entry_disasm" | grep -Eq 'lw[[:space:]]+gp,24\(sp\)'
           printf '%s\n' "$entry_disasm" | grep -Eq '<__core_entry_c>'
+
+          # Prove both directions of the GP boundary exist in the linked image.
+          for sym in xgo_stock_video_refresh xgo_stock_fs_open xgo_stock_run_emulator; do
+            awk -v s="<$sym>:" '$0 ~ s {show=1} show {print} show && /^$/ {exit}' \
+              xgo-native-fceumm.disasm.txt
+          done > xgo-native-fceumm-stock-bridge-disasm.txt
+          grep -Eq 'lui[[:space:]]+gp,0x80c3' xgo-native-fceumm-stock-bridge-disasm.txt
+          grep -Eq 'addiu[[:space:]]+gp,gp,18292' xgo-native-fceumm-stock-bridge-disasm.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' xgo-native-fceumm-stock-bridge-disasm.txt
+
+          for sym in xgo_core_run xgo_core_load_game xgo_core_get_region; do
+            awk -v s="<$sym>:" '$0 ~ s {show=1} show {print} show && /^$/ {exit}' \
+              xgo-native-fceumm.disasm.txt
+          done > xgo-native-fceumm-core-bridge-disasm.txt
+          grep -Eiq "lui[[:space:]]+gp,0x${gp_hi_hex}" xgo-native-fceumm-core-bridge-disasm.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' xgo-native-fceumm-core-bridge-disasm.txt
 
           entry_offset=$((entry - start))
           linked_file_span=$((file_end - start))
@@ -208,6 +219,8 @@ jobs:
             xgo-native-fceumm.disasm.txt
             xgo-native-fceumm-entry-disasm.txt
             xgo-native-fceumm-gp.txt
+            xgo-native-fceumm-stock-bridge-disasm.txt
+            xgo-native-fceumm-core-bridge-disasm.txt
             xgo-native-fceumm-link.log
             xgo-native-fceumm-undefined.txt
             xgo-native-fceumm-layout.txt
