@@ -90,7 +90,7 @@ void load_and_run_core(const char *path, int load_state)
     u32 old_limit;
     u32 end_addr;
     u32 entry_addr;
-    void (*entry)(void);
+    void (*entry)(const char *, int);
 
     if (!has_semicolon(path)) {
         stock_run_gba(path, load_state);
@@ -105,7 +105,8 @@ void load_and_run_core(const char *path, int load_state)
     old_limit = *RAMSIZE;
     *RAMSIZE = CORE_BASE;
 
-    f = fw_fopen("/mnt/sda1/cores/xgoprobe/core.xgc", "rb");
+    /* First production target: the pinned HC15xx-compatible FCEUmm core. */
+    f = fw_fopen("/mnt/sda1/cores/fceumm/core.xgc", "rb");
     if (!f)
         goto restore_heap;
 
@@ -146,12 +147,15 @@ void load_and_run_core(const char *path, int load_state)
 
     cache_sync_range(CORE_BASE, end_addr);
 
+    /* Pass the original stub and stock load-state request into the core bridge. */
     entry = (void *)entry_addr;
-    entry();
-    goto restore_heap;
+    entry(path, load_state);
+
+restore_heap:
+    *RAMSIZE = old_limit;
+    return;
 
 close_file:
     fw_fclose(f);
-restore_heap:
-    *RAMSIZE = old_limit;
+    goto restore_heap;
 }
