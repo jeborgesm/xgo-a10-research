@@ -1,13 +1,11 @@
 /*
  * Native-main-list FCEUmm frontend for XGO.
  *
- * Entry comes from the patched NES call in run_game() at 0x80360e20. At that
- * point stock run_game() has already loaded the selected NES file into the
- * 64-MiB gp_buf_64m arena and stored an aligned length in g_run_file_size.
- *
- * Hardware bring-up uses a deliberately primitive SD trace written through
- * already-GP-safe stock VFS veneers. No printf, malloc, stdio or raw stock
- * callback pointers are used by the tracer.
+ * Hardware bring-up visual probe: every important execution boundary submits
+ * a synthetic 256x240 RGB565 frame through the already-GP-safe stock XGO video
+ * callback. The probe deliberately uses no filesystem, printf, malloc or libc.
+ * Loader-side XGOC BSS clearing makes the static framebuffer usable even before
+ * external newlib initialization.
  */
 
 #ifdef XGO_WITH_NEWLIB
@@ -23,11 +21,9 @@ typedef int bool;
 #define RETRO_DEVICE_JOYPAD 1u
 #define XGO_SYSTEM_NES 0x0001u
 #define MAX_ROM_SIZE 0x04000000u
-#define FS_O_WRONLY 0x0001
-#define FS_O_APPEND 0x0008
-#define FS_O_CREAT  0x0100
-#define FS_O_TRUNC  0x0200
-#define DIAG_PATH "/mnt/sda1/xgo-native.log"
+#define DIAG_W 256u
+#define DIAG_H 240u
+#define DIAG_PITCH (DIAG_W * 2u)
 
 struct retro_game_info {
     const char *path;
@@ -64,9 +60,6 @@ extern size_t xgo_stock_audio_sample_batch(const short *, size_t);
 extern void xgo_stock_input_poll(void);
 extern short xgo_stock_input_state(unsigned, unsigned, unsigned, unsigned);
 extern void xgo_stock_run_emulator(int);
-extern int xgo_stock_fs_open(const char *, int, int);
-extern int xgo_stock_fs_write(int, const void *, unsigned);
-extern int xgo_stock_fs_close(int);
 
 /* Transparent stock run_emulator -> core veneers. */
 extern unsigned xgo_core_get_region(void);
@@ -91,64 +84,91 @@ extern int xgo_core_state_io(const char *);
 #define GFN_FRAMESKIP   (*(void **)0x80c33ae0u)
 #define GFN_RUN         (*(void (**)(void))0x80c33ae4u)
 
-static unsigned diag_len(const char *s)
+/*
+ * Visual stage encoding.
+ *
+ * The full background changes with every stage. The top 40 rows additionally
+ * encode the stage number as eight 32-pixel-wide binary bars: white means 1,
+ * black means 0, least-significant bit at the left. This keeps identification
+ * robust even if RGB565 channel ordering differs from expectation.
+ */
+static unsigned short diag_frame[DIAG_W * DIAG_H];
+
+static unsigned short diag_color(unsigned stage)
 {
-    unsigned n = 0;
-    while (s[n]) ++n;
-    return n;
+    static const unsigned short colors[] = {
+        0x0000, /* unused */
+        0xf800, /* 1 red */
+        0x07e0, /* 2 green */
+        0x001f, /* 3 blue */
+        0xffe0, /* 4 yellow */
+        0xf81f, /* 5 magenta */
+        0x07ff, /* 6 cyan */
+        0xffff, /* 7 white */
+        0x7bef, /* 8 gray */
+        0x780f, /* 9 purple-ish */
+        0x03ef, /* 10 teal-ish */
+        0xfbe0, /* 11 orange-ish */
+        0x8410, /* 12 dark gray */
+        0xfc10, /* 13 warm */
+        0x87f0, /* 14 lime-ish */
+        0x801f  /* 15 violet-ish */
+    };
+    if (stage >= (sizeof(colors) / sizeof(colors[0])))
+        stage = (sizeof(colors) / sizeof(colors[0])) - 1u;
+    return colors[stage];
 }
 
-static void diag_write_flags(const char *s, int flags)
+static void diag_screen(unsigned stage)
 {
-    int fd = xgo_stock_fs_open(DIAG_PATH, flags, 0666);
-    if (fd < 0)
-        return;
-    (void)xgo_stock_fs_write(fd, s, diag_len(s));
-    (void)xgo_stock_fs_close(fd);
+    unsigned x, y;
+    unsigned short bg = diag_color(stage);
+
+    for (y = 0; y < DIAG_H; ++y) {
+        for (x = 0; x < DIAG_W; ++x) {
+            unsigned short c = bg;
+            if (y < 40u) {
+                unsigned bit = x >> 5; /* 8 bars, 32 pixels each */
+                c = (stage & (1u << bit)) ? 0xffffu : 0x0000u;
+            }
+            diag_frame[y * DIAG_W + x] = c;
+        }
+    }
+
+    xgo_stock_video_refresh(diag_frame, DIAG_W, DIAG_H, DIAG_PITCH);
 }
 
-static void diag_reset(const char *s)
-{
-    diag_write_flags(s, FS_O_WRONLY | FS_O_CREAT | FS_O_TRUNC);
-}
-
-static void diag(const char *s)
-{
-    diag_write_flags(s, FS_O_WRONLY | FS_O_CREAT | FS_O_APPEND);
-}
-
-/* These are the actual targets of the stock->core GP veneers during the
- * diagnostic build. They prove entry and return around each libretro callback. */
+/* These are the true targets of the stock->core GP veneers. */
 unsigned xgo_diag_get_region(void)
 {
     unsigned r;
-    diag("R1 get_region enter\n");
+    diag_screen(10); /* region enter */
     r = retro_get_region();
-    diag("R2 get_region return\n");
+    diag_screen(11); /* region returned */
     return r;
 }
 
 void xgo_diag_get_av(struct retro_system_av_info *info)
 {
-    diag("A1 get_av enter\n");
+    diag_screen(8); /* AV enter */
     retro_get_system_av_info(info);
-    diag("A2 get_av return\n");
+    diag_screen(9); /* AV returned */
 }
 
 bool xgo_diag_load_game(const struct retro_game_info *info)
 {
     bool ok;
-    diag("L1 retro_load_game enter\n");
+    diag_screen(6); /* retro_load_game enter */
     ok = retro_load_game(info);
-    diag(ok ? "L2 retro_load_game TRUE\n" : "L2 retro_load_game FALSE\n");
+    diag_screen(7); /* retro_load_game returned */
     return ok;
 }
 
 void xgo_diag_unload_game(void)
 {
-    diag("U1 retro_unload_game enter\n");
+    diag_screen(14);
     retro_unload_game();
-    diag("U2 retro_unload_game return\n");
+    diag_screen(15);
 }
 
 void xgo_diag_run(void)
@@ -156,12 +176,12 @@ void xgo_diag_run(void)
     static unsigned first_run;
     if (first_run == 0) {
         first_run = 1;
-        diag("F1 first retro_run enter\n");
+        diag_screen(12); /* first retro_run enter */
     }
     retro_run();
     if (first_run == 1) {
         first_run = 2;
-        diag("F2 first retro_run return\n");
+        diag_screen(13); /* first retro_run returned */
     }
 }
 
@@ -200,16 +220,16 @@ int __core_entry_c(const char *filename, int load_state)
     void (*old_run)(void);
     void *old_frameskip;
 
-    diag_reset("E0 core C entry\n");
+    /* Stage 1 is intentionally before ANY newlib/runtime initialization. */
+    diag_screen(1);
     init_core_runtime();
-    diag("E1 runtime initialized\n");
+    diag_screen(2);
 
     rom_size = RUN_FILE_SIZE;
     if (!ROM_BUFFER || rom_size == 0 || rom_size > MAX_ROM_SIZE) {
-        diag("E2 ROM validation FAILED\n");
+        diag_screen(15);
         return -1;
     }
-    diag("E2 ROM validation OK\n");
 
     old_game_info.path = GAME_INFO.path;
     old_game_info.data = GAME_INFO.data;
@@ -234,9 +254,10 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_input_poll(xgo_stock_input_poll);
     retro_set_input_state(xgo_stock_input_state);
     retro_set_environment(xgo_minimal_environment);
-    diag("E3 before retro_init\n");
+
+    diag_screen(3); /* before retro_init */
     retro_init();
-    diag("E4 after retro_init\n");
+    diag_screen(4); /* after retro_init */
 
     GAME_INFO.path = filename;
     GAME_INFO.data = ROM_BUFFER;
@@ -255,11 +276,10 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
-    diag("E5 before stock run_emulator\n");
+    diag_screen(5); /* immediately before stock run_emulator */
     xgo_stock_run_emulator(load_state);
-    diag("E6 stock run_emulator returned\n");
+
     retro_deinit();
-    diag("E7 retro_deinit returned\n");
 
     GFN_STATE_SAVE = old_state_save;
     GFN_STATE_LOAD = old_state_load;
@@ -276,6 +296,5 @@ int __core_entry_c(const char *filename, int load_state)
     GAME_INFO.size = old_game_info.size;
     GAME_INFO.meta = old_game_info.meta;
 
-    diag("E8 frontend return\n");
     return 0;
 }
