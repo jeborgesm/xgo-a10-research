@@ -35,13 +35,16 @@ jobs:
           (cd /tmp/fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
           git clone --no-checkout https://github.com/madcock/libretro-common.git /tmp/libretro-common
           (cd /tmp/libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
+          cp tools/multicore/include/dirent.h /tmp/libretro-common/include/dirent.h
 
-      - name: Build pinned archives with Codescape
+      - name: Build pinned archives with proven HC15xx settings
         run: |
           set -euxo pipefail
           tools=/opt/mips32-mti-elf/2019.09-03-2/bin
-          (cd /tmp/fceumm && make clean || true && make -j2 platform=sf2000 \
-            CC="$tools/mips-mti-elf-gcc" CXX="$tools/mips-mti-elf-g++" AR="$tools/mips-mti-elf-ar")
+          # platform=sf2000 already selects the exact Codescape compiler paths.
+          (cd /tmp/fceumm && make clean || true && make -j2 platform=sf2000)
+          # libretro-common does not have an SF2000 platform target; provide
+          # only the compiler/archive tools and our already-proven dirent shim.
           (cd /tmp/libretro-common && make clean || true && make -j2 \
             CC="$tools/mips-mti-elf-gcc" AR="$tools/mips-mti-elf-ar")
 
