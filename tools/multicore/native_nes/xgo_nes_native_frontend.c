@@ -1,12 +1,13 @@
 /*
  * Native-main-list FCEUmm frontend for XGO.
  *
- * Hardware bring-up visual probe: important execution boundaries write a small
- * synthetic RGB565 marker into the currently active XGO OSD region. The probe
- * deliberately bypasses run_screen_write/video-refresh geometry switching so
- * it does not tear down the menu/loading display before run_emulator has
- * established the emulator display path. No filesystem, printf, malloc or libc
- * is used by the marker itself.
+ * Normal builds retain the current-region visual diagnostics. Bring-up ladder
+ * builds define XGO_BRINGUP_RETURN_STAGE; in those builds all visual diagnostics
+ * are compiled out and the real frontend deliberately returns at one selected
+ * checkpoint. This gives hardware a dependency-free observable:
+ *
+ *   return to menu = checkpoint was reached safely
+ *   freeze          = failure occurred before the selected checkpoint returned
  */
 
 #ifdef XGO_WITH_NEWLIB
@@ -86,14 +87,7 @@ extern int xgo_core_state_io(const char *);
 #define GFN_FRAMESKIP   (*(void **)0x80c33ae0u)
 #define GFN_RUN         (*(void (**)(void))0x80c33ae4u)
 
-/*
- * Current-region stage encoding.
- *
- * Top half: eight 16-pixel-wide binary bars, white=1 and black=0, least
- * significant bit at the left. Bottom half: stage-specific RGB565 color.
- * The marker is only 128x64 so it can be written into the already-active OSD
- * region without asking run_screen_write to change display geometry.
- */
+#ifndef XGO_BRINGUP_RETURN_STAGE
 static unsigned short diag_frame[DIAG_W * DIAG_H];
 
 static unsigned short diag_color(unsigned stage)
@@ -118,7 +112,7 @@ static void diag_screen(unsigned stage)
         for (x = 0; x < DIAG_W; ++x) {
             unsigned short c;
             if (y < (DIAG_H / 2u)) {
-                unsigned bit = x >> 4; /* 8 bars, 16 pixels each */
+                unsigned bit = x >> 4;
                 c = (stage & (1u << bit)) ? 0xffffu : 0x0000u;
             } else {
                 c = bg;
@@ -130,38 +124,47 @@ static void diag_screen(unsigned stage)
     (void)xgo_stock_osd_region_write(diag_frame, DIAG_W, DIAG_H,
                                      DIAG_PIXEL_PITCH);
 }
+#define XGO_DIAG(n) diag_screen(n)
+#else
+#define XGO_DIAG(n) ((void)0)
+#endif
 
-/* These are the true targets of the stock->core GP veneers. */
+#ifdef XGO_BRINGUP_RETURN_STAGE
+#define XGO_RETURN_STAGE(n) do { if (XGO_BRINGUP_RETURN_STAGE == (n)) return 0; } while (0)
+#else
+#define XGO_RETURN_STAGE(n) ((void)0)
+#endif
+
 unsigned xgo_diag_get_region(void)
 {
     unsigned r;
-    diag_screen(10);
+    XGO_DIAG(10);
     r = retro_get_region();
-    diag_screen(11);
+    XGO_DIAG(11);
     return r;
 }
 
 void xgo_diag_get_av(struct retro_system_av_info *info)
 {
-    diag_screen(8);
+    XGO_DIAG(8);
     retro_get_system_av_info(info);
-    diag_screen(9);
+    XGO_DIAG(9);
 }
 
 bool xgo_diag_load_game(const struct retro_game_info *info)
 {
     bool ok;
-    diag_screen(6);
+    XGO_DIAG(6);
     ok = retro_load_game(info);
-    diag_screen(7);
+    XGO_DIAG(7);
     return ok;
 }
 
 void xgo_diag_unload_game(void)
 {
-    diag_screen(14);
+    XGO_DIAG(14);
     retro_unload_game();
-    diag_screen(15);
+    XGO_DIAG(15);
 }
 
 void xgo_diag_run(void)
@@ -169,12 +172,12 @@ void xgo_diag_run(void)
     static unsigned first_run;
     if (first_run == 0) {
         first_run = 1;
-        diag_screen(12);
+        XGO_DIAG(12);
     }
     retro_run();
     if (first_run == 1) {
         first_run = 2;
-        diag_screen(13);
+        XGO_DIAG(13);
     }
 }
 
@@ -213,13 +216,19 @@ int __core_entry_c(const char *filename, int load_state)
     void (*old_run)(void);
     void *old_frameskip;
 
-    diag_screen(1); /* before any external newlib initialization */
+    /* Stage 1: GP entry veneer reached C and a normal C return is possible. */
+    XGO_RETURN_STAGE(1);
+
+    XGO_DIAG(1);
     init_core_runtime();
-    diag_screen(2);
+
+    /* Stage 2: external newlib/reentrancy/constructor initialization returned. */
+    XGO_RETURN_STAGE(2);
+    XGO_DIAG(2);
 
     rom_size = RUN_FILE_SIZE;
     if (!ROM_BUFFER || rom_size == 0 || rom_size > MAX_ROM_SIZE) {
-        diag_screen(15);
+        XGO_DIAG(15);
         return -1;
     }
 
@@ -238,6 +247,9 @@ int __core_entry_c(const char *filename, int load_state)
     old_run = GFN_RUN;
     old_frameskip = GFN_FRAMESKIP;
 
+    /* Stage 3: stock ROM/global state can be read safely under external GP. */
+    XGO_RETURN_STAGE(3);
+
     SYSTEM_FAMILY = XGO_SYSTEM_NES;
     EMULATOR_LOOP_COUNTER = 0;
 
@@ -247,9 +259,15 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_input_state(xgo_stock_input_state);
     retro_set_environment(xgo_minimal_environment);
 
-    diag_screen(3);
+    /* Stage 4: libretro callback setter calls completed. */
+    XGO_RETURN_STAGE(4);
+    XGO_DIAG(3);
+
     retro_init();
-    diag_screen(4);
+
+    /* Stage 5: FCEUmm retro_init() completed and returned. */
+    XGO_RETURN_STAGE(5);
+    XGO_DIAG(4);
 
     GAME_INFO.path = filename;
     GAME_INFO.data = ROM_BUFFER;
@@ -268,7 +286,10 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
-    diag_screen(5);
+    /* Stage 6: stock frontend slots/content-info/controller setup completed. */
+    XGO_RETURN_STAGE(6);
+    XGO_DIAG(5);
+
     xgo_stock_run_emulator(load_state);
 
     retro_deinit();
