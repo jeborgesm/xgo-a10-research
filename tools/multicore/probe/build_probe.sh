@@ -4,7 +4,7 @@ set -euo pipefail
 CLANG=${CLANG:-clang}
 LD_LLD=${LD_LLD:-ld.lld}
 OBJCOPY=${OBJCOPY:-llvm-objcopy}
-NM=${NM:-llvm-nm}
+NM=${NM:-nm}
 PYTHON=${PYTHON:-python3}
 
 CFLAGS=(
@@ -52,13 +52,19 @@ image_end=$(sym_addr __image_end)
 entry=$(sym_addr __start)
 
 payload_size=$(stat -c %s core_87000000)
-expected_payload_size=$((file_end - image_start))
+file_span=$((file_end - image_start))
 memory_size=$((image_end - image_start))
 entry_offset=$((entry - image_start))
 
-if (( payload_size != expected_payload_size )); then
-  printf 'ERROR: raw payload size %d != linker file span %d\n' \
-    "$payload_size" "$expected_payload_size" >&2
+# objcopy may trim trailing alignment bytes after the last file-backed section.
+# It must never produce bytes beyond the linker's file-backed upper bound.
+if (( payload_size > file_span )); then
+  printf 'ERROR: raw payload size %d exceeds linker file span %d\n' \
+    "$payload_size" "$file_span" >&2
+  exit 1
+fi
+if (( memory_size < file_span || entry_offset < 0 || entry_offset >= payload_size )); then
+  echo 'ERROR: inconsistent XGO core ELF extents' >&2
   exit 1
 fi
 
@@ -72,8 +78,10 @@ loader_capacity=$((0x2180 - 0x1500))
 
 printf 'loader: %d bytes / %d available\n' "$loader_size" "$loader_capacity"
 printf 'raw probe core: %d bytes\n' "$payload_size"
+printf 'linker file span: %d bytes (trimmed tail %d)\n' \
+  "$file_span" "$((file_span - payload_size))"
 printf 'XGOC probe core: %d bytes\n' "$container_size"
-printf 'runtime image: %d bytes (BSS/runtime-only %d)\n' \
+printf 'runtime image: %d bytes (zero-filled tail %d)\n' \
   "$memory_size" "$((memory_size - payload_size))"
 
 if (( loader_size > loader_capacity )); then
