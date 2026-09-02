@@ -55,6 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2'
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_core_entry.s -o xgo_core_entry.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o xgo_nes_native_frontend.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
@@ -64,8 +65,8 @@ jobs:
           set -euo pipefail
           # Keep unresolved calls as relocations so R_MIPS_26 targets are not
           # falsely finalized to address zero. GNU ld requires an explicit GC
-          # root in relocatable mode; __core_entry__ is defined by our frontend
-          # in .init.core_entry and is the real external-core entry contract.
+          # root in relocatable mode; __core_entry__ now lives in the assembly
+          # GP veneer, which is the real external-core entry contract.
           mipsel-linux-gnu-ld \
             -r \
             --gc-sections \
@@ -73,6 +74,7 @@ jobs:
             -u __core_entry__ \
             -T tools/multicore/native_nes/xgo_external_stock_services.ld \
             -o xgo-fceumm-reachable.o \
+            xgo_core_entry.o \
             xgo_nes_native_frontend.o \
             xgo_minimal_environment_shim.o \
             xgo_preloaded_rom_sbrk.o \
