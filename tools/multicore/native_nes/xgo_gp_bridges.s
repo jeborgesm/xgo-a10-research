@@ -16,9 +16,6 @@
     .set    noreorder
     .set    nomacro
 
-#define XGO_STOCK_GP_HI 0x80c3
-#define XGO_STOCK_GP_LO 0x4774
-
 .macro STOCK_BRIDGE name, target
     .pushsection .text.\name,"ax",@progbits
     .align  2
@@ -28,8 +25,8 @@
     addiu   $sp, $sp, -32
     sw      $ra, 28($sp)
     sw      $gp, 24($sp)
-    lui     $gp, XGO_STOCK_GP_HI
-    addiu   $gp, $gp, XGO_STOCK_GP_LO
+    lui     $gp, 0x80c3
+    addiu   $gp, $gp, 0x4774
     jal     \target
     nop
     lw      $gp, 24($sp)
@@ -56,8 +53,8 @@
     sw      $gp, 24($sp)
     lw      $t0, 48($sp)
     sw      $t0, 16($sp)
-    lui     $gp, XGO_STOCK_GP_HI
-    addiu   $gp, $gp, XGO_STOCK_GP_LO
+    lui     $gp, 0x80c3
+    addiu   $gp, $gp, 0x4774
     jal     \target
     nop
     lw      $gp, 24($sp)
