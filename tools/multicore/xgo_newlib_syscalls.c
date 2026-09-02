@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
+#include <dirent.h>
 
 #define FS_O_RDONLY 0x0000
 #define FS_O_WRONLY 0x0001
@@ -37,6 +38,9 @@ extern int fs_stat(const char *path, void *sbuf);
 extern int fs_fstat(int fd, void *sbuf);
 extern int fs_access(const char *path, int mode);
 extern int fs_mkdir(const char *path, int mode);
+extern int fs_opendir(const char *path);
+extern int fs_closedir(int fd);
+extern int fs_readdir(int fd, void *entry);
 extern uint32_t os_get_tick_count(void);
 extern int g_errno;
 
@@ -209,6 +213,78 @@ int mkdir(const char *path, mode_t mode)
         return -1;
     }
     return ret;
+}
+
+/*
+ * XGO/HC15xx directory records are larger than the public dirent structure:
+ * type is at +0x10, filename at +0x22, total scratch record is 0x428 bytes.
+ * Convert that private record into the tiny bare-metal dirent API expected by
+ * libretro-common. The static output mirrors upstream Multicore and is not
+ * thread-safe; the stock frontend runs this path synchronously.
+ */
+typedef struct {
+    union {
+        struct {
+            uint8_t pad_type[0x10];
+            uint32_t type;
+        } t;
+        struct {
+            uint8_t pad_name[0x22];
+            char name[0x225];
+        } n;
+        uint8_t raw[0x428];
+    } u;
+} xgo_fs_dirent_t;
+
+DIR *opendir(const char *path)
+{
+    int fd = fs_opendir(path);
+    if (fd < 0) {
+        errno = g_errno;
+        return (DIR *)0;
+    }
+    return (DIR *)(uintptr_t)(fd + 1);
+}
+
+int closedir(DIR *dir)
+{
+    int fd = (int)(uintptr_t)dir - 1;
+    int ret;
+    if (fd < 0)
+        return -1;
+    ret = fs_closedir(fd);
+    if (ret < 0) {
+        errno = g_errno;
+        return -1;
+    }
+    return ret;
+}
+
+struct dirent *readdir(DIR *dir)
+{
+    static struct dirent out;
+    xgo_fs_dirent_t tmp;
+    int fd = (int)(uintptr_t)dir - 1;
+    unsigned type;
+
+    if (fd < 0)
+        return (struct dirent *)0;
+
+    memset(&tmp, 0, sizeof(tmp));
+    if (fs_readdir(fd, &tmp) < 0)
+        return (struct dirent *)0;
+
+    type = tmp.u.t.type;
+    if ((type & 0xf000u) == 0x8000u)
+        out.d_type = DT_REG;
+    else if ((type & 0xf000u) == 0x4000u)
+        out.d_type = DT_DIR;
+    else
+        out.d_type = DT_UNKNOWN;
+
+    strncpy(out.d_name, tmp.u.n.name, sizeof(out.d_name) - 1u);
+    out.d_name[sizeof(out.d_name) - 1u] = 0;
+    return &out;
 }
 
 int isatty(int fd)
