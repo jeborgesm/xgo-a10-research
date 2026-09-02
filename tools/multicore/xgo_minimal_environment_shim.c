@@ -3,14 +3,18 @@
  *
  * Research-stage source. This deliberately implements only low-risk generic
  * queries that do not require direct XGO board-driver manipulation.
- * Unknown commands fall back to the stock environment handler through a
- * stock-GP veneer.
+ *
+ * IMPORTANT: never return raw stock-firmware callback/function pointers to the
+ * external core. FCEUmm executes with its own linker-provided $gp, while stock
+ * XGO functions expect $gp == 0x80c34774. A raw callback later invoked by the
+ * core would bypass xgo_gp_bridges.s and execute stock code under the wrong GP.
  *
  * The stock XGO handler at 0x8035eb64 is intentionally NOT trusted for pixel
  * format or rotation negotiation. It returns success for pixel formats it does
  * not actually convert, and SET_ROTATION only permutes D-pad masks without
- * rotating video. Until the external frontend implements those capabilities,
- * this shim advertises only what the underlying XGO transport really supports.
+ * rotating video. Unknown modern commands are also kept away from the stock
+ * handler; the preserved implementation predates them and its default path
+ * mutates the stock input-mask table before returning false.
  */
 
 typedef int bool;
@@ -48,24 +52,27 @@ struct retro_game_info {
     const char *meta;
 };
 
-/* xgo_gp_bridges.s establishes XGO_STOCK_GP around this firmware call. */
+/* xgo_gp_bridges.s establishes XGO_STOCK_GP around this firmware call. Only
+ * command 15 (GET_VARIABLE), whose result is plain data rather than a callback,
+ * is deliberately delegated below. */
 extern bool xgo_stock_environment(unsigned, void *);
 
 #define XGO_REGION_MODE (*(volatile unsigned *)0x80c2e878u)
 #define XGO_GAME_INFO (*(volatile struct retro_game_info *)0x80c2e914u)
 
-#define RETRO_ENVIRONMENT_SET_ROTATION               1u
-#define RETRO_ENVIRONMENT_GET_CAN_DUPE               3u
-#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY       9u
-#define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT          10u
-#define RETRO_ENVIRONMENT_GET_VARIABLE              15u
-#define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE       17u
-#define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY        31u
+#define RETRO_ENVIRONMENT_SET_ROTATION                1u
+#define RETRO_ENVIRONMENT_GET_CAN_DUPE                3u
+#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY        9u
+#define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT           10u
+#define RETRO_ENVIRONMENT_GET_VARIABLE               15u
+#define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE        17u
+#define RETRO_ENVIRONMENT_GET_LOG_INTERFACE          27u
+#define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY         31u
 #define RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE 65u
-#define RETRO_ENVIRONMENT_GET_GAME_INFO_EXT         66u
-#define RETRO_ENVIRONMENT_EXPERIMENTAL              0x10000u
-#define RETRO_ENVIRONMENT_GET_INPUT_BITMASKS        (51u | RETRO_ENVIRONMENT_EXPERIMENTAL)
-#define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE    (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
+#define RETRO_ENVIRONMENT_GET_GAME_INFO_EXT          66u
+#define RETRO_ENVIRONMENT_EXPERIMENTAL               0x10000u
+#define RETRO_ENVIRONMENT_GET_INPUT_BITMASKS         (51u | RETRO_ENVIRONMENT_EXPERIMENTAL)
+#define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE     (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /* libretro enum retro_pixel_format */
 #define RETRO_PIXEL_FORMAT_0RGB1555 0u
@@ -79,7 +86,7 @@ static const char region_pal[]  = "PAL";
 static const char region_auto[] = "Auto";
 
 /* Variable updates are currently static in this minimal shim. */
-static bool xgo_variable_update;
+static unsigned char xgo_variable_update;
 static struct retro_game_info_ext xgo_game_info_ext;
 
 static bool str_equal(const char *a, const char *b)
@@ -103,7 +110,9 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         if (!data)
             return false;
-        *(bool *)data = true;
+        /* libretro bool is one byte in the pinned Codescape ABI. Do not use the
+         * shim's int-sized callback return type for data written through ptrs. */
+        *(unsigned char *)data = 1u;
         return true;
 
     case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:
@@ -117,6 +126,15 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
             return false;
         *(const char **)data = xgo_save_directory;
         return true;
+
+    case RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
+        /* Hardware test #2 exposed why this must stay false. Stock command 27
+         * returns a raw firmware logger pointer. FCEUmm stores it during
+         * retro_init() and calls it directly from retro_load_game(), bypassing
+         * the stock-GP bridge and freezing the device under the external _gp.
+         * Returning false leaves FCEUmm's built-in no-op logger installed. */
+        (void)data;
+        return false;
 
     case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
         /* Stock input is per-button only; never advertise id=256 masks. */
@@ -162,13 +180,16 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
                 return true;
             }
         }
+        /* Command 15 is implemented by the old stock frontend and only returns
+         * data pointers/values, not callable firmware pointers. Keeping this
+         * delegation preserves stock FCEUmm option defaults where keys overlap. */
         return xgo_stock_environment(cmd, data);
 
     case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
         if (!data)
             return false;
-        *(bool *)data = xgo_variable_update;
-        xgo_variable_update = false;
+        *(unsigned char *)data = xgo_variable_update;
+        xgo_variable_update = 0u;
         return true;
 
     case RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE:
@@ -184,7 +205,9 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
         return *(const unsigned *)data == RETRO_PIXEL_FORMAT_RGB565;
 
     default:
-        /* The wrapper temporarily installs stock $gp before entering firmware. */
-        return xgo_stock_environment(cmd, data);
+        /* Closed compatibility boundary. Unsupported modern commands must not
+         * reach the 2017 stock handler accidentally. */
+        (void)data;
+        return false;
     }
 }
