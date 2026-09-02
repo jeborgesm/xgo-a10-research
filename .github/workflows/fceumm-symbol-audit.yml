@@ -19,6 +19,13 @@ jobs:
             gcc-mipsel-linux-gnu g++-mipsel-linux-gnu \
             binutils-mipsel-linux-gnu make git
 
+          # Ubuntu's mipsel-linux-gnu sysroot is built for hard-float and omits
+          # this glibc bookkeeping header. We only need libc declarations while
+          # compiling the static core archive; the final XGO image will not link
+          # Linux glibc. Supplying the empty soft-float selector lets GCC honor
+          # -msoft-float and continue the compile-only ABI/symbol audit.
+          sudo touch /usr/mipsel-linux-gnu/include/gnu/stubs-o32_soft.h
+
       - name: Fetch pinned HC15xx FCEUmm
         run: |
           git clone --no-checkout https://github.com/madcock/libretro-fceumm.git fceumm
