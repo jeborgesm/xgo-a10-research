@@ -38,54 +38,131 @@ jobs:
           cd /tmp/libretro-fceumm
           git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
           test "$(git rev-parse HEAD)" = e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
-
-      - name: Build pinned FCEUmm SF2000 archive
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cd /tmp/libretro-fceumm
           make clean || true
           make platform=sf2000 -j2
           test -f fceumm_libretro_sf2000.a
           cp fceumm_libretro_sf2000.a "$GITHUB_WORKSPACE/"
 
-      - name: Audit FCEUmm archive symbols
+      - name: Check out pinned Multicore libretro-common
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          cd /tmp/libretro-common
+          git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af
+          test "$(git rev-parse HEAD)" = 9362316bf1da38160b324a1515bfb83e44ebd7af
+          make clean || true
+          make -j2
+          test -f libretro-common.a
+          cp libretro-common.a "$GITHUB_WORKSPACE/"
+
+      - name: Audit true external FCEUmm symbols
         shell: bash
         run: |
           set -euxo pipefail
           TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
-
-          # Raw archive member references are useful for archaeology but include
-          # references satisfied by other members of the same archive.
-          "${TOOL}nm" -u fceumm_libretro_sf2000.a | sort -u \
-            | tee fceumm-undefined-symbols-raw.txt
-
-          # Force every archive object into one relocatable object. This resolves
-          # all FCEUmm-internal references and leaves only the true external
-          # ABI/runtime/libretro-common surface.
           "${TOOL}ld" -EL -r --whole-archive fceumm_libretro_sf2000.a \
             --no-whole-archive -o fceumm-whole.o
-          "${TOOL}nm" -u fceumm-whole.o | sort -u \
-            | tee fceumm-external-symbols.txt
-          "${TOOL}nm" --defined-only fceumm-whole.o | sort \
-            > fceumm-defined-symbols.txt
-
-          "${TOOL}size" -A fceumm-whole.o > fceumm-whole-size.txt
-          "${TOOL}size" -A fceumm_libretro_sf2000.a > fceumm-size.txt
+          "${TOOL}nm" -u fceumm-whole.o | sort -u | tee fceumm-external-symbols.txt
           sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive-sha256.txt
 
-      - name: Upload exact FCEUmm archive and audit
+      - name: Compile XGO native external-core frontend
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
+          CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -Os -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -DXGO_WITH_NEWLIB'
+          "${TOOL}gcc" $CFLAGS -I/tmp/libretro-common/include -c \
+            tools/multicore/native_nes/xgo_nes_native_frontend.c -o xgo_nes_native_frontend.o
+          "${TOOL}gcc" $CFLAGS -I/tmp/libretro-common/include -c \
+            tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
+          "${TOOL}gcc" $CFLAGS -c \
+            tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
+          "${TOOL}gcc" $CFLAGS -I/tmp/libretro-common/include -c \
+            tools/multicore/xgo_newlib_syscalls.c -o xgo_newlib_syscalls.o
+
+      - name: Attempt full XGO FCEUmm link
+        shell: bash
+        run: |
+          set -uxo pipefail
+          TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
+          "${TOOL}g++" \
+            -EL -march=mips32 -mtune=mips32 -msoft-float \
+            -Wl,--gc-sections --static -z max-page-size=32 \
+            -Wl,-Map=xgo-fceumm-core.elf.map \
+            -e __core_entry__ \
+            -T tools/multicore/xgo_core.ld \
+            -T tools/multicore/xgo_external_services.ld \
+            -o xgo-fceumm-core.elf \
+            -Wl,--start-group \
+              xgo_nes_native_frontend.o \
+              xgo_minimal_environment_shim.o \
+              xgo_preloaded_rom_sbrk.o \
+              xgo_newlib_syscalls.o \
+              fceumm_libretro_sf2000.a \
+              libretro-common.a \
+              -lc -lm -lgcc \
+            -Wl,--end-group \
+            2>&1 | tee xgo-fceumm-link.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > xgo-fceumm-link-status.txt
+          exit 0
+
+      - name: Package and audit successful XGO core
+        if: always()
+        shell: bash
+        run: |
+          set -euxo pipefail
+          status=$(cat xgo-fceumm-link-status.txt)
+          if [ "$status" != 0 ]; then
+            echo 'Full link did not succeed; preserving linker diagnostics.'
+            exit 0
+          fi
+
+          TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
+          READELF="${TOOL}readelf" NM="${TOOL}nm" OBJDUMP="${TOOL}objdump" \
+            bash tools/multicore/audit_external_elf.sh xgo-fceumm-core.elf \
+            | tee xgo-fceumm-elf-audit.txt
+
+          "${TOOL}objcopy" -O binary \
+            -R .MIPS.abiflags -R .note.gnu.build-id -R '.rel*' \
+            xgo-fceumm-core.elf core_87000000
+
+          start=$((0x$("${TOOL}nm" -n xgo-fceumm-core.elf | awk '$3=="__image_start" {print $1; exit}')))
+          end=$((0x$("${TOOL}nm" -n xgo-fceumm-core.elf | awk '$3=="__image_end" {print $1; exit}')))
+          entry=$((0x$("${TOOL}nm" -n xgo-fceumm-core.elf | awk '$3=="__core_entry__" {print $1; exit}')))
+          python3 tools/multicore/probe/pack_xgoc.py core_87000000 core.xgc \
+            --entry-offset "$((entry-start))" \
+            --memory-size "$((end-start))" \
+            | tee xgo-fceumm-xgoc.txt
+          sha256sum core_87000000 core.xgc | tee xgo-fceumm-output-sha256.txt
+          "${TOOL}size" -A xgo-fceumm-core.elf > xgo-fceumm-core-size.txt
+
+      - name: Upload XGO FCEUmm build evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xgo-fceumm-toolchain-probe
+          name: xgo-fceumm-full-link-probe
           path: |
-            fceumm_libretro_sf2000.a
-            fceumm-whole.o
-            fceumm-undefined-symbols-raw.txt
-            fceumm-external-symbols.txt
-            fceumm-defined-symbols.txt
-            fceumm-size.txt
-            fceumm-whole-size.txt
-            fceumm-archive-sha256.txt
             toolchain-version.txt
-          if-no-files-found: error
+            fceumm_libretro_sf2000.a
+            libretro-common.a
+            fceumm-external-symbols.txt
+            fceumm-archive-sha256.txt
+            xgo-fceumm-link.log
+            xgo-fceumm-link-status.txt
+            xgo-fceumm-core.elf
+            xgo-fceumm-core.elf.map
+            xgo-fceumm-elf-audit.txt
+            core_87000000
+            core.xgc
+            xgo-fceumm-xgoc.txt
+            xgo-fceumm-output-sha256.txt
+            xgo-fceumm-core-size.txt
+          if-no-files-found: warn
+
+      - name: Fail if final XGO link failed
+        if: always()
+        shell: bash
+        run: |
+          test "$(cat xgo-fceumm-link-status.txt)" = 0
