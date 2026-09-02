@@ -7,11 +7,19 @@ on:
       - research-external-core-integration
     paths:
       - .github/workflows/fceumm-symbol-audit.yml
+      - tools/multicore/native_nes/**
+      - tools/multicore/xgo_minimal_environment_shim.c
+      - tools/multicore/xgo_preloaded_rom_sbrk.c
+      - tools/multicore/xgo_stockfw_symbols.ld
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
       - name: Install MIPS cross tools
         run: |
           sudo apt-get update
@@ -22,13 +30,13 @@ jobs:
 
       - name: Fetch pinned HC15xx sources
         run: |
-          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git fceumm
-          (cd fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
-          git clone --no-checkout https://github.com/madcock/libretro-common.git libretro-common
-          (cd libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
+          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git /tmp/fceumm
+          (cd /tmp/fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
+          git clone --no-checkout https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          (cd /tmp/libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
 
       - name: Build pinned FCEUmm archive
-        working-directory: fceumm
+        working-directory: /tmp/fceumm
         run: |
           make clean || true
           make -j2 platform=sf2000 \
@@ -37,20 +45,62 @@ jobs:
             AR=mipsel-linux-gnu-ar
 
       - name: Build pinned Multicore libretro-common archive
-        working-directory: libretro-common
+        working-directory: /tmp/libretro-common
         run: |
           make clean || true
           make -j2 \
             'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
             AR=mipsel-linux-gnu-ar
 
-      - name: Compute combined external runtime surface
+      - name: Build XGO native frontend objects
         run: |
           set -euo pipefail
-          core=fceumm/fceumm_libretro_sf2000.a
-          common=libretro-common/libretro-common.a
-          test -f "$core" && test -f "$common"
+          CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2'
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o xgo_nes_native_frontend.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
 
+      - name: Link reachable XGO core graph with runtime unresolved
+        run: |
+          set -euo pipefail
+          LIBGCC=$(mipsel-linux-gnu-gcc -msoft-float -print-libgcc-file-name)
+          mipsel-linux-gnu-ld \
+            --gc-sections \
+            --unresolved-symbols=ignore-all \
+            -T tools/multicore/native_nes/xgo_core.ld \
+            -T tools/multicore/xgo_stockfw_symbols.ld \
+            -o xgo-fceumm-partial.elf \
+            xgo_nes_native_frontend.o \
+            xgo_minimal_environment_shim.o \
+            xgo_preloaded_rom_sbrk.o \
+            --start-group \
+              /tmp/fceumm/fceumm_libretro_sf2000.a \
+              /tmp/libretro-common/libretro-common.a \
+              "$LIBGCC" \
+            --end-group
+
+          mipsel-linux-gnu-nm -u xgo-fceumm-partial.elf \
+            | awk '{print $NF}' | sort -u > reachable-unresolved.txt
+          mipsel-linux-gnu-size -A xgo-fceumm-partial.elf > partial-size.txt
+          mipsel-linux-gnu-readelf -h xgo-fceumm-partial.elf > partial-elf-header.txt
+          mipsel-linux-gnu-readelf -S xgo-fceumm-partial.elf > partial-sections.txt
+
+          {
+            echo '# Garbage-collected XGO native FCEUmm partial link'
+            echo
+            printf 'reachable unresolved: '; wc -l < reachable-unresolved.txt
+            echo
+            cat reachable-unresolved.txt
+            echo
+            echo '## size'
+            cat partial-size.txt
+          } | tee reachable-audit.txt
+
+      - name: Compute whole-archive comparison surface
+        run: |
+          set -euo pipefail
+          core=/tmp/fceumm/fceumm_libretro_sf2000.a
+          common=/tmp/libretro-common/libretro-common.a
           : > defined.txt
           : > referenced-undefined.txt
           for archive in "$core" "$common"; do
@@ -60,47 +110,20 @@ jobs:
           sort -u -o defined.txt defined.txt
           sort -u -o referenced-undefined.txt referenced-undefined.txt
           comm -23 referenced-undefined.txt defined.txt > external-unresolved.txt
-
-          grep -E '^(__add|__sub|__mul|__div|__udiv|__fix|__float|__extend|__trunc|__eq|__ne|__lt|__le|__gt|__ge)' \
-            external-unresolved.txt > compiler-runtime.txt || true
-          grep -E '^(atan|atan2|cos|cosf|exp|exp2|expf|log|log10|pow|sin|sinf|sincos|sincosf|sqrt|sqrtf|floor|floorf|ceil|ceilf)$' \
-            external-unresolved.txt > libm.txt || true
-          grep -E '^(adler32|crc32|gz|inflate|deflate|zlib)' external-unresolved.txt > zlib.txt || true
-
           {
-            echo '# XGO pinned FCEUmm + libretro-common runtime audit'
-            echo
-            echo 'FCEUmm: e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
-            echo 'libretro-common: 9362316bf1da38160b324a1515bfb83e44ebd7af'
-            echo
-            printf 'FCEUmm archive:         '; stat -c '%s bytes' "$core"
-            printf 'libretro-common archive:'; stat -c ' %s bytes' "$common"
-            echo
-            echo '## combined counts'
-            printf 'defined globals:      '; wc -l < defined.txt
-            printf 'undefined references: '; wc -l < referenced-undefined.txt
-            printf 'true external set:    '; wc -l < external-unresolved.txt
-            echo
-            echo '## true external unresolved symbols'
+            echo '# Whole-archive comparison only'
+            printf 'true external set: '; wc -l < external-unresolved.txt
             cat external-unresolved.txt
-            echo
-            echo '## likely compiler runtime'
-            cat compiler-runtime.txt || true
-            echo
-            echo '## likely libm'
-            cat libm.txt || true
-            echo
-            echo '## likely zlib still external'
-            cat zlib.txt || true
-          } | tee fceumm-symbol-audit.txt
+          } > whole-archive-audit.txt
 
       - name: Upload audit
         uses: actions/upload-artifact@v4
         with:
           name: fceumm-symbol-audit
           path: |
-            fceumm-symbol-audit.txt
-            external-unresolved.txt
-            compiler-runtime.txt
-            libm.txt
-            zlib.txt
+            reachable-audit.txt
+            reachable-unresolved.txt
+            whole-archive-audit.txt
+            partial-size.txt
+            partial-elf-header.txt
+            partial-sections.txt
