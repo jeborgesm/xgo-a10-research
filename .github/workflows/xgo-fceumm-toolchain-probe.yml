@@ -17,6 +17,11 @@ jobs:
       - name: Check out XGO research branch
         uses: actions/checkout@v4
 
+      - name: Initialize diagnostic state
+        shell: bash
+        run: |
+          echo 99 > xgo-fceumm-link-status.txt
+
       - name: Install exact SF2000 Codescape toolchain
         shell: bash
         run: |
@@ -51,6 +56,12 @@ jobs:
           cd /tmp/libretro-common
           git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af
           test "$(git rev-parse HEAD)" = 9362316bf1da38160b324a1515bfb83e44ebd7af
+
+          # Codescape bare-metal newlib deliberately rejects <dirent.h>.
+          # Multicore supplies its own tiny dirent ABI; shadow newlib with the
+          # XGO equivalent so vfs_implementation.c sees the expected API.
+          cp "$GITHUB_WORKSPACE/tools/multicore/include/dirent.h" include/dirent.h
+
           make clean || true
           make -j2
           test -f libretro-common.a
@@ -72,13 +83,13 @@ jobs:
           set -euxo pipefail
           TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
           CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -Os -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -DXGO_WITH_NEWLIB'
-          "${TOOL}gcc" $CFLAGS -I/tmp/libretro-common/include -c \
+          "${TOOL}gcc" $CFLAGS -Itools/multicore/include -I/tmp/libretro-common/include -c \
             tools/multicore/native_nes/xgo_nes_native_frontend.c -o xgo_nes_native_frontend.o
-          "${TOOL}gcc" $CFLAGS -I/tmp/libretro-common/include -c \
+          "${TOOL}gcc" $CFLAGS -Itools/multicore/include -I/tmp/libretro-common/include -c \
             tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
           "${TOOL}gcc" $CFLAGS -c \
             tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
-          "${TOOL}gcc" $CFLAGS -I/tmp/libretro-common/include -c \
+          "${TOOL}gcc" $CFLAGS -Itools/multicore/include -I/tmp/libretro-common/include -c \
             tools/multicore/xgo_newlib_syscalls.c -o xgo_newlib_syscalls.o
 
       - name: Attempt full XGO FCEUmm link
