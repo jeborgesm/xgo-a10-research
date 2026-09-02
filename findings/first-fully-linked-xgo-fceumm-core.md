@@ -6,18 +6,29 @@ Status: **offline build/link/container path confirmed; physical XGO execution no
 
 The XGO external-core research has reached the first complete emulator image rather than a synthetic transport probe.
 
-GitHub Actions run **#29** (`33586812526`) successfully performed the entire build chain:
+The original successful full-link milestone was GitHub Actions run #29. Subsequent pre-hardware audits found and corrected several wrapper/loader hazards (cache-index semantics, stock sound-task shutdown, and stale OEM frameskip state), so the authoritative reference artifact is now the later green build at commit `f6acb5750c2f3aa6a26e4af87814fcf9375b1445`.
 
-1. installed the exact Codescape MIPS MTI bare-metal toolchain,
-2. checked out the pinned HC15xx FCEUmm source,
-3. built the SF2000/HC15xx-compatible FCEUmm static archive,
-4. built the XGO compatibility/runtime support layer,
-5. fully linked an XGO executable at `0x87000000`,
-6. verified **zero undefined symbols**,
-7. verified the complete runtime image fits the reserved XGO RAM window,
-8. extracted the file-backed binary,
-9. packed it as an XGOC v1 `core.xgc`,
-10. independently revalidated the XGOC header/bounds/CRCs.
+Current successful FCEUmm link-lab run:
+
+```text
+run id       33587556097
+artifact id  9830610308
+artifact SHA-256
+b91bec56f05725960079c51d9d23f686c51d85649e401a93b41ae9ad10d6d37b
+```
+
+The pipeline:
+
+1. installs the exact Codescape MIPS MTI bare-metal toolchain,
+2. checks out the pinned HC15xx FCEUmm source,
+3. builds the SF2000/HC15xx-compatible FCEUmm static archive,
+4. builds the XGO compatibility/runtime support layer,
+5. fully links an XGO executable at `0x87000000`,
+6. verifies **zero undefined symbols**,
+7. verifies the complete runtime image fits the reserved XGO RAM window,
+8. extracts the file-backed binary,
+9. packs it as an XGOC v1 `core.xgc`,
+10. independently revalidates the XGOC header/bounds/CRCs.
 
 This proves the first real emulator core is buildable against the reconstructed XGO firmware ABI. It does **not** yet prove successful execution on physical hardware.
 
@@ -82,7 +93,7 @@ The final `mips-mti-elf-nm -u xgo-fceumm.elf` output is empty:
 undefined symbols = 0
 ```
 
-The earlier archive-level progression remains useful context:
+Archive-level progression:
 
 ```text
 FCEUmm true external symbols             81
@@ -91,90 +102,84 @@ After XGO firmware + libc/libm/libgcc     0
 Fully linked executable                   0
 ```
 
-## Final memory layout
+## Current post-audit memory layout
 
-Normalized low-32-bit addresses from the final ELF are:
+Normalized low-32-bit addresses from the current ELF are:
 
 ```text
 __image_start  0x87000000
 __start        0x87000098
-__file_end     0x8717ebe0
-__bss_start    0x8717ebe0
-__image_end    0x873a9e10
+__file_end     0x8717ec00
+__bss_start    0x8717ec00
+__image_end    0x873a9e30
 ```
 
 Derived sizes:
 
 ```text
 entry offset       0x98
-file-backed span   1,567,712 bytes = 0x17ebe0
-payload size       1,567,712 bytes = 0x17ebe0
-runtime memory     3,841,552 bytes = 0x3a9e10
+file-backed span   1,567,744 bytes = 0x17ec00
+payload size       1,567,744 bytes = 0x17ec00
+runtime memory     3,841,584 bytes = 0x3a9e30
 zero/BSS tail      2,273,840 bytes
 reserved window   13,479,424 bytes = 0xcdae00
-remaining headroom 9,637,872 bytes = 0x930ff0
+remaining headroom 9,637,840 bytes
 ```
 
-Thus FCEUmm occupies only about 28.5% of the currently reserved external-core window `0x87000000..0x87cdae00`.
+Thus FCEUmm still occupies only about 28.5% of the reserved external-core window `0x87000000..0x87cdae00`.
 
-The file-backed payload ends exactly where the linker declares `__file_end`; no hidden gap or accidental runtime-only section is being serialized into the XGOC payload.
+The file-backed payload ends exactly where the linker declares `__file_end`; no hidden gap or accidental runtime-only section is serialized into the XGOC payload.
 
-## XGOC result
+## Current XGOC result
 
-The XGOC packer generated and the independent inspector accepted:
+The packer generated and the independent inspector accepted:
 
 ```text
 magic         XGOC
 version       1
 load          0x87000000
 entry         0x87000098
-payload       1,567,712 bytes
-runtime       3,841,552 bytes
+payload       1,567,744 bytes
+runtime       3,841,584 bytes
 zero tail     2,273,840 bytes
-payload CRC   0xbb16f3f9
-header CRC    0xf58d1a1f
+payload CRC   0x70631538
+header CRC    0x5035ddd8
 ```
 
-Output hashes for run #29:
+Current output hashes:
 
 ```text
 xgo-fceumm.elf
-71987ec44db1111bd8248a8e4951fd3cd996d4f86410d98e4c1b381b86d29031
+d333931900028d9bbc7fa7ba6ccc35132b9ec82e1dd3657f3edd65c8bd4590e5
 
 xgo-fceumm.bin
-dbda26a7518a6627ae282821d6ef0b40ba39712135b67607db131592e33c4756
+eefad5d8074a2a58192443e7579aef11b53f29b84226a60fbbbaa3f59efb7c13
 
 core.xgc
-e421f3a0b1f087dbb96ea57d41fb01f28816ec13963d61e24fb6082a2eb010e6
+0dc7ddef286ac233fe816d9c0400022b85179968ec0d32e7b1ff7853073da8b0
 ```
 
-The complete Actions artifact ZIP has digest:
-
-```text
-3edfc917721265ddea2dafdfbb40ab5c643aed95004853629968ca5db93e31a9
-```
+These values supersede the earlier run-#29 hashes and dimensions. The small 32-byte file/runtime growth came from the wrapper preflight correction that neutralizes stale `gfn_frameskip` state.
 
 ## Binary-startup audit
 
-The generated ELF was independently inspected after the successful link.
-
 ### Entry point
 
-`__start` is real executable code at:
+`__start` is executable code at:
 
 ```text
 0x87000098
 ```
 
-which matches XGOC `entry_offset=0x98`.
+matching XGOC `entry_offset=0x98`.
 
 ### GP dependency
 
 A complete disassembly search of the linked ELF found **no `$gp` references**.
 
-This is consistent with the `-G0 -mno-abicalls -fno-pic` build and substantially reduces external-core GP-state risk for FCEUmm itself. The stock IRQ GP-repair patch remains desirable as a general Multicore safety measure, especially for future cores/dynarecs, but this particular linked FCEUmm image is not relying on `$gp` for ordinary code/data access.
+This is consistent with `-G0 -mno-abicalls -fno-pic` and substantially reduces external-core GP-state risk for this FCEUmm image. Stock interrupt context is still protected by the separate IRQ GP-repair patch in the modified ASD.
 
-### Constructors
+### Constructors / newlib startup
 
 The ELF contains no output sections named:
 
@@ -185,36 +190,34 @@ The ELF contains no output sections named:
 .dtors
 ```
 
-Therefore the first FCEUmm image has no discovered constructor/destructor startup obligation that the custom `__start` bridge is failing to execute.
+The newlib `_reent`/`_impure_ptr` objects retained by libc are file-backed initialized data, not an uninitialized startup obligation. Content I/O deliberately uses XGO firmware stdio compatibility wrappers rather than newlib stdio. No current evidence justifies importing a larger CRT initialization path merely because newer full Multicore implementations perform one.
+
+Classification: **audited; no current startup blocker identified**.
 
 ### BSS
 
-The final section layout places:
+The file-backed payload ends at `0x8717ec00`; runtime-only storage continues to `0x873a9e30`. XGOC `memory_size` causes the loader to zero the full 2,273,840-byte runtime tail before entry.
 
-```text
-.sbss  0x8717ebe0 ...
-.bss   0x8717ebf0 ...
-```
-
-behind the 1,567,712-byte file payload. The XGOC loader's declared `memory_size=3,841,552` causes the complete runtime-only tail to be zeroed before entry.
-
-This directly closes the BSS problem identified during the raw-probe audit.
+This closes the BSS problem identified during the original raw-probe audit.
 
 ## XGO execution bridge
 
 The core is statically linked, so unlike upstream Multicore it does not require a runtime `retro_core_t` API table.
 
-The XGO `__start(stub_path, load_state)` bridge:
+The XGO `__start(stub_path, load_state)` bridge currently:
 
-- only accepts an intercepted component named exactly `fceumm`,
-- converts a launch stub such as `fceumm;Game.nes.gba` to `/mnt/sda1/ROMS/fceumm/Game.nes`,
-- sets the active stock frontend family temporarily to NES (`0x01`),
-- binds FCEUmm directly to the stock XGO video/audio/input callbacks,
-- supplies the XGO compatibility environment shim,
-- provides FCEUmm a real ROM path with `data=NULL`/`size=0`, matching the pinned core's fallback load behavior,
-- points the stock `run_emulator()` indirection slots at FCEUmm's libretro exports,
+- accepts only an intercepted component named exactly `fceumm`,
+- converts `fceumm;Game.nes.gba` to `/mnt/sda1/ROMS/fceumm/Game.nes`,
+- temporarily selects stock NES family policy (`0x01`),
+- binds FCEUmm directly to stock XGO video/audio/input callbacks,
+- supplies the truthful XGO compatibility environment shim,
+- provides a real ROM path with `data=NULL` / `size=0`, matching pinned FCEUmm behavior,
+- redirects the stock `run_emulator()` function-pointer slots to FCEUmm,
+- neutralizes the OEM `gfn_frameskip` hook for the session so behavior cannot depend on whichever emulator ran previously,
 - executes the stock XGO emulator loop,
-- restores the previous stock libretro globals and system-family value afterward.
+- restores the previous stock libretro globals, frameskip pointer, game info and system-family state afterward.
+
+The injected loader separately reproduces stock `run_gba()` sound-task shutdown before external-core entry because the dispatcher hook bypasses that wrapper entirely.
 
 ## What is now confirmed
 
@@ -224,23 +227,25 @@ The XGO `__start(stub_path, load_state)` bridge:
 - The reconstructed XGO stock symbol surface is sufficient for the first core.
 - The full executable links with zero undefined symbols.
 - The final runtime image fits comfortably inside the XGO reserved core window.
-- BSS/runtime-only storage is explicitly represented by XGOC `memory_size` and can be zeroed before launch.
+- BSS/runtime-only storage is explicitly represented by XGOC `memory_size` and zeroed before launch.
 - The generated image has a valid, independently verified XGOC container.
 - The linked FCEUmm image has no discovered `$gp` references and no constructor-array requirement.
+- The wrapper no longer inherits stale OEM frameskip state.
+- The external dispatch path now reproduces the stock sound-task shutdown precondition before emulator entry.
 
 **Not yet confirmed:**
 
 - physical XGO boot of the modified SD-loaded `bisrv.asd`,
 - successful loader execution on hardware,
 - successful FCEUmm ROM launch/display/audio/input on hardware,
-- runtime interaction between stock interrupt context and the external core,
+- runtime interaction across all stock wrapper globals not yet fully classified,
 - performance/stability across real NES titles,
 - save-state/save-RAM integration.
 
 ## Conclusion
 
-The first real XGO replacement emulator is no longer a theoretical port or an unresolved linker experiment.
+The first real XGO replacement emulator is no longer a theoretical port or unresolved linker experiment.
 
-There is now a complete, validated offline artifact pipeline producing a 1.57 MiB FCEUmm XGOC image with a 3.84 MiB runtime footprint and more than 9.6 MiB of remaining core-window headroom.
+There is now a reproducible post-audit artifact pipeline producing a 1.57 MiB FCEUmm XGOC image with a 3.84 MiB runtime footprint and more than 9.6 MiB of remaining core-window headroom.
 
-The next research boundary is no longer static linking. It is final pre-hardware safety auditing of the injected loader/firmware patch and then, when deliberately chosen, an SD-only device experiment.
+The remaining pre-hardware boundary is now the exact stock-wrapper setup contract: every state mutation normally performed by the bypassed `run_gba()` path must be classified as reproduced, intentionally replaced, or irrelevant before an SD-only execution test is justified.
