@@ -74,6 +74,13 @@ osal_tds2_cache_flush = 0x80049214;
 os_disable_interrupt  = 0x802e0750;
 os_enable_interrupt   = 0x802e0778;
 dly_tsk               = 0x8030f480;
+
+/*
+ * Semantically identified through the "osal_task_create failed" call sites.
+ * The descriptor's +0x08 stack-size field is passed to stock malloc and the
+ * returned block is installed as the task stack base; base+size is the top.
+ */
+osal_task_create      = 0x8030f670;
 os_get_tick_count     = 0x8030fec8;
 
 /* ---- optional direct display-driver imports --------------------------- */
@@ -218,25 +225,3 @@ XGO_ACTIVE_SYSTEM_FAMILY = 0x80c33ad0;
  */
 g_joy_task_state = 0x80c33a5c;
 g_joy_state      = 0x80c33ac4;
-
-/* Final mapped controller words consumed by retro_input_state_cb. */
-g_input_port0 = 0x80c33ac4;  /* GPIO B15 -> Player 1 */
-g_input_port1 = 0x80c33ac8;  /* GPIO L0  -> Player 2 */
-
-/*
- * For the stripped/basic XGO Multicore path that uses stock callbacks, the
- * essential stock-firmware surface is now substantially mapped. Remaining
- * work is primarily production-core/newlib compatibility and hardware test
- * validation, rather than missing fundamental XGO board APIs.
- *
- * Already resolved:
- *   - loader injection window 0x1500..0x217f
- *   - debug-font window 0x2260..0x24ff
- *   - GBA redirect call site 0x80360cf4 / file offset 0x360cf4
- *   - IRQ GP repair slot 0x80049744/48
- *   - watchdog and general-exception hook sites
- *   - live heap break and heap ceiling
- *   - main run_game dispatcher and WQW package helpers
- *   - global keymap application routine
- *   - minimal and advanced video import sets
- */
