@@ -59,41 +59,56 @@ jobs:
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
 
-      - name: Link reachable XGO core graph with runtime unresolved
+      - name: Garbage-collect reachable XGO core graph without finalizing JALs
         run: |
           set -euo pipefail
-          LIBGCC=$(mipsel-linux-gnu-gcc -msoft-float -print-libgcc-file-name)
+          # A final MIPS executable cannot represent a JAL to an unresolved
+          # symbol (ld temporarily treats it as address zero, causing
+          # R_MIPS_26 truncation from 0x87xxxxxx). A relocatable -r link still
+          # performs archive extraction and --gc-sections from __core_entry__,
+          # but preserves unresolved calls as relocations. This is therefore
+          # the authoritative dependency-reachability audit.
           mipsel-linux-gnu-ld \
+            -r \
             --gc-sections \
-            --unresolved-symbols=ignore-all \
-            -T tools/multicore/native_nes/xgo_core.ld \
+            -u __core_entry__ \
             -T tools/multicore/native_nes/xgo_external_stock_services.ld \
-            -o xgo-fceumm-partial.elf \
+            -o xgo-fceumm-reachable.o \
             xgo_nes_native_frontend.o \
             xgo_minimal_environment_shim.o \
             xgo_preloaded_rom_sbrk.o \
             --start-group \
               /tmp/fceumm/fceumm_libretro_sf2000.a \
               /tmp/libretro-common/libretro-common.a \
-              "$LIBGCC" \
             --end-group
 
-          mipsel-linux-gnu-nm -u xgo-fceumm-partial.elf \
+          mipsel-linux-gnu-nm -u xgo-fceumm-reachable.o \
             | awk '{print $NF}' | sort -u > reachable-unresolved.txt
-          mipsel-linux-gnu-size -A xgo-fceumm-partial.elf > partial-size.txt
-          mipsel-linux-gnu-readelf -h xgo-fceumm-partial.elf > partial-elf-header.txt
-          mipsel-linux-gnu-readelf -S xgo-fceumm-partial.elf > partial-sections.txt
+          mipsel-linux-gnu-size -A xgo-fceumm-reachable.o > reachable-size.txt
+          mipsel-linux-gnu-readelf -h xgo-fceumm-reachable.o > reachable-elf-header.txt
+          mipsel-linux-gnu-readelf -S xgo-fceumm-reachable.o > reachable-sections.txt
+          mipsel-linux-gnu-readelf -r xgo-fceumm-reachable.o > reachable-relocations.txt
 
           {
-            echo '# Garbage-collected XGO native FCEUmm partial link'
+            echo '# Garbage-collected XGO native FCEUmm relocatable link'
             echo
             printf 'reachable unresolved: '; wc -l < reachable-unresolved.txt
             echo
             cat reachable-unresolved.txt
             echo
-            echo '## size'
-            cat partial-size.txt
+            echo '## reachable object size'
+            cat reachable-size.txt
           } | tee reachable-audit.txt
+
+      - name: Classify reachable external runtime surface
+        run: |
+          set -euo pipefail
+          grep -E '^(__add|__sub|__mul|__div|__udiv|__mod|__umod|__fix|__float|__extend|__trunc|__eq|__ne|__lt|__le|__gt|__ge)' \
+            reachable-unresolved.txt > reachable-compiler-runtime.txt || true
+          grep -E '^(atan|atan2|cos|cosf|exp|exp2|expf|log|log10|pow|sin|sinf|sincos|sincosf|sqrt|sqrtf|floor|floorf|ceil|ceilf|fabs|fabsf)$' \
+            reachable-unresolved.txt > reachable-libm.txt || true
+          grep -E '^(adler32|crc32|gz|inflate|deflate|zlib)' \
+            reachable-unresolved.txt > reachable-zlib.txt || true
 
       - name: Compute whole-archive comparison surface
         run: |
@@ -122,7 +137,11 @@ jobs:
           path: |
             reachable-audit.txt
             reachable-unresolved.txt
+            reachable-compiler-runtime.txt
+            reachable-libm.txt
+            reachable-zlib.txt
             whole-archive-audit.txt
-            partial-size.txt
-            partial-elf-header.txt
-            partial-sections.txt
+            reachable-size.txt
+            reachable-elf-header.txt
+            reachable-sections.txt
+            reachable-relocations.txt
