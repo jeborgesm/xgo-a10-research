@@ -61,6 +61,7 @@ struct retro_game_info {
 #define RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE 65u
 #define RETRO_ENVIRONMENT_GET_GAME_INFO_EXT         66u
 #define RETRO_ENVIRONMENT_EXPERIMENTAL              0x10000u
+#define RETRO_ENVIRONMENT_GET_INPUT_BITMASKS        (51u | RETRO_ENVIRONMENT_EXPERIMENTAL)
 #define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE    (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /* libretro enum retro_pixel_format */
@@ -121,6 +122,17 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
             return false;
         *(const char **)data = xgo_save_directory;
         return true;
+
+    case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
+        /*
+         * The stock XGO retro_input_state_cb is a per-button table lookup. It
+         * has no RETRO_DEVICE_ID_JOYPAD_MASK (id 256) fast path. The stock
+         * environment currently returns false for this experimental command,
+         * but doing so here explicitly prevents a future/side-effectful stock
+         * handler path from making FCEUmm issue an unsupported id=256 query.
+         */
+        (void)data;
+        return false;
 
     case RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE:
         /*
