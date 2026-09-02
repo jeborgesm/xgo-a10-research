@@ -27,7 +27,7 @@ typedef struct {
     u32 payload_size;
     u32 memory_size;
     u32 payload_crc32;  /* standard reflected CRC-32 / IEEE */
-    u32 flags;
+    u32 header_crc32;   /* CRC over the first 28 header bytes */
 } xgoc_header;
 
 static FILE *(*const fw_fopen)(const char *, const char *) = (void *)0x802b3524;
@@ -35,6 +35,7 @@ static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b
 static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static void (*const stock_run_gba)(const char *, int) = (void *)0x80360110;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
+static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
 
 static int has_semicolon(const char *s)
 {
@@ -96,6 +97,10 @@ void load_and_run_core(const char *path, int load_state)
         return;
     }
 
+    /* Never lower the heap ceiling beneath an allocation already in use. */
+    if (*HEAP_BREAK >= CORE_BASE)
+        return;
+
     /* Reserve external-core RAM before stock stdio can allocate anything. */
     old_limit = *RAMSIZE;
     *RAMSIZE = CORE_BASE;
@@ -110,8 +115,8 @@ void load_and_run_core(const char *path, int load_state)
     if (h.magic != XGOC_MAGIC ||
         (h.version_header & 0xffffu) != XGOC_VERSION ||
         (h.version_header >> 16) != XGOC_HEADER_SIZE ||
+        crc32_ieee((const unsigned char *)&h, 28) != h.header_crc32 ||
         h.load_addr != CORE_BASE ||
-        h.flags != 0 ||
         h.payload_size == 0 ||
         h.memory_size < h.payload_size ||
         h.entry_offset >= h.payload_size ||
