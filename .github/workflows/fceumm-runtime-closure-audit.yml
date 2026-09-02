@@ -1,0 +1,97 @@
+name: FCEUmm runtime closure audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/fceumm-runtime-closure-audit.yml
+      - tools/multicore/native_nes/**
+      - tools/multicore/xgo_minimal_environment_shim.c
+      - tools/multicore/xgo_preloaded_rom_sbrk.c
+
+jobs:
+  closure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
+      - name: Install MIPS cross tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu make git
+          sudo touch /usr/mipsel-linux-gnu/include/gnu/stubs-o32_soft.h
+
+      - name: Fetch and build pinned HC15xx archives
+        run: |
+          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git /tmp/fceumm
+          (cd /tmp/fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
+          git clone --no-checkout https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          (cd /tmp/libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
+          (cd /tmp/fceumm && make clean || true && make -j2 platform=sf2000 \
+            'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' \
+            'CXX=mipsel-linux-gnu-g++ -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' AR=mipsel-linux-gnu-ar)
+          (cd /tmp/libretro-common && make clean || true && make -j2 \
+            'CC=mipsel-linux-gnu-gcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector' AR=mipsel-linux-gnu-ar)
+
+      - name: Compile XGO native bridge objects
+        run: |
+          set -euo pipefail
+          CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2'
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Compare reachable unresolved surface before and after syscall bridge
+        run: |
+          set -euo pipefail
+          link_reachable() {
+            out=$1
+            shift
+            mipsel-linux-gnu-ld -r --gc-sections -e __core_entry__ -u __core_entry__ \
+              -T tools/multicore/native_nes/xgo_external_stock_services.ld \
+              -o "$out" frontend.o environment.o sbrk.o "$@" \
+              --start-group /tmp/fceumm/fceumm_libretro_sf2000.a /tmp/libretro-common/libretro-common.a --end-group
+          }
+
+          link_reachable before.o
+          link_reachable after.o syscalls.o
+          mipsel-linux-gnu-nm -u before.o | awk '{print $NF}' | sort -u > before-unresolved.txt
+          mipsel-linux-gnu-nm -u after.o  | awk '{print $NF}' | sort -u > after-unresolved.txt
+          comm -23 before-unresolved.txt after-unresolved.txt > resolved-by-syscalls.txt
+          comm -13 before-unresolved.txt after-unresolved.txt > introduced-by-syscalls.txt
+
+          {
+            echo '# FCEUmm reachable runtime closure audit'
+            echo
+            printf 'before syscall bridge: '; wc -l < before-unresolved.txt
+            printf 'after syscall bridge:  '; wc -l < after-unresolved.txt
+            printf 'resolved by bridge:    '; wc -l < resolved-by-syscalls.txt
+            printf 'introduced by bridge:  '; wc -l < introduced-by-syscalls.txt
+            echo
+            echo '## Resolved by syscall bridge'
+            cat resolved-by-syscalls.txt
+            echo
+            echo '## Remaining unresolved'
+            cat after-unresolved.txt
+            echo
+            echo '## Newly introduced by syscall bridge'
+            cat introduced-by-syscalls.txt
+          } | tee runtime-closure-audit.txt
+
+      - name: Upload closure evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: fceumm-runtime-closure-audit
+          path: |
+            runtime-closure-audit.txt
+            before-unresolved.txt
+            after-unresolved.txt
+            resolved-by-syscalls.txt
+            introduced-by-syscalls.txt
+            before.o
+            after.o
