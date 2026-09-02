@@ -62,8 +62,13 @@ jobs:
           "$objdump" -d entry-probe.elf | tee entry-probe.disasm.txt
           "$nm" -n entry-probe.elf | tee entry-probe.nm.txt
 
+          # Codescape nm sign-extends 32-bit KSEG addresses on this host and
+          # prints ffffffff87000000. Both spellings denote the same MIPS32
+          # address; objdump below independently asserts the exact 0x87000000
+          # execution address.
           test "$(stat -c %s entry-probe.bin)" -eq 16
-          grep -Eq '^87000000 [Tt] __core_entry__$' entry-probe.nm.txt
+          grep -Eq '^(ffffffff)?87000000 [Tt] __core_entry__$' entry-probe.nm.txt
+          grep -Eq '^87000000 <__core_entry__>:$' entry-probe.disasm.txt
           grep -Eq 'lui[[:space:]]+v0,0x5847' entry-probe.disasm.txt
           grep -Eq 'ori[[:space:]]+v0,v0,0x4f31' entry-probe.disasm.txt
           grep -Eq 'jr[[:space:]]+ra' entry-probe.disasm.txt
