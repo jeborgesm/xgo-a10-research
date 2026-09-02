@@ -13,12 +13,18 @@ Inputs:
 Outputs:
   <out>/bios/bisrv.asd
   <out>/cores/fceumm/core.xgc
+  <out>/ROMS/fceumm;<rom-name>.gba   (zero-byte launch token)
   <out>/ROMS/fceumm/README-STUB.txt
   <out>/XGO-FCEUMM-MANIFEST.txt
 
 The firmware patching itself is delegated to build_probe_asd.py so all exact
 firmware fingerprint, zero-window, dispatch-JAL and GP-patch guards remain the
 single source of truth.
+
+The zero-byte launch token is intentional. Static disassembly confirms that the
+XGO User Games scanner classifies entries by filename/extension without testing
+file size, and run_game() dispatches GBA-family paths to the patched call site
+without opening or reading the selected .gba file.
 """
 
 from __future__ import annotations
@@ -42,6 +48,7 @@ XGOC_VERSION = 1
 XGOC_HEADER_SIZE = 32
 XGOC_LOAD_ADDR = 0x87000000
 XGOC_MAX_END = 0x87CDAE00
+DEFAULT_ROM_NAME = "ScienceFrog.nes"
 
 
 def sha256_file(path: Path) -> str:
@@ -119,13 +126,38 @@ def ensure_empty_output(path: Path) -> None:
         path.mkdir(parents=True)
 
 
+def validate_rom_name(name: str) -> str:
+    if not name or name in {".", ".."}:
+        raise SystemExit("Refusing to stage: ROM name must be a filename")
+    if "/" in name or "\\" in name or ";" in name:
+        raise SystemExit(
+            "Refusing to stage: --rom-name must be one filename with no path separators or ';'"
+        )
+    if name.lower().endswith(".gba"):
+        raise SystemExit(
+            "Refusing to stage: --rom-name is the REAL NES filename; do not give it the synthetic .gba suffix"
+        )
+    if len(name.encode("utf-8")) > 220:
+        raise SystemExit("Refusing to stage: ROM filename is too long for a conservative XGO path")
+    return name
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("stock_asd", type=Path)
     ap.add_argument("loader_bin", type=Path)
     ap.add_argument("core_xgc", type=Path)
     ap.add_argument("output_dir", type=Path)
+    ap.add_argument(
+        "--rom-name",
+        default=DEFAULT_ROM_NAME,
+        help=(
+            "real NES filename expected under ROMS/fceumm; a matching zero-byte "
+            f"launch token is generated in ROMS (default: {DEFAULT_ROM_NAME!r})"
+        ),
+    )
     args = ap.parse_args()
+    rom_name = validate_rom_name(args.rom_name)
 
     for p, label in (
         (args.stock_asd, "stock ASD"),
@@ -146,11 +178,12 @@ def main() -> None:
     ensure_empty_output(args.output_dir)
 
     bios_dir = args.output_dir / "bios"
-    core_dir = args.output_dir / "cores" / "fceumm"
-    rom_dir = args.output_dir / "ROMS" / "fceumm"
+    cores_dir = args.output_dir / "cores" / "fceumm"
+    roms_root = args.output_dir / "ROMS"
+    real_rom_dir = roms_root / "fceumm"
     bios_dir.mkdir(parents=True)
-    core_dir.mkdir(parents=True)
-    rom_dir.mkdir(parents=True)
+    cores_dir.mkdir(parents=True)
+    real_rom_dir.mkdir(parents=True)
 
     patched_asd = bios_dir / "bisrv.asd"
     subprocess.run(
@@ -166,20 +199,29 @@ def main() -> None:
         check=True,
     )
 
-    shutil.copyfile(args.core_xgc, core_dir / "core.xgc")
+    core_out = cores_dir / "core.xgc"
+    shutil.copyfile(args.core_xgc, core_out)
 
-    stub_note = rom_dir / "README-STUB.txt"
+    # Browser-visible token belongs in the ROMS directory being scanned. Its
+    # contents are deliberately empty; only the filename/path reaches the hook.
+    token_name = f"fceumm;{rom_name}.gba"
+    token_path = roms_root / token_name
+    token_path.touch(exist_ok=False)
+
+    real_rom_path = real_rom_dir / rom_name
+    stub_note = real_rom_dir / "README-STUB.txt"
     stub_note.write_text(
         "XGO FCEUmm first-hardware-test launch contract\n"
         "===============================================\n\n"
-        "Place ONE known-good NES ROM in this directory. Example:\n\n"
-        "  /ROMS/fceumm/ScienceFrog.nes\n\n"
-        "The stock GBA dispatch token must have the basename:\n\n"
-        "  fceumm;ScienceFrog.nes.gba\n\n"
-        "The final .gba suffix is synthetic and is removed by the external-core\n"
-        "bridge. Do not rename the real NES ROM to .gba. This staging tool does\n"
-        "not fabricate the stub file yet because stock-browser handling of an\n"
-        "empty/minimal GBA file is still being validated separately.\n",
+        f"This staging bundle created the zero-byte browser token:\n\n"
+        f"  /ROMS/{token_name}\n\n"
+        f"Place ONE known-good NES ROM at exactly:\n\n"
+        f"  /ROMS/fceumm/{rom_name}\n\n"
+        "Do not put NES bytes into the .gba token and do not rename the real ROM\n"
+        "to .gba. Static disassembly confirms that XGO's User Games scanner uses\n"
+        "the token filename/extension only, and run_game() reaches the patched\n"
+        "GBA dispatch call without opening or reading the token. The bridge then\n"
+        "removes only the final synthetic .gba suffix and opens the real path.\n",
         encoding="utf-8",
     )
 
@@ -187,18 +229,21 @@ def main() -> None:
     manifest.write_text(
         "XGO FCEUmm disposable-SD staging manifest\n"
         "========================================\n\n"
-        f"stock bisrv SHA-256 : {stock_hash}\n"
-        f"loader SHA-256      : {sha256_file(args.loader_bin)}\n"
+        f"stock bisrv SHA-256  : {stock_hash}\n"
+        f"loader SHA-256       : {sha256_file(args.loader_bin)}\n"
         f"patched bisrv SHA-256: {sha256_file(patched_asd)}\n"
-        f"core.xgc SHA-256    : {sha256_file(core_dir / 'core.xgc')}\n\n"
-        f"XGOC load           : 0x{xgoc['load']:08x}\n"
-        f"XGOC entry          : 0x{xgoc['entry']:08x}\n"
-        f"XGOC entry offset   : 0x{xgoc['entry_offset']:x}\n"
-        f"XGOC payload        : {xgoc['payload_size']} bytes\n"
-        f"XGOC runtime        : {xgoc['memory_size']} bytes\n"
-        f"XGOC zero tail      : {xgoc['zero_tail']} bytes\n"
-        f"XGOC payload CRC32  : 0x{xgoc['payload_crc']:08x}\n"
-        f"XGOC header CRC32   : 0x{xgoc['header_crc']:08x}\n\n"
+        f"core.xgc SHA-256     : {sha256_file(core_out)}\n"
+        f"launch token         : /ROMS/{token_name}\n"
+        f"launch token bytes   : {token_path.stat().st_size}\n"
+        f"real ROM expected    : /ROMS/fceumm/{rom_name}\n\n"
+        f"XGOC load            : 0x{xgoc['load']:08x}\n"
+        f"XGOC entry           : 0x{xgoc['entry']:08x}\n"
+        f"XGOC entry offset    : 0x{xgoc['entry_offset']:x}\n"
+        f"XGOC payload         : {xgoc['payload_size']} bytes\n"
+        f"XGOC runtime         : {xgoc['memory_size']} bytes\n"
+        f"XGOC zero tail       : {xgoc['zero_tail']} bytes\n"
+        f"XGOC payload CRC32   : 0x{xgoc['payload_crc']:08x}\n"
+        f"XGOC header CRC32    : 0x{xgoc['header_crc']:08x}\n\n"
         "Safety model:\n"
         "- SD-loaded bisrv.asd only\n"
         "- no Firmware.upk\n"
@@ -206,15 +251,17 @@ def main() -> None:
         "- exact stock firmware fingerprint required\n"
         "- XGOC header and payload CRCs verified before staging\n"
         "- output directory must be new/empty\n"
+        "- generated .gba token is zero bytes by design\n"
         "- no game ROM copied or modified by this tool\n",
         encoding="utf-8",
     )
 
     print(f"staged: {args.output_dir}")
     print(f"  patched ASD: {patched_asd}")
-    print(f"  core:        {core_dir / 'core.xgc'}")
+    print(f"  core:        {core_out}")
+    print(f"  token:       {token_path} (0 bytes)")
+    print(f"  real ROM:    {real_rom_path} (user supplies this file)")
     print(f"  manifest:    {manifest}")
-    print("  ROM/stub:    see ROMS/fceumm/README-STUB.txt")
 
 
 if __name__ == "__main__":
