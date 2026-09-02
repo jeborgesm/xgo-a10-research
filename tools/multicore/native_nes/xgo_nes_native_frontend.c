@@ -1,11 +1,12 @@
 /*
  * Native-main-list FCEUmm frontend for XGO.
  *
- * Hardware bring-up visual probe: every important execution boundary submits
- * a synthetic 256x240 RGB565 frame through the already-GP-safe stock XGO video
- * callback. The probe deliberately uses no filesystem, printf, malloc or libc.
- * Loader-side XGOC BSS clearing makes the static framebuffer usable even before
- * external newlib initialization.
+ * Hardware bring-up visual probe: important execution boundaries write a small
+ * synthetic RGB565 marker into the currently active XGO OSD region. The probe
+ * deliberately bypasses run_screen_write/video-refresh geometry switching so
+ * it does not tear down the menu/loading display before run_emulator has
+ * established the emulator display path. No filesystem, printf, malloc or libc
+ * is used by the marker itself.
  */
 
 #ifdef XGO_WITH_NEWLIB
@@ -21,9 +22,9 @@ typedef int bool;
 #define RETRO_DEVICE_JOYPAD 1u
 #define XGO_SYSTEM_NES 0x0001u
 #define MAX_ROM_SIZE 0x04000000u
-#define DIAG_W 256u
-#define DIAG_H 240u
-#define DIAG_PITCH (DIAG_W * 2u)
+#define DIAG_W 128u
+#define DIAG_H 64u
+#define DIAG_PIXEL_PITCH DIAG_W
 
 struct retro_game_info {
     const char *path;
@@ -55,6 +56,7 @@ extern unsigned retro_get_region(void);
 extern bool xgo_minimal_environment(unsigned, void *);
 
 /* Transparent core -> stock veneers. */
+extern int xgo_stock_osd_region_write(const void *, unsigned, unsigned, unsigned);
 extern void xgo_stock_video_refresh(const void *, unsigned, unsigned, size_t);
 extern size_t xgo_stock_audio_sample_batch(const short *, size_t);
 extern void xgo_stock_input_poll(void);
@@ -85,34 +87,22 @@ extern int xgo_core_state_io(const char *);
 #define GFN_RUN         (*(void (**)(void))0x80c33ae4u)
 
 /*
- * Visual stage encoding.
+ * Current-region stage encoding.
  *
- * The full background changes with every stage. The top 40 rows additionally
- * encode the stage number as eight 32-pixel-wide binary bars: white means 1,
- * black means 0, least-significant bit at the left. This keeps identification
- * robust even if RGB565 channel ordering differs from expectation.
+ * Top half: eight 16-pixel-wide binary bars, white=1 and black=0, least
+ * significant bit at the left. Bottom half: stage-specific RGB565 color.
+ * The marker is only 128x64 so it can be written into the already-active OSD
+ * region without asking run_screen_write to change display geometry.
  */
 static unsigned short diag_frame[DIAG_W * DIAG_H];
 
 static unsigned short diag_color(unsigned stage)
 {
     static const unsigned short colors[] = {
-        0x0000, /* unused */
-        0xf800, /* 1 red */
-        0x07e0, /* 2 green */
-        0x001f, /* 3 blue */
-        0xffe0, /* 4 yellow */
-        0xf81f, /* 5 magenta */
-        0x07ff, /* 6 cyan */
-        0xffff, /* 7 white */
-        0x7bef, /* 8 gray */
-        0x780f, /* 9 purple-ish */
-        0x03ef, /* 10 teal-ish */
-        0xfbe0, /* 11 orange-ish */
-        0x8410, /* 12 dark gray */
-        0xfc10, /* 13 warm */
-        0x87f0, /* 14 lime-ish */
-        0x801f  /* 15 violet-ish */
+        0x0000, 0xf800, 0x07e0, 0x001f,
+        0xffe0, 0xf81f, 0x07ff, 0xffff,
+        0x7bef, 0x780f, 0x03ef, 0xfbe0,
+        0x8410, 0xfc10, 0x87f0, 0x801f
     };
     if (stage >= (sizeof(colors) / sizeof(colors[0])))
         stage = (sizeof(colors) / sizeof(colors[0])) - 1u;
@@ -126,41 +116,44 @@ static void diag_screen(unsigned stage)
 
     for (y = 0; y < DIAG_H; ++y) {
         for (x = 0; x < DIAG_W; ++x) {
-            unsigned short c = bg;
-            if (y < 40u) {
-                unsigned bit = x >> 5; /* 8 bars, 32 pixels each */
+            unsigned short c;
+            if (y < (DIAG_H / 2u)) {
+                unsigned bit = x >> 4; /* 8 bars, 16 pixels each */
                 c = (stage & (1u << bit)) ? 0xffffu : 0x0000u;
+            } else {
+                c = bg;
             }
             diag_frame[y * DIAG_W + x] = c;
         }
     }
 
-    xgo_stock_video_refresh(diag_frame, DIAG_W, DIAG_H, DIAG_PITCH);
+    (void)xgo_stock_osd_region_write(diag_frame, DIAG_W, DIAG_H,
+                                     DIAG_PIXEL_PITCH);
 }
 
 /* These are the true targets of the stock->core GP veneers. */
 unsigned xgo_diag_get_region(void)
 {
     unsigned r;
-    diag_screen(10); /* region enter */
+    diag_screen(10);
     r = retro_get_region();
-    diag_screen(11); /* region returned */
+    diag_screen(11);
     return r;
 }
 
 void xgo_diag_get_av(struct retro_system_av_info *info)
 {
-    diag_screen(8); /* AV enter */
+    diag_screen(8);
     retro_get_system_av_info(info);
-    diag_screen(9); /* AV returned */
+    diag_screen(9);
 }
 
 bool xgo_diag_load_game(const struct retro_game_info *info)
 {
     bool ok;
-    diag_screen(6); /* retro_load_game enter */
+    diag_screen(6);
     ok = retro_load_game(info);
-    diag_screen(7); /* retro_load_game returned */
+    diag_screen(7);
     return ok;
 }
 
@@ -176,12 +169,12 @@ void xgo_diag_run(void)
     static unsigned first_run;
     if (first_run == 0) {
         first_run = 1;
-        diag_screen(12); /* first retro_run enter */
+        diag_screen(12);
     }
     retro_run();
     if (first_run == 1) {
         first_run = 2;
-        diag_screen(13); /* first retro_run returned */
+        diag_screen(13);
     }
 }
 
@@ -220,8 +213,7 @@ int __core_entry_c(const char *filename, int load_state)
     void (*old_run)(void);
     void *old_frameskip;
 
-    /* Stage 1 is intentionally before ANY newlib/runtime initialization. */
-    diag_screen(1);
+    diag_screen(1); /* before any external newlib initialization */
     init_core_runtime();
     diag_screen(2);
 
@@ -255,9 +247,9 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_input_state(xgo_stock_input_state);
     retro_set_environment(xgo_minimal_environment);
 
-    diag_screen(3); /* before retro_init */
+    diag_screen(3);
     retro_init();
-    diag_screen(4); /* after retro_init */
+    diag_screen(4);
 
     GAME_INFO.path = filename;
     GAME_INFO.data = ROM_BUFFER;
@@ -276,7 +268,7 @@ int __core_entry_c(const char *filename, int load_state)
     retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
     retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
-    diag_screen(5); /* immediately before stock run_emulator */
+    diag_screen(5);
     xgo_stock_run_emulator(load_state);
 
     retro_deinit();
