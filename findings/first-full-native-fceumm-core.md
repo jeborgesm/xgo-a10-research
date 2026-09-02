@@ -162,11 +162,54 @@ enter FCEUmm
 
 This removes the remaining known concurrent stock-task window before the upper-RAM takeover while preserving an undisturbed stock fallback for missing or invalid core files.
 
-## Stack-distance evidence
+## Task-stack allocation and heap-break proof
+
+The remaining static stack-overlap question can now be closed for XGO tasks created through the normal OSAL path.
+
+A direct xref from the stock PCM engine's `"osal_task_create failed"` diagnostic identifies `osal_task_create` at `0x8030f670`. The PCM caller builds a task descriptor on its own stack with a `0x4000` (16 KiB) stack-size field and passes that descriptor to `0x8030f670`.
+
+Inside the task creation path, the firmware reaches helper `0x8030f8a8`. That helper:
+
+1. reads the requested stack size from descriptor offset `+0x08`;
+2. calls `0x8034a6c4` to obtain the stack block;
+3. stores the returned address as the task control block's stack base;
+4. stores `base + requested_size` as the stack top.
+
+`0x8034a6c4` is a very small allocation wrapper. Its allocation call is directly to stock `malloc` at `0x80291c04`, passing the requested stack size unchanged. Stock `malloc` is backed by the same `sbrk` at `0x80291944` whose current break is the loader-observed `XGO_HEAP_BREAK` word at `0x80c337b0`.
+
+Therefore, for tasks created by this normal XGO OSAL path, task-stack storage is ordinary stock heap storage. The proof chain is:
+
+```text
+osal_task_create descriptor stack_size
+        ↓
+0x8030f8a8 task setup
+        ↓
+0x8034a6c4 allocation wrapper
+        ↓
+stock malloc @ 0x80291c04
+        ↓
+stock sbrk @ 0x80291944
+        ↓
+XGO_HEAP_BREAK @ 0x80c337b0
+```
+
+Because `sbrk` advances `XGO_HEAP_BREAK` past allocated storage, the loader condition:
+
+```text
+*XGO_HEAP_BREAK < 0x87000000
+```
+
+means all live stock heap allocations reached through this allocator—including OSAL task stacks already allocated from it—end below the external-core base. The loader also checks this value a second time after quiescing the sound task and immediately before lowering `RAMSIZE`.
+
+This is stronger than merely observing that the primary boot stack is low in RAM: it ties normal dynamically created RTOS task stacks to the exact live allocator boundary used by the takeover guard.
+
+`osal_task_create = 0x8030f670` is now recorded in `xgo_stockfw_symbols.ld` with this semantic basis.
+
+## Primary stack-distance evidence
 
 XGO startup machine code initializes the primary stack from the aligned address around `0x80f883b0` plus a `0x4000` stack extent, yielding an initial `$sp` around `0x80f8c3b0`. That is more than 96 MiB below the external-core base at `0x87000000`.
 
-The `run_game()` function containing the NES interception uses a 0x168-byte local stack frame. This does not by itself prove the address of every RTOS task stack, so task-stack allocation remains a separate static archaeology question, but there is currently no evidence of a stack/core-window collision. The live `HEAP_BREAK < 0x87000000` gate additionally prevents takeover if stock dynamic allocation has already reached the reserved core window.
+The `run_game()` function containing the NES interception uses a 0x168-byte local stack frame. Combined with the OSAL heap-backed task-stack proof above, there is no currently identified stock stack allocation path overlapping the reserved external-core window while the live heap-break guard passes.
 
 ## The older semicolon/GBA staging path is not this path
 
@@ -184,15 +227,14 @@ It creates only the patched SD-loaded `bios/bisrv.asd`, `/cores/fceumm/core.xgc`
 
 ## Current boundary
 
-The software dependency, absolute-link, memory-layout, XGOC, loader-size, patch-site, fallback, heap-ceiling, sound-task quiescence, and return-path contracts are now reproducibly validated offline.
+The software dependency, absolute-link, memory-layout, XGOC, loader-size, patch-site, fallback, heap-ceiling, normal OSAL task-stack placement, sound-task quiescence, and return-path contracts are now reproducibly validated offline.
 
 The remaining unknown is physical execution on XGO hardware:
 
-- live heap break at native NES dispatch time;
+- actual live heap-break value at native NES dispatch time;
 - large-core file read into the reserved window;
 - cache/IRQ transition under a production 1.6 MiB FCEUmm payload;
 - first FCEUmm initialization/frame/audio/input behavior using stock XGO callbacks;
-- physical return behavior after the stock emulator loop;
-- exact allocation/origin of non-primary RTOS task stacks.
+- physical return behavior after the stock emulator loop.
 
-Those are now hardware observations or deeper RTOS archaeology rather than unresolved linker architecture.
+Those are now hardware observations rather than unresolved static memory or linker architecture.
