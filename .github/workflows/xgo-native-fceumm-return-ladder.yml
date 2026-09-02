@@ -25,7 +25,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stage: [1, 2, 3, 4, 5, 6]
+        # Stage 0 is the diagnostic-free full path: defining the bring-up macro
+        # compiles XGO_DIAG() out, while no XGO_RETURN_STAGE(1..6) matches 0.
+        stage: [0, 1, 2, 3, 4, 5, 6]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
 
