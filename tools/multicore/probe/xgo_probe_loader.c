@@ -18,7 +18,7 @@ static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static void (*const stock_run_gba)(const char *, int) = (void *)0x80360110;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
 
-#define CORE_BASE  0x87000000u
+#define CORE_BASE   0x87000000u
 #define PROBE_LIMIT 0x00100000u
 
 static int has_semicolon(const char *s)
@@ -66,19 +66,26 @@ void load_and_run_core(const char *path, int load_state)
         return;
     }
 
+    /*
+     * Reserve the external-core window BEFORE opening/reading the payload.
+     * Otherwise an allocation made by the stock stdio path could theoretically
+     * enter 0x87000000+ while that same range is being used as executable RAM.
+     */
+    old_limit = *RAMSIZE;
+    *RAMSIZE = CORE_BASE;
+
     f = fw_fopen("/mnt/sda1/cores/xgoprobe/core_87000000", "rb");
-    if (!f)
+    if (!f) {
+        *RAMSIZE = old_limit;
         return;
+    }
 
     /* Probe payload is deliberately bounded to 1 MiB. */
     fw_fread((void *)CORE_BASE, 1, PROBE_LIMIT, f);
     fw_fclose(f);
 
     cache_sync_core_window();
-
-    /* Reserve Multicore's external-core window only for the duration of probe. */
-    old_limit = *RAMSIZE;
-    *RAMSIZE = CORE_BASE;
     entry();
+
     *RAMSIZE = old_limit;
 }
