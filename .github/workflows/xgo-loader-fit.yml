@@ -1,0 +1,126 @@
+name: XGO injected loader fit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - '.github/workflows/xgo-loader-fit.yml'
+      - 'tools/multicore/probe/xgo_probe_loader.c'
+      - 'tools/multicore/probe/xgo_probe_init.s'
+      - 'tools/multicore/probe/xgo_probe_loader.ld'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/xgo-loader-fit.yml'
+      - 'tools/multicore/probe/xgo_probe_loader.c'
+      - 'tools/multicore/probe/xgo_probe_init.s'
+      - 'tools/multicore/probe/xgo_probe_loader.ld'
+
+jobs:
+  build-loader:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout XGO research branch
+        uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sha256sum /tmp/codescape-mips32.tar.gz | tee loader-toolchain.sha256
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version \
+            | tee loader-toolchain-version.txt
+
+      - name: Compile and link injected XGOC loader
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          nm="$tools/mips-mti-elf-nm"
+          objdump="$tools/mips-mti-elf-objdump"
+          readelf="$tools/mips-mti-elf-readelf"
+
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffreestanding -fno-builtin -Os -ffunction-sections -fdata-sections'
+
+          "$cc" $flags -c tools/multicore/probe/xgo_probe_loader.c -o xgo_probe_loader.o
+          "$cc" $flags -c tools/multicore/probe/xgo_probe_init.s -o xgo_probe_init.o
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -nostdlib -nostartfiles -static \
+            -Wl,--gc-sections \
+            -Wl,-Map,xgo_probe_loader.map \
+            -Wl,-T,tools/multicore/probe/xgo_probe_loader.ld \
+            xgo_probe_init.o xgo_probe_loader.o \
+            -o xgo_probe_loader.elf
+
+          "$objcopy" -O binary -j .text -j .rodata -j .data \
+            xgo_probe_loader.elf xgo_probe_loader.bin
+
+          "$nm" -n xgo_probe_loader.elf > xgo_probe_loader.nm
+          "$objdump" -d xgo_probe_loader.elf > xgo_probe_loader.disassembly.txt
+          "$readelf" -h -S -l xgo_probe_loader.elf > xgo_probe_loader.readelf.txt
+
+          start_hex=$(awk '$3 == "__start" {h=$1; if (length(h)>8) h=substr(h,length(h)-7); print "0x" h; exit}' xgo_probe_loader.nm)
+          load_hex=$(awk '$3 == "load_and_run_core" {h=$1; if (length(h)>8) h=substr(h,length(h)-7); print "0x" h; exit}' xgo_probe_loader.nm)
+          test "$start_hex" = '0x80001500'
+          test -n "$load_hex"
+
+          loader_size=$(stat -c %s xgo_probe_loader.bin)
+          capacity=$((0x2180 - 0x1500))
+          remaining=$((capacity - loader_size))
+
+          {
+            printf 'entry=%s\n' "$start_hex"
+            printf 'load_and_run_core=%s\n' "$load_hex"
+            printf 'loader_size=%d\n' "$loader_size"
+            printf 'capacity=%d\n' "$capacity"
+            printf 'remaining=%d\n' "$remaining"
+            printf 'utilization_pct=%.2f\n' "$(awk -v s="$loader_size" -v c="$capacity" 'BEGIN {print 100*s/c}')"
+          } | tee xgo_probe_loader_layout.txt
+
+          if (( loader_size > capacity )); then
+            echo "ERROR: XGOC loader is $loader_size bytes, exceeds 3200-byte firmware cave" >&2
+            exit 1
+          fi
+
+          # The injected binary must contain no unresolved references because
+          # it executes directly from the stock firmware cave without a runtime
+          # linker. Calls to stock firmware are absolute function pointers in C.
+          "$nm" -u xgo_probe_loader.elf | tee xgo_probe_loader.undefined.txt
+          unresolved=$(awk '$1 == "U" {n++} END {print n+0}' xgo_probe_loader.undefined.txt)
+          if (( unresolved != 0 )); then
+            echo "ERROR: injected loader has $unresolved undefined symbols" >&2
+            exit 1
+          fi
+
+          sha256sum xgo_probe_loader.elf xgo_probe_loader.bin \
+            | tee xgo_probe_loader.sha256
+
+      - name: Upload loader audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-injected-loader-fit
+          if-no-files-found: warn
+          path: |
+            xgo_probe_loader.elf
+            xgo_probe_loader.bin
+            xgo_probe_loader.map
+            xgo_probe_loader.nm
+            xgo_probe_loader.disassembly.txt
+            xgo_probe_loader.readelf.txt
+            xgo_probe_loader_layout.txt
+            xgo_probe_loader.undefined.txt
+            xgo_probe_loader.sha256
+            loader-toolchain.sha256
+            loader-toolchain-version.txt
