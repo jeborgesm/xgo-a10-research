@@ -54,7 +54,23 @@ jobs:
         run: |
           set -euxo pipefail
           TOOL=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-
-          "${TOOL}nm" -u fceumm_libretro_sf2000.a | sort -u | tee fceumm-undefined-symbols.txt
+
+          # Raw archive member references are useful for archaeology but include
+          # references satisfied by other members of the same archive.
+          "${TOOL}nm" -u fceumm_libretro_sf2000.a | sort -u \
+            | tee fceumm-undefined-symbols-raw.txt
+
+          # Force every archive object into one relocatable object. This resolves
+          # all FCEUmm-internal references and leaves only the true external
+          # ABI/runtime/libretro-common surface.
+          "${TOOL}ld" -EL -r --whole-archive fceumm_libretro_sf2000.a \
+            --no-whole-archive -o fceumm-whole.o
+          "${TOOL}nm" -u fceumm-whole.o | sort -u \
+            | tee fceumm-external-symbols.txt
+          "${TOOL}nm" --defined-only fceumm-whole.o | sort \
+            > fceumm-defined-symbols.txt
+
+          "${TOOL}size" -A fceumm-whole.o > fceumm-whole-size.txt
           "${TOOL}size" -A fceumm_libretro_sf2000.a > fceumm-size.txt
           sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive-sha256.txt
 
@@ -64,8 +80,12 @@ jobs:
           name: xgo-fceumm-toolchain-probe
           path: |
             fceumm_libretro_sf2000.a
-            fceumm-undefined-symbols.txt
+            fceumm-whole.o
+            fceumm-undefined-symbols-raw.txt
+            fceumm-external-symbols.txt
+            fceumm-defined-symbols.txt
             fceumm-size.txt
+            fceumm-whole-size.txt
             fceumm-archive-sha256.txt
             toolchain-version.txt
           if-no-files-found: error
