@@ -64,12 +64,6 @@ extern void xgo_stock_input_poll(void);
 extern short xgo_stock_input_state(unsigned, unsigned, unsigned, unsigned);
 extern void xgo_stock_run_emulator(int);
 
-typedef struct FILE_ FILE;
-extern FILE *xgo_stock_fopen(const char *, const char *);
-extern int xgo_stock_fseeko(FILE *, int, int);
-extern int xgo_stock_ftell(FILE *);
-extern int xgo_stock_fclose(FILE *);
-
 /* Transparent stock run_emulator -> core veneers. */
 extern unsigned xgo_core_get_region(void);
 extern void xgo_core_get_av(struct retro_system_av_info *);
@@ -102,28 +96,6 @@ int xgo_disabled_state_io(const char *path)
 {
     (void)path;
     return 0;
-}
-
-/* run_game rounds g_run_file_size upward to four bytes before fread(). */
-static int exact_rom_size(const char *filename, unsigned *size_out)
-{
-    FILE *f;
-    int size;
-
-    f = xgo_stock_fopen(filename, "rb");
-    if (!f)
-        return 0;
-    if (xgo_stock_fseeko(f, 0, 2) != 0) {
-        xgo_stock_fclose(f);
-        return 0;
-    }
-    size = xgo_stock_ftell(f);
-    xgo_stock_fclose(f);
-
-    if (size <= 0 || (unsigned)size > MAX_ROM_SIZE)
-        return 0;
-    *size_out = (unsigned)size;
-    return 1;
 }
 
 #ifdef XGO_WITH_NEWLIB
@@ -160,7 +132,20 @@ int __core_entry_c(const char *filename, int load_state)
      * preloaded-ROM sbrk implementation to reserve the ROM prefix. */
     init_core_runtime();
 
-    if (!ROM_BUFFER || !exact_rom_size(filename, &rom_size))
+    /*
+     * Stock run_game() rounds g_run_file_size up to four bytes before fread().
+     * Earlier revisions reopened the ROM with stock fopen/fseeko/ftell solely
+     * to recover the exact byte count. Hardware test #1 exposed that as an
+     * unnecessary ABI boundary: XGO's fseeko uses a 64-bit O32 offset and the
+     * helper had declared it incorrectly.
+     *
+     * Pinned FCEUmm's in-memory iNES loader accepts a buffer larger than the
+     * header-declared PRG+CHR data; it only reports the trailing bytes as
+     * unused. Therefore the stock aligned length is both sufficient and safer,
+     * and keeps the launch path genuinely zero-copy with no second file open.
+     */
+    rom_size = RUN_FILE_SIZE;
+    if (!ROM_BUFFER || rom_size == 0 || rom_size > MAX_ROM_SIZE)
         return -1;
 
     old_game_info.path = GAME_INFO.path;
@@ -193,7 +178,6 @@ int __core_entry_c(const char *filename, int load_state)
     retro_init();
 
     /* Use the stock-preloaded ROM directly; no second ROM allocation/copy. */
-    RUN_FILE_SIZE = rom_size;
     GAME_INFO.path = filename;
     GAME_INFO.data = ROM_BUFFER;
     GAME_INFO.size = rom_size;
