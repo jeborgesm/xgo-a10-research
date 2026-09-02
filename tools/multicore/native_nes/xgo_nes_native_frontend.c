@@ -20,7 +20,6 @@ typedef int bool;
 #define true 1
 #define false 0
 
-#define RETRO_DEVICE_JOYPAD 1u
 #define XGO_SYSTEM_NES 0x0001u
 #define MAX_ROM_SIZE 0x04000000u
 #define DIAG_W 128u
@@ -48,7 +47,6 @@ extern void retro_set_video_refresh(video_cb);
 extern void retro_set_audio_sample_batch(audio_batch_cb);
 extern void retro_set_input_poll(poll_cb);
 extern void retro_set_input_state(input_cb);
-extern void retro_set_controller_port_device(unsigned, unsigned);
 extern void retro_get_system_av_info(struct retro_system_av_info *);
 extern bool retro_load_game(const struct retro_game_info *);
 extern void retro_unload_game(void);
@@ -283,10 +281,15 @@ int __core_entry_c(const char *filename, int load_state)
     GFN_RUN = xgo_core_run;
     GFN_FRAMESKIP = 0;
 
-    retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
-    retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
+    /*
+     * Do not call retro_set_controller_port_device() here. In pinned FCEUmm,
+     * RETRO_DEVICE_JOYPAD is RETRO_DEVICE_AUTO; the pre-load Auto path reads
+     * GameInfo->input[], while the explicit Gamepad path reaches SetInputStuff()
+     * and reads GameInfo->type. GameInfo is established only by retro_load_game().
+     * FCEUmm itself initializes both NES ports as gamepads after successful load.
+     */
 
-    /* Stage 6: stock frontend slots/content-info/controller setup completed. */
+    /* Stage 6: stock frontend slots/content-info setup completed. */
     XGO_RETURN_STAGE(6);
     XGO_DIAG(5);
 
