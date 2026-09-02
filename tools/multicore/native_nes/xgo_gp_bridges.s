@@ -6,9 +6,10 @@
  * Conversely, FCEUmm/newlib code is linked with its own _gp and can be entered
  * indirectly by stock run_emulator().
  *
- * Every veneer below is signature-transparent. a0-a3 and any caller stack
- * arguments are left untouched; only a private O32 frame, ra and gp are used.
- * Return values in v0/v1 (including 64-bit O32 returns) pass through unchanged.
+ * Ordinary veneers below are signature-transparent for calls whose argument
+ * words fit in a0-a3. O32 stack arguments must be copied into the veneer's new
+ * outgoing-argument area; fs_lseek has a dedicated five-word veneer for that
+ * reason. Return values in v0/v1 pass through unchanged.
  */
 
     .set    noreorder
@@ -16,14 +17,9 @@
     .text
     .align  2
 
-/* Stock firmware GP recovered from startup at 0x80001270/74. */
 #define XGO_STOCK_GP_HI 0x80c3
 #define XGO_STOCK_GP_LO 0x4774
 
-/*
- * A transparent call veneer needs the mandatory 16-byte O32 outgoing argument
- * area plus saved gp/ra. 32 bytes preserves 8-byte stack alignment.
- */
 .macro STOCK_BRIDGE name, target
     .globl  \name
     .type   \name, @function
@@ -31,6 +27,31 @@
     addiu   $sp, $sp, -32
     sw      $ra, 28($sp)
     sw      $gp, 24($sp)
+    lui     $gp, XGO_STOCK_GP_HI
+    addiu   $gp, $gp, XGO_STOCK_GP_LO
+    jal     \target
+    nop
+    lw      $gp, 24($sp)
+    lw      $ra, 28($sp)
+    addiu   $sp, $sp, 32
+    jr      $ra
+    nop
+    .size   \name, .-\name
+.endm
+
+/* O32 fs_lseek(fd, long long offset, whence): fd is a0, the 64-bit offset is
+ * aligned into a2/a3, and whence is the fifth argument word at caller sp+16.
+ * After allocating our 32-byte frame, old sp+16 is new sp+48; copy it to the
+ * callee's required new sp+16 outgoing slot before the stock call. */
+.macro STOCK_BRIDGE5 name, target
+    .globl  \name
+    .type   \name, @function
+\name:
+    addiu   $sp, $sp, -32
+    sw      $ra, 28($sp)
+    sw      $gp, 24($sp)
+    lw      $t0, 48($sp)
+    sw      $t0, 16($sp)
     lui     $gp, XGO_STOCK_GP_HI
     addiu   $gp, $gp, XGO_STOCK_GP_LO
     jal     \target
@@ -65,31 +86,26 @@
     .extern _gp
 
 /* ---- external core -> stock XGO -------------------------------------- */
-
-/* Stock stdio used by exact_rom_size(). */
 STOCK_BRIDGE xgo_stock_fopen,  0x802b3524
 STOCK_BRIDGE xgo_stock_fseeko, 0x802b3804
 STOCK_BRIDGE xgo_stock_ftell,  0x802b3f1c
 STOCK_BRIDGE xgo_stock_fclose, 0x802b2f40
 
-/* ALi VFS primitives used by external newlib/libretro-common. */
-STOCK_BRIDGE xgo_stock_fs_open,     0x802abd58
-STOCK_BRIDGE xgo_stock_fs_opendir,  0x802abe28
-STOCK_BRIDGE xgo_stock_fs_mkdir,    0x802abeb4
-STOCK_BRIDGE xgo_stock_fs_fstat,    0x802ac080
-STOCK_BRIDGE xgo_stock_fs_stat,     0x802ac0a4
-STOCK_BRIDGE xgo_stock_fs_read,     0x802ac150
-STOCK_BRIDGE xgo_stock_fs_write,    0x802ac274
-STOCK_BRIDGE xgo_stock_fs_lseek,    0x802ac394
-STOCK_BRIDGE xgo_stock_fs_readdir,  0x802ac438
-STOCK_BRIDGE xgo_stock_fs_close,    0x802ac4d4
-STOCK_BRIDGE xgo_stock_fs_closedir, 0x802ac4f0
+STOCK_BRIDGE  xgo_stock_fs_open,     0x802abd58
+STOCK_BRIDGE  xgo_stock_fs_opendir,  0x802abe28
+STOCK_BRIDGE  xgo_stock_fs_mkdir,    0x802abeb4
+STOCK_BRIDGE  xgo_stock_fs_fstat,    0x802ac080
+STOCK_BRIDGE  xgo_stock_fs_stat,     0x802ac0a4
+STOCK_BRIDGE  xgo_stock_fs_read,     0x802ac150
+STOCK_BRIDGE  xgo_stock_fs_write,    0x802ac274
+STOCK_BRIDGE5 xgo_stock_fs_lseek,    0x802ac394
+STOCK_BRIDGE  xgo_stock_fs_readdir,  0x802ac438
+STOCK_BRIDGE  xgo_stock_fs_close,    0x802ac4d4
+STOCK_BRIDGE  xgo_stock_fs_closedir, 0x802ac4f0
 
-/* Scheduler/time services. */
 STOCK_BRIDGE xgo_stock_dly_tsk,           0x8030f480
 STOCK_BRIDGE xgo_stock_os_get_tick_count, 0x8030fec8
 
-/* Stock libretro transport and main frontend loop. */
 STOCK_BRIDGE xgo_stock_video_refresh,      0x8035e70c
 STOCK_BRIDGE xgo_stock_audio_sample_batch, 0x8035e7d8
 STOCK_BRIDGE xgo_stock_input_poll,         0x8035ea30
@@ -98,7 +114,6 @@ STOCK_BRIDGE xgo_stock_environment,        0x8035eb64
 STOCK_BRIDGE xgo_stock_run_emulator,       0x8035ed48
 
 /* ---- stock XGO -> external core -------------------------------------- */
-
     .extern retro_get_region
     .extern retro_get_system_av_info
     .extern retro_load_game
