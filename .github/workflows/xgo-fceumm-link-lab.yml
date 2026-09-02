@@ -36,7 +36,7 @@ jobs:
           sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
           /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
 
-      - name: Fetch pinned HC15xx sources
+      - name: Fetch pinned HC15xx FCEUmm source
         shell: bash
         run: |
           set -euxo pipefail
@@ -44,24 +44,27 @@ jobs:
           cd upstream-fceumm
           git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
           test "$(git rev-parse HEAD)" = 'e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
-          cd ..
-          git clone https://github.com/madcock/libretro-common.git upstream-libretro-common
 
-      - name: Build exact SF2000 static archives
+      - name: Build FCEUmm plus XGO support slice
         shell: bash
         run: |
           set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          ar="$tools/mips-mti-elf-ar"
+
           make -C upstream-fceumm platform=sf2000 -j2
-          test -f upstream-fceumm/fceumm_libretro_sf2000.a
           cp upstream-fceumm/fceumm_libretro_sf2000.a .
 
-          make -C upstream-libretro-common -j2
-          test -f upstream-libretro-common/libretro-common.a
-          cp upstream-libretro-common/libretro-common.a .
+          "$cc" -EL -march=mips32 -mtune=mips32 -msoft-float -G0 \
+            -mno-abicalls -fno-pic -ffast-math -fomit-frame-pointer \
+            -ffunction-sections -fdata-sections -O2 -DNDEBUG -DSF2000 \
+            -c tools/multicore/xgo_fceumm_support.c -o xgo_fceumm_support.o
+          "$ar" rcs xgo_fceumm_support.a xgo_fceumm_support.o
 
-          ls -lh fceumm_libretro_sf2000.a libretro-common.a
+          ls -lh fceumm_libretro_sf2000.a xgo_fceumm_support.a
           sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive.sha256
-          sha256sum libretro-common.a | tee libretro-common-archive.sha256
+          sha256sum xgo_fceumm_support.a | tee xgo-support-archive.sha256
 
       - name: Analyze true external symbols
         shell: bash
@@ -78,15 +81,15 @@ jobs:
 
           python3 tools/multicore/analyze_archive_symbols.py \
             --nm "$nm" \
-            --output fceumm-plus-common-external-symbols.txt \
-            --classified-output fceumm-plus-common-external-symbols-classified.txt \
-            fceumm_libretro_sf2000.a libretro-common.a \
-            | tee fceumm-plus-common-symbol-analysis.txt
+            --output fceumm-plus-xgo-support-external-symbols.txt \
+            --classified-output fceumm-plus-xgo-support-external-symbols-classified.txt \
+            fceumm_libretro_sf2000.a xgo_fceumm_support.a \
+            | tee fceumm-plus-xgo-support-symbol-analysis.txt
 
           /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar t \
             fceumm_libretro_sf2000.a | tee fceumm-archive-members.txt
 
-      - name: Resolve archives against Codescape runtime libraries
+      - name: Resolve against XGO firmware symbols and Codescape runtime
         shell: bash
         continue-on-error: true
         run: |
@@ -96,7 +99,8 @@ jobs:
 
           "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
             -r -nostartfiles \
-            -Wl,--whole-archive fceumm_libretro_sf2000.a libretro-common.a \
+            -Wl,-T,tools/multicore/xgo_stockfw_symbols.ld \
+            -Wl,--whole-archive fceumm_libretro_sf2000.a xgo_fceumm_support.a \
             -Wl,--no-whole-archive \
             -Wl,--start-group -lc -lm -lgcc -Wl,--end-group \
             -o fceumm-runtime-resolved.o \
@@ -106,30 +110,20 @@ jobs:
             "$nm" -u fceumm-runtime-resolved.o \
               | awk '$1 == "U" {print $2}' | sort -u \
               | tee fceumm-after-runtime-symbols.txt
+            "$nm" -n fceumm-runtime-resolved.o > fceumm-runtime-resolved.nm
           fi
 
-      - name: Show XGOC probe build environment
-        shell: bash
-        continue-on-error: true
-        run: |
-          set -x
-          which clang || true
-          which ld.lld || true
-          which llvm-objcopy || true
-          which nm || true
-          which python3 || true
-          clang --version || true
-          ld.lld --version || true
-          llvm-objcopy --version || true
-          nm --version || true
-
-      - name: Build XGOC probe tooling
+      - name: Build XGOC probe with Codescape tools
         shell: bash
         continue-on-error: true
         run: |
           set -euxo pipefail
           cd tools/multicore/probe
-          bash ./build_probe.sh 2>&1 | tee ../../../xgoc-build.log
+          CLANG=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc \
+          LD_LLD=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ld \
+          OBJCOPY=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-objcopy \
+          NM=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-nm \
+            bash ./build_probe.sh 2>&1 | tee ../../../xgoc-build.log
           if [[ -f core.xgc ]]; then
             python3 inspect_xgoc.py core.xgc 2>&1 | tee ../../../xgoc-inspect.log
           fi
@@ -142,18 +136,19 @@ jobs:
           if-no-files-found: warn
           path: |
             fceumm_libretro_sf2000.a
-            libretro-common.a
+            xgo_fceumm_support.a
             fceumm-archive.sha256
-            libretro-common-archive.sha256
+            xgo-support-archive.sha256
             fceumm-external-symbols.txt
             fceumm-external-symbols-classified.txt
             fceumm-symbol-analysis.txt
-            fceumm-plus-common-external-symbols.txt
-            fceumm-plus-common-external-symbols-classified.txt
-            fceumm-plus-common-symbol-analysis.txt
+            fceumm-plus-xgo-support-external-symbols.txt
+            fceumm-plus-xgo-support-external-symbols-classified.txt
+            fceumm-plus-xgo-support-symbol-analysis.txt
             fceumm-after-runtime-symbols.txt
             fceumm-runtime-link.log
             fceumm-runtime-resolved.o
+            fceumm-runtime-resolved.nm
             fceumm-archive-members.txt
             toolchain.sha256
             toolchain-version.txt
