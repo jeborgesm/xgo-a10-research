@@ -41,22 +41,26 @@ jobs:
         run: |
           set -euxo pipefail
           tools=/opt/mips32-mti-elf/2019.09-03-2/bin
-          # platform=sf2000 already selects the exact Codescape compiler paths.
           (cd /tmp/fceumm && make clean || true && make -j2 platform=sf2000)
-          # libretro-common does not have an SF2000 platform target; provide
-          # only the compiler/archive tools and our already-proven dirent shim.
           (cd /tmp/libretro-common && make clean || true && make -j2 \
             CC="$tools/mips-mti-elf-gcc" AR="$tools/mips-mti-elf-ar")
 
       - name: Compile native XGO frontend and runtime bridge
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
-          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2'
-          "$cc" $flags -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
-          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
-          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
-          "$cc" $flags -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/libretro-common/include'
+          : > native-compile.log
+          compile_one() {
+            src=$1
+            out=$2
+            echo "=== $src ===" | tee -a native-compile.log
+            "$cc" $flags -c "$src" -o "$out" 2>&1 | tee -a native-compile.log
+          }
+          compile_one tools/multicore/native_nes/xgo_nes_native_frontend.c frontend.o
+          compile_one tools/multicore/xgo_minimal_environment_shim.c environment.o
+          compile_one tools/multicore/xgo_preloaded_rom_sbrk.c sbrk.o
+          compile_one tools/multicore/native_nes/xgo_newlib_syscalls.c syscalls.o
 
       - name: Measure exact Codescape runtime closure
         run: |
@@ -118,6 +122,7 @@ jobs:
         with:
           name: fceumm-codescape-runtime-audit
           path: |
+            native-compile.log
             codescape-runtime-audit.txt
             before-runtime.txt
             after-runtime.txt
