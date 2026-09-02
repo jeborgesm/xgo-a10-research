@@ -154,9 +154,19 @@ jobs:
           "$readelf" -h -S -l xgo-fceumm.elf > xgo-fceumm.readelf.txt
           "$objcopy" -O binary xgo-fceumm.elf xgo-fceumm.bin
 
+          # Codescape nm sign-extends 32-bit MIPS addresses in this ELF, e.g.
+          # 87000000 appears as ffffffff87000000. Normalize every symbol to the
+          # low 32 bits before Bash arithmetic so host shell signedness cannot
+          # make a valid target address fail the CI layout checks.
           symbol_hex() {
             local name="$1"
-            awk -v name="$name" '$3 == name { print "0x" $1; exit }' xgo-fceumm.nm
+            awk -v name="$name" '
+              $3 == name {
+                h=$1
+                if (length(h) > 8) h=substr(h, length(h)-7)
+                printf "0x%s\n", h
+                exit
+              }' xgo-fceumm.nm
           }
 
           start=$(symbol_hex __image_start)
