@@ -2,304 +2,273 @@
 
 Status: **firmware protocol timing confirmed; physical connector routing not yet confirmed**.
 
-## Why this exists
+## Headline
 
-The XGO controller task contains a two-channel synchronous serial scanner that continuously produces Player 1 and Player 2 local/wired controller states. One stream is a strong candidate for the external `Handle Interface`.
+The XGO firmware contains a continuously running two-channel synchronous serial controller scanner. It is not USB HID. The scanner uses two active-low DATA inputs in parallel with one shared CLOCK and produces two independent controller-state words.
 
-This note records the electrical behavior visible directly in the XGO MIPS code so future testing can compare a logic-analyzer trace or candidate controller against the firmware rather than guessing from the micro-USB connector shape.
+The serial contract is now strongly tied to the SF2000/HC15xx family: XGO uses the exact SF2000 12-position logical button order and the same unusual host-driven-low load/reset mechanism. Its physical topology, however, is dual-data like the GB300-family scanner.
 
-## GPIO roles observed in the XGO scanner
+The external `Handle Interface` is physically micro-USB, but the connector-to-GPIO mapping remains unconfirmed.
+
+## GPIO roles confirmed from XGO firmware
 
 ```text
-B15  data channel 0   input register 0xb8800350 bit 15
-L0   data channel 1   input register 0xb8800050 bit 0
-B7   shared clock     output register 0xb8800354 bit 7
+B15  DATA channel 0   input register 0xb8800350 bit 15
+L0   DATA channel 1   input register 0xb8800050 bit 0
+B7   shared CLOCK     output register 0xb8800354 bit 7
 ```
 
-Direction/control registers used during the load phase:
+Direction/control registers:
 
 ```text
 B bank direction/control: 0xb8800358
 L bank direction/control: 0xb8800058
 ```
 
-The two data streams are active-low: a low sample means the corresponding button bit is asserted.
-
-## GPIO initialization
-
-The controller/RF initialization routine at approximately `0x8035deb0` configures the same GPIO block used later by the serial scanner before running the RF self-test.
-
-The relevant effects are consistent with the scan routine:
+Initialization near `0x8035deb0` establishes:
 
 ```text
 B15 -> input at idle
 L0  -> input at idle
 B7  -> output
-B7  -> driven high at idle
+B7  -> high at idle
 ```
 
-The initialization then continues into the RF GPIO setup and radio self-test. This shows the local serial bus and wireless input path are intentionally initialized together as parts of the controller subsystem.
-
-A later static re-check confirmed that this setup is unconditional in the controller initialization path: there is no Handle-Interface-present test before B15/L0/B7 are put into their controller roles.
+This setup is unconditional in the controller initialization path. No external-controller-present test is performed before configuring B15/L0/B7.
 
 ## Load/reset phase
 
-The firmware clears both software controller states, then performs this sequence:
+The scanner clears both software controller states and performs:
 
 ```text
-1. configure B15 as output
-2. configure L0  as output
-3. drive B15 low
-4. drive L0  low
-5. wait approximately 4 us
-6. return B15 to input
-7. return L0  to input
-8. sample the first button bit
+1. B15 -> output
+2. L0  -> output
+3. B15 = low
+4. L0  = low
+5. wait about 4 us
+6. B15 -> input
+7. L0  -> input
+8. immediately sample bit 0
 ```
 
-There is no separate dedicated latch signal visible in this routine. The host deliberately takes temporary ownership of the data lines and pulls them low. Any directly attached controller must therefore tolerate this behavior.
+There is no separate latch line visible in the reconstructed XGO routine. The host temporarily takes ownership of both DATA lines and drives them low.
 
-This is an important difference from treating the connector as a literal raw SNES-controller port.
+## Clocking
 
-## Bit clocking
-
-After each pair of B15/L0 samples, the firmware pulses B7:
+B7 is high at idle. After each pair of samples the scanner performs approximately:
 
 ```text
-clock high / idle
-sample data
-clock low
-wait approximately 2 us
-clock high
-sample next data bit
+sample DATA0 + DATA1
+CLOCK low
+wait about 2 us
+CLOCK high
+sample next pair
 ```
 
-The explicit delay is on the low phase. The high-phase duration is produced by normal instruction/interrupt-guard overhead before the next sample rather than by a matching explicit delay call.
+The explicit delay is on the low phase. There is no separately identified post-release settle delay before the first XGO sample.
 
-The code performs the clock operation after the final sample as well.
+## Exact 12-position logical order
 
-## Twelve-bit order
-
-Exactly twelve controller positions are accumulated per stream:
+Both streams use:
 
 ```text
-sample 0   R       raw 0x1000
-sample 1   Y       raw 0x2000
-sample 2   X       raw 0x4000
-sample 3   L       raw 0x0800
-sample 4   A       raw 0x0080
-sample 5   B       raw 0x0040
-sample 6   SELECT  raw 0x0020
-sample 7   START   raw 0x0010
-sample 8   UP      raw 0x0008
-sample 9   DOWN    raw 0x0004
-sample 10  LEFT    raw 0x0002
-sample 11  RIGHT   raw 0x0001
+0   R       raw 0x1000
+1   Y       raw 0x2000
+2   X       raw 0x4000
+3   L       raw 0x0800
+4   A       raw 0x0080
+5   B       raw 0x0040
+6   SELECT  raw 0x0020
+7   START   raw 0x0010
+8   UP      raw 0x0008
+9   DOWN    raw 0x0004
+10  LEFT    raw 0x0002
+11  RIGHT   raw 0x0001
 ```
 
-Both channels are sampled in parallel on every clock.
+This is position-for-position identical to the SF2000 local keypad serialization reconstructed by FrogQEMU.
 
-## Relationship to related HC15xx input buses
+## Polling and software state
 
-The protocol shape strongly resembles the local-controller scan currently reconstructed for GB300-family HC15xx hardware:
+The scanner runs periodically from the persistent controller task, approximately every fourth task phase. It does not wait for USB attach/enumeration.
 
-- multiple active-low serial data lines;
-- host temporarily drives data low for the load phase;
-- host switches the same lines back to input;
-- a shared GPIO clock advances the stream;
-- microsecond-scale load and clock delays.
-
-Current UniFrog code uses this same unusual drive-low / return-to-input strategy for GB300 local controls. The XGO differs in GPIO assignment, exact timing, bit count, and — importantly — preserves the two streams as separate Player 1 and Player 2 states.
-
-The XGO implementation therefore looks more like a relative of the HC15xx local-controller bus than a standard USB HID path or a literal SNES electrical interface.
-
-## Polling behavior
-
-The scanner is part of the persistent controller task and runs periodically without waiting for USB attachment or enumeration. A poll counter selects the scan phase approximately every fourth task phase.
-
-Representative scheduling code:
+Representative scheduling path:
 
 ```text
 0x8035d50c  load poll counter
 0x8035d510  counter & 3
-0x8035d514  if zero -> enter serial scanner at 0x8035d770
+0x8035d514  if zero -> scanner near 0x8035d770
 ...
-0x8035d6c8  load same counter
+0x8035d6c8  load counter
 0x8035d6cc  increment
 0x8035d6d0  store
 ```
 
-This means the GPIO bus remains active even with no external controller attached.
-
-## No software-side P2 connection gate found
-
-A full disassembly search for direct accesses to the two local serial state words found the following pattern:
+The two serial state words are:
 
 ```text
 gp - 0x0d2c   serial/local slot 0
 gp - 0x0d28   serial/local slot 1
 ```
 
-Direct reads/writes of those two words occur in the serial scanner itself: it clears the words and sets button bits as B15/L0 are sampled. Outside that scanner, the states are consumed through the two-element array pointer and merged with RF P1/P2.
+Direct references to these words are confined to the scanner. Elsewhere they are consumed as a two-element controller array and merged with RF/controller state. No separate software P2-connected flag or USB gate has been found.
 
-The exhaustive direct-reference scan found no USB callback, connector-detect routine, or mode handler writing these local P1/P2 words.
+## Relationship to SF2000 and GB300
 
-No separate flag was found that says `P2 connected`, no branch skips the second serial channel when the connector is empty, and no USB-attach condition gates the scan. The firmware simply samples both data lines every scan cycle.
+XGO combines two traits that the current open-source family reconstruction shows separately:
 
-This strongly suggests that an absent second controller is represented electrically by an inactive/all-high serial stream rather than by a separate enumeration or connection event.
+### SF2000-like logical contract
 
-## Detect/mode hypothesis re-check
+- 12 samples
+- active-low
+- host drives DATA low, then returns it to input
+- exact order `R,Y,X,L,A,B,SELECT,START,UP,DOWN,LEFT,RIGHT`
+- high-idle clock and sample-then-pulse rhythm
 
-After the OTG-adapter experiment, the application firmware was re-checked specifically for evidence that grounding a connector contact causes a software-side controller mode switch.
+### GB300-like physical topology
 
-### What was found
+- two DATA lines
+- one shared CLOCK
+- both DATA lines driven low together for the load phase
+- both DATA lines switched back to input together
+- simultaneous active-low sampling
 
-- controller GPIO initialization configures B15/L0/B7 without testing for an external controller;
-- the serial scanner continues to run from its normal periodic scheduling path;
-- both local controller slots are always scanned;
-- the local state words are only directly populated by that scanner;
-- the firmware contains generic `usb device attach` / `usb device detach` strings, but no convincing application-level `OTG`, `ID pin`, `host mode`, or `device mode` string associated with the controller path;
-- the previously identified USB strings are associated with broader USB/filesystem handling and do not connect to the local P1/P2 state array in the static code examined.
+XGO differs from current UniFrog GB300 behavior in important ways:
 
-### Interpretation
+- GB300 scans 16 shift positions; XGO scans 12;
+- GB300 uses L27/L25 DATA and L26 CLOCK; XGO uses B15/L0 DATA and B7 CLOCK;
+- GB300's current UniFrog normalizer ORs the two physical streams into one local-button mask; XGO preserves its two streams independently as controller slots;
+- GB300 drives its clock low during the load phase in the current reconstruction, while XGO's B7 is initialized high and the reconstructed XGO load sequence only requires both DATA lines low.
 
-This does **not** rule out a hardware-level or lower USB-stack response to the micro-USB ID pin. However, no application-level mechanism has been found that says, in effect, `ID grounded -> switch the controller subsystem into external-controller mode`.
+The best description is therefore **SF2000 logical protocol implemented with a GB300-like dual-data topology**, not simply "the GB300 protocol".
 
-That makes the simpler electrical-contention/stuck-data explanation stronger than it was before: grounding a contact may directly alter one of the signals that the continuously running scanner already samples.
+## Cable/adapter physical evidence
 
-The strongest candidate remains the external/P2 active-low data stream. This is still an inference until connector routing is measured.
-
-## Idle-line implication
-
-Because an empty Player-2 channel is scanned continuously, its data input cannot be allowed to float randomly in normal operation. Something must hold the external-channel input at the inactive/high level when no controller is present.
-
-The firmware scanner itself does not perform a per-scan pull-up configuration; it only changes direction and output latch state. Therefore the stable idle level is likely supplied by one of the following:
-
-- a board-level pull-up resistor;
-- a pin pull configured once elsewhere in pinmux/pad setup;
-- intermediary accessory-interface logic.
-
-## Cable/adapter differential experiment — very strong physical evidence
-
-Two physically similar micro-USB attachments produce opposite results:
+Confirmed physical observations:
 
 ```text
 normal micro-USB male -> USB-A male cable
     inserted into Handle Interface
-    -> built-in controls continue working normally
+    -> controls remain normal
 
-micro-USB OTG adapter -> USB-A female
-    inserted empty, nothing connected to USB-A side
-    -> built-in controls freeze immediately
+empty micro-USB OTG adapter -> USB-A female
+    inserted with nothing attached
+    -> normal UI appears unusable
+
+hidden controller diagnostic with that OTG adapter
+    -> R is asserted
+    -> not all buttons
 ```
 
-A normal micro-USB cable typically leaves the micro-USB **ID** contact unconnected, while an OTG host adapter commonly grounds the ID contact to request host mode. The adapter was also probed with fine needle extensions; resistance-mode probing produced a ground-related reading on pin 4, consistent with the expected OTG ID-to-ground connection, although the awkward probe setup means this should not be treated as a precision resistance measurement.
+The adapter was probed with fine needle extensions and showed behavior consistent with micro-USB pin 4 / ID being tied to ground, as expected for an OTG host adapter. Treat this as qualitative confirmation, not precision resistance characterization.
 
-Because the ordinary cable does not disturb the XGO but the empty OTG adapter does, the ID-contact difference is now the leading physical discriminator.
+## Critical correction: OTG produces R-only, not all-buttons
 
-This does **not** yet prove that XGO micro-USB pin 4 is P2 DATA. It does, however, sharply reduce the likelihood that ordinary VBUS/D+/D-/GND contact presence alone causes the fault, because those conventional USB contacts are present on both cable types.
+Older analysis predicted that if ID directly grounded an active-low DATA line, every serial sample would be low and all twelve buttons would appear pressed.
 
-### Current leading electrical interpretation
+That prediction is contradicted by the real controller diagnostic: **only R is observed asserted**.
+
+Because R is serial position 0, the OTG effect is a first-sample artifact, not a simple continuously grounded DATA stream.
+
+Do not use the obsolete `ID -> hard DATA -> all buttons` model as the active hypothesis.
+
+## What R-only implies
+
+The XGO scanner returns both DATA pins to input and then takes the first sample immediately. Modern UniFrog deliberately inserts a 4 us settle delay after that direction change on both its SF2000 and GB300 scanners.
+
+This gives a concrete mechanism for R-only behavior: grounding ID may be electrically coupled to DATA/load/reset circuitry so that one DATA path remains low only briefly after release.
+
+Possible transaction:
 
 ```text
-ordinary cable:
-    ID open
-    -> proprietary controller bus remains in normal idle state
-
-OTG adapter:
-    ID grounded
-    -> an XGO-repurposed or sensed signal is forced/asserted
-    -> controller subsystem becomes unusable / appears frozen
+host drives DATA low during load
+host changes DATA to input
+external/coupled circuit releases slowly
+sample 0: low  -> R pressed
+line recovers high
+sample 1+: released
 ```
 
-If that contact is the active-low external/P2 DATA line, grounding it would make all twelve P2 samples read as pressed. If instead it is a lower-level mode/control signal, grounding it could change hardware/pinmux behavior. Static application analysis has not found a software-side controller-mode gate supporting the second explanation, so direct signal interference is currently favored.
+This is a **strong inference**, not yet a measured waveform.
 
-## Reference-board USB context
+Other still-possible explanations are a disturbed load/reset state or a start-of-frame/clock disturbance that only corrupts position 0.
 
-The documented SF2000 DB-B210-V1.1 reference schematic connects its micro-USB connector to VBUS and the SoC USB0 D+/D- pair. Public reconstruction of that schematic does not identify the micro-USB ID contact as part of the ordinary USB0 data connection.
+## Current connector model
 
-This is **reference-board evidence only**; the XGO PCB is a different product and may deliberately repurpose the fifth contact. It does show that an HC15xx design can have conventional USB0 signals while leaving the accessory-specific meaning of the fifth micro-USB contact to the board implementation.
+The strongest family-level model is that ordinary USB-shaped contacts carry the proprietary controller transport while micro-USB ID participates in detect/load/gating/bias or is otherwise electrically coupled to the controller interface.
 
-## What is now strongly disfavored
+A plausible mapping class is:
 
-- GP2040-specific incompatibility as the cause of the freeze;
-- generic USB-HID enumeration failure as the primary trigger;
-- simple mechanical insertion or VBUS presence as the sole cause;
-- the idea that any micro-USB attachment disrupts the port;
-- an application-level P2-present gate controlling whether the serial scanner runs.
+```text
+D- / D+  -> DATA + CLOCK in unknown order
+GND      -> reference
+VBUS     -> controller supply/reference, voltage not yet confirmed
+ID       -> detect/load/gate/bias/coupled control
+```
 
-## What a compatible external controller would need to do
+This is not yet a pinout assignment. Which of D-/D+ maps to B7 and which to B15 or L0 remains unknown.
 
-If the Handle Interface is physically wired to this scanner, a compatible controller must at minimum:
-
-1. be safe when its data line is pulled low by the host for roughly 4 us;
-2. release/drive an active-low serial data stream after the load phase;
-3. present the first bit before the first clock pulse;
-4. advance to the next bit on the host clock transition;
-5. provide at least the 12 expected positions in the XGO order;
-6. operate at whatever voltage is present on the actual connector, still to be measured.
-
-## Current confidence
+## Confirmed vs inference
 
 ### CONFIRMED from firmware
 
-- two parallel active-low data streams;
-- one shared clock;
-- B15/L0 idle as inputs and B7 is initialized as the clock output;
-- host-driven data-low load/reset phase;
-- approximately 4 us explicit load delay;
-- approximately 2 us explicit clock-low delay;
-- twelve samples per stream in a known button order;
-- periodic operation independent of USB attachment state;
-- both serial slots are scanned unconditionally;
-- no separate software-side P2 connection gate was found in the local-state path;
-- direct references to the two local state words are confined to the serial scanner;
-- channel states merge directly into P1/P2 alongside RF input.
+- two parallel active-low DATA streams;
+- B15 and L0 are the two DATA inputs;
+- B7 is the shared CLOCK output;
+- B7 idle high;
+- both DATA lines are driven low during load/reset;
+- about 4 us explicit load delay;
+- immediate first sample after returning DATA to input;
+- about 2 us explicit clock-low delay;
+- 12 samples per stream;
+- exact SF2000 logical order;
+- both streams are scanned unconditionally;
+- no application-level P2 connection gate found;
+- two streams remain independent software controller slots.
 
 ### CONFIRMED physically
 
-- inserting the bare micro-USB OTG adapter, with no USB peripheral attached, immediately causes the XGO controls to freeze;
-- inserting a normal micro-USB male to USB-A male cable does **not** disturb the controls;
-- therefore the GP2040 is not required to trigger the failure;
-- not every micro-USB attachment triggers the failure.
+- generic GP2040-CE USB controller does not function as P2;
+- normal micro-USB cable does not disturb controls;
+- empty OTG adapter does disturb controls;
+- hidden diagnostic shows **R-only** under the anonymous OTG adapter;
+- therefore the OTG behavior is not an all-buttons event.
 
-### STRONG EVIDENCE
+### STRONG INFERENCE
 
-- this is a hardware controller bus rather than an abstract emulator-only data structure;
-- one stream is likely the built-in controls and the other the external Handle Interface;
-- the protocol belongs to the same general HC15xx controller-bus family as related SF2000/GB300 hardware;
-- an absent external controller is likely represented by an idle/high data stream rather than USB-style enumeration;
-- the empty external channel must have some stable-high bias mechanism rather than being left electrically floating;
-- the OTG adapter is altering at least one electrically meaningful Handle-Interface contact even with its USB-A side empty;
-- the distinguishing micro-USB ID behavior of OTG adapters is now the leading physical discriminator;
-- direct signal interference is better supported by the current application firmware than an application-level ID-triggered controller mode switch.
-
-### LEADING HYPOTHESIS
-
-- XGO connector pin 4 / micro-USB ID is repurposed or otherwise electrically coupled to the controller subsystem;
-- grounding it through an OTG adapter causes the freeze;
-- the strongest specific possibility is that pin 4 is external/P2 DATA, so grounding it produces an all-active-low P2 stream.
-
-### STILL POSSIBLE
-
-- pin 4 is handled by lower-level USB/OTG hardware or code outside the reconstructed application-level controller path and grounding it changes a hardware mode;
-- the Handle Interface is hybrid/multiplexed and exposes both proprietary serial-controller behavior and some USB functionality.
+- Handle Interface belongs to the same HC15xx/SF2000-family proprietary serial controller-bus lineage;
+- XGO is a hybrid of SF2000 logical serialization and GB300-like dual-data topology;
+- one serial stream is likely built-in controls and the other external Handle Interface;
+- ID grounding perturbs the first-sample/load-release condition rather than permanently grounding the serial DATA stream;
+- D-/D+ are stronger candidates for the main DATA/CLOCK transport than ID itself.
 
 ### NOT YET CONFIRMED
 
 - whether B15 or L0 is the external stream;
-- whether B7 reaches the Handle Interface connector directly;
-- the exact micro-USB contact assignment;
-- whether pin 4 is P2 DATA versus a lower-level mode/control signal;
-- connector voltage and pull-up/pull-down network;
-- whether the Handle Interface also exposes a real USB mode in addition to the serial bus.
+- exact micro-USB contact assignment;
+- which of D-/D+ is CLOCK;
+- which of D-/D+ is external DATA;
+- what ID is electrically connected to;
+- connector logic/supply voltage and pull network;
+- whether any conventional USB mode coexists with the proprietary bus.
 
-## Best next discriminator
+## Highest-value next discriminator
 
-The highest-value next experiment is to observe *what input state the firmware sees* when the bare OTG adapter is inserted.
+Do not repeat the already-completed OTG resistance or controller-test experiments unless resolving a contradiction.
 
-If a controller-test program or two-player input diagnostic shows Player 2 suddenly asserting many/all buttons while Player 1 remains electrically alive, that would strongly favor `pin 4 -> P2 active-low DATA` over a generic mode-switch explanation.
+The next decisive evidence is electrical correlation of connector contacts with the reconstructed scanner:
 
-If instead the entire controller task stops updating or the serial clock disappears, a lower-level mode/pinmux switch becomes more plausible.
+1. measure pins 1-4 relative to ground with nothing inserted;
+2. compare normal cable vs empty OTG adapter;
+3. identify D-/D+ activity during controller polling;
+4. with a logic analyzer, look for one pin matching B7's clock burst and the other matching a 12-bit active-low DATA stream;
+5. inspect the DATA release immediately before bit 0 to test the R-only delayed-release model.
 
-A logic analyzer or oscilloscope on a breakout would answer this directly, but useful behavioral evidence may be obtainable first with the existing `Resources/Test.zsf` controller-test ROM or another two-player input test.
+A periodic shared clock on either D- or D+ would reduce the remaining Handle Interface pinout problem to essentially one DATA assignment and one stream-role assignment.
+
+## Sources
+
+- XGO `bios/bisrv.asd` static reconstruction documented in this repository.
+- `axgdev/frogqemu`, `qemu/hw/mips/sf2000.c` and `docs/SF2000.md`.
+- `axgdev/UniFrog`, `foundation/src/platform/sf2000/input/unifrog_input.c`.
+- XGO physical cable/OTG/controller-diagnostic experiments documented in the project history.
