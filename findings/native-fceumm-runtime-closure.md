@@ -19,11 +19,11 @@ Undefined symbols are compared after section GC. This avoids treating unreachabl
 
 Evidence run: GitHub Actions run `33642991503`, commit `bc6949e4e6ebb46467b41839a48ad44109bd8162`.
 
-## Result
+## Initial bridge result
 
-Before the syscall bridge, the reachable graph had **96** unresolved symbols.
+Before the first syscall bridge, the reachable Linux-MIPS graph had **96** unresolved symbols.
 
-After the syscall bridge, it had **89**.
+After the bridge, it had **89**.
 
 Exactly **7** dependencies were resolved:
 
@@ -37,7 +37,7 @@ Exactly **7** dependencies were resolved:
 
 The bridge introduced **zero** new unresolved symbols.
 
-This is an important distinction: the bridge is not merely compiling. It measurably closes the native FCEUmm dependency graph without expanding the external runtime contract.
+This established that the filesystem bridge measurably closes the native FCEUmm dependency graph without expanding the external runtime contract.
 
 ## SF2000 filesystem ABI correction
 
@@ -52,29 +52,57 @@ Comparing them against the maintained SF2000 Multicore `stockfw.h` and `lib.c` e
 - `FS_O_CREAT  = 0x0100`
 - `FS_O_TRUNC  = 0x0200`
 
-The native copy had incorrectly used `0x0200` for create and `0x0400` for truncate. Commit `0a0dadac4bcc2f4cb463bd0f87aa98dd7ac56976` corrects those values and carries the upstream-proven `fs_opendir` / `fs_readdir` / `fs_closedir` translation into the native path.
+The native copy had incorrectly used `0x0200` for create and `0x0400` for truncate. Commit `0a0dadac4bcc2f4cb463bd0f87aa98dd7ac56976` corrected those values and carried the upstream-proven `fs_opendir` / `fs_readdir` / `fs_closedir` translation into the native path.
 
 This matters independently of link success: a core built with the former constants could silently request the wrong stock-filesystem operation when opening writable files.
 
-The native bridge now also supplies `readdir64()` as a large-file ABI alias over the same XGO directory record translation. The Linux-MIPS reachability audit had exposed `opendir`, `closedir`, and `readdir64` as remaining external dependencies; they belong in the XGO platform bridge rather than in libc.
+The native bridge also supplies `readdir64()` as a large-file ABI alias over the same XGO directory record translation. Directory access belongs in the XGO platform bridge rather than in libc.
 
-## Remaining surface
+## Exact Codescape runtime result
 
-The original remaining 89-symbol set was dominated by four normal runtime classes:
+The decisive experiment uses the exact HC15xx Codescape bare-metal toolchain, pinned HC15xx FCEUmm and libretro-common sources, the custom XGO `dirent.h`, and the production frontend contract with `XGO_WITH_NEWLIB` enabled.
 
-- GCC soft-float/integer helpers such as `__adddf3`, `__divdi3`, `__mulsf3`, and conversion/comparison helpers;
-- libc allocation/string/stdio/ctype/time functions;
-- libm functions (`sin`, `cosf`, `pow`, `sqrt`, `exp*`, `log*`, etc.);
-- directory/locale functions from newlib/libretro-common.
+The rooted native graph immediately before standard runtime linkage contained **54 unresolved symbols**. These were ordinary newlib/libm dependencies such as `malloc`, `calloc`, stdio/string routines, math functions, locale/time functions, `__libc_init_array`, `__sinit`, and the newlib reentrancy globals.
 
-The directory subset is now being closed by the native XGO bridge. The large libc/libm/compiler-runtime remainder still strongly argues against implementing standard runtime functions as XGO-specific hand-written shims.
+Adding the exact Codescape runtime group `-lc -lm -lgcc` reduced that graph to only three bottom-level hooks:
 
-The next integration boundary is the **exact HC15xx Codescape newlib/libm/libgcc runtime** already proven by the older FCEUmm link lab.
+- `_init`
+- `link`
+- `unlink`
 
-A dedicated `FCEUmm Codescape runtime audit` measures the real native `__core_entry__` graph before and after `-lc -lm -lgcc`. It now compiles the frontend with `XGO_WITH_NEWLIB`, making `_REENT_INIT_PTR`, `__sinit`, and `__libc_init_array` part of the graph; this is intentionally stricter than the first simplified reachability experiment.
+This was measured in Actions run `33645093613` at commit `28079aa7c633dbb8e3dc1974ad0739130aaa1358`.
 
-Any symbols surviving that experiment are the real bottom-level XGO/newlib boundary that still requires explicit implementation.
+Those three hooks were then closed deliberately in commit `2783df5fe9051143fe99ee931f6bfdb5ce7cea5d`:
+
+- `_init()` is a no-op because the external image has no crt0-provided legacy `_init` section; constructors are still reached through `__libc_init_array()`.
+- `link()` returns `-1` / `ENOSYS` because the stock ALi filesystem surface has no proven hard-link operation.
+- `unlink()` likewise returns `-1` / `ENOSYS`; no firmware deletion address is guessed or silently treated as success.
+
+The exact Codescape audit was rerun as Actions run `33645381851` and produced the final closure result:
+
+- **before Codescape runtime: 54**
+- **after Codescape runtime: 0**
+- **resolved by runtime: 54**
+- **introduced by runtime: 0**
+
+Therefore the production-shaped native FCEUmm graph now has **zero unresolved symbols** under the exact runtime that HC15xx/SF2000 uses.
+
+## Meaning of the zero-unresolved result
+
+This is stronger than the earlier fully linked support experiment. The measured graph now contains the actual native XGO frontend, production newlib initialization, private preloaded-ROM-preserving heap, low-level XGO filesystem bridge, directory translation, pinned FCEUmm, pinned libretro-common, and exact Codescape libc/libm/libgcc.
+
+No stock firmware `malloc`, `free`, `realloc`, `calloc`, or generic libc symbol has been imported into the core. Standard C runtime behavior is owned by the external image, while only explicitly mapped device services cross into the stock firmware.
+
+The runtime boundary is consequently small and understandable:
+
+- XGO stock filesystem primitives;
+- scheduler/tick services;
+- stock libretro callback transport and selected globals;
+- the preloaded ROM / 64 MiB buffer contract;
+- external Codescape newlib/libm/libgcc inside the core image.
 
 ## Current conclusion
 
-The native NES/FCEUmm path has moved beyond archive compatibility testing. We now have a rooted executable call graph, a real stock-filesystem bridge, a corrected SF2000 open-flag contract, directory translation, private ROM-preserving heap policy, and quantitative dependency closure. The remaining work should be driven by the post-Codescape residual set rather than by the much larger pre-runtime symbol list.
+The dependency-closure phase is complete. The native NES/FCEUmm path now has a rooted production call graph with **zero unresolved symbols** and a corrected, evidence-backed platform bridge.
+
+The next proof is no longer another runtime shim. It is the final absolute image link at `0x87000000`, validation of `__core_entry__`, file-backed/BSS span and reserved-window headroom, raw-binary extraction, and XGOC packaging. That work is now captured by the `XGO native FCEUmm full link` workflow.
