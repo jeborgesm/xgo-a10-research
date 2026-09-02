@@ -23,7 +23,9 @@ Observed result:
 - controls worked
 - audio worked
 - timing/gameplay appeared normal
-- only obvious difference versus the stock emulator was that colors appeared somewhat muted
+- stock `Select+Start` exit gesture worked
+- exiting entered the stock XGO save-state menu normally
+- direct A/B comparison against the original unmodified SD card showed the external-core image is brighter than stock; most notably, blacks appear gray rather than black
 
 ## Why this proves external-core execution
 
@@ -45,6 +47,8 @@ stock XGO NES menu
 
 Earlier continuity testing separately proved the loader/XGOC/entry/return boundary. The successful full-path build now proves that the external core can continue through `retro_init()`, `retro_load_game()`, stock frontend AV setup, `retro_run()`, stock video/audio callbacks, and stock input callbacks sufficiently to play a real NES title.
 
+The successful `Select+Start` exit into the stock save-state UI is additional evidence that the external core is participating correctly in the stock frontend lifecycle rather than merely rendering/running in isolation. It demonstrates compatibility with the stock input/exit handling and transition back into the XGO's surrounding emulator UI.
+
 This is therefore the first hardware-confirmed successful native external NES core execution in this research branch.
 
 ## Root cause immediately preceding success
@@ -57,15 +61,21 @@ Transactional Stage-6 bisection produced:
 
 Pinned FCEUmm defines `RETRO_DEVICE_AUTO == RETRO_DEVICE_JOYPAD`; its Auto path dereferences `GameInfo->input[port]` before `retro_load_game()` has established `GameInfo`. Removing both redundant pre-load controller calls allowed the same device/ROM to load and play normally.
 
-## Remaining visible discrepancy
+## Remaining visible discrepancy: elevated black level / brightness
 
-The user reported that colors look somewhat muted compared with the stock XGO NES emulator.
+A direct comparison with the original stock SD card refined the initial description of 'muted colors':
 
-Because gameplay, timing, audio, and input are otherwise normal, the next investigation should focus specifically on the video color path:
+- the external-core image is visibly brighter
+- areas that are black on the stock emulator appear gray on the external core
+- the rest of the image/gameplay is otherwise normal
 
-- FCEUmm palette generation
-- RGB565 packing/channel order
-- stock XGO video callback expectations
-- any stock NES-specific color conversion or palette treatment performed before the shared display path
+This is a stronger diagnostic clue than a generic palette difference. A raised black level suggests investigating whether zero/near-zero NES palette RGB values remain zero through the external FCEUmm RGB565 path, and whether any conversion, palette-generation, or frontend pixel treatment introduces a nonzero floor. It makes a simple red/blue channel swap substantially less likely.
 
-This should be treated as a post-bring-up fidelity issue, not as evidence that the external core is failing to run.
+Next comparison targets:
+
+- exact FCEUmm palette entries for NES black/background colors
+- RGB565 packing of zero and near-zero RGB values
+- stock NES core framebuffer/palette generation before the shared XGO video callback
+- any brightness/gamma/range adjustment unique to either core path
+
+This remains a post-bring-up fidelity issue, not an execution blocker.
