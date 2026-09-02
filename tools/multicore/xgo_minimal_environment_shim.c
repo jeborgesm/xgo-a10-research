@@ -16,6 +16,7 @@ typedef int bool;
 #define true 1
 #define false 0
 
+typedef unsigned long size_t;
 typedef bool (*environment_cb)(unsigned, void *);
 
 struct retro_variable {
@@ -23,16 +24,41 @@ struct retro_variable {
     const char *value;
 };
 
+/* Pinned HC15xx libretro.h layout. Keep the byte-sized booleans explicit even
+ * though this freestanding shim uses int for callback bool return values. */
+struct retro_game_info_ext {
+    const char *full_path;
+    const char *archive_path;
+    const char *archive_file;
+    const char *dir;
+    const char *name;
+    const char *ext;
+    const char *meta;
+    const void *data;
+    size_t size;
+    unsigned char file_in_archive;
+    unsigned char persistent_data;
+};
+
+struct retro_game_info {
+    const char *path;
+    const void *data;
+    size_t size;
+    const char *meta;
+};
+
 #define STOCK_XGO_ENV ((environment_cb)0x8035eb64u)
 #define XGO_REGION_MODE (*(volatile unsigned *)0x80c2e878u)
+#define XGO_GAME_INFO (*(volatile struct retro_game_info *)0x80c2e914u)
 
-#define RETRO_ENVIRONMENT_SET_ROTATION           1u
-#define RETRO_ENVIRONMENT_GET_CAN_DUPE           3u
-#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY   9u
-#define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT      10u
-#define RETRO_ENVIRONMENT_GET_VARIABLE          15u
-#define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE   17u
-#define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY    31u
+#define RETRO_ENVIRONMENT_SET_ROTATION            1u
+#define RETRO_ENVIRONMENT_GET_CAN_DUPE            3u
+#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY    9u
+#define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT       10u
+#define RETRO_ENVIRONMENT_GET_VARIABLE           15u
+#define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE    17u
+#define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY     31u
+#define RETRO_ENVIRONMENT_GET_GAME_INFO_EXT      66u
 #define RETRO_ENVIRONMENT_EXPERIMENTAL           0x10000u
 #define RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE (81u | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
@@ -52,6 +78,7 @@ static const char region_auto[] = "Auto";
  * configuration layer can back this with generated per-core option files.
  */
 static bool xgo_variable_update;
+static struct retro_game_info_ext xgo_game_info_ext;
 
 static bool str_equal(const char *a, const char *b)
 {
@@ -92,6 +119,36 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
         if (!data)
             return false;
         *(const char **)data = xgo_save_directory;
+        return true;
+
+    case RETRO_ENVIRONMENT_GET_GAME_INFO_EXT:
+        if (!data || !XGO_GAME_INFO.path || !XGO_GAME_INFO.data ||
+            XGO_GAME_INFO.size == 0)
+            return false;
+
+        /*
+         * Pinned FCEUmm e6111e6 ignores ordinary retro_game_info::data when
+         * GET_GAME_INFO_EXT is unavailable: it copies info->path and calls
+         * FCEUI_LoadGame() with content_data == NULL, causing a second ROM
+         * open/read. Expose the already-stock-preloaded ROM explicitly so the
+         * native path actually consumes gp_buf_64m as designed.
+         *
+         * The buffer is persistent for the complete core lifetime. The native
+         * sbrk implementation reserves the preloaded ROM prefix and allocates
+         * newlib only above it until retro_deinit() returns.
+         */
+        xgo_game_info_ext.full_path = XGO_GAME_INFO.path;
+        xgo_game_info_ext.archive_path = 0;
+        xgo_game_info_ext.archive_file = 0;
+        xgo_game_info_ext.dir = 0;
+        xgo_game_info_ext.name = 0;
+        xgo_game_info_ext.ext = 0;
+        xgo_game_info_ext.meta = XGO_GAME_INFO.meta;
+        xgo_game_info_ext.data = XGO_GAME_INFO.data;
+        xgo_game_info_ext.size = XGO_GAME_INFO.size;
+        xgo_game_info_ext.file_in_archive = 0;
+        xgo_game_info_ext.persistent_data = 1;
+        *(const struct retro_game_info_ext **)data = &xgo_game_info_ext;
         return true;
 
     case RETRO_ENVIRONMENT_GET_VARIABLE:
