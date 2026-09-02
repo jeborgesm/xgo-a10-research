@@ -76,18 +76,34 @@ Interpretation:
 - an empty file does **not** prove that external C entry was never reached, because the first diagnostic operation itself crosses the unproven raw `fs_open/fs_write` ABI;
 - further bring-up must not use the file tracer as evidence of execution stage.
 
-## Next diagnostic boundary
+## Test 5 — full-frame visual stage probe
 
-The next probe should remove filesystem I/O from the diagnostic path entirely.
+The SD tracer was removed. A 256x240 RGB565 framebuffer encoded stage numbers as binary black/white bars plus a stage-specific full-screen color. The marker was submitted through the GP-safe stock `retro_video_refresh_cb` beginning immediately after external C entry, before newlib initialization.
 
-The stock XGO video transport is already reverse-engineered and confirmed to accept RGB565 frames through `retro_video_refresh_cb @ 0x8035e70c`, which forwards into the XGO OSD/scaler/display stack. A controlled diagnostic core can therefore submit synthetic RGB565 stage frames through the existing GP-safe video veneer.
+Hardware observation:
 
-The probe should minimize moving parts:
+- selecting Contra shows the ordinary `Loading...` screen;
+- the display then becomes completely black;
+- no stage bars or stage color are visible;
+- the system remains non-responsive and requires a power cycle.
 
-1. establish a visible marker immediately after external C entry, before newlib initialization;
-2. change the marker after runtime initialization;
-3. change it before/after `retro_init`;
-4. change it before entering stock `run_emulator`;
-5. use stock->core diagnostic wrappers to change markers on `retro_load_game`, AV, region, and first `retro_run` boundaries.
+Interpretation:
 
-The first version should prefer unmistakable solid-color/pattern markers over text rendering so no font, printf, allocation, or filesystem dependency is introduced into the debugger.
+The callback address was re-audited against raw firmware. A temporary apparent mismatch was traced to a **+0x30 PC bias in the local ELF wrapper used for disassembly**: `fw_start` is linked at `0x80000030`. After correcting that bias, the established runtime callback entries remain valid. See `findings/raw-firmware-disassembly-address-bias.md`.
+
+The black screen instead matches `run_screen_write` behavior. Before writing a frame it compares incoming width/height with cached display geometry. On a mismatch it closes the current OSD path, delays 200 ticks, recreates the region, then resumes writing. Sending a 256x240 emulator-style frame while the menu/loading UI still owns the display can therefore tear down the current display path before the diagnostic becomes visible.
+
+Test 5 consequently does **not** establish an execution stage; it establishes that the normal video-refresh path is a poor pre-`run_emulator` debugger because it performs geometry management.
+
+## Test 6 — current-region visual probe
+
+The next diagnostic removes geometry switching from the marker path. It uses the already-mapped `run_osd_region_write @ 0x8035c31c` through a GP-safe veneer and writes only a 128x64 RGB565 patch into the currently active OSD region.
+
+The patch encodes:
+
+- top half: eight 16-pixel binary bars, least-significant bit first;
+- bottom half: stage-specific color.
+
+Normal FCEUmm video remains wired to `retro_video_refresh_cb`; only the diagnostic markers use the direct current-region writer.
+
+This test is intended to distinguish external-entry/runtime/libretro lifecycle stages without closing or resizing the loading UI's OSD path.
