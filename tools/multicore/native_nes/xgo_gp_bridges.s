@@ -1,16 +1,5 @@
 /*
  * Bidirectional $gp bridge between the external XGOC image and stock XGO.
- *
- * XGO stock code is not GP-independent: callbacks, stdio, scheduler and VFS
- * routines dereference firmware globals through the stock $gp (0x80c34774).
- * Conversely, FCEUmm/newlib code is linked with its own _gp and can be entered
- * indirectly by stock run_emulator().
- *
- * Ordinary veneers below are signature-transparent for calls whose argument
- * words fit in a0-a3. O32 stack arguments must be copied into the veneer's new
- * outgoing-argument area; fs_lseek has a dedicated five-word veneer for that
- * reason. Each veneer lives in its own function section so --gc-sections keeps
- * the reachable-runtime audits authoritative.
  */
 
     .set    noreorder
@@ -38,10 +27,6 @@
     .popsection
 .endm
 
-/* O32 fs_lseek(fd, long long offset, whence): fd is a0, the 64-bit offset is
- * aligned into a2/a3, and whence is the fifth argument word at caller sp+16.
- * After allocating our 32-byte frame, old sp+16 is new sp+48; copy it to the
- * callee's required new sp+16 outgoing slot before the stock call. */
 .macro STOCK_BRIDGE5 name, target
     .pushsection .text.\name,"ax",@progbits
     .align  2
@@ -119,16 +104,16 @@ STOCK_BRIDGE xgo_stock_environment,        0x8035eb64
 STOCK_BRIDGE xgo_stock_run_emulator,       0x8035ed48
 
 /* ---- stock XGO -> external core -------------------------------------- */
-    .extern retro_get_region
-    .extern retro_get_system_av_info
-    .extern retro_load_game
-    .extern retro_unload_game
-    .extern retro_run
+    .extern xgo_diag_get_region
+    .extern xgo_diag_get_av
+    .extern xgo_diag_load_game
+    .extern xgo_diag_unload_game
+    .extern xgo_diag_run
     .extern xgo_disabled_state_io
 
-CORE_BRIDGE xgo_core_get_region,  retro_get_region
-CORE_BRIDGE xgo_core_get_av,      retro_get_system_av_info
-CORE_BRIDGE xgo_core_load_game,   retro_load_game
-CORE_BRIDGE xgo_core_unload_game, retro_unload_game
-CORE_BRIDGE xgo_core_run,         retro_run
+CORE_BRIDGE xgo_core_get_region,  xgo_diag_get_region
+CORE_BRIDGE xgo_core_get_av,      xgo_diag_get_av
+CORE_BRIDGE xgo_core_load_game,   xgo_diag_load_game
+CORE_BRIDGE xgo_core_unload_game, xgo_diag_unload_game
+CORE_BRIDGE xgo_core_run,         xgo_diag_run
 CORE_BRIDGE xgo_core_state_io,    xgo_disabled_state_io
