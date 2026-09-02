@@ -12,7 +12,12 @@
  * entry point is called. Keep that transition logic in one place.
  */
 
+#ifdef XGO_WITH_NEWLIB
+#include <stddef.h>
+#else
 typedef unsigned int size_t;
+#endif
+
 typedef int bool;
 #define true 1
 #define false 0
