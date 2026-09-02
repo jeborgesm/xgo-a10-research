@@ -2,7 +2,7 @@
  * Minimal newlib/POSIX glue for XGO external libretro cores.
  *
  * This is intentionally derived from the proven SF2000 Multicore strategy but
- * binds only to XGO stock fs_*/timer symbols already mapped in
+ * binds only to XGO stock filesystem and timer symbols already mapped in
  * xgo_stockfw_symbols.ld. Heap ownership is supplied separately by either
  * xgo_full_arena_sbrk.c or xgo_preloaded_rom_sbrk.c.
  *
