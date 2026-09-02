@@ -29,6 +29,7 @@ extern int fs_stat(const char *path, void *buf);
 extern int fs_fstat(int fd, void *buf);
 extern int fs_mkdir(const char *path, int mode);
 extern unsigned os_get_tick_count(void);
+extern int dly_tsk(unsigned ticks);
 extern int g_errno;
 
 /* XGO/VFS flag values follow the same ALi filesystem contract used upstream. */
@@ -224,6 +225,20 @@ clock_t clock(void)
 {
     uint32_t ms = os_get_tick_count();
     return (clock_t)(((uint64_t)ms * (uint64_t)CLOCKS_PER_SEC) / 1000u);
+}
+
+/*
+ * Codescape newlib's exit() path eventually calls _exit(). The earlier fully
+ * linked XGO FCEUmm experiment already proved this exact bottom-level hook.
+ * FCEUmm reaches exit only on fatal allocation failure, so fail closed without
+ * returning into code compiled under the noreturn contract while leaving the
+ * stock RTOS scheduler alive.
+ */
+__attribute__((noreturn)) void _exit(int status)
+{
+    (void)status;
+    for (;;)
+        dly_tsk(1000u);
 }
 
 /* Newlib ports differ on whether they reference underscored syscall names
