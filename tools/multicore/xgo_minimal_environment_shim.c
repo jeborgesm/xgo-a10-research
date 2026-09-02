@@ -6,9 +6,10 @@
  * Unknown commands fall back to the stock environment handler.
  *
  * The stock XGO handler at 0x8035eb64 is intentionally NOT trusted for pixel
- * format negotiation because it returns success without validating the
- * requested format. Until an XRGB8888 converter is installed, this shim only
- * advertises RGB565.
+ * format or rotation negotiation. It returns success for pixel formats it does
+ * not actually convert, and SET_ROTATION only permutes D-pad masks without
+ * rotating video. Until the external frontend implements those capabilities,
+ * this shim advertises only what the underlying XGO transport really supports.
  */
 
 typedef int bool;
@@ -25,8 +26,9 @@ struct retro_variable {
 #define STOCK_XGO_ENV ((environment_cb)0x8035eb64u)
 #define XGO_REGION_MODE (*(volatile unsigned *)0x80c2e878u)
 
-#define RETRO_ENVIRONMENT_GET_CAN_DUPE          3u
-#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY  9u
+#define RETRO_ENVIRONMENT_SET_ROTATION           1u
+#define RETRO_ENVIRONMENT_GET_CAN_DUPE           3u
+#define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY   9u
 #define RETRO_ENVIRONMENT_SET_PIXEL_FORMAT      10u
 #define RETRO_ENVIRONMENT_GET_VARIABLE          15u
 #define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE   17u
@@ -65,6 +67,15 @@ static bool str_equal(const char *a, const char *b)
 bool xgo_minimal_environment(unsigned cmd, void *data)
 {
     switch (cmd) {
+    case RETRO_ENVIRONMENT_SET_ROTATION:
+        /*
+         * Stock XGO does not rotate frames. Its handler only permutes D-pad
+         * masks for rotation values 1 and 3, so returning success would claim
+         * a frontend capability that is not actually implemented.
+         */
+        (void)data;
+        return false;
+
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         if (!data)
             return false;
@@ -133,7 +144,7 @@ bool xgo_minimal_environment(unsigned cmd, void *data)
         return *(const unsigned *)data == RETRO_PIXEL_FORMAT_RGB565;
 
     default:
-        /* Keep stock logging and rotation behavior for commands it knows. */
+        /* Preserve stock logging and its small set of genuinely useful calls. */
         return STOCK_XGO_ENV(cmd, data);
     }
 }
