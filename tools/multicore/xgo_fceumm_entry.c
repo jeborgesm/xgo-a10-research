@@ -60,6 +60,7 @@ extern void (*gfn_get_system_av_info)(struct retro_system_av_info *);
 extern bool (*gfn_retro_load_game)(const struct retro_game_info *);
 extern void (*gfn_retro_unload_game)(void);
 extern void (*gfn_retro_run)(void);
+extern void (*gfn_frameskip)(int);
 extern volatile u32 XGO_ACTIVE_SYSTEM_FAMILY;
 
 static char g_rom_path[MAX_ROM_PATH];
@@ -68,19 +69,6 @@ static int state_stub(const char *path)
 {
     (void)path;
     return 1;
-}
-
-static size_t copy_string(char *dst, size_t cap, const char *src)
-{
-    size_t n = 0;
-    if (!cap)
-        return 0;
-    while (src && src[n] && n + 1 < cap) {
-        dst[n] = src[n];
-        ++n;
-    }
-    dst[n] = '\0';
-    return n;
 }
 
 static int append_string(char *dst, size_t cap, size_t *used, const char *src)
@@ -187,6 +175,7 @@ void __start(const char *stub_path, int load_state)
     bool (*old_load_game)(const struct retro_game_info *);
     void (*old_unload_game)(void);
     void (*old_run)(void);
+    void (*old_frameskip)(int);
 
     if (!build_real_rom_path(stub_path))
         return;
@@ -200,6 +189,7 @@ void __start(const char *stub_path, int load_state)
     old_load_game = gfn_retro_load_game;
     old_unload_game = gfn_retro_unload_game;
     old_run = gfn_retro_run;
+    old_frameskip = gfn_frameskip;
 
     /* Preserve unrelated high bits while selecting stock NES frontend policy. */
     XGO_ACTIVE_SYSTEM_FAMILY =
@@ -230,10 +220,19 @@ void __start(const char *stub_path, int load_state)
     gfn_retro_unload_game = retro_unload_game;
     gfn_retro_run = retro_run;
 
+    /*
+     * run_emulator() conditionally calls this stock core-specific hook. Since
+     * the intercepted run_gba() never got a chance to install its own pointer,
+     * leaving the slot untouched would make behavior depend on the previously
+     * launched emulator. FCEUmm needs no OEM frameskip callback here.
+     */
+    gfn_frameskip = NULL;
+
     run_emulator(load_state);
     retro_deinit();
 
     /* Leave the stock frontend exactly as we found it. */
+    gfn_frameskip = old_frameskip;
     gfn_retro_run = old_run;
     gfn_retro_unload_game = old_unload_game;
     gfn_retro_load_game = old_load_game;
