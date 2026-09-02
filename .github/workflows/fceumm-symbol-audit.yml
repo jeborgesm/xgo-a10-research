@@ -1,0 +1,77 @@
+name: FCEUmm MIPS symbol audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/fceumm-symbol-audit.yml
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install MIPS cross tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-mipsel-linux-gnu g++-mipsel-linux-gnu \
+            binutils-mipsel-linux-gnu make git
+
+      - name: Fetch pinned HC15xx FCEUmm
+        run: |
+          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git fceumm
+          cd fceumm
+          git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e
+
+      - name: Build SF2000 static archive with compatible MIPS compiler
+        working-directory: fceumm
+        run: |
+          make clean || true
+          make -j2 platform=sf2000 \
+            CC=mipsel-linux-gnu-gcc \
+            CXX=mipsel-linux-gnu-g++ \
+            AR=mipsel-linux-gnu-ar
+
+      - name: Audit archive ABI and undefined symbols
+        working-directory: fceumm
+        run: |
+          set -e
+          archive=fceumm_libretro_sf2000.a
+          test -f "$archive"
+          {
+            echo '# FCEUmm pinned HC15xx archive audit'
+            echo
+            echo 'commit: e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e'
+            echo "archive: $archive"
+            echo
+            echo '## archive size'
+            stat -c '%s bytes' "$archive"
+            echo
+            echo '## ELF architecture samples'
+            first=$(mipsel-linux-gnu-ar t "$archive" | head -n 5)
+            for obj in $first; do
+              mipsel-linux-gnu-ar p "$archive" "$obj" > "/tmp/$obj"
+              file "/tmp/$obj"
+              mipsel-linux-gnu-readelf -h "/tmp/$obj" | grep -E 'Class:|Data:|Machine:|Flags:' || true
+            done
+            echo
+            echo '## unique undefined symbols'
+            mipsel-linux-gnu-nm -u "$archive" \
+              | sed -E 's/^.* U //' \
+              | sed '/^$/d' \
+              | sort -u
+            echo
+            echo '## symbol count'
+            mipsel-linux-gnu-nm -u "$archive" \
+              | sed -E 's/^.* U //' \
+              | sed '/^$/d' \
+              | sort -u | wc -l
+          } | tee ../fceumm-symbol-audit.txt
+
+      - name: Upload audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: fceumm-symbol-audit
+          path: fceumm-symbol-audit.txt
