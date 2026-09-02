@@ -20,6 +20,17 @@ typedef struct FILE_ FILE;
 #define XGOC_VERSION     1u
 #define XGOC_HEADER_SIZE 32u
 
+/*
+ * Assembly-only hardware continuity probe return value: "XGO1" in ASCII.
+ * A probe core that returns this value has proved that the loader successfully
+ * loaded the XGOC image, transferred control to its entry point, and received
+ * control back. In that one diagnostic case we restore RAMSIZE and deliberately
+ * launch the same ROM through untouched stock run_nes(), giving the hardware an
+ * unambiguous observable result without relying on logging/video/libretro.
+ * Normal external cores do not return this value and retain ordinary behavior.
+ */
+#define XGO_ENTRY_PROBE_MAGIC 0x58474f31u
+
 typedef struct {
     u32 magic;
     u32 version_header;
@@ -111,6 +122,7 @@ void load_and_run_core(const char *filename, int load_state)
     u32 old_limit;
     u32 end_addr;
     u32 entry_addr;
+    int rc;
     int (*entry)(const char *, int);
 
     /* If upper RAM is already in active stock use, do not disturb NES at all. */
@@ -177,9 +189,19 @@ void load_and_run_core(const char *filename, int load_state)
     full_cache_flush();
 
     entry = (void *)entry_addr;
-    entry(filename, load_state);
+    rc = entry(filename, load_state);
 
     *RAMSIZE = old_limit;
+
+    /*
+     * Diagnostic continuity handshake. A tiny assembly probe returns XGO1.
+     * Reaching this branch proves loader -> 0x87000000 -> loader round-trip.
+     * Launching stock NES then gives a user-visible PASS without invoking any
+     * service from external code itself.
+     */
+    if ((u32)rc == XGO_ENTRY_PROBE_MAGIC)
+        stock_run_nes(filename, load_state);
+
     return;
 
 close_fallback_restore_limit:
