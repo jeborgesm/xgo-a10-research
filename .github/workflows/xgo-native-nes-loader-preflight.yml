@@ -1,0 +1,119 @@
+name: XGO native NES loader preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-external-core-integration
+    paths:
+      - .github/workflows/xgo-native-nes-loader-preflight.yml
+      - tools/multicore/native_nes/xgo_nes_loader.c
+      - tools/multicore/native_nes/build_native_nes_asd.py
+      - tools/multicore/probe/xgo_probe_init.s
+      - tools/multicore/probe/xgo_probe_loader.ld
+
+jobs:
+  build-native-loader:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research-external-core-integration
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          echo 'd35717f24a67ed2091c32d9fb3d79dc5ebe84c38ac8872736aa018860a724807  /tmp/codescape-mips32.tar.gz' | sha256sum -c -
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
+
+      - name: Build native NES injected loader
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+          readelf="$tools/mips-mti-elf-readelf"
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffreestanding -fno-builtin -ffunction-sections -fdata-sections -Os'
+
+          "$cc" $flags -c tools/multicore/native_nes/xgo_nes_loader.c -o xgo_nes_loader.o
+          "$cc" $flags -c tools/multicore/probe/xgo_probe_init.s -o xgo_nes_init.o
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -nostdlib -static -Wl,--gc-sections \
+            -Wl,-Map,xgo_nes_loader.map \
+            -Wl,-T,tools/multicore/probe/xgo_probe_loader.ld \
+            xgo_nes_init.o xgo_nes_loader.o -o xgo_nes_loader.elf
+
+          "$objcopy" -O binary -j .text -j .rodata -j .data \
+            xgo_nes_loader.elf xgo_nes_loader.bin
+          "$nm" -n xgo_nes_loader.elf > xgo_nes_loader.nm
+          "$nm" -u xgo_nes_loader.elf > xgo_nes_loader.undefined.txt
+          "$readelf" -h -S -l xgo_nes_loader.elf > xgo_nes_loader.readelf.txt
+          "$objdump" -dr xgo_nes_loader.elf > xgo_nes_loader.disasm.txt
+
+          size=$(stat -c %s xgo_nes_loader.bin)
+          capacity=$((0x2180 - 0x1500))
+          headroom=$((capacity - size))
+          start=$(awk '$3 == "__start" {h=$1; if(length(h)>8) h=substr(h,length(h)-7); print "0x" h; exit}' xgo_nes_loader.nm)
+
+          {
+            printf 'loader_start=%s\n' "$start"
+            printf 'loader_size=%d\n' "$size"
+            printf 'loader_capacity=%d\n' "$capacity"
+            printf 'loader_headroom=%d\n' "$headroom"
+            printf 'patch_site=0x80360e20\n'
+            printf 'stock_fallback=0x8035f63c\n'
+          } | tee xgo_nes_loader_layout.txt
+
+          test "$start" = '0x80001500'
+          test ! -s xgo_nes_loader.undefined.txt
+          if (( size <= 0 || size > capacity )); then
+            echo "ERROR: native NES loader is $size bytes; cave capacity is $capacity" >&2
+            exit 1
+          fi
+
+          # This injected loader has no startup routine that can establish a
+          # private $gp or clear private BSS. Reject either dependency.
+          if "$objdump" -d xgo_nes_loader.elf | grep -q '\$gp'; then
+            echo 'ERROR: native NES loader contains $gp-relative instructions' >&2
+            exit 1
+          fi
+          if "$readelf" -S -W xgo_nes_loader.elf | grep -Eq '[[:space:]]\.(got|sdata|sbss)([[:space:]]|$)'; then
+            echo 'ERROR: native NES loader contains GOT/small-data sections' >&2
+            exit 1
+          fi
+          if "$readelf" -S -W xgo_nes_loader.elf | awk '$3 == "NOBITS" && $7 != "000000" {found=1} END {exit found ? 0 : 1}'; then
+            echo 'ERROR: native NES loader unexpectedly contains non-empty NOBITS/BSS' >&2
+            exit 1
+          fi
+
+          # Guard the patcher's exact stock/JAL contract at source level too.
+          python3 -m py_compile tools/multicore/native_nes/build_native_nes_asd.py
+          grep -q 'NES_JAL_OFFSET = 0x360E20' tools/multicore/native_nes/build_native_nes_asd.py
+          grep -q 'EXPECTED_STOCK_NES_JAL = bytes.fromhex("8f 7d 0d 0c")' tools/multicore/native_nes/build_native_nes_asd.py
+
+          sha256sum xgo_nes_loader.elf xgo_nes_loader.bin | tee xgo_nes_loader.sha256
+
+      - name: Upload native loader evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-native-nes-loader-preflight
+          if-no-files-found: warn
+          path: |
+            xgo_nes_loader.elf
+            xgo_nes_loader.bin
+            xgo_nes_loader.map
+            xgo_nes_loader.nm
+            xgo_nes_loader.undefined.txt
+            xgo_nes_loader.readelf.txt
+            xgo_nes_loader.disasm.txt
+            xgo_nes_loader_layout.txt
+            xgo_nes_loader.sha256
+            toolchain-version.txt
