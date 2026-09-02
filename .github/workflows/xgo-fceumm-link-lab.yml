@@ -61,7 +61,13 @@ jobs:
           $cc $flags -c tools/multicore/xgo_newlib_stubs.c -o xgo_newlib_stubs.o
           "$ar" rcs xgo_fceumm_support.a xgo_fceumm_support.o xgo_newlib_stubs.o
 
-          ls -lh fceumm_libretro_sf2000.a xgo_fceumm_support.a
+          # Executable-side XGO bridge. These objects are linked directly so
+          # __start and the compatibility environment cannot be archive-GC'd.
+          $cc $flags -c tools/multicore/xgo_fceumm_entry.c -o xgo_fceumm_entry.o
+          $cc $flags -c tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
+
+          ls -lh fceumm_libretro_sf2000.a xgo_fceumm_support.a \
+                 xgo_fceumm_entry.o xgo_minimal_environment_shim.o
           sha256sum fceumm_libretro_sf2000.a | tee fceumm-archive.sha256
           sha256sum xgo_fceumm_support.a | tee xgo-support-archive.sha256
 
@@ -113,6 +119,103 @@ jobs:
             exit 1
           fi
 
+      - name: Fully link XGO FCEUmm at 0x87000000
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          readelf="$tools/mips-mti-elf-readelf"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -static -nostartfiles \
+            -Wl,--gc-sections \
+            -Wl,-Map,xgo-fceumm.map \
+            -Wl,-T,tools/multicore/xgo_external_core.ld \
+            -Wl,-T,tools/multicore/xgo_stockfw_symbols.ld \
+            xgo_fceumm_entry.o xgo_minimal_environment_shim.o \
+            -Wl,--start-group \
+              fceumm_libretro_sf2000.a xgo_fceumm_support.a \
+              -lc -lm -lgcc \
+            -Wl,--end-group \
+            -o xgo-fceumm.elf \
+            2>&1 | tee xgo-fceumm-link.log
+
+          "$nm" -u xgo-fceumm.elf | tee xgo-fceumm-undefined.txt
+          unresolved=$(awk '$1 == "U" {n++} END {print n+0}' xgo-fceumm-undefined.txt)
+          if (( unresolved != 0 )); then
+            echo "ERROR: fully linked XGO FCEUmm still has $unresolved undefined symbols" >&2
+            exit 1
+          fi
+
+          "$nm" -n xgo-fceumm.elf > xgo-fceumm.nm
+          "$readelf" -h -S -l xgo-fceumm.elf > xgo-fceumm.readelf.txt
+          "$objcopy" -O binary xgo-fceumm.elf xgo-fceumm.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '$3 == name { print "0x" $1; exit }' xgo-fceumm.nm
+          }
+
+          start=$(symbol_hex __image_start)
+          entry=$(symbol_hex __start)
+          file_end=$(symbol_hex __file_end)
+          bss_start=$(symbol_hex __bss_start)
+          image_end=$(symbol_hex __image_end)
+
+          test "$start" = '0x87000000'
+          test -n "$entry"
+          test -n "$file_end"
+          test -n "$bss_start"
+          test -n "$image_end"
+
+          entry_offset=$((entry - start))
+          linked_file_span=$((file_end - start))
+          memory_size=$((image_end - start))
+          payload_size=$(stat -c %s xgo-fceumm.bin)
+          reserved_size=$((0x87cdae00 - 0x87000000))
+
+          {
+            printf 'image_start=0x%08x\n' "$((start))"
+            printf 'entry=0x%08x\n' "$((entry))"
+            printf 'entry_offset=0x%x\n' "$entry_offset"
+            printf 'file_end=0x%08x\n' "$((file_end))"
+            printf 'linked_file_span=%d\n' "$linked_file_span"
+            printf 'payload_size=%d\n' "$payload_size"
+            printf 'bss_start=0x%08x\n' "$((bss_start))"
+            printf 'image_end=0x%08x\n' "$((image_end))"
+            printf 'memory_size=%d\n' "$memory_size"
+            printf 'reserved_size=%d\n' "$reserved_size"
+            printf 'headroom=%d\n' "$((reserved_size - memory_size))"
+          } | tee xgo-fceumm-layout.txt
+
+          if (( entry_offset < 0 || entry_offset >= payload_size )); then
+            echo 'ERROR: __start does not point inside file-backed payload' >&2
+            exit 1
+          fi
+          if (( payload_size > linked_file_span )); then
+            echo 'ERROR: objcopy payload extends beyond linker __file_end' >&2
+            exit 1
+          fi
+          if (( memory_size < payload_size || memory_size > reserved_size )); then
+            echo 'ERROR: runtime image does not fit XGO reserved core window' >&2
+            exit 1
+          fi
+
+          python3 tools/multicore/probe/pack_xgoc.py \
+            xgo-fceumm.bin core.xgc \
+            --entry-offset "$entry_offset" \
+            --memory-size "$memory_size" \
+            | tee xgo-fceumm-pack.txt
+
+          python3 tools/multicore/probe/inspect_xgoc.py core.xgc \
+            | tee xgo-fceumm-xgoc-inspection.txt
+
+          sha256sum xgo-fceumm.elf xgo-fceumm.bin core.xgc \
+            | tee xgo-fceumm-output.sha256
+
       - name: Upload link-lab artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -135,5 +238,17 @@ jobs:
             fceumm-runtime-link.log
             fceumm-runtime-resolved.o
             fceumm-runtime-resolved.nm
+            xgo-fceumm-link.log
+            xgo-fceumm.elf
+            xgo-fceumm.bin
+            xgo-fceumm.map
+            xgo-fceumm.nm
+            xgo-fceumm.readelf.txt
+            xgo-fceumm-undefined.txt
+            xgo-fceumm-layout.txt
+            xgo-fceumm-pack.txt
+            xgo-fceumm-xgoc-inspection.txt
+            xgo-fceumm-output.sha256
+            core.xgc
             toolchain.sha256
             toolchain-version.txt
