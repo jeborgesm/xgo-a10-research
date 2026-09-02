@@ -44,6 +44,7 @@ jobs:
           # reachability lab. Otherwise glibc's readdir64 prototype changes the
           # platform ABI being measured.
           CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2 -Itools/multicore/include'
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
@@ -57,7 +58,7 @@ jobs:
             shift
             mipsel-linux-gnu-ld -r --gc-sections -e __core_entry__ -u __core_entry__ \
               -T tools/multicore/native_nes/xgo_external_stock_services.ld \
-              -o "$out" frontend.o environment.o sbrk.o "$@" \
+              -o "$out" core_entry.o frontend.o environment.o sbrk.o "$@" \
               --start-group /tmp/fceumm/fceumm_libretro_sf2000.a /tmp/libretro-common/libretro-common.a --end-group
           }
 
