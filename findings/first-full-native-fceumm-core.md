@@ -81,21 +81,21 @@ core-native-nes.xgc
 
 The matching handoff is `native_nes/xgo_nes_loader.c`, not the older semicolon/GBA loader.
 
-Exact Codescape preflight run `33645887563` produced:
+After matching the live-memory transition to stock `run_nes()`, exact Codescape preflight run `33648735009` produced:
 
 ```text
 loader_start      0x80001500
-loader_size       924 bytes
+loader_size       964 bytes
 loader_capacity   3,200 bytes
-loader_headroom   2,276 bytes
+loader_headroom   2,236 bytes
 patch_site        0x80360e20
 stock_fallback    0x8035f63c
 ```
 
-Loader binary SHA-256:
+Current loader binary SHA-256:
 
 ```text
-be1f097373209967bfca6fad58dc5ff8d1ce71d8434537f9384deba74e7c0958
+4318d00c9096c5483d3ac5711be3a732515abb35bfc0e9ce7d9e152d04e86586
 ```
 
 The preflight proves:
@@ -106,6 +106,8 @@ The preflight proves:
 - no private BSS/NOBITS dependency;
 - exact entry at the verified firmware cave `0x80001500`;
 - comfortable fit in the 3,200-byte cave.
+
+The corresponding native full-link run `33648735088` also remained green after this loader change.
 
 ## Correct launch path
 
@@ -125,11 +127,46 @@ This location is important. `run_game()` has already preloaded the real selected
 
 1. the user launches an ordinary `.nes` ROM from the normal NES browser;
 2. stock firmware reads that ROM into `gp_buf_64m` exactly as before;
-3. the patched NES JAL enters the 924-byte native loader;
-4. the loader validates and loads `/mnt/sda1/cores/fceumm/core.xgc` at `0x87000000`;
-5. it reconstructs the zero/BSS tail, repairs the stock IRQ `$gp` path, and flushes caches;
-6. `__core_entry__` receives the real NES filename and consumes the already-preloaded ROM buffer directly;
-7. pre-entry validation failures restore `RAMSIZE` and fall back to untouched stock `run_nes()`.
+3. the patched NES JAL enters the 964-byte native loader;
+4. the loader validates the 32-byte XGOC header while stock task/memory state is still untouched;
+5. once the external path is known-valid, it stops the stock sound task, re-checks the live heap break, lowers `RAMSIZE`, and loads `/mnt/sda1/cores/fceumm/core.xgc` at `0x87000000`;
+6. it verifies the payload CRC, reconstructs the zero/BSS tail, repairs the stock IRQ `$gp` path, and flushes caches;
+7. `__core_entry__` receives the real NES filename and consumes the already-preloaded ROM buffer directly;
+8. failures before the memory-limit transition fall back without restoring state that was never changed; failures after lowering `RAMSIZE` restore it before entering untouched stock `run_nes()`.
+
+## Stock sound-task ordering confirmed from XGO machine code
+
+Direct disassembly of the preserved XGO firmware confirms that stock `run_nes()` at `0x8035f63c` begins by clearing bit 0 of `g_snd_task_flags` and waiting until the flag word reaches zero, using `dly_tsk(1)`, before it installs emulator callbacks or enters the stock emulator path.
+
+This is also the ordering documented in maintained SF2000 Multicore as being replicated from the stock `run_*` functions.
+
+The first native loader revision lowered `RAMSIZE` and copied the external image before stopping that task. Although the heap ceiling already protected the external-core window, that ordering left a live-task race during the largest memory transition. Commit `7e6c526228c5e9d98ea57308ac68547817d1b9ae` changed the sequence to follow the actual XGO contract:
+
+```text
+initial HEAP_BREAK guard
+        ↓
+open/read/validate only the 32-byte XGOC header
+        ↓
+stop stock sound task and wait for quiescence
+        ↓
+re-check HEAP_BREAK
+        ↓
+save and lower RAMSIZE to 0x87000000
+        ↓
+copy/CRC/zero the external image
+        ↓
+repair IRQ $gp + cache flush
+        ↓
+enter FCEUmm
+```
+
+This removes the remaining known concurrent stock-task window before the upper-RAM takeover while preserving an undisturbed stock fallback for missing or invalid core files.
+
+## Stack-distance evidence
+
+XGO startup machine code initializes the primary stack from the aligned address around `0x80f883b0` plus a `0x4000` stack extent, yielding an initial `$sp` around `0x80f8c3b0`. That is more than 96 MiB below the external-core base at `0x87000000`.
+
+The `run_game()` function containing the NES interception uses a 0x168-byte local stack frame. This does not by itself prove the address of every RTOS task stack, so task-stack allocation remains a separate static archaeology question, but there is currently no evidence of a stack/core-window collision. The live `HEAP_BREAK < 0x87000000` gate additionally prevents takeover if stock dynamic allocation has already reached the reserved core window.
 
 ## The older semicolon/GBA staging path is not this path
 
@@ -147,7 +184,7 @@ It creates only the patched SD-loaded `bios/bisrv.asd`, `/cores/fceumm/core.xgc`
 
 ## Current boundary
 
-The software dependency, absolute-link, memory-layout, XGOC, loader-size, patch-site, and fallback contracts are now all reproducibly validated offline.
+The software dependency, absolute-link, memory-layout, XGOC, loader-size, patch-site, fallback, heap-ceiling, sound-task quiescence, and return-path contracts are now reproducibly validated offline.
 
 The remaining unknown is physical execution on XGO hardware:
 
@@ -155,6 +192,7 @@ The remaining unknown is physical execution on XGO hardware:
 - large-core file read into the reserved window;
 - cache/IRQ transition under a production 1.6 MiB FCEUmm payload;
 - first FCEUmm initialization/frame/audio/input behavior using stock XGO callbacks;
-- return behavior from the stock emulator loop.
+- physical return behavior after the stock emulator loop;
+- exact allocation/origin of non-primary RTOS task stacks.
 
-Those are now hardware observations rather than unresolved linker architecture.
+Those are now hardware observations or deeper RTOS archaeology rather than unresolved linker architecture.
