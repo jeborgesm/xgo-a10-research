@@ -56,6 +56,7 @@ jobs:
           set -euo pipefail
           CFLAGS='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -ffreestanding -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -O2'
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_core_entry.s -o xgo_core_entry.o
+          mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_gp_bridges.s -o xgo_gp_bridges.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o xgo_nes_native_frontend.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_minimal_environment_shim.c -o xgo_minimal_environment_shim.o
           mipsel-linux-gnu-gcc $CFLAGS -c tools/multicore/xgo_preloaded_rom_sbrk.c -o xgo_preloaded_rom_sbrk.o
@@ -63,18 +64,20 @@ jobs:
       - name: Garbage-collect reachable XGO core graph without finalizing JALs
         run: |
           set -euo pipefail
-          # Keep unresolved calls as relocations so R_MIPS_26 targets are not
-          # falsely finalized to address zero. GNU ld requires an explicit GC
-          # root in relocatable mode; __core_entry__ now lives in the assembly
-          # GP veneer, which is the real external-core entry contract.
+          # Keep unresolved library calls as relocations so R_MIPS_26 targets
+          # are not falsely finalized to zero. The production linker computes
+          # _gp from xgo_core.ld; this relocatable audit supplies a harmless
+          # audit-only absolute value solely to resolve veneer %hi/%lo(_gp).
           mipsel-linux-gnu-ld \
             -r \
             --gc-sections \
+            --defsym=_gp=0x87008000 \
             -e __core_entry__ \
             -u __core_entry__ \
             -T tools/multicore/native_nes/xgo_external_stock_services.ld \
             -o xgo-fceumm-reachable.o \
             xgo_core_entry.o \
+            xgo_gp_bridges.o \
             xgo_nes_native_frontend.o \
             xgo_minimal_environment_shim.o \
             xgo_preloaded_rom_sbrk.o \
@@ -89,6 +92,14 @@ jobs:
           mipsel-linux-gnu-readelf -h xgo-fceumm-reachable.o > reachable-elf-header.txt
           mipsel-linux-gnu-readelf -S xgo-fceumm-reachable.o > reachable-sections.txt
           mipsel-linux-gnu-readelf -r xgo-fceumm-reachable.o > reachable-relocations.txt
+
+          # A bridge implementation accidentally omitted from this audit would
+          # otherwise look like an ordinary external runtime dependency.
+          if grep -Eq '^xgo_(stock|core)_' reachable-unresolved.txt; then
+            echo 'ERROR: GP bridge symbol escaped the reachable audit' >&2
+            grep -E '^xgo_(stock|core)_' reachable-unresolved.txt >&2
+            exit 1
+          fi
 
           {
             echo '# Garbage-collected XGO native FCEUmm relocatable link'
