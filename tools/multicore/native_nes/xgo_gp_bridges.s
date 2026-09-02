@@ -9,18 +9,19 @@
  * Ordinary veneers below are signature-transparent for calls whose argument
  * words fit in a0-a3. O32 stack arguments must be copied into the veneer's new
  * outgoing-argument area; fs_lseek has a dedicated five-word veneer for that
- * reason. Return values in v0/v1 pass through unchanged.
+ * reason. Each veneer lives in its own function section so --gc-sections keeps
+ * the reachable-runtime audits authoritative.
  */
 
     .set    noreorder
     .set    nomacro
-    .text
-    .align  2
 
 #define XGO_STOCK_GP_HI 0x80c3
 #define XGO_STOCK_GP_LO 0x4774
 
 .macro STOCK_BRIDGE name, target
+    .pushsection .text.\name,"ax",@progbits
+    .align  2
     .globl  \name
     .type   \name, @function
 \name:
@@ -37,6 +38,7 @@
     jr      $ra
     nop
     .size   \name, .-\name
+    .popsection
 .endm
 
 /* O32 fs_lseek(fd, long long offset, whence): fd is a0, the 64-bit offset is
@@ -44,6 +46,8 @@
  * After allocating our 32-byte frame, old sp+16 is new sp+48; copy it to the
  * callee's required new sp+16 outgoing slot before the stock call. */
 .macro STOCK_BRIDGE5 name, target
+    .pushsection .text.\name,"ax",@progbits
+    .align  2
     .globl  \name
     .type   \name, @function
 \name:
@@ -62,9 +66,12 @@
     jr      $ra
     nop
     .size   \name, .-\name
+    .popsection
 .endm
 
 .macro CORE_BRIDGE name, target
+    .pushsection .text.\name,"ax",@progbits
+    .align  2
     .globl  \name
     .type   \name, @function
 \name:
@@ -81,6 +88,7 @@
     jr      $ra
     nop
     .size   \name, .-\name
+    .popsection
 .endm
 
     .extern _gp
