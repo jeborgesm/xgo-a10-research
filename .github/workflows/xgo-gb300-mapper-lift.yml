@@ -51,7 +51,6 @@ jobs:
           for s,offs in strings.items():
               print(f'{s.decode()}: ' + ', '.join(f'0x{o:08x}/0x{0x80000000+o:08x}' for o in offs))
 
-          # Locate aligned words pointing at mapper strings. These form the mapper-resource table.
           mapper_ptr_words=[]
           wanted={0x80000000+o:s for s,os in strings.items() for o in os}
           print('\n=== mapper string pointer table entries ===')
@@ -61,7 +60,6 @@ jobs:
                   mapper_ptr_words.append((off,w,wanted[w]))
                   print(f'0x{off:08x} runtime=0x{0x80000000+off:08x} -> 0x{w:08x} {wanted[w].decode()}')
 
-          # Search code for addresses of the pointer-table entries, not just the strings.
           targets={0x80000000+off:(f'table:{s.decode()}',off) for off,_,s in mapper_ptr_words}
           targets.update({0x80000000+o:(f'string:{s.decode()}',o) for s,os in strings.items() for o in os})
           words=struct.unpack('<'+'I'*(len(b)//4), b[:(len(b)//4)*4])
@@ -118,6 +116,7 @@ jobs:
         with:
           name: gb300-v1-mapper-lift
           path: |
+            gb300-bisrv.asd
             sha256.txt
             size.txt
             mapper-fingerprints.txt
