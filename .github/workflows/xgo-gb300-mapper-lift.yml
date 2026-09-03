@@ -2,7 +2,7 @@ name: XGO GB300 mapper lift
 
 on:
   push:
-    branches: [ research-generic-libretro-runtime ]
+    branches: [ research-gb300-mapper-lift ]
     paths:
       - '.github/workflows/xgo-gb300-mapper-lift.yml'
   pull_request:
@@ -37,19 +37,27 @@ jobs:
           def sx16(v): return v - 0x10000 if v & 0x8000 else v
 
           exact = {
+              0x805f2a08: 'UI-index to keymap-record-slot table',
+              0x805f2a10: 'logical-assignment to UI-state table',
               0x80666e58: 'KeyMap path string',
               0x806cec90: 'mapper resource table',
               0x806ced80: 'pause menu resource table',
+              0x80ae8c70: 'KeyMapInfo table base',
           }
           words=struct.unpack('<'+'I'*(len(b)//4), b[:(len(b)//4)*4])
           refs=[]
           print(f'file_size={len(b)}')
           print(f'sha256={hashlib.sha256(b).hexdigest()}')
+          print('\n=== mapper lookup bytes ===')
+          for addr, n in ((0x805f2a08, 8), (0x805f2a10, 32)):
+              off=addr-0x80000000
+              print(f'0x{addr:08x}: ' + ' '.join(f'{x:02x}' for x in b[off:off+n]))
+
           print('\n=== exact address materialization xrefs ===')
           for i,w in enumerate(words):
               if w>>26 != 0x0f: continue
               rt=(w>>16)&31; hi=w&0xffff
-              for j in range(i+1,min(i+20,len(words))):
+              for j in range(i+1,min(i+24,len(words))):
                   q=words[j]; op=q>>26; rs=(q>>21)&31; lo=q&0xffff
                   if rs!=rt: continue
                   addr=None
@@ -59,7 +67,6 @@ jobs:
                       refs.append((i*4,j*4,addr,exact[addr]))
                       print(f'code=0x{i*4:08x}/0x{0x80000000+i*4:08x} second=0x{0x80000000+j*4:08x} -> 0x{addr:08x} {exact[addr]}')
 
-          # Find all direct calls to the KeyMapInfo writer at 0x80308208.
           target=0x80308208
           jal=0x0c000000 | ((target>>2)&0x03ffffff)
           print('\n=== direct calls to KeyMapInfo writer 0x80308208 ===')
@@ -70,31 +77,32 @@ jobs:
           PY
           python3 lift.py | tee mapper-fingerprints.txt
 
-      - name: Disassemble mapper state machine and commit path
+      - name: Disassemble complete mapper state machine and helpers
         shell: bash
         run: |
           : > mapper-disassembly.txt
           for range in \
             '80302800 80303000 keymap-helper' \
             '803081f0 80308320 keymap-writer' \
-            '80308700 80309d50 mapper-main' \
-            '8030a400 8030a620 mapper-commit'; do
+            '80308700 8030a620 mapper-complete' \
+            '8030c780 8030c8c0 mapper-runtime-helper-1' \
+            '8030c9c0 8030cb40 mapper-runtime-helper-2'; do
             set -- $range
             echo "===== $3 0x$1..0x$2 =====" >> mapper-disassembly.txt
             mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
               --start-address=$((0x$1)) --stop-address=$((0x$2)) gb300-bisrv.asd >> mapper-disassembly.txt
           done
 
-      - name: Emit focused mapper report
+      - name: Emit mutation-focused mapper report
         shell: bash
         run: |
-          grep -En '80308208|8030a50|8030a52|8030a57|806cec|806ced|li.*4|li.*5|li.*6|slti.*5|slti.*6|sb.*b7dc|sb.*b7c6|sw.*b75c|jal|jalr' mapper-disassembly.txt \
-            | head -n 1600 | tee mapper-focused.txt || true
+          grep -En '805f2a|80ae8c70|80308208|8030c804|8030ca4c|lbu.*b7dc|lbu.*b7c6|sb.*b7dc|sb.*b7c6|sh|sw|lw|sll.*0x2|jal|jalr' mapper-disassembly.txt \
+            | head -n 6000 | tee mapper-focused.txt || true
 
       - name: Preserve analysis artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gb300-v1-mapper-lift
+          name: gb300-v1-mapper-lift-exact
           path: |
             gb300-bisrv.asd
             sha256.txt
