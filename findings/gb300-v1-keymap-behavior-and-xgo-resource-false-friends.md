@@ -1,14 +1,24 @@
 # GB300 v1 native key-map behavior and XGO resource false friends
 
-Status: **STRONG FAMILY BEHAVIORAL REFERENCE; IMPORTANT RESOURCE-NAME COLLISION IDENTIFIED**
+Status: **STRONG FAMILY BEHAVIORAL REFERENCE; RESOURCE-SLOT REPURPOSING IDENTIFIED**
 
 ## Headline
 
 The GB300 v1 documentation gives substantially more exact information about the stock native mapper than the earlier resource-only reconstruction, including the exact on-disk record values, autofire representation, and several reproducible bugs in the manufacturer's editor.
 
-At the same time, a fresh comparison against the captured XGO SD card shows that opaque resource filenames cannot be treated as semantic identities across family branches: XGO contains `hctml.ers`, but its contents are a full-screen CAPCOM PLAY SYSTEM 1 image rather than GB300's six-button highlight strip.
+A fresh comparison against the captured XGO SD card also exposes an important branch-development pattern: opaque resource filenames were not stable semantic names. In at least one case, GB300 appears to have **repurposed an older SF2000/XGO resource slot for the native mapper**.
 
-This makes `gpapi.bvs` unusually valuable because its *semantics*, not just its filename, independently match across XGO hardware and GB300 documentation.
+The strongest example is `hctml.ers`:
+
+- XGO: 640x480 RGB565 CAPCOM PLAY SYSTEM 1 / Arcade main-menu artwork;
+- public SF2000 documentation: 640x480 RGB565 **Arcade main menu background**;
+- GB300 v1: 320x2256 RGB565 **six physical-button highlight images used by the key-map editor**.
+
+GB300 v1 has no Arcade system. That makes the simplest lineage interpretation that a now-unused Arcade resource identity was reused for mapping UI data.
+
+This is useful for the binary lift because it tells us to look for **repurposed resource indices/code paths**, not merely newly-added mapper filenames.
+
+`gpapi.bvs` remains exceptional because its semantics, pause-menu position, and dimensions converge independently across XGO and GB300.
 
 ## GB300 v1 KeyMapInfo layout
 
@@ -106,7 +116,7 @@ odd value  -> autofire on (normally 0x0100)
 even value -> autofire off (normally 0x0000)
 ```
 
-The on-device editor indicates autofire with a `T` prefix/suffix in the displayed key name.
+The on-device editor indicates autofire with a `T` in the displayed key name.
 
 This is a direct behavioral match for the XGO machine-code result where each 4-byte record consists of a logical target plus a turbo/autofire flag.
 
@@ -151,14 +161,48 @@ no stock action handler
 
 This remains the strongest evidence that the later working mapper descended from the same family UI position as XGO's stranded screen.
 
-## Important new caution: opaque resource names are not semantic identities
+## GB300 mapper resource set is physically confirmed in preserved stock files
 
-The captured XGO SD image contains both:
+The public `znx-x/gb300-firmware` repository preserves the stock GB300 v1 resource files and gives exact file sizes/hashes.
+
+Key mapper assets include:
 
 ```text
-Resources/gpapi.bvs
-Resources/hctml.ers
+gpapi.bvs
+  size 614400
+  git blob a6243e32b4e5867ba1318954093411bffd962be5
+
+hctml.ers
+  size 1443840
+  git blob 2785fbb8d0f615a74c546a5e51c13920123ff1c9
+
+lk7tc.bvs
+  size 39936
+  git blob 94b06d16c9045145de26bdf587c10a0a67f88e17
+
+mczwq.ikb
+  size 430080
+  git blob f711c296e2a9660259288debe70d1de66cfefe36
+
+ztrba.nec
+  size 40960
+  git blob f1187703869518bea6327499a0685eff5442c2f6
 ```
+
+The XGO captured Resources directory contains only the first two names from this set:
+
+```text
+gpapi.bvs  -> yes
+hctml.ers  -> yes, but old Arcade meaning
+lk7tc.bvs  -> absent
+mczwq.ikb  -> absent
+ztrba.nec  -> absent
+KeyMapInfo.kmp -> absent
+```
+
+This is consistent with an older/incomplete mapper shell rather than the completed GB300 native editor.
+
+## Resource-slot repurposing: stronger than a generic 'false friend'
 
 XGO hashes/sizes:
 
@@ -172,17 +216,57 @@ hctml.ers
   SHA256 ebeb2e6670f7e2d567bf296770dd62e9c3d7453f4d8cef97c203b576148e2ba3
 ```
 
-Both decode as 640x480 little-endian RGB565 images.
+Both XGO files decode as 640x480 little-endian RGB565.
 
-But XGO's `hctml.ers` is visually a **CAPCOM PLAY SYSTEM 1** full-screen image with character artwork. It is *not* GB300's documented `hctml.ers` six-button highlight strip.
+XGO's `hctml.ers` is visually a **CAPCOM PLAY SYSTEM 1** full-screen image with character artwork.
 
-GB300's file with the same opaque name is documented as a 320x2256 RGB565 strip containing six device images with one ABXY/shoulder button highlighted.
+Public SF2000 archaeology independently identifies `hctml.ers` as the **Arcade main menu background**, also 640x480 RGB565. Therefore XGO and the normal SF2000 branch agree on the original semantic role.
 
-Therefore:
+GB300 v1 instead uses the same opaque filename for a 320x2256 RGB565 strip containing six device images with one ABXY/shoulder button highlighted for the key-map editor.
 
-> filename equality inside this firmware family is insufficient evidence of functional equality.
+GB300 v1 notably has no Arcade system.
 
-The random-looking Windows-like resource names were reused/reassigned between branches.
+The likely branch evolution is therefore:
+
+```text
+older/common branch / SF2000 / XGO
+hctml.ers -> Arcade main-menu background
+
+                 GB300 v1 removes Arcade
+                           |
+                           v
+GB300 v1 repurposes hctml.ers resource identity
+             -> key-map physical-button highlight strip
+```
+
+This is not yet executable-code proof that the same numeric resource-table index was reused, but it is a strong resource-layer clue and gives us a new comparison strategy.
+
+## XGO firmware resource-table positions
+
+The XGO executable's resource pointer table directly references:
+
+```text
+0x80a3c328 -> 0x809a3020 -> gpapi.bvs
+0x80a3c444 -> 0x809a32bc -> hctml.ers
+```
+
+`gpapi.bvs` is in the tight pause-page cluster:
+
+```text
+0x80a3c318 -> dism.cef
+0x80a3c31c -> d2d1.hgp
+0x80a3c320 -> bisrv.nec
+0x80a3c324 -> pwsso.occ
+0x80a3c328 -> gpapi.bvs
+```
+
+`hctml.ers`, by contrast, lives later among the system/main-menu background resource group rather than beside `gpapi.bvs`.
+
+That makes a useful future GB300 binary comparison question:
+
+> Did GB300 keep the same resource-table slot for `hctml.ers` and simply change the asset/use, or did its entire resource table get reorganized?
+
+The answer can help distinguish local feature grafting from broader frontend refactoring.
 
 ## Why `gpapi.bvs` is still exceptional
 
@@ -197,14 +281,15 @@ For XGO:
 
 For GB300 v1:
 
-- public documentation independently identifies `gpapi.bvs` as the fifth pause-menu-selected background;
+- preserved stock files contain a same-size 614400-byte `gpapi.bvs`;
+- public documentation independently identifies it as the fifth pause-menu-selected background;
 - the bottom pause item is the working `Joystick` mapper.
 
 So `gpapi.bvs` has cross-family *semantic* convergence in addition to filename convergence.
 
 ## Implication for the lift strategy
 
-Resource-name fingerprints remain useful, but they must now be ranked:
+Resource-name fingerprints must now be ranked:
 
 ```text
 Tier A: name + matching dimensions/content + matching UI position/behavior
@@ -214,7 +299,7 @@ Tier C: name only
 
 `gpapi.bvs` is Tier A.
 
-XGO `hctml.ers` vs GB300 `hctml.ers` is a demonstrated Tier-C false friend and must not be used as evidence of shared code without independent xrefs/content checks.
+`hctml.ers` is more interesting than a simple Tier-C mismatch because the evidence suggests intentional **resource repurposing** when GB300 dropped Arcade.
 
 For the GB300 binary lift, the safest anchors remain:
 
@@ -223,7 +308,8 @@ For the GB300 binary lift, the safest anchors remain:
 3. six-state UI index arithmetic;
 4. the documented L/R and GBA permutation bugs;
 5. 24-byte-per-player / 48-byte-per-system mapping-block arithmetic;
-6. odd/even autofire field behavior.
+6. odd/even autofire field behavior;
+7. loads of the repurposed `hctml.ers` and new `lk7tc.bvs`/`mczwq.ikb`/`ztrba.nec` assets.
 
 ## XGO adaptation remains unchanged
 
@@ -252,17 +338,23 @@ Hardware-proven on XGO:
 - index 4 renders the controller-layout `gpapi.bvs` screen when the menu bound is increased;
 - no interactive handler is active there.
 
-Directly documented for GB300 v1:
+Directly documented/preserved for GB300 v1:
 
 - fifth pause-menu item is `Joystick`;
 - `gpapi.bvs` is the fifth-selected pause background;
 - exact KeyMapInfo block layout and logical values;
 - autofire field behavior;
-- optical/persistence permutation bugs.
+- optical/persistence permutation bugs;
+- physical mapper resource files and sizes.
 
-New direct local-XGO evidence:
+Direct local-XGO evidence:
 
-- XGO also contains `hctml.ers`, but its visual contents are unrelated to GB300's file of the same name.
+- XGO `hctml.ers` is the older Arcade/CPS1 full-screen resource;
+- XGO lacks the later GB300 mapper support assets `lk7tc.bvs`, `mczwq.ikb`, and `ztrba.nec`.
+
+Cross-family inference, strongly supported but not executable-proven:
+
+- GB300 likely repurposed the old Arcade `hctml.ers` identity for its mapper after dropping Arcade.
 
 Still pending:
 
