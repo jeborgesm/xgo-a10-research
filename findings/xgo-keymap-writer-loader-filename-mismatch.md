@@ -1,18 +1,16 @@
 # XGO keymap writer/loader filename mismatch
 
-Status: **HARDWARE CONFIRMED PERSISTENCE; STATIC ROOT CAUSE IDENTIFIED**
+Status: **HARDWARE CONFIRMED END TO END; ONE-INSTRUCTION WRITER FIX IDENTIFIED**
 
-## Hardware observation
+## Hardware result
 
-The first functional hidden-page mapper probe successfully changed Player-1 physical A to logical B at runtime. The change persisted to disk as a 48-byte `.kmp` file, but relaunching the same game restored the stock mapping.
-
-The hardware-created file was:
+The first functional hidden-page mapper probe changed Player-1 physical A to logical B at runtime and the stock writer produced a 48-byte `.kmp` file:
 
 ```text
 Battletoads In Battlemaniacs.kmp
 ```
 
-Its exact contents were:
+The captured file contained the modified map in both player halves:
 
 ```text
 0A 00 00 00
@@ -29,19 +27,19 @@ Its exact contents were:
 01 00 00 00
 ```
 
-This proves:
+Therefore hardware proves the page-4 hook, active-buffer mutation, P1/P2 synchronization, `set_keymap()` writer path, and 48-byte filesystem write all work.
 
-- the page-4 hook changed the live keymap buffer;
-- the stock writer saw the P1/P2 mismatch;
-- the stock P2 synchronization ran;
-- `set_keymap()` ran through the writer path;
-- a 48-byte per-ROM `.kmp` was actually written.
+On the first relaunch the mapping reverted. The generated file was then copied/renamed manually to:
 
-The remaining failure is therefore exclusively in the next-launch lookup path.
+```text
+Battletoads In Battlemaniacs.zsf.kmp
+```
+
+With no other change, relaunching the same game loaded the A->B mapping successfully. This hardware-confirms that the loader itself is correct and that the failure is solely the stock writer filename source.
 
 ## Writer path
 
-At runtime `0x80354038..0x8035405c`, the stock writer constructs the path using:
+At runtime `0x80354038..0x8035405c`, the stock writer constructs:
 
 ```text
 format: 0x809a3418 -> "%s/save/%s.kmp"
@@ -49,143 +47,146 @@ base:   0x810a0eb0
 name:   0x8109fc20
 ```
 
-Representative instructions:
-
 ```asm
 80354038  lui   t7,0x810a
 8035403c  addiu s1,t7,-2468
 80354040  lui   t6,0x809a
 80354044  lui   t0,0x810a
 80354048  lui   a3,0x810a
-8035404c  addiu a1,t6,13336      # 0x809a3418 = "%s/save/%s.kmp"
+8035404c  addiu a1,t6,13336      # "%s/save/%s.kmp"
 80354050  addiu a2,t0,3760       # 0x810a0eb0
-80354054  addiu a3,a3,-992       # 0x8109fc20
+80354054  addiu a3,a3,-992       # 0x8109fc20 display/base name
 80354058  jal   0x802946d8
 8035405c  addu  a0,s1,zero
 ```
 
-The hardware-created filename shows that `0x8109fc20` contains the display/base game name without the ROM extension for this title:
+For the tested game, `0x8109fc20` contains:
 
 ```text
 Battletoads In Battlemaniacs
 ```
 
-## Loader path
-
-At runtime `0x8035ed48..0x8035ed9c`, `run_emulator()` constructs the `.kmp` lookup path with the same format string but a different name buffer:
+so stock writes:
 
 ```text
-format: 0x809a3418 -> "%s/save/%s.kmp"
-base:   0x810a0eb0
-name:   0x8109fce8
+SFC/save/Battletoads In Battlemaniacs.kmp
 ```
 
-Representative instructions:
+## Loader path
+
+`run_emulator()` uses the same path format but name buffer `0x8109fce8`:
 
 ```asm
-8035ed48  addiu sp,sp,-304
-8035ed4c  lui   v1,0x810a
-8035ed50  lui   a0,0x810a
 8035ed5c  addiu s5,v1,-792       # 0x8109fce8
 8035ed60  addiu s4,a0,3760       # 0x810a0eb0
-8035ed64  lui   v0,0x809a
-8035ed68  addiu a1,v0,13336      # 0x809a3418 = "%s/save/%s.kmp"
+8035ed68  addiu a1,v0,13336      # "%s/save/%s.kmp"
 8035ed6c  addiu a0,sp,16
 8035ed70  addu  a2,s4,zero
 8035ed74  addu  a3,s5,zero
 8035ed88  jal   0x802946d8
 ```
 
-It then opens the constructed path with `"rb"`, reads exactly 12 records of 4 bytes into `0x810a0f58`, closes the file, and calls `set_keymap()`:
+It opens the result with `"rb"`, reads 12 records x 4 bytes into `0x810a0f58`, and calls `set_keymap()` at `0x8035e83c`.
 
-```asm
-8035ed90  lui   a1,0x809a
-8035ed94  addiu a1,a1,32056      # "rb"
-8035ed98  jal   0x802b3524       # fopen-like
-8035eda0  addu  s0,v0,zero
-8035edac  lui   a2,0x810a
-8035edb0  addiu s2,a2,3928       # 0x810a0f58
-8035edb4  addu  a0,s2,zero
-8035edb8  li    a1,4
-8035edbc  li    a2,12
-8035edc0  jal   0x802b3698       # fread-like
-...
-8035edd8  jal   0x8035e83c       # set_keymap()
-8035eddc  li    a1,8
-```
-
-## Why `0x8109fce8` is the full ROM filename
-
-The same `0x8109fce8` buffer is used by the stock save-state path with:
+The same `0x8109fce8` buffer is used by the save-state path, which produces names such as:
 
 ```text
-%s/save/%s.sa%d
+Battletoads In Battlemaniacs.zsf.sa0
 ```
 
-The preserved test-card file listing contains:
-
-```text
-SFC/Battletoads In Battlemaniacs.zsf
-SFC/save/Battletoads In Battlemaniacs.zsf.sa0
-```
-
-Therefore `0x8109fce8` is the ROM filename including its XGO extension:
+Therefore it is the full ROM filename including extension:
 
 ```text
 Battletoads In Battlemaniacs.zsf
 ```
 
-while the writer uses the extensionless display/base name at `0x8109fc20`.
-
-## Exact mismatch
-
-For this game the stock writer creates:
-
-```text
-SFC/save/Battletoads In Battlemaniacs.kmp
-```
-
-but the stock loader looks for:
+and the loader correctly seeks:
 
 ```text
 SFC/save/Battletoads In Battlemaniacs.zsf.kmp
 ```
 
-This explains the hardware result exactly:
+The manual rename hardware test proves this lookup path works exactly as reconstructed.
+
+## Exact fix
+
+Do not modify the loader. Make the writer use the already-canonical full-ROM-filename buffer:
 
 ```text
-page-4 mapper mutation
-  -> writer succeeds
-  -> extensionless .kmp created
-  -> game closes
-  -> next launch constructs extension-bearing .kmp path
-  -> file not found
-  -> embedded/default keymap remains active
+runtime / ASD offset: 0x80354054 / 0x00354054
 ```
 
-## Immediate no-firmware-change test
+Stock:
 
-Copy the hardware-generated file:
+```asm
+addiu a3,a3,-992       # 0x8109fc20
+```
+
+Raw word:
 
 ```text
-Battletoads In Battlemaniacs.kmp
+0x24e7fc20
 ```
 
-to:
+Patched:
+
+```asm
+addiu a3,a3,-792       # 0x8109fce8
+```
+
+Raw word:
 
 ```text
-Battletoads In Battlemaniacs.zsf.kmp
+0x24e7fce8
 ```
 
-in the same `SFC/save/` directory, preserving the original file as well.
+This is a one-instruction integration repair: after it, the writer should create the exact filename the existing loader already consumes.
 
-If relaunch then restores physical A -> logical B, the filename mismatch is hardware-confirmed end to end.
+## Persistent probe candidate
 
-## Architectural consequence
+Combined with the already hardware-proven mapper probe, the stock-derived candidate contains four instruction edits:
 
-The mapper write architecture is now closed. A complete on-device editor does not need a new persistence format or filesystem implementation. It only needs either:
+```text
+0x00354054  0x24e7fc20 -> 0x24e7fce8  writer uses full ROM filename
+0x00354ec0  0x28700003 -> 0x28700004  expose hidden page 4
+0x0035519c  0x146fff15 -> 0x546f019a  page-4 branch-likely
+0x003551a0  0x97848964 -> 0xae401908  P1 physical A -> logical B
+```
 
-1. a tiny writer fix so the stock writer uses the same full ROM-name buffer as the loader, or
-2. a loader fix so it uses the writer's extensionless display-name buffer.
+For the exact stock image:
 
-The second option is potentially the smaller compatibility patch because existing hardware-created `.kmp` files already use the writer convention.
+```text
+stock SHA-256: 869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf
+```
+
+the candidate is:
+
+```text
+LCFG CRC-32/MPEG-2: 0x3f08b86e
+SHA-256: 834be40b32027bc6cf2426d9f030c51d1a9a8a0b85ce1b06293564bfa42dee25
+```
+
+Reproducibility tool:
+
+```text
+tools/patch_mapper_probe_persistent.py
+```
+
+## Architectural conclusion
+
+The complete XGO per-ROM remapping pipeline is now hardware proven:
+
+```text
+hidden gpapi.bvs page
+  -> page-4 input hook
+  -> active 48-byte keymap mutation
+  -> stock P1/P2 synchronization
+  -> stock set_keymap()
+  -> stock .kmp writer
+  -> per-ROM file on SD
+  -> next-launch .kmp loader
+  -> stock set_keymap()
+  -> restored gameplay mapping
+```
+
+The persistence subsystem does not need replacement. The only stock integration defect encountered in this path is the writer selecting the extensionless display-name buffer instead of the full ROM filename.
