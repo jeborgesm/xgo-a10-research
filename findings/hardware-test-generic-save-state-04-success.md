@@ -16,6 +16,19 @@ Observed by hardware tester:
 
 This is the first hardware-confirmed proof that the external-core runtime can participate in the XGO's stock save/load lifecycle rather than merely run gameplay.
 
+## Physical flight-recorder evidence
+
+After the successful Save followed by successful Load, the diagnostic file recovered from the real SD card contained exactly:
+
+```text
+stage=L10-load-success
+path=/mnt/sda1/FC/save/Contra 1.zfc.sa1
+```
+
+This is direct hardware evidence that the generic load adapter reached its final success checkpoint and that the stock frontend supplied the final slot pathname directly to the callback. The successful load used slot 1 (`.sa1`).
+
+Preserve this observation together with the hardware-tested Test 04 core/package hashes below. The diagnostic file is intentionally redundant evidence: copies of copies are a feature.
+
 ## Hardware-proven state callback slots
 
 The successful candidate uses the slot identities established by Test 03:
@@ -109,4 +122,4 @@ This materially reduces the remaining risk for Core #2 (SNES). A second core sho
 
 ## Follow-up
 
-Before removing the state flight recorder, inspect the successful `xgo-state-probe.txt` if available and preserve its final load/save marker as additional evidence. Then convert the diagnostic implementation into the normal generic runtime path, update the README/handoff, and proceed toward Core #2 while keeping the raised-black gameplay color issue as a separate investigation.
+The successful flight-recorder marker is now preserved. The diagnostic recorder can be removed from the normal generic runtime path after its historical implementation remains available in Git. Next steps are to update the README/handoff, preserve the successful milestone manifest, and proceed toward Core #2 while keeping the raised-black gameplay color issue as a separate investigation.
