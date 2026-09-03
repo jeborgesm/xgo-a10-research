@@ -88,15 +88,19 @@ jobs:
           "$nm" -n xgo-generic-state.elf > symbols.txt
           "$objdump" -d xgo-generic-state.elf > disasm.txt
 
-          for sym in xgo_state_io_dispatch xgo_stock_state_compress xgo_stock_state_uncompress xgo_core_state_io; do
+          for sym in xgo_state_save xgo_state_load xgo_stock_state_compress xgo_stock_state_uncompress xgo_core_state_save xgo_core_state_load; do
             grep -q "<$sym>:" disasm.txt
           done
 
-          # The reverse state veneer must install external _gp, while the two
-          # compression veneers must install stock gp=0x80c34774.
-          awk '/<xgo_core_state_io>:/,/^$/' disasm.txt > state-core-bridge.txt
-          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' state-core-bridge.txt
-          grep -Eq '<xgo_state_io_dispatch>' state-core-bridge.txt
+          # Both reverse state veneers must install external _gp and call the
+          # direction-specific generic state functions. The compression veneers
+          # must install stock gp=0x80c34774.
+          awk '/<xgo_core_state_save>:/,/^$/' disasm.txt > state-core-save-bridge.txt
+          awk '/<xgo_core_state_load>:/,/^$/' disasm.txt > state-core-load-bridge.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' state-core-save-bridge.txt
+          grep -Eq '<xgo_state_save>' state-core-save-bridge.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' state-core-load-bridge.txt
+          grep -Eq '<xgo_state_load>' state-core-load-bridge.txt
 
           {
             awk '/<xgo_stock_state_compress>:/,/^$/' disasm.txt
@@ -151,7 +155,8 @@ jobs:
             xgo-generic-state.map
             symbols.txt
             disasm.txt
-            state-core-bridge.txt
+            state-core-save-bridge.txt
+            state-core-load-bridge.txt
             state-stock-bridges.txt
             undefined.txt
             pack.txt
