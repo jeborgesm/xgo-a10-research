@@ -29,13 +29,16 @@ extern void xgo_core_unload_game(void); extern void xgo_core_run(void); extern i
 #define RUN_FILE_SIZE (*(volatile unsigned*)0x80c33a7cu)
 #define SYSTEM_FAMILY (*(volatile unsigned short*)0x80c33ad0u)
 #define EMULATOR_LOOP_COUNTER (*(volatile unsigned*)0x80c2e964u)
-/* Hardware Test 02 established that the callback installed at 0x80c33a70 is
- * invoked for Save with a final .saN destination path. Keep the labels grounded
- * in hardware behavior rather than the earlier reversed static naming. */
-#define GFN_STATE_SAVE (*(int (**)(const char*))0x80c33a70u)
+/* Hardware Test 03 gives direct operation-identity evidence. Selecting Save
+ * reached xgo_state_load() when the Test-03 build had 0x80c33ac0 labelled LOAD.
+ * Therefore the stock state slots are the reverse of that candidate's labels:
+ *   0x80c33ac0 = Save
+ *   0x80c33a70 = Load
+ * Keep these names grounded in hardware behavior, not earlier static inference. */
+#define GFN_STATE_LOAD (*(int (**)(const char*))0x80c33a70u)
 #define GFN_GET_REGION (*(unsigned (**)(void))0x80c33a9cu)
 #define GFN_GET_AV (*(void (**)(struct retro_system_av_info*))0x80c33aacu)
-#define GFN_STATE_LOAD (*(int (**)(const char*))0x80c33ac0u)
+#define GFN_STATE_SAVE (*(int (**)(const char*))0x80c33ac0u)
 #define GFN_LOAD_GAME (*(bool (**)(const struct retro_game_info*))0x80c33accu)
 #define GFN_UNLOAD_GAME (*(void (**)(void))0x80c33ad4u)
 #define GFN_FRAMESKIP (*(void**)0x80c33ae0u)
