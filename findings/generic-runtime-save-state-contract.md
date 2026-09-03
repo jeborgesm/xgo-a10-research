@@ -1,30 +1,62 @@
 # Generic external-core save-state contract
 
-Status: **stock contract confirmed; implementation path identified; hardware implementation pending**.
+Status: **stock callback contract and slot paths confirmed; implementation path identified; hardware implementation pending**.
 
 ## Headline
 
-The XGO stock in-game save-state UI does not require an emulator-specific state format. It delegates state persistence through two function-pointer slots:
+The XGO stock in-game save-state UI delegates state persistence through two function-pointer slots. A fresh trace of the preserved firmware corrected an earlier label reversal:
 
 ```text
-GFN_STATE_SAVE = 0x80c33a70
-GFN_STATE_LOAD = 0x80c33ac0
+GFN_STATE_LOAD = 0x80c33a70   (gp - 0x0d04)
+GFN_STATE_SAVE = 0x80c33ac0   (gp - 0x0cb4)
 ```
 
-The hardware-proven external FCEUmm frontend already installs a GP-safe external veneer in both slots, but that veneer currently reaches `xgo_disabled_state_io()` and deliberately returns failure. This exactly explains the observed hardware behavior: Select+Start exits external FCEUmm into the normal stock save-state UI, while an attempted state operation cannot succeed.
+This matters now that the two callbacks are about to become distinct. The first hardware-proven external FCEUmm frontend installed the same disabled veneer into both addresses, so the reversal could not affect the successful gameplay test.
 
-The next implementation can therefore be generic: bridge the stock path callback to the standard libretro serialization API rather than add FCEUmm-specific save-state logic.
+The firmware also confirms the stock four-slot state pathname policy rather than leaving it to inference:
 
-## Current XGO path
+```text
+%s/save/%s.sa%d
+%s/%s/save/%s.sa%d
+```
 
-The successful external frontend does:
+The preserved card inventory contains matching `.sa0` through `.sa3` files, including examples under both `ROMS/save` and system-specific `FC/save`, `GB/save`, `GBA/save`, and `SFC/save` directories.
+
+## Callback-address proof
+
+Stock NES launcher `run_nes @ 0x8035f63c` installs its two core-specific state functions as follows:
+
+```text
+0x8035f674  t0 = 0x8035f50c
+0x8035f678  a3 = 0x8035f3f0
+0x8035f680  sw t0, -0x0d04(gp)   -> 0x80c33a70
+0x8035f684  sw a3, -0x0cb4(gp)   -> 0x80c33ac0
+```
+
+The target semantics are unambiguous:
+
+- `0x8035f50c` references `load_state:%s`, opens the state for reading, reconstructs/decompresses the payload, and invokes the core restore path;
+- `0x8035f3f0` references `save_state:%s`, obtains the core state payload, compresses it, and writes the state file.
+
+Therefore:
+
+```text
+0x80c33a70 = gfn_state_load
+0x80c33ac0 = gfn_state_save
+```
+
+This ordering also matches the corresponding SF2000-family symbol ordering even though the absolute addresses differ.
+
+## Current external-core path
+
+The successful external frontend currently writes one shared disabled callback into both slots:
 
 ```text
 GFN_STATE_LOAD = xgo_core_state_io;
 GFN_STATE_SAVE = xgo_core_state_io;
 ```
 
-`xgo_core_state_io` is a stock-GP -> external-GP veneer. At present it targets:
+and the reverse GP bridge currently targets:
 
 ```c
 int xgo_disabled_state_io(const char *path)
@@ -34,9 +66,58 @@ int xgo_disabled_state_io(const char *path)
 }
 ```
 
-Thus the GP crossing needed for save-state callbacks is already structurally solved. Save/load only needs separate external targets and persistence logic.
+This exactly explains the hardware result:
 
-## Libretro contract
+```text
+Select+Start
+  -> external core exits normally
+  -> stock save-state UI appears
+  -> actual save/load operation fails
+```
+
+The frontend lifecycle is working. Serialization was intentionally absent.
+
+## Stock slot pathname contract
+
+The state UI constructs ordinary slot files with the firmware strings:
+
+```text
+%s/save/%s.sa%d
+%s/%s/save/%s.sa%d
+```
+
+Observed preserved-card examples include:
+
+```text
+ROMS/save/Super Mario Bros 2 (J) [p1].NES.sa0
+ROMS/save/Legend of Zelda, The - A Link to the Past (USA).SFC.sa1
+FC/save/Mega Man 1.zfc.sa3
+GB/save/Batman.zgb.sa0
+GBA/save/Final Fight One.zgb.sa0
+SFC/save/Battletoads In Battlemaniacs.zsf.sa0
+```
+
+The normal slot number is `0..3`.
+
+This means the generic external runtime should **accept the stock pathname passed by the frontend**. It should not invent SF2000 Multicore's alternate `.state<slot>` naming scheme.
+
+## XGO save-state bundle
+
+Existing XGO firmware archaeology already established that `.saN` is not merely a raw libretro serializer dump. The XGO frontend/state path uses an outer bundle containing compressed emulator state plus separately compressed RGB565 preview metadata/image and a trailing thumbnail metadata offset.
+
+That finding remains authoritative:
+
+- `findings/save-state-and-core-dispatch.md`
+
+The important implementation distinction is therefore:
+
+```text
+libretro serializer payload != complete XGO .saN file
+```
+
+A generic state bridge must preserve compatibility with the XGO's stock state-file expectations if we want stock slot previews and existing UI behavior to remain correct.
+
+## Libretro core contract
 
 A generic libretro core provides:
 
@@ -46,109 +127,103 @@ bool retro_serialize(void *data, size_t size);
 bool retro_unserialize(const void *data, size_t size);
 ```
 
-This is sufficient to implement the XGO's two frontend callbacks independently of the emulator core.
-
-### Save
+These are the emulator-specific operations needed below the XGO state container layer.
 
 Conceptually:
 
 ```text
+SAVE
 stock save UI
-  -> GFN_STATE_SAVE(path)
+  -> gfn_state_save(stock .saN path)
   -> stock->external GP veneer
-  -> generic state_save(path)
-  -> retro_serialize_size()
-  -> allocate state buffer
-  -> retro_serialize(buffer, size)
-  -> persist bytes
-  -> return stock success/failure
-```
+  -> generic XGO state writer
+       -> retro_serialize_size()
+       -> retro_serialize()
+       -> XGO-compatible compression/container handling
+       -> stock path
 
-### Load
-
-```text
+LOAD
 stock load UI
-  -> GFN_STATE_LOAD(path)
+  -> gfn_state_load(stock .saN path)
   -> stock->external GP veneer
-  -> generic state_load(path)
-  -> read state bytes
-  -> retro_unserialize(buffer, size)
-  -> return stock success/failure
+  -> generic XGO state reader
+       -> parse/decompress XGO state bundle
+       -> retro_unserialize()
 ```
 
 ## SF2000 Multicore comparison
 
-Pinned SF2000 Multicore `core_api.c` independently uses exactly this architecture: its wrapped `retro_load_game()` assigns `gfn_state_load = state_load` and `gfn_state_save = state_save`; the handlers persist buffers produced by `retro_serialize()` and restore them through `retro_unserialize()`.
+Pinned SF2000 Multicore `core_api.c` independently confirms the high-level architecture: it assigns `gfn_state_load = state_load` and `gfn_state_save = state_save`, then uses `retro_serialize*` underneath those callbacks.
 
-This is useful lineage evidence, but the XGO implementation should not be copied blindly.
+However, its implementation deliberately rewrites the frontend path to:
 
-Important XGO-specific differences already established by hardware bring-up include:
+```text
+/mnt/sda1/ROMS/save/<basename>.state<slot>
+```
 
-- stock/external `$gp` must be bridged explicitly in both directions;
-- stock stdio/filesystem calls also require stock-GP veneers;
-- XGO's stock ROM is already preloaded and handed directly to the external core;
-- the original XGO frontend path/slot behavior should be preserved where practical;
-- SF2000 Multicore rewrites state filenames into `/mnt/sda1/ROMS/save/<basename>.state<slot>`, while XGO's exact stock path argument is not yet documented strongly enough to assume the same transformation is required.
+and writes its own raw serializer-oriented state file.
 
-Therefore the first XGO implementation should inspect/preserve the path supplied by the stock UI rather than import the SF2000 path-rewrite policy as an assumption.
+That is useful lineage evidence, but it is **not the XGO stock persistence contract**. For XGO we already have stronger device-specific evidence: `.sa0`..`.sa3` filenames and the stock bundle/preview format.
 
 ## Implementation design
 
-The generic runtime should expose two distinct external functions:
+The generic runtime should expose two distinct external functions and two distinct reverse GP veneers:
 
 ```c
-int xgo_core_state_save(const char *frontend_path);
 int xgo_core_state_load(const char *frontend_path);
+int xgo_core_state_save(const char *frontend_path);
 ```
 
-and two corresponding stock->external GP veneers. Do not keep a single `xgo_core_state_io` target once real serialization is enabled.
+The generic layer should:
 
-The state implementation should:
-
-1. reject null/empty paths;
-2. obtain `retro_serialize_size()` and reject zero/unreasonable sizes;
-3. allocate exactly the required state buffer;
-4. propagate `retro_serialize()` / `retro_unserialize()` failure;
-5. verify file open/read/write results rather than assuming success;
-6. free all buffers on every exit path;
-7. return the stock frontend's expected integer success convention (`1` success, `0` failure), consistent with the SF2000-family frontend contract;
-8. keep all stock filesystem calls behind existing GP-safe veneers;
-9. preserve the caller-provided stock path until hardware evidence shows a translation is necessary.
+1. preserve the frontend-supplied `.saN` path;
+2. keep load and save slots distinct (`0x80c33a70` load, `0x80c33ac0` save);
+3. use standard libretro serialize/unserialize below the XGO container layer;
+4. verify every allocation, compression/decompression, file read/write, and libretro result;
+5. keep stock filesystem calls behind GP-safe veneers;
+6. return the stock `1` success / `0` failure convention;
+7. avoid importing SF2000 path rewriting where XGO firmware evidence already defines the path;
+8. preserve stock thumbnail/preview compatibility if practical rather than generating a private state format invisible to the stock UI.
 
 ## Why this belongs in the generic runtime
 
-Nothing in this contract is NES- or FCEUmm-specific. Once implemented correctly, any libretro core with working serialization can participate in the stock XGO save-state UI.
+Nothing about the libretro serialization side is NES- or FCEUmm-specific. Once the XGO container adapter is implemented correctly, any core with working `retro_serialize*` support can participate in the stock save-state UI.
 
-That makes save states a useful abstraction test before SNES:
+That makes it an ideal abstraction test before SNES:
 
 ```text
-FCEUmm proof
-  -> generic serialization bridge
-  -> verify save + load on NES hardware
-  -> reuse unchanged for SNES Core #2
+hardware-proven FCEUmm
+  -> generic XGO state-container adapter
+  -> verify NES save/load + slot preview
+  -> reuse the same adapter for SNES Core #2
 ```
 
-If SNES later needs special handling, that should be treated as a core quirk layered above this contract rather than built into the XGO runtime by default.
+## First hardware validation
 
-## Hardware test required
-
-A first save-state implementation should be tested conservatively on the known-working FCEUmm build:
+The first real implementation should be tested on the known-good FCEUmm path:
 
 1. launch the same known-good NES ROM;
-2. reach a visually unmistakable game state;
+2. reach a visually unmistakable state;
 3. Select+Start into the stock state UI;
 4. save to one slot;
-5. resume and alter game state;
-6. return to stock state UI;
-7. load the saved slot;
-8. confirm restoration of game state;
-9. reboot/relaunch and test persistent load if the stock UI permits it;
-10. inspect the SD card afterward to document the actual filename/path/size produced.
+5. confirm a `.saN` file appears/changes at the expected stock location;
+6. confirm the slot preview is generated correctly;
+7. resume and alter the game state;
+8. load the saved slot;
+9. verify restoration;
+10. reboot/relaunch and verify persistence.
 
-The SD-card inspection is part of the research result: it will establish the XGO's real state-file persistence contract instead of inferring it from SF2000.
+The file size and outer bundle structure should then be compared against a stock-created NES state from the original card.
 
 ## Conclusion
 
-The observed save-state failure in the first external FCEUmm build is not an unknown compatibility defect. It is the direct and expected result of a deliberately disabled callback.
+The save-state feature gap is now narrower than it first appeared. We have:
 
-The stock UI boundary, callback slots, GP crossing, and standard libretro serialization mechanism are now sufficiently understood to implement save/load as a **generic runtime service**.
+- hardware-confirmed stock save-state UI entry;
+- corrected load/save callback addresses;
+- confirmed `.sa0`..`.sa3` pathname policy;
+- documented XGO state bundle and preview format;
+- standard libretro serialization primitives;
+- already-proven bidirectional GP crossings.
+
+The remaining task is implementation of the generic XGO state-container adapter, not discovery of an unknown save-state architecture.
