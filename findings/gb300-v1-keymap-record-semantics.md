@@ -4,7 +4,7 @@
 
 **Binary-grounded, with external format corroboration.**
 
-The native GB300 v1 mapper mutation site is now recovered exactly from stock `bios/bisrv.asd` SHA-256 `4084798a21d4abd93893f03f8fc4e1e4a8c9e31d4c60857328a9cab0cf892627`.
+The native GB300 v1 mapper mutation site is recovered exactly from stock `bios/bisrv.asd` SHA-256 `4084798a21d4abd93893f03f8fc4e1e4a8c9e31d4c60857328a9cab0cf892627`.
 
 Each `KeyMapInfo.kmp` record is four bytes:
 
@@ -23,9 +23,7 @@ system total      = 48 bytes
 
 ## Exact UI-slot to persisted-slot transform
 
-The six-position mapper UI index at `0x80c6153e` (`-18490(gp)`) is not used directly as a record slot.
-
-The stock firmware indexes the byte table at `0x805f2a08`:
+The six-position mapper UI index at `0x80c6153e` (`-18490(gp)`) is transformed through `0x805f2a08`:
 
 ```text
 05 02 00 01 03 04
@@ -42,9 +40,59 @@ UI index 4 -> persisted slot 3
 UI index 5 -> persisted slot 4
 ```
 
-This is executable proof of the UI/storage permutation and explains why the visual mapper order cannot be equated with on-disk order.
+For the normal GB300 persisted physical-button order:
 
-The byte at `0x80c61554` (`-18468(gp)`), previously provisionally described as a mapper sub-selection, is instead the **system keymap selector**. Other mapper code multiplies it by 48 before adding the global KeyMapInfo base.
+```text
+slot 0 X
+slot 1 Y
+slot 2 L
+slot 3 A
+slot 4 B
+slot 5 R
+```
+
+this means the underlying physical record edited by each UI index is:
+
+```text
+UI 0 -> R
+UI 1 -> L
+UI 2 -> X
+UI 3 -> Y
+UI 4 -> A
+UI 5 -> B
+```
+
+This is executable proof of the UI/storage permutation. The GBA visual presentation has additional known labeling anomalies, but the record transform above is what the native code actually uses.
+
+The byte at `0x80c61554` (`-18468(gp)`) is the **system keymap selector**. Mapper commit code multiplies it by 48 before adding the global KeyMapInfo base.
+
+## Per-system logical-target limits
+
+At `0x8030901c..0x80309058`, the mapper uses a per-system halfword table rooted at `0x805f2a1c`. Each system consumes four bytes; the first halfword controls the number of logical targets exposed by the UI.
+
+The seven first-halfword values are:
+
+```text
+system 0 FC       -> 2
+system 1 PCE      -> 6
+system 2 SFC      -> 6
+system 3 MD/SMS   -> 6
+system 4 GB/GBC   -> 2
+system 5 GBA      -> 6
+system 6 unknown  -> 6
+```
+
+The increment path checks `logical_ui < count - 1`; the decrement path stops at zero.
+
+This matches observed/documented GB300 behavior particularly well: PCE and GBA allow the editor to display logical choices that are not meaningful to those emulators, while FC and GB/GBC restrict the ordinary editor to two choices.
+
+The second halfword of each four-byte system entry is:
+
+```text
+[0,0,1,0,0,1,0]
+```
+
+Its role is not yet assigned with enough confidence; do not label it until the associated branch/render path is fully traced.
 
 ## Exact record address formula
 
@@ -78,13 +126,13 @@ Representative instructions:
 
 ## Logical-assignment encode/decode tables
 
-The native editor uses a six-entry encode table at `0x805f2a00`:
+The native editor uses the six-entry encode table at `0x805f2a00`:
 
 ```text
 08 00 0a 0b 01 09
 ```
 
-So mapper UI logical-target indices encode as:
+Thus:
 
 ```text
 UI logical 0 -> stored logical ID 0x0008
@@ -95,7 +143,7 @@ UI logical 4 -> stored logical ID 0x0001
 UI logical 5 -> stored logical ID 0x0009
 ```
 
-The load path uses the inverse lookup beginning at `0x805f2a10`. For the relevant stored IDs:
+The load path uses the inverse lookup beginning at `0x805f2a10`:
 
 ```text
 stored 0x00 -> UI logical 1
@@ -106,15 +154,65 @@ stored 0x0a -> UI logical 2
 stored 0x0b -> UI logical 3
 ```
 
-This also corrects an endian ambiguity in external documentation. Byte-oriented dumps often present values such as `08 00`, `0a 00`, `01 00`, or `09 00` as `0800`, `0A00`, `0100`, and `0900`. The little-endian MIPS code manipulates their numeric `uint16_t` values as `0x0008`, `0x000a`, `0x0001`, and `0x0009`.
+This corrects an endian ambiguity in external documentation. Byte-oriented dumps present values such as `08 00`, `0a 00`, `01 00`, and `09 00` as `0800`, `0A00`, `0100`, and `0900`. The little-endian MIPS code manipulates the numeric `uint16_t` values as `0x0008`, `0x000a`, `0x0001`, and `0x0009`.
 
-The same applies to the common autofire byte sequence `01 00`: its numeric `uint16_t` value is `0x0001`, not `0x0100`.
+Likewise, the common autofire byte sequence `01 00` has numeric `uint16_t` value `0x0001`.
+
+## Logical-target navigation
+
+The logical target UI state is `0x80c614dc` (`-18588(gp)`).
+
+Increment occurs around `0x80309034`:
+
+```asm
+80309034  lbu   v1,-18588(gp)
+80309038  addiu t8,t9,-1          # system-specific max index
+80309040  slt   t6,t7,t8
+80309044  beq   t6,zero,...
+8030904c  addiu v0,v1,1
+80309058  sb    v0,-18588(gp)
+```
+
+Decrement occurs around `0x803093d8`:
+
+```asm
+803093d8  lbu   v0,-18588(gp)
+803093dc  beq   v0,zero,...
+803093e4  addiu v0,v0,-1
+803093f4  sb    v0,-18588(gp)
+```
+
+So logical-target navigation is bounded, not wrapping.
+
+## Autofire navigation
+
+The adjacent byte `0x80c614dd` (`-18587(gp)`) is a binary autofire/turbo UI state.
+
+The native mapper explicitly clears it from `1 -> 0` around `0x80309638`:
+
+```asm
+80309638  lbu   t0,-18587(gp)
+8030963c  li    t1,1
+80309640  bne   t0,t1,...
+80309650  sb    zero,-18587(gp)
+```
+
+and sets it from `0 -> 1` around `0x803098e0`:
+
+```asm
+803098e0  lbu   v1,-18587(gp)
+803098e4  bnel  v1,zero,...
+803098f0  li    t5,1
+803098fc  sb    t5,-18587(gp)
+```
+
+So turbo is a strict two-state UI control rather than an arbitrary 16-bit value editor.
 
 ## Exact mutation site
 
 The mapper commits an edited record at `0x80308ca0..0x80308d1c`.
 
-It recomputes the same system + transformed-slot address, reads the UI logical target from `0x80c614dc` (`-18588(gp)`), reads the UI autofire state from the adjacent byte `0x80c614dd` (`-18587(gp)`), and constructs the complete 32-bit record:
+It recomputes the same system + transformed-slot address, reads the logical target from `0x80c614dc`, reads autofire from `0x80c614dd`, and constructs the complete 32-bit record:
 
 ```asm
 80308ca0  lbu   a3,-18490(gp)     # UI physical slot 0..5
@@ -142,7 +240,7 @@ It recomputes the same system + transformed-slot address, reads the UI logical t
 80308d1c  sw    a2,0(v1)           # player-1 record
 ```
 
-Thus the exact mutation is:
+Equivalent logic:
 
 ```c
 uint8_t ui_slot = mapper_ui_slot;
@@ -155,39 +253,31 @@ uint8_t *p1 = keymap_base + system * 48 + persisted_slot * 4;
 *(uint32_t *)p1 = record;
 ```
 
-The native GB300 editor therefore mirrors a changed mapping into the same physical slot for both player halves.
+The native GB300 editor mirrors a changed mapping into the same physical slot for both player halves.
 
 ## Persistence and runtime application
 
-The global `KeyMapInfo.kmp` writer remains at `0x80308208` and writes all 336 bytes.
+The global `KeyMapInfo.kmp` writer at `0x80308208` writes all 336 bytes. After persistence, mapper commit paths pass the selected 48-byte system block to `0x8030ca4c` with `a1 = 8`.
 
-After persistence, mapper commit paths pass the selected 48-byte system block to `0x8030ca4c`:
-
-```asm
-system_block = 0x80ae8c70 + system * 48
-jal 0x8030ca4c
-li  a1,8
-```
-
-The exact role of `0x8030ca4c` is the next helper-level lift target; it appears to apply or transfer the selected keymap block into active runtime state.
+The deeper lift shows `0x8030ca4c` iterating all 12 records and translating them through system-dependent logical-ID tables into runtime input structures. It therefore belongs to keymap **application**, not persistence.
 
 ## XGO transplant consequence
 
-We no longer need to infer either record addressing or record construction. The behavior to transplant is now concrete:
+The useful behavior is now concrete:
 
 ```text
-GB300 six-position UI
+GB300 physical UI selection
   -> slot transform [5,2,0,1,3,4]
+  -> bounded logical-target selection
   -> logical encode [8,0,10,11,1,9]
-  -> compose logical + autofire 4-byte record
+  -> binary turbo state
+  -> compose complete 4-byte record
   -> update active mapping
-  -> persist
+  -> persist/apply
 ```
 
-For XGO, retain this interaction/encoding behavior but target XGO's existing active 48-byte per-game map and existing per-ROM `.kmp` persistence. Do not port GB300's global 336-byte persistence layer.
+For XGO, retain these interaction and encoding semantics but target XGO's existing active 48-byte per-game map and per-ROM `.kmp` path. Do not port GB300's 336-byte global persistence layer.
 
 ## External corroboration
 
-nummacway GB300 technical documentation, `KeyMapInfo.kmp` section:
-
-https://nummacway.github.io/gb300/
+nummacway GB300 technical documentation, `KeyMapInfo.kmp` section: https://nummacway.github.io/gb300/
