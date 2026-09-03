@@ -26,7 +26,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y binutils-mips-linux-gnu
 
-      - name: Locate exact mapper and pause-table xrefs
+      - name: Locate exact mapper and persistence xrefs
         shell: bash
         run: |
           cat > lift.py <<'PY'
@@ -34,35 +34,17 @@ jobs:
           import hashlib, struct
 
           b = Path('gb300-bisrv.asd').read_bytes()
-          names = [b'gpapi.bvs', b'hctml.ers', b'lk7tc.bvs', b'mczwq.ikb', b'ztrba.nec',
-                   b'KeyMapInfo.kmp', b'%s/Resources/KeyMapInfo.kmp']
-
           def sx16(v): return v - 0x10000 if v & 0x8000 else v
-          def finds(s):
-              out=[]; p=0
-              while True:
-                  p=b.find(s,p)
-                  if p<0:return out
-                  out.append(p); p+=1
 
-          print(f'file_size={len(b)}')
-          print(f'sha256={hashlib.sha256(b).hexdigest()}')
-          strings={s:finds(s) for s in names}
-          for s,offs in strings.items():
-              print(f'{s.decode()}: ' + ', '.join(f'0x{o:08x}/0x{0x80000000+o:08x}' for o in offs))
-
-          # Known resource-table bases established from the previous pass.
           exact = {
               0x80666e58: 'KeyMap path string',
-              0x80666e65: 'KeyMapInfo.kmp string',
               0x806cec90: 'mapper resource table',
               0x806ced80: 'pause menu resource table',
-              0x806ced90: 'pause menu gpapi entry',
-              0x80666c84: 'gpapi.bvs string',
           }
-
           words=struct.unpack('<'+'I'*(len(b)//4), b[:(len(b)//4)*4])
           refs=[]
+          print(f'file_size={len(b)}')
+          print(f'sha256={hashlib.sha256(b).hexdigest()}')
           print('\n=== exact address materialization xrefs ===')
           for i,w in enumerate(words):
               if w>>26 != 0x0f: continue
@@ -76,42 +58,38 @@ jobs:
                   if addr in exact:
                       refs.append((i*4,j*4,addr,exact[addr]))
                       print(f'code=0x{i*4:08x}/0x{0x80000000+i*4:08x} second=0x{0x80000000+j*4:08x} -> 0x{addr:08x} {exact[addr]}')
+
+          # Find all direct calls to the KeyMapInfo writer at 0x80308208.
+          target=0x80308208
+          jal=0x0c000000 | ((target>>2)&0x03ffffff)
+          print('\n=== direct calls to KeyMapInfo writer 0x80308208 ===')
+          for i,w in enumerate(words):
+              if w==jal:
+                  print(f'caller=0x{0x80000000+i*4:08x}')
           Path('candidate-code-offsets.txt').write_text('\n'.join(f'0x{o:08x}' for o,_,_,_ in refs)+'\n')
           PY
           python3 lift.py | tee mapper-fingerprints.txt
 
-      - name: Disassemble exact mapper regions
+      - name: Disassemble mapper state machine and commit path
         shell: bash
         run: |
           : > mapper-disassembly.txt
-          while read off; do
-            [ -z "$off" ] && continue
-            start=$((off - 512)); [ $start -lt 0 ] && start=0
-            stop=$((off + 1536))
-            echo "===== exact candidate $off =====" >> mapper-disassembly.txt
-            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL \
-              --adjust-vma=0x80000000 \
-              --start-address=$((0x80000000 + start)) \
-              --stop-address=$((0x80000000 + stop)) gb300-bisrv.asd >> mapper-disassembly.txt || true
-          done < candidate-code-offsets.txt
-
-          echo '===== KeyMap persistence #1 0x80302800..0x80303000 =====' >> mapper-disassembly.txt
-          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
-            --start-address=0x80302800 --stop-address=0x80303000 gb300-bisrv.asd >> mapper-disassembly.txt
-
-          echo '===== KeyMap persistence #2 0x80307f00..0x80308600 =====' >> mapper-disassembly.txt
-          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
-            --start-address=0x80307f00 --stop-address=0x80308600 gb300-bisrv.asd >> mapper-disassembly.txt
-
-          echo '===== pause table handlers 0x80308700..0x80309500 =====' >> mapper-disassembly.txt
-          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
-            --start-address=0x80308700 --stop-address=0x80309500 gb300-bisrv.asd >> mapper-disassembly.txt
+          for range in \
+            '80302800 80303000 keymap-helper' \
+            '803081f0 80308320 keymap-writer' \
+            '80308700 80309d50 mapper-main' \
+            '8030a400 8030a620 mapper-commit'; do
+            set -- $range
+            echo "===== $3 0x$1..0x$2 =====" >> mapper-disassembly.txt
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+              --start-address=$((0x$1)) --stop-address=$((0x$2)) gb300-bisrv.asd >> mapper-disassembly.txt
+          done
 
       - name: Emit focused mapper report
         shell: bash
         run: |
-          grep -En '806ced80|80666e58|ed80|6e58|li.*4|li.*5|li.*6|slti.*4|slti.*5|slti.*6|sll.*0x2|jal|jalr|gp\)' mapper-disassembly.txt \
-            | head -n 1200 | tee mapper-focused.txt || true
+          grep -En '80308208|8030a50|8030a52|8030a57|806cec|806ced|li.*4|li.*5|li.*6|slti.*5|slti.*6|sb.*b7dc|sb.*b7c6|sw.*b75c|jal|jalr' mapper-disassembly.txt \
+            | head -n 1600 | tee mapper-focused.txt || true
 
       - name: Preserve analysis artifact
         uses: actions/upload-artifact@v4
