@@ -5,6 +5,10 @@ on:
     branches: [ research-generic-libretro-runtime ]
     paths:
       - '.github/workflows/xgo-gb300-mapper-lift.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/xgo-gb300-mapper-lift.yml'
   workflow_dispatch:
 
 jobs:
@@ -70,7 +74,7 @@ jobs:
           words=struct.unpack('<'+'I'*n,b[:n*4])
           for i,w in enumerate(words):
               op=w>>26
-              if op != 0x0f: # LUI
+              if op != 0x0f:
                   continue
               rt=(w>>16)&31; hi=w&0xffff
               for j in range(i+1,min(i+8,n)):
@@ -78,9 +82,9 @@ jobs:
                   if rs != rt or qrt != rt:
                       continue
                   addr=None
-                  if qop==0x09: # addiu
+                  if qop==0x09:
                       addr=((hi<<16)+sx16(lo)) & 0xffffffff
-                  elif qop==0x0d: # ori
+                  elif qop==0x0d:
                       addr=((hi<<16)|lo) & 0xffffffff
                   if addr in target_addrs:
                       s,so=target_addrs[addr]
