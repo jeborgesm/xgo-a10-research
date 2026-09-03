@@ -1,0 +1,120 @@
+name: XGO GB300 mapper lift
+
+on:
+  push:
+    branches: [ research-generic-libretro-runtime ]
+    paths:
+      - '.github/workflows/xgo-gb300-mapper-lift.yml'
+  workflow_dispatch:
+
+jobs:
+  lift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch GB300 v1 firmware binary
+        run: |
+          curl -L --fail --retry 3 \
+            https://raw.githubusercontent.com/znx-x/gb300-firmware/main/bios/bisrv.asd \
+            -o gb300-bisrv.asd
+          sha256sum gb300-bisrv.asd | tee sha256.txt
+          stat -c '%s bytes' gb300-bisrv.asd | tee size.txt
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils-mips-linux-gnu
+
+      - name: Locate mapper fingerprints and MIPS xrefs
+        shell: bash
+        run: |
+          cat > lift.py <<'PY'
+          from pathlib import Path
+          import hashlib, struct
+
+          p = Path('gb300-bisrv.asd')
+          b = p.read_bytes()
+          targets = [
+              b'gpapi.bvs', b'hctml.ers', b'lk7tc.bvs', b'mczwq.ikb',
+              b'ztrba.nec', b'KeyMapInfo.kmp', b'%s/Resources/KeyMapInfo.kmp',
+              b'wb', b'rb'
+          ]
+
+          def sx16(v):
+              return v - 0x10000 if v & 0x8000 else v
+
+          print(f'file_size={len(b)}')
+          print(f'sha256={hashlib.sha256(b).hexdigest()}')
+          print()
+
+          found = {}
+          for s in targets:
+              offs=[]
+              start=0
+              while True:
+                  i=b.find(s,start)
+                  if i<0: break
+                  offs.append(i); start=i+1
+              found[s]=offs
+              print(f'{s.decode(errors="replace")}: ' + ', '.join(f'0x{x:08x} (runtime 0x{0x80000000+x:08x})' for x in offs))
+          print('\n=== raw 32-bit pointers to target strings ===')
+          target_addrs={0x80000000+o:(s,o) for s,os in found.items() for o in os}
+          for off in range(0, len(b)-3, 4):
+              w=struct.unpack_from('<I',b,off)[0]
+              if w in target_addrs:
+                  s,so=target_addrs[w]
+                  print(f'ptr@0x{off:08x} -> 0x{w:08x} {s.decode(errors="replace")}')
+
+          print('\n=== LUI + ADDIU/ORI address materialization candidates ===')
+          refs=[]
+          n=len(b)//4
+          words=struct.unpack('<'+'I'*n,b[:n*4])
+          for i,w in enumerate(words):
+              op=w>>26
+              if op != 0x0f: # LUI
+                  continue
+              rt=(w>>16)&31; hi=w&0xffff
+              for j in range(i+1,min(i+8,n)):
+                  q=words[j]; qop=q>>26; rs=(q>>21)&31; qrt=(q>>16)&31; lo=q&0xffff
+                  if rs != rt or qrt != rt:
+                      continue
+                  addr=None
+                  if qop==0x09: # addiu
+                      addr=((hi<<16)+sx16(lo)) & 0xffffffff
+                  elif qop==0x0d: # ori
+                      addr=((hi<<16)|lo) & 0xffffffff
+                  if addr in target_addrs:
+                      s,so=target_addrs[addr]
+                      roff=i*4
+                      refs.append((roff,j*4,addr,s))
+                      print(f'code@0x{roff:08x}..0x{j*4:08x} -> 0x{addr:08x} {s.decode(errors="replace")}')
+          Path('candidate-code-offsets.txt').write_text('\n'.join(f'0x{a:08x}' for a,_,_,_ in refs)+'\n')
+          PY
+          python3 lift.py | tee mapper-fingerprints.txt
+
+      - name: Disassemble candidate code windows
+        shell: bash
+        run: |
+          : > mapper-disassembly.txt
+          while read off; do
+            [ -z "$off" ] && continue
+            start=$((off - 256)); [ $start -lt 0 ] && start=0
+            stop=$((off + 512))
+            echo "===== candidate $off, window $(printf '0x%x' $start)..$(printf '0x%x' $stop) =====" >> mapper-disassembly.txt
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL \
+              --adjust-vma=0x80000000 \
+              --start-address=$((0x80000000 + start)) \
+              --stop-address=$((0x80000000 + stop)) \
+              gb300-bisrv.asd >> mapper-disassembly.txt || true
+          done < candidate-code-offsets.txt
+
+      - name: Preserve analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gb300-v1-mapper-lift
+          path: |
+            sha256.txt
+            size.txt
+            mapper-fingerprints.txt
+            mapper-disassembly.txt
+            candidate-code-offsets.txt
+          retention-days: 30
