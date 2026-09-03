@@ -96,6 +96,21 @@ STOCK_BRIDGE  xgo_stock_fs_closedir, 0x802ac4f0
 STOCK_BRIDGE xgo_stock_dly_tsk,           0x8030f480
 STOCK_BRIDGE xgo_stock_os_get_tick_count, 0x8030fec8
 
+/*
+ * State compression helpers identified from the stock NES state path.
+ *
+ * 0x80365e64:
+ *   int compress(dst, &dst_len, src, src_len)
+ *
+ * 0x8021dcc0:
+ *   int uncompress(dst, &dst_len, src, src_len)
+ *
+ * Both return zlib-style status (0 == success). Keep them behind a GP veneer
+ * even though the entry bodies are not GP-relative; callees remain stock code.
+ */
+STOCK_BRIDGE xgo_stock_state_compress,   0x80365e64
+STOCK_BRIDGE xgo_stock_state_uncompress, 0x8021dcc0
+
 /* Direct current-region writer used only for bring-up diagnostics. */
 STOCK_BRIDGE xgo_stock_osd_region_write,   0x8035c31c
 
@@ -112,11 +127,21 @@ STOCK_BRIDGE xgo_stock_run_emulator,       0x8035ed48
     .extern xgo_diag_load_game
     .extern xgo_diag_unload_game
     .extern xgo_diag_run
-    .extern xgo_disabled_state_io
+    .extern xgo_state_io_dispatch
 
 CORE_BRIDGE xgo_core_get_region,  xgo_diag_get_region
 CORE_BRIDGE xgo_core_get_av,      xgo_diag_get_av
 CORE_BRIDGE xgo_core_load_game,   xgo_diag_load_game
 CORE_BRIDGE xgo_core_unload_game, xgo_diag_unload_game
 CORE_BRIDGE xgo_core_run,         xgo_diag_run
-CORE_BRIDGE xgo_core_state_io,    xgo_disabled_state_io
+
+/*
+ * The hardware-proven frontend still installs one pointer into both stock
+ * state slots. The stock frontend gives that pointer distinguishable paths:
+ *   save -> temporary .kmp
+ *   load -> final .sa0..sa3
+ * so the first generic-state candidate can dispatch without perturbing the
+ * already-proven frontend wiring. A later cleanup should split load/save
+ * veneers after hardware validation.
+ */
+CORE_BRIDGE xgo_core_state_io,    xgo_state_io_dispatch
