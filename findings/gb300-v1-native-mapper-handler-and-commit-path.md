@@ -2,17 +2,13 @@
 
 ## Status
 
-**Binary-grounded.** This finding comes from direct disassembly of the stock GB300 v1 `bisrv.asd` (SHA-256 `4084798a21d4abd93893f03f8fc4e1e4a8c9e31d4c60857328a9cab0cf892627`).
+**Binary-grounded.** This finding comes from direct disassembly of stock GB300 v1 `bisrv.asd`, SHA-256 `4084798a21d4abd93893f03f8fc4e1e4a8c9e31d4c60857328a9cab0cf892627`.
 
 ## Key result
 
-The working GB300 mapper is not a separate application. It is integrated directly into the stock pause-menu state machine, and the code path for pause-menu index `4` enters a substantial native mapper handler.
-
-This is the closest known completed descendant of the dormant XGO `gpapi.bvs` fifth pause-menu position.
+The working GB300 mapper is integrated directly into the stock pause-menu state machine. Pause-menu position `4` enters a substantial native controller-mapping handler, making it the closest known completed descendant of XGO's dormant `gpapi.bvs` fifth pause-menu position.
 
 ## Exact pause-menu resource table
-
-The GB300 pause-menu resource table begins at runtime address `0x806ced80`:
 
 ```text
 0x806ced80 -> dism.cef
@@ -23,129 +19,136 @@ The GB300 pause-menu resource table begins at runtime address `0x806ced80`:
 0x806ced94 -> fhshl.skb
 ```
 
-The working firmware materializes this table in three distinct pause-menu code paths:
+The table is materialized from code at:
 
 ```text
-0x80308964 -> table base 0x806ced80
-0x80308da8 -> table base 0x806ced80
-0x80309108 -> table base 0x806ced80
+0x80308964
+0x80308da8
+0x80309108
 ```
 
-The table is indexed with `menu_index * 4`, exactly as expected for an array of resource pointers.
+and indexed as an array of resource pointers.
 
 ## Native mapper entry
 
-The important transition occurs after pause-menu index handling around `0x80308ea4`:
-
 ```asm
-80308ea4  lw    a0,-18596(gp)      # current pause-menu index/state
+80308ea4  lw    a0,-18596(gp)      # current pause-menu mode
 80308ea8  li    a2,4
 80308eac  bne   a0,a2,0x80308d24
 ```
 
-When the active pause-menu position is `4`, execution does **not** fall back to the ordinary action cases. It proceeds into a dedicated native mapping state machine beginning around `0x80308eb4`.
+Mode `4` falls through into the mapper beginning around `0x80308eb4`.
 
-This is direct executable proof that GB300's fifth pause-menu item is a functioning controller mapper.
+## Correction: `0x80c615f8` is a system discriminator, not mapper input
 
-## Mapper input/event state
+Earlier analysis provisionally labeled the byte at `0x80c615f8` (`-18304(gp)`) as a mapper button/event code. That interpretation is now disproved by the deeper binary lift.
 
-The mapper reads a byte at:
-
-```text
-$gp = 0x80c65d78
--18304(gp) = 0x80c615f8
-```
-
-and dispatches on values including:
+The mapper reads it at `0x80308eb4` and dispatches values:
 
 ```text
-0x01
-0x02
-0x04
-0x08
-0x10
-0x20
-0x80
+1, 2, 4, 8, 16, 32, 128
 ```
 
-Representative branch sequence:
+but the branch destinations write a **system keymap index** to `0x80c61554` (`-18468(gp)`):
+
+```text
+value 1   -> system block 0
+value 2   -> system block 0
+value 128 -> system block 1
+value 8   -> system block 2
+value 4   -> system block 3
+value 32  -> system block 4
+value 16  -> system block 5
+```
+
+Representative code:
 
 ```asm
 80308eb4  lbu   v1,-18304(gp)
 80308eb8  li    a2,1
-80308ebc  beq   v1,a2,...
-80308ec4  li    a1,2
-80308ec8  beql  v1,a1,...
-80308ed0  beq   v1,a0,...          # a0 == 4 here
-80308ed4  li    a3,8
-80308ed8  beq   v1,a3,...
-80308edc  li    s4,16
-80308ee0  beql  v1,s4,...
-80308ee8  beq   v1,s3,...          # s3 == 32
-80308eec  li    s3,128
-80308ef0  beql  v1,s3,...
+80308ebc  beq   v1,a2,0x80309b74
+...
+80308ec8  beql  v1,a1,0x80308ef8   # a1 = 2
+80308ecc  sb    zero,-18468(gp)     # block 0
+...
+80308ed8  beq   v1,a3,0x80309cf8   # a3 = 8
+...
+80308ee0  beql  v1,s4,0x80308ef8   # s4 = 16
+80308ee4  sb    s1,-18468(gp)       # s1 = 5
+...
+80308ee8  beq   v1,s3,0x8030a56c   # s3 = 32
+...
+80308ef0  beql  v1,s3,0x80308ef8   # s3 = 128 after reload
+80308ef4  sb    a2,-18468(gp)       # block 1
 ```
 
-This is a compact button/event dispatch table implemented as comparisons rather than a jump table.
-
-The exact physical meaning of each event value still needs to be mapped, but the structure is now recovered.
-
-## Mapper-specific resources are used from the native handler
-
-Immediately after the event dispatch, the code addresses the mapper resource table around `0x806cec90` and loads entries from it. For example:
+and the remote destinations complete the mapping:
 
 ```asm
-80308ef8  lui   t5,0x806d
-80308f04  addiu t4,t5,-5048        # 0x806cec48
-80308f10  lw    a3,88(t4)          # 0x806ceca0 = mczwq.ikb
+80309b78  sb    zero,-18468(gp)     # value 1 -> block 0
+80309cf4  sb    s0,-18468(gp)       # value 4, s0=3 -> block 3
+80309cfc  sb    a1,-18468(gp)       # value 8, a1=2 -> block 2
+8030a570  sb    a0,-18468(gp)       # value 32, a0=4 -> block 4
 ```
 
-This ties the native handler directly to the known mapper artwork/resource family (`hctml.ers`, `ztrba.nec`, `lk7tc.bvs`, `mczwq.ikb`, etc.).
-
-## Mapper UI state variables
-
-Several persistent mapper globals are now identifiable by GP-relative address:
+Independent GB300 documentation gives the seven persisted `KeyMapInfo` blocks in this order:
 
 ```text
-0x80c61554  (-18468 gp) byte - mapper sub-selection / physical-button state
-0x80c6153e  (-18490 gp) byte - mapper selection state, bounded around 0..5
-0x80c614dc  (-18588 gp) byte - secondary mapper choice/index
-0x80c614d4  (-18596 gp) word - current pause/menu mode; value 4 enters mapper
-0x80c614a8  (-18640 gp) word - mapper auxiliary state
-0x80c615f8  (-18304 gp) byte - current button/event code
+0 FC
+1 PCE
+2 SFC
+3 MD/SMS
+4 GB/GBC
+5 GBA
+6 unknown/reserved (defaults like SFC)
 ```
 
-At `0x803090a0`, the mapper manipulates the `0x80c6153e` byte as a six-position value:
+Therefore the binary dispatch resolves to:
 
-```asm
-803090a0  lbu   v0,-18490(gp)
-...
-803090a8  li    v0,5
-...
-803090ac  addiu v0,v0,-1
-803090b0  sb    v0,-18490(gp)
+```text
+1 or 2 -> FC
+128    -> PCE
+8      -> SFC
+4      -> MD/SMS
+32     -> GB/GBC
+16     -> GBA
 ```
 
-Elsewhere the code checks the same state against an upper bound of five:
+The fact that two discriminator values share FC block 0 is consistent with GB300 v1 having two NES emulator paths that share one FC keymap. The seventh persisted block is not selected by this mapper dispatch.
 
-```asm
-80309254  lbu    v1,-18490(gp)
-80309258  sltiu  t3,v1,5
+## Mapper UI state variables, corrected
+
+```text
+0x80c61554 (-18468 gp) byte - selected KeyMapInfo system block (0..5 here)
+0x80c6153e (-18490 gp) byte - six-position physical-button UI selector (0..5)
+0x80c614dc (-18588 gp) byte - logical-target UI selector
+0x80c614dd (-18587 gp) byte - autofire/turbo UI state
+0x80c614d4 (-18596 gp) word - pause/menu mode; 4 enters mapper
+0x80c614c8 (-18608 gp) word - mapper edit/commit state
+0x80c615f8 (-18304 gp) value - emulator/system discriminator used to choose keymap family
 ```
 
-This is consistent with the six physical remappable controls documented in the family (`X,Y,L,A,B,R`), although the exact visual-index-to-button mapping should still be established before transplanting behavior.
+The physical-button selector wraps through six positions. At `0x803090a0` decrement from zero wraps to five; at `0x80309254` increment past five wraps to zero.
+
+## Exact keymap selection and mutation
+
+The full record-level semantics are documented in `gb300-v1-keymap-record-semantics.md`.
+
+The critical results are:
+
+```text
+UI slot transform @ 0x805f2a08 = [5,2,0,1,3,4]
+logical encode    @ 0x805f2a00 = [8,0,10,11,1,9]
+KeyMapInfo base                 = 0x80ae8c70
+system block size               = 48 bytes
+record size                     = 4 bytes
+```
+
+The mapper mutation site is `0x80308ca0..0x80308d1c`. It composes a complete 32-bit logical+autofire record and mirrors it to the same physical slot in both 24-byte player halves.
 
 ## Global KeyMapInfo persistence
 
-GB300's later firmware stores mappings in a global table rather than XGO's per-ROM `.kmp` files.
-
-The writer is at:
-
-```text
-0x80308208
-```
-
-It constructs:
+The writer at `0x80308208` constructs:
 
 ```text
 %s/Resources/KeyMapInfo.kmp
@@ -153,36 +156,14 @@ It constructs:
 
 and writes:
 
-```asm
-li a1,4
-li a2,84
-```
-
-through the firmware fwrite-like routine.
-
-Therefore the file payload is:
-
 ```text
 84 records * 4 bytes = 336 bytes
+7 systems * 48 bytes = 336 bytes
 ```
 
-which equals:
+The source table begins at `0x80ae8c70`.
 
-```text
-7 systems * 48 bytes/system = 336 bytes
-```
-
-The source table written by this routine begins at approximately:
-
-```text
-0x80ae8c70
-```
-
-This independently confirms the later family architecture: seven system mappings, each retaining the same 48-byte / 12-record structure.
-
-## Mapper commit path
-
-The native mapper calls the `KeyMapInfo.kmp` writer directly from three sites:
+The mapper calls this writer from:
 
 ```text
 0x8030a504
@@ -190,45 +171,61 @@ The native mapper calls the `KeyMapInfo.kmp` writer directly from three sites:
 0x8030a574
 ```
 
-The first is guarded by mapper state immediately before it:
+After the latter commit paths, the selected system block is computed as:
 
-```asm
-8030a4b0  li    a2,6
-...
-8030a4c8  bnez  s4,0x8030a504
-...
-8030a504  jal   0x80308208       # persist KeyMapInfo.kmp
+```text
+0x80ae8c70 + system * 48
 ```
 
-The later paths also write after updating mapper state, confirming persistence is part of the native editor's normal confirm/exit flow rather than a separate settings-save operation.
+and passed to `0x8030ca4c` with `a1 = 8`.
+
+## Runtime keymap application helper
+
+`0x8030ca4c` is not a persistence routine. It consumes the selected 48-byte keymap block and expands/translates all 12 records into runtime controller state.
+
+The function iterates 12 input records. For each record it compares the stored logical ID against a system-dependent lookup family rooted around `0x805f2d5c..0x805f2d8c`, preserves the record's autofire bit, and builds an intermediate 12-word representation on its stack. It then processes the two six-record player halves separately into runtime mapping structures.
+
+This closes the post-save flow conceptually:
+
+```text
+edit 4-byte record
+  -> mirror P1/P2 record
+  -> persist 336-byte KeyMapInfo.kmp
+  -> select current 48-byte system block
+  -> 0x8030ca4c translates/applies 12 records to runtime input state
+```
 
 ## Architectural consequence for XGO
 
-We no longer need to invent the mapper interaction model.
+The manufacturer interaction model is now sufficiently recovered that XGO does not need a newly invented mapper design.
 
-The defensible transplant strategy is now:
+The transplant should be:
 
 ```text
-GB300 pause-menu index-4 mapper state machine
-        |
-        | reuse navigation/event semantics and rendering sequence
-        v
-XGO hidden gpapi.bvs position 5
-        |
-        | operate on XGO's existing 48-byte per-game map
-        v
-XGO set_keymap()
+GB300 mapper UI/navigation + slot transform + logical/turbo mutation semantics
         |
         v
-XGO existing <game>.kmp writer
+XGO resurrected gpapi.bvs fifth pause-menu position
+        |
+        v
+XGO active 48-byte per-game map
+        |
+        v
+XGO set_keymap() / existing runtime application path
+        |
+        v
+XGO existing <game>.kmp persistence
 ```
 
-Do **not** port GB300's 336-byte `KeyMapInfo.kmp` persistence layer. XGO's older per-ROM mapping architecture is preferable for the multicore goal and is already executable-proven.
+Do **not** port GB300's global 336-byte persistence layer.
 
-## Next binary-lift targets
+## Next lift targets
 
-1. Map GB300 event codes `1,2,4,8,16,32,128` to physical controls by tracing their shared input producer.
-2. Recover exact six-position physical-button navigation and logical-target cycling.
-3. Identify the code that modifies the 4-byte mapping record inside the 336-byte table.
-4. Translate only that state-machine behavior to XGO's 48-byte active-game map.
-5. Build a minimal XGO hardware probe that changes one mapping from the resurrected fifth menu position and persists it through the existing per-ROM `.kmp` writer.
+1. Resolve the exact visual UI index to physical-button label mapping, using renderer resource positions plus the proven slot transform `[5,2,0,1,3,4]`.
+2. Recover the logical-target and autofire navigation actions that modify `0x80c614dc/0x80c614dd` before the commit path.
+3. Compare GB300 `0x8030ca4c` runtime translation directly against XGO's existing `set_keymap()` behavior to determine how much logic can be reused unchanged.
+4. Build the first minimal XGO fifth-menu-position probe that changes one mapping and persists through XGO's existing per-ROM `.kmp` path.
+
+## External corroboration
+
+nummacway GB300 technical documentation, `KeyMapInfo.kmp` section: https://nummacway.github.io/gb300/
