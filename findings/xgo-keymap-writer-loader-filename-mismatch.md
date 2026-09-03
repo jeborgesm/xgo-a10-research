@@ -1,6 +1,6 @@
 # XGO keymap writer/loader filename mismatch
 
-Status: **HARDWARE CONFIRMED END TO END; ONE-INSTRUCTION WRITER FIX IDENTIFIED**
+Status: **HARDWARE CONFIRMED END TO END; ONE-INSTRUCTION WRITER FIX PROVEN**
 
 ## Hardware result
 
@@ -35,7 +35,11 @@ On the first relaunch the mapping reverted. The generated file was then copied/r
 Battletoads In Battlemaniacs.zsf.kmp
 ```
 
-With no other change, relaunching the same game loaded the A->B mapping successfully. This hardware-confirms that the loader itself is correct and that the failure is solely the stock writer filename source.
+With no other change, relaunching the same game loaded the A->B mapping successfully. This hardware-confirmed that the loader itself is correct and that the failure was solely the stock writer filename source.
+
+A second hardware test then used the combined persistent probe, which changes the writer to use the full ROM-name buffer directly. With that firmware, the remap survived closing and restarting the game without any manual rename or SD-card intervention. Physical A remained mapped to logical B after relaunch.
+
+This independently hardware-confirms the one-instruction writer fix and closes the complete persistence roundtrip.
 
 ## Writer path
 
@@ -106,7 +110,7 @@ and the loader correctly seeks:
 SFC/save/Battletoads In Battlemaniacs.zsf.kmp
 ```
 
-The manual rename hardware test proves this lookup path works exactly as reconstructed.
+Both the manual-rename test and the patched-writer relaunch test prove this lookup path works exactly as reconstructed.
 
 ## Exact fix
 
@@ -140,11 +144,11 @@ Raw word:
 0x24e7fce8
 ```
 
-This is a one-instruction integration repair: after it, the writer should create the exact filename the existing loader already consumes.
+This one-instruction integration repair is now hardware proven: the writer creates the filename the existing loader consumes, and the mapping survives a game restart.
 
-## Persistent probe candidate
+## Hardware-proven persistent probe
 
-Combined with the already hardware-proven mapper probe, the stock-derived candidate contains four instruction edits:
+Combined with the mapper hook, the stock-derived firmware contains four instruction edits:
 
 ```text
 0x00354054  0x24e7fc20 -> 0x24e7fce8  writer uses full ROM filename
@@ -159,7 +163,7 @@ For the exact stock image:
 stock SHA-256: 869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf
 ```
 
-the candidate is:
+the hardware-proven persistent probe is:
 
 ```text
 LCFG CRC-32/MPEG-2: 0x3f08b86e
@@ -174,7 +178,7 @@ tools/patch_mapper_probe_persistent.py
 
 ## Architectural conclusion
 
-The complete XGO per-ROM remapping pipeline is now hardware proven:
+The complete XGO per-ROM remapping pipeline is hardware proven without manual filesystem intervention:
 
 ```text
 hidden gpapi.bvs page
@@ -182,11 +186,14 @@ hidden gpapi.bvs page
   -> active 48-byte keymap mutation
   -> stock P1/P2 synchronization
   -> stock set_keymap()
-  -> stock .kmp writer
-  -> per-ROM file on SD
-  -> next-launch .kmp loader
+  -> corrected stock .kmp writer
+  -> correctly named per-ROM file on SD
+  -> close/restart game
+  -> stock next-launch .kmp loader
   -> stock set_keymap()
   -> restored gameplay mapping
 ```
 
-The persistence subsystem does not need replacement. The only stock integration defect encountered in this path is the writer selecting the extensionless display-name buffer instead of the full ROM filename.
+The persistence architecture is closed. It does not need replacement. The stock defect was exactly one incorrect buffer choice in the writer.
+
+The remaining mapper work is editor/UI behavior: replace the fixed A->B proof mutation with an interactive six-button controller mapping state machine, using the recovered GB300 behavior as the reference implementation.
