@@ -1,0 +1,161 @@
+name: XGO generic state candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-generic-libretro-runtime
+    paths:
+      - .github/workflows/xgo-generic-state-candidate.yml
+      - tools/multicore/native_nes/**
+      - tools/multicore/xgo_minimal_environment_shim.c
+      - tools/multicore/xgo_preloaded_rom_sbrk.c
+      - tools/multicore/include/dirent.h
+      - tools/multicore/probe/pack_xgoc.py
+      - tools/multicore/probe/inspect_xgoc.py
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
+
+      - name: Fetch pinned FCEUmm and libretro-common
+        run: |
+          set -euxo pipefail
+          git clone --no-checkout https://github.com/madcock/libretro-fceumm.git /tmp/fceumm
+          (cd /tmp/fceumm && git checkout e6111e684e7a7761f3f1d6c80d0a825e2c8cdc7e)
+          git clone --no-checkout https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          (cd /tmp/libretro-common && git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af)
+          cp tools/multicore/include/dirent.h /tmp/libretro-common/include/dirent.h
+
+      - name: Build pinned archives
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          (cd /tmp/fceumm && make clean || true && make -j2 platform=sf2000)
+          (cd /tmp/libretro-common && make clean || true && make -j2 \
+            CC="$tools/mips-mti-elf-gcc" AR="$tools/mips-mti-elf-ar")
+
+      - name: Compile XGO runtime objects
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/libretro-common/include'
+          "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_nes_native_frontend.c -o frontend.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
+          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h \
+            -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Link and audit hardware candidate
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic \
+            -static -nostartfiles \
+            -Wl,--gc-sections \
+            -Wl,-Map,xgo-generic-state.map \
+            -Wl,-T,tools/multicore/native_nes/xgo_core.ld \
+            -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld \
+            core_entry.o gp_bridges.o frontend.o state.o environment.o sbrk.o syscalls.o \
+            -Wl,--start-group \
+              /tmp/fceumm/fceumm_libretro_sf2000.a \
+              /tmp/libretro-common/libretro-common.a \
+              -lc -lm -lgcc \
+            -Wl,--end-group \
+            -o xgo-generic-state.elf
+
+          "$nm" -u xgo-generic-state.elf | tee undefined.txt
+          test ! -s undefined.txt
+          "$nm" -n xgo-generic-state.elf > symbols.txt
+          "$objdump" -d xgo-generic-state.elf > disasm.txt
+
+          for sym in xgo_state_io_dispatch xgo_stock_state_compress xgo_stock_state_uncompress xgo_core_state_io; do
+            grep -q "<$sym>:" disasm.txt
+          done
+
+          # The reverse state veneer must install external _gp, while the two
+          # compression veneers must install stock gp=0x80c34774.
+          awk '/<xgo_core_state_io>:/,/^$/' disasm.txt > state-core-bridge.txt
+          grep -Eq 'lw[[:space:]]+gp,24\(sp\)' state-core-bridge.txt
+          grep -Eq '<xgo_state_io_dispatch>' state-core-bridge.txt
+
+          {
+            awk '/<xgo_stock_state_compress>:/,/^$/' disasm.txt
+            awk '/<xgo_stock_state_uncompress>:/,/^$/' disasm.txt
+          } > state-stock-bridges.txt
+          grep -Eq 'lui[[:space:]]+gp,0x80c3' state-stock-bridges.txt
+          grep -Eq 'addiu[[:space:]]+gp,gp,18292' state-stock-bridges.txt
+
+          "$objcopy" -O binary xgo-generic-state.elf xgo-generic-state.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '$3 == name {h=$1; if (length(h)>8) h=substr(h,length(h)-7); printf "0x%s\n",h; exit}' symbols.txt
+          }
+          start=$(symbol_hex __image_start)
+          entry=$(symbol_hex __core_entry__)
+          file_end=$(symbol_hex __file_end)
+          image_end=$(symbol_hex __image_end)
+          test "$start" = '0x87000000'
+          test "$entry" = '0x87000000'
+
+          payload_size=$(stat -c %s xgo-generic-state.bin)
+          memory_size=$((image_end - start))
+          reserved_size=$((0x87cdae00 - 0x87000000))
+          (( payload_size <= file_end - start ))
+          (( memory_size >= payload_size ))
+          (( memory_size <= reserved_size ))
+
+          python3 tools/multicore/probe/pack_xgoc.py \
+            xgo-generic-state.bin core-generic-state-fceumm.xgc \
+            --entry-offset 0 \
+            --memory-size "$memory_size" \
+            | tee pack.txt
+          python3 tools/multicore/probe/inspect_xgoc.py core-generic-state-fceumm.xgc \
+            | tee inspect.txt
+
+          sha256sum xgo-generic-state.elf xgo-generic-state.bin core-generic-state-fceumm.xgc \
+            | tee output.sha256
+          printf 'payload_size=%d\nmemory_size=%d\nheadroom=%d\n' \
+            "$payload_size" "$memory_size" "$((reserved_size-memory_size))" | tee layout.txt
+
+      - name: Upload generic-state candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-generic-state-candidate
+          if-no-files-found: warn
+          path: |
+            xgo-generic-state.elf
+            xgo-generic-state.bin
+            core-generic-state-fceumm.xgc
+            xgo-generic-state.map
+            symbols.txt
+            disasm.txt
+            state-core-bridge.txt
+            state-stock-bridges.txt
+            undefined.txt
+            pack.txt
+            inspect.txt
+            output.sha256
+            layout.txt
+            toolchain-version.txt
