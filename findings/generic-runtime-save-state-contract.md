@@ -1,30 +1,25 @@
 # Generic external-core save-state contract
 
-Status: **stock callback contract and slot paths confirmed; implementation path identified; hardware implementation pending**.
+Status: **stock callback contract, scratch-file flow, and slot paths confirmed; implementation path identified; hardware implementation pending**.
 
 ## Headline
 
-The XGO stock in-game save-state UI delegates state persistence through two function-pointer slots. A fresh trace of the preserved firmware corrected an earlier label reversal:
+The XGO stock save-state path is more structured than a simple `state_save(.saN)` / `state_load(.saN)` pair.
+
+A fresh trace of the preserved firmware establishes three important facts:
 
 ```text
-GFN_STATE_LOAD = 0x80c33a70   (gp - 0x0d04)
-GFN_STATE_SAVE = 0x80c33ac0   (gp - 0x0cb4)
+gfn_state_load = 0x80c33a70   (gp - 0x0d04)
+gfn_state_save = 0x80c33ac0   (gp - 0x0cb4)
 ```
 
-This matters now that the two callbacks are about to become distinct. The first hardware-proven external FCEUmm frontend installed the same disabled veneer into both addresses, so the reversal could not affect the successful gameplay test.
+and the stock save flow uses a **temporary `.kmp` scratch file** before producing the final `.sa0`..`.sa3` state bundle.
 
-The firmware also confirms the stock four-slot state pathname policy rather than leaving it to inference:
-
-```text
-%s/save/%s.sa%d
-%s/%s/save/%s.sa%d
-```
-
-The preserved card inventory contains matching `.sa0` through `.sa3` files, including examples under both `ROMS/save` and system-specific `FC/save`, `GB/save`, `GBA/save`, and `SFC/save` directories.
+The first external FCEUmm gameplay build installed the same disabled callback in both state slots, so none of these distinctions affected the successful gameplay proof. They become critical now that real serialization is being implemented.
 
 ## Callback-address proof
 
-Stock NES launcher `run_nes @ 0x8035f63c` installs its two core-specific state functions as follows:
+Stock NES launcher `run_nes @ 0x8035f63c` installs:
 
 ```text
 0x8035f674  t0 = 0x8035f50c
@@ -35,8 +30,8 @@ Stock NES launcher `run_nes @ 0x8035f63c` installs its two core-specific state f
 
 The target semantics are unambiguous:
 
-- `0x8035f50c` references `load_state:%s`, opens the state for reading, reconstructs/decompresses the payload, and invokes the core restore path;
-- `0x8035f3f0` references `save_state:%s`, obtains the core state payload, compresses it, and writes the state file.
+- `0x8035f50c` references `load_state:%s`, reads and decompresses state, then restores the active core;
+- `0x8035f3f0` references `save_state:%s`, obtains the active core state, compresses it, and writes it.
 
 Therefore:
 
@@ -45,18 +40,18 @@ Therefore:
 0x80c33ac0 = gfn_state_save
 ```
 
-This ordering also matches the corresponding SF2000-family symbol ordering even though the absolute addresses differ.
+The earlier opposite naming in parts of the research symbol map is superseded by `findings/state-callback-address-correction.md`.
 
 ## Current external-core path
 
-The successful external frontend currently writes one shared disabled callback into both slots:
+The hardware-proven external frontend currently installs one disabled callback into both slots:
 
-```text
+```c
 GFN_STATE_LOAD = xgo_core_state_io;
 GFN_STATE_SAVE = xgo_core_state_io;
 ```
 
-and the reverse GP bridge currently targets:
+`xgo_core_state_io` crosses from stock GP to external GP and reaches:
 
 ```c
 int xgo_disabled_state_io(const char *path)
@@ -66,27 +61,49 @@ int xgo_disabled_state_io(const char *path)
 }
 ```
 
-This exactly explains the hardware result:
+Thus the observed hardware behavior is completely explained:
 
 ```text
 Select+Start
-  -> external core exits normally
+  -> external FCEUmm exits normally
   -> stock save-state UI appears
-  -> actual save/load operation fails
+  -> actual state operation returns failure
 ```
 
-The frontend lifecycle is working. Serialization was intentionally absent.
+## The important scratch-file discovery
 
-## Stock slot pathname contract
+The stock save frontend around `0x80354150` constructs:
 
-The state UI constructs ordinary slot files with the firmware strings:
+```text
+%s/save/%s.kmp
+```
+
+then invokes the active callback through the save trampoline at `0x8035e5bc`.
+
+For NES, that trampoline reaches `gfn_state_save @ 0x80c33ac0`, which `run_nes()` has pointed at `0x8035f3f0`.
+
+So the callback invoked during the save path initially receives a temporary path such as:
+
+```text
+<root>/save/<game>.kmp
+```
+
+The frontend then reopens that temporary file and continues the common save/bundle/preview path.
+
+This explains an otherwise odd artifact of the preserved card inventory: final `.saN` files exist, but no persistent `.kmp` state files remain. `.kmp` is scratch space used while constructing the final state bundle.
+
+## Final slot paths
+
+The frontend also contains and actively uses:
 
 ```text
 %s/save/%s.sa%d
 %s/%s/save/%s.sa%d
 ```
 
-Observed preserved-card examples include:
+with normal slots `0..3`.
+
+Preserved-card examples include:
 
 ```text
 ROMS/save/Super Mario Bros 2 (J) [p1].NES.sa0
@@ -97,27 +114,47 @@ GBA/save/Final Fight One.zgb.sa0
 SFC/save/Battletoads In Battlemaniacs.zsf.sa0
 ```
 
-The normal slot number is `0..3`.
+The load UI path around `0x803558c8` constructs a `.saN` pathname and invokes the load trampoline at `0x8035e5b0`, which reaches `gfn_state_load @ 0x80c33a70`.
 
-This means the generic external runtime should **accept the stock pathname passed by the frontend**. It should not invent SF2000 Multicore's alternate `.state<slot>` naming scheme.
+Therefore the stock callback contract is asymmetric:
 
-## XGO save-state bundle
+```text
+SAVE callback: temporary .kmp path
+LOAD callback: final .saN path
+```
 
-Existing XGO firmware archaeology already established that `.saN` is not merely a raw libretro serializer dump. The XGO frontend/state path uses an outer bundle containing compressed emulator state plus separately compressed RGB565 preview metadata/image and a trailing thumbnail metadata offset.
+## XGO state-file prefix and outer bundle
 
-That finding remains authoritative:
+The NES state saver `0x8035f3f0` does not write a raw FCEUmm serializer dump. It obtains the core state, compresses it, and writes at least the state prefix:
+
+```text
+uint32_t compressed_state_size
+uint8_t  compressed_state[compressed_state_size]
+```
+
+The surrounding stock frontend then completes the normal XGO save-state bundle, which existing archaeology has already shown contains a separately compressed RGB565 preview plus a trailing thumbnail metadata offset.
+
+See:
 
 - `findings/save-state-and-core-dispatch.md`
 
-The important implementation distinction is therefore:
+The corresponding loader `0x8035f50c` reads the state prefix from the final `.saN`, decompresses it, and passes the reconstructed emulator-state payload to the active core restore routine. The appended preview data is frontend metadata and does not need to be passed to the core.
+
+This gives a clearer layering model:
 
 ```text
-libretro serializer payload != complete XGO .saN file
+core serialization payload
+  -> core-specific/generic state callback compresses prefix
+  -> temporary .kmp during save
+  -> stock frontend appends/assembles preview bundle
+  -> final .saN
+
+final .saN
+  -> state-load callback reads/decompresses emulator-state prefix
+  -> core unserialize
 ```
 
-A generic state bridge must preserve compatibility with the XGO's stock state-file expectations if we want stock slot previews and existing UI behavior to remain correct.
-
-## Libretro core contract
+## Libretro contract below this layer
 
 A generic libretro core provides:
 
@@ -127,76 +164,107 @@ bool retro_serialize(void *data, size_t size);
 bool retro_unserialize(const void *data, size_t size);
 ```
 
-These are the emulator-specific operations needed below the XGO state container layer.
+The generic XGO callbacks can use these standard operations while preserving the stock file/container behavior.
+
+### Generic save callback
 
 Conceptually:
 
 ```text
-SAVE
-stock save UI
-  -> gfn_state_save(stock .saN path)
+stock save frontend
+  -> gfn_state_save(temp .kmp path)
   -> stock->external GP veneer
-  -> generic XGO state writer
-       -> retro_serialize_size()
-       -> retro_serialize()
-       -> XGO-compatible compression/container handling
-       -> stock path
-
-LOAD
-stock load UI
-  -> gfn_state_load(stock .saN path)
-  -> stock->external GP veneer
-  -> generic XGO state reader
-       -> parse/decompress XGO state bundle
-       -> retro_unserialize()
+  -> retro_serialize_size()
+  -> retro_serialize(raw_state)
+  -> compress raw_state using XGO-compatible zlib stream
+  -> write [compressed_size][compressed_state] to .kmp
+  -> return success
+  -> stock frontend finishes .saN + preview
 ```
+
+### Generic load callback
+
+```text
+stock load frontend
+  -> gfn_state_load(final .saN path)
+  -> stock->external GP veneer
+  -> read compressed-state size/prefix
+  -> decompress raw state
+  -> retro_unserialize(raw_state)
+  -> ignore trailing frontend preview metadata
+  -> return success
+```
+
+## Stock compression helpers identified from calling convention
+
+The stock NES save/load implementation provides two useful candidate services for a generic bridge.
+
+Save path `0x8035f3f0` calls `0x80365e64` with:
+
+```text
+a0 = destination compressed buffer
+a1 = pointer to destination length
+a2 = raw serializer buffer
+a3 = raw serializer length
+```
+
+This has the zlib `compress`/`compress2` family shape and is the compressor used by the stock state path.
+
+Load path `0x8035f50c` calls `0x8021dcc0` with:
+
+```text
+a0 = raw destination buffer
+a1 = pointer to raw destination length
+a2 = compressed source buffer
+a3 = compressed source length
+```
+
+This has the zlib `uncompress` shape and is the decompressor used by the stock state path.
+
+Before production use, these two helpers should receive explicit GP-safe bridge names and a small ABI audit rather than being called as anonymous absolute addresses.
 
 ## SF2000 Multicore comparison
 
-Pinned SF2000 Multicore `core_api.c` independently confirms the high-level architecture: it assigns `gfn_state_load = state_load` and `gfn_state_save = state_save`, then uses `retro_serialize*` underneath those callbacks.
+Pinned SF2000 Multicore confirms the same high-level state indirection and libretro serialization primitives, but its external-core implementation rewrites paths to its own `.state<slot>` files.
 
-However, its implementation deliberately rewrites the frontend path to:
-
-```text
-/mnt/sda1/ROMS/save/<basename>.state<slot>
-```
-
-and writes its own raw serializer-oriented state file.
-
-That is useful lineage evidence, but it is **not the XGO stock persistence contract**. For XGO we already have stronger device-specific evidence: `.sa0`..`.sa3` filenames and the stock bundle/preview format.
+That implementation is useful lineage evidence, not the XGO persistence contract. XGO-specific firmware analysis now gives us the stronger model above: temporary `.kmp`, final `.saN`, compressed state prefix, and stock preview metadata.
 
 ## Implementation design
 
-The generic runtime should expose two distinct external functions and two distinct reverse GP veneers:
+The generic runtime should expose two distinct external functions and two distinct stock->external GP veneers:
 
 ```c
 int xgo_core_state_load(const char *frontend_path);
 int xgo_core_state_save(const char *frontend_path);
 ```
 
-The generic layer should:
+The implementation should:
 
-1. preserve the frontend-supplied `.saN` path;
-2. keep load and save slots distinct (`0x80c33a70` load, `0x80c33ac0` save);
-3. use standard libretro serialize/unserialize below the XGO container layer;
-4. verify every allocation, compression/decompression, file read/write, and libretro result;
-5. keep stock filesystem calls behind GP-safe veneers;
-6. return the stock `1` success / `0` failure convention;
-7. avoid importing SF2000 path rewriting where XGO firmware evidence already defines the path;
-8. preserve stock thumbnail/preview compatibility if practical rather than generating a private state format invisible to the stock UI.
+1. correct all remaining source labels so `0x80c33a70` is load and `0x80c33ac0` is save;
+2. preserve the exact path supplied by the stock frontend;
+3. expect `.kmp` scratch paths on save and `.saN` final paths on load;
+4. serialize/unserialize through standard libretro functions;
+5. reproduce the stock compressed-state prefix exactly;
+6. let the existing stock frontend continue to own final preview/bundle construction;
+7. verify all allocation, compression, file I/O, and libretro return values;
+8. use GP-safe filesystem and compression veneers;
+9. return the stock `1` success / `0` failure convention.
 
-## Why this belongs in the generic runtime
+## Why this is better than writing a private state format
 
-Nothing about the libretro serialization side is NES- or FCEUmm-specific. Once the XGO container adapter is implemented correctly, any core with working `retro_serialize*` support can participate in the stock save-state UI.
+If we simply wrote an external-core `.stateN` file as SF2000 Multicore does, save/load could potentially work, but the XGO stock UI would no longer own the complete state artifact and its preview semantics.
 
-That makes it an ideal abstraction test before SNES:
+Using the XGO's native callback contract instead gives us a stronger result:
 
 ```text
-hardware-proven FCEUmm
-  -> generic XGO state-container adapter
-  -> verify NES save/load + slot preview
-  -> reuse the same adapter for SNES Core #2
+external libretro core
++ stock XGO save UI
++ stock slot naming
++ stock previews
++ stock persistence behavior
 ```
+
+That is exactly the kind of generic integration we want before SNES.
 
 ## First hardware validation
 
@@ -206,24 +274,27 @@ The first real implementation should be tested on the known-good FCEUmm path:
 2. reach a visually unmistakable state;
 3. Select+Start into the stock state UI;
 4. save to one slot;
-5. confirm a `.saN` file appears/changes at the expected stock location;
-6. confirm the slot preview is generated correctly;
+5. confirm a final `.saN` is created/updated and no stale `.kmp` remains;
+6. confirm the slot preview renders;
 7. resume and alter the game state;
-8. load the saved slot;
+8. load the slot;
 9. verify restoration;
-10. reboot/relaunch and verify persistence.
-
-The file size and outer bundle structure should then be compared against a stock-created NES state from the original card.
+10. reboot/relaunch and verify persistence;
+11. compare resulting `.saN` structure against a stock-created NES state.
 
 ## Conclusion
 
-The save-state feature gap is now narrower than it first appeared. We have:
+The save-state gap is now an implementation problem with a well-defined contract, not an unexplored subsystem.
 
-- hardware-confirmed stock save-state UI entry;
-- corrected load/save callback addresses;
-- confirmed `.sa0`..`.sa3` pathname policy;
-- documented XGO state bundle and preview format;
-- standard libretro serialization primitives;
+We have confirmed:
+
+- state load/save callback addresses and corrected their labels;
+- save trampoline -> temporary `.kmp` behavior;
+- load trampoline -> final `.saN` behavior;
+- four normal state slots;
+- compressed emulator-state prefix;
+- stock preview/bundle ownership;
+- standard libretro serializer primitives;
 - already-proven bidirectional GP crossings.
 
-The remaining task is implementation of the generic XGO state-container adapter, not discovery of an unknown save-state architecture.
+The next step is to add GP-safe compression helpers and implement this generic adapter on FCEUmm before reusing it for SNES.
