@@ -58,6 +58,17 @@ jobs:
             awk '/ROM_START\( sf2 \)/{flag=1} flag{print} /ROM_END/{if(flag){exit}}' src/drivers/cps1.c
           } | tee "$GITHUB_WORKSPACE/source-contract.txt"
 
+      - name: Fetch and build pinned SF2000 libretro-common support
+        run: |
+          set -euxo pipefail
+          git clone --recursive https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          cd /tmp/libretro-common
+          git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af
+          git submodule update --init --recursive
+          make -j2
+          cp libretro-common.a "$GITHUB_WORKSPACE/libretro-common.a"
+          git rev-parse HEAD | tee "$GITHUB_WORKSPACE/libretro-common-commit.txt"
+
       - name: Build SF2000 MAME2000 archive
         run: |
           set -euxo pipefail
@@ -140,6 +151,8 @@ jobs:
           path: |
             toolchain-version.txt
             core-commit.txt
+            libretro-common-commit.txt
+            libretro-common.a
             source-contract.txt
             mame2000.a
             xgo-mame2000.elf
