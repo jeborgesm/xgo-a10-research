@@ -61,6 +61,12 @@ jobs:
             grep -n -A35 -B8 'bool retro_load_game' src/burner/libretro/libretro.cpp | head -n 120
           } | tee "$GITHUB_WORKSPACE/source-contract.txt"
 
+      - name: Build and audit independent CPS1 loader
+        run: |
+          set -euxo pipefail
+          bash tools/multicore/native_cps1/build_native_cps1_loader.sh
+          stat -c 'loader_size=%s' tools/multicore/native_cps1/xgo_cps1_loader.bin | tee loader-summary.txt
+
       - name: Compile shared XGO runtime
         run: |
           set -euxo pipefail
@@ -144,4 +150,6 @@ jobs:
             inspect.txt
             candidate-summary.txt
             output.sha256
+            loader-summary.txt
+            tools/multicore/native_cps1/xgo_cps1_loader.bin
           retention-days: 30
