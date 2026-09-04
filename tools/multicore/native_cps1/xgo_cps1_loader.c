@@ -53,6 +53,12 @@ static void (*const os_enable_interrupt)(void) = (void *)0x802e0778;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
 static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
 static volatile u32 *const SND_TASK_FLAGS = (void *)0x80c2e80c;
+/* Active frontend list/menu ID. Confirmed list mapping:
+ * 7=CPS1, 8=CPS2, 9=IGS/PGM, 10=Neo Geo.
+ * The shared run_fba() family flag (0x40) has already collapsed this
+ * distinction, so this byte is the discriminator for a CPS1-only override. */
+static volatile unsigned char *const ACTIVE_LIST_ID = (void *)0x80c33980u;
+#define XGO_LIST_CPS1 7u
 
 static u32 crc32_ieee(const unsigned char *p, u32 n)
 {
@@ -124,6 +130,14 @@ void load_and_run_core(const char *filename, int load_state)
     u32 entry_addr;
     int rc;
     int (*entry)(const char *, int);
+
+    /* The stock arcade launcher is shared by CPS1/CPS2/IGS/Neo Geo.
+     * Only list 7 is CPS1. All other arcade sections must remain completely
+     * stock rather than being forced through the CPS1-only core. */
+    if (*ACTIVE_LIST_ID != XGO_LIST_CPS1) {
+        stock_run_fba(filename, load_state);
+        return;
+    }
 
     /* If upper RAM is already in active stock use, do not disturb CPS1 at all. */
     if (*HEAP_BREAK >= CORE_BASE) {
