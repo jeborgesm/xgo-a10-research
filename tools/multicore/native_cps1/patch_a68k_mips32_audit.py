@@ -51,7 +51,23 @@ for line in lines:
 
     out.append(line)
 
-p.write_text("\n".join(out)+"\n")
+text="\n".join(out)+"\n"
+
+# Current m68000_intf.cpp owns and initializes a68k_memory_intf. The older
+# Allegrex A68K source also allocates a private 13-word copy, causing a modern
+# link collision. Convert the assembly allocation into an external reference.
+old="""a68k_memory_intf:
+\t.rept 13
+\t\t.word 0
+\t.endr
+"""
+if old not in text:
+    raise SystemExit("a68k_memory_intf allocation not found")
+text=text.replace(old, "# a68k_memory_intf storage owned by m68000_intf.cpp\n", 1)
+text=text.replace(".globl a68k_memory_intf",
+                  ".extern a68k_memory_intf,52", 1)
+
+p.write_text(text)
 
 mf=Path("/tmp/cps1/makefile.libretro")
 m=mf.read_text()
