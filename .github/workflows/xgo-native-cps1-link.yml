@@ -46,8 +46,6 @@ jobs:
           cd /tmp/cps1
           mkdir -p src/dep/generated
           perl src/dep/scripts/gamelist.pl -o src/dep/generated/driverlist.h -l gamelist.txt src/burn/drv/capcom
-          gcc -D__LIBRETRO_OPTIMIZATIONS__ -o m68kmake src/cpu/m68k/m68kmake.c
-          ./m68kmake src/cpu/m68k/ src/cpu/m68k/m68k_in.c
           make -j2 platform=sf2000
           cp fbalpha2012_cps1_libretro_sf2000.a "$GITHUB_WORKSPACE/fbalpha2012_cps1.a"
 
