@@ -1,0 +1,154 @@
+name: XGO FBA2012 A68K Test16 trace
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-fba-a68k-test16-trace.yml'
+      - 'tools/multicore/native_cps1/patch_a68k_mips32_audit.py'
+      - 'tools/multicore/native_cps1/**'
+      - 'tools/multicore/native_nes/**'
+      - 'tools/multicore/xgo_minimal_environment_shim.c'
+      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y perl
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
+
+      - name: Fetch pinned FBA2012 CPS1 and enable A68K
+        run: |
+          set -euxo pipefail
+          git clone --recursive https://github.com/madcock/fbalpha2012_cps1.git /tmp/cps1
+          cd /tmp/cps1
+          git checkout 5714c8dc311f4dda6e54533bc8dd901a29700635
+          git submodule update --init --recursive
+          cd "$GITHUB_WORKSPACE"
+          python3 tools/multicore/native_cps1/patch_a68k_mips32_audit.py
+          python3 tools/multicore/native_cps1/patch_a68k_legacy_context_abi.py
+          python3 tools/multicore/native_cps1/patch_test16_a68k_trace.py
+          grep -n -A4 -B4 'BUILD_A68K' /tmp/cps1/makefile.libretro | tee a68k-build-flag.txt
+          grep -n -A18 'struct A68KContext' /tmp/cps1/src/cpu/m68000_intf.h | tee a68k-context-abi.txt
+          head -n 16 /tmp/cps1/src/cpu/a68k/mips/a68k.s | tee a68k-source-head.txt
+
+      - name: Assemble normalized A68K backend
+        run: |
+          set -euxo pipefail
+          cd /tmp/cps1/src/cpu/a68k/mips
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          "$cc" -EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic             -c a68k.s -o "$GITHUB_WORKSPACE/a68k.o"
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-nm -n "$GITHUB_WORKSPACE/a68k.o"             | grep -E 'M68000_RUN|M68000_RESET|M68000_regs|M68000_OPCODETABLE'             | tee "$GITHUB_WORKSPACE/a68k-symbols.txt"
+
+      - name: Build A68K-enabled FBA2012 archive
+        run: |
+          set -euxo pipefail
+          cd /tmp/cps1
+          mkdir -p src/dep/generated
+          perl src/dep/scripts/gamelist.pl -o src/dep/generated/driverlist.h -l gamelist.txt src/burn/drv/capcom
+          make -j2 platform=sf2000
+          cp fbalpha2012_cps1_libretro_sf2000.a "$GITHUB_WORKSPACE/fbalpha2012_cps1_a68k.a"
+
+      - name: Verify runtime selection symbols
+        run: |
+          set -euxo pipefail
+          nm=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-nm
+          "$nm" -A fbalpha2012_cps1_a68k.a | grep -E 'bBurnUseASMCPUEmulation|SekInitCPUA68K|M68000_RUN'             | tee fba-a68k-symbol-surface.txt || true
+
+      - name: Compile XGO runtime
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/cps1/src/burner/libretro/libretro-common/include'
+          "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+          "$cc" $flags -c tools/multicore/native_cps1/xgo_cps1_native_frontend.c -o frontend.o
+          "$cc" $flags -c tools/multicore/native_cps1/xgo_cps1_environment.c -o cps1_environment.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
+          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h             -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Link A68K FBA2012 XGOC
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cxx="$tools/mips-mti-elf-g++"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+
+          "$cxx" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -static -nostartfiles             -Wl,--gc-sections -Wl,-Map,xgo-fba-a68k.map             -Wl,-T,tools/multicore/native_nes/xgo_core.ld             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld             core_entry.o gp_bridges.o frontend.o cps1_environment.o state.o environment.o sbrk.o syscalls.o             a68k.o             -Wl,--start-group fbalpha2012_cps1_a68k.a -lstdc++ -lc -lm -lgcc -Wl,--end-group             -o xgo-fba-a68k.elf
+
+          "$nm" -u xgo-fba-a68k.elf | tee undefined.txt
+          test ! -s undefined.txt
+          "$nm" -n xgo-fba-a68k.elf > symbols.txt
+          grep -E ' M68000_RUN$| M68000_RESET$| M68000_regs$| bBurnUseASMCPUEmulation$' symbols.txt             | tee final-a68k-symbols.txt
+          test "$(grep -c ' M68000_RUN$' final-a68k-symbols.txt)" -eq 1
+
+          "$objdump" -d xgo-fba-a68k.elf > disasm.txt
+          "$objcopy" -O binary xgo-fba-a68k.elf xgo-fba-a68k.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '$3 == name {h=$1; if (length(h)>8) h=substr(h,length(h)-7); printf "0x%s\n",h; exit}' symbols.txt
+          }
+          start=$(symbol_hex __image_start)
+          image_end=$(symbol_hex __image_end)
+          payload_size=$(stat -c %s xgo-fba-a68k.bin)
+          memory_size=$((image_end-start))
+          reserved_size=$((0x87cdae00-0x87000000))
+          headroom=$((reserved_size-memory_size))
+          (( memory_size <= reserved_size ))
+
+          python3 tools/multicore/probe/pack_xgoc.py             xgo-fba-a68k.bin core-fbalpha2012-cps1-a68k.xgc             --entry-offset 0 --memory-size "$memory_size"
+          python3 tools/multicore/probe/inspect_xgoc.py core-fbalpha2012-cps1-a68k.xgc | tee inspect.txt
+
+          {
+            echo "payload_size=$payload_size"
+            echo "memory_size=$memory_size"
+            echo "headroom=$headroom"
+            echo "backend=A68K_MIPS"
+          } | tee candidate-summary.txt
+          sha256sum xgo-fba-a68k.elf xgo-fba-a68k.bin core-fbalpha2012-cps1-a68k.xgc | tee output.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-fba-a68k-test16-trace
+          path: |
+            toolchain-version.txt
+            a68k-build-flag.txt
+            a68k-context-abi.txt
+            a68k-source-head.txt
+            a68k.o
+            a68k-symbols.txt
+            fbalpha2012_cps1_a68k.a
+            fba-a68k-symbol-surface.txt
+            xgo-fba-a68k.elf
+            xgo-fba-a68k.bin
+            core-fbalpha2012-cps1-a68k.xgc
+            xgo-fba-a68k.map
+            symbols.txt
+            final-a68k-symbols.txt
+            disasm.txt
+            undefined.txt
+            inspect.txt
+            candidate-summary.txt
+            output.sha256
+          retention-days: 30
