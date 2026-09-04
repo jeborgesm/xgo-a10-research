@@ -40,36 +40,39 @@ jobs:
           cd /tmp/fba42
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("makefile.libretro")
-          s=p.read_text()
-          s=s.replace("FASTCALL = 1","FASTCALL = 0")
-          s=s.replace("PTR64 ?= 1","PTR64 ?= 0")
-          s=s.replace("INCLUDE_7Z_SUPPORT = 1","INCLUDE_7Z_SUPPORT = 0")
-          marker="# Windows\nelse\n"
-          branch=r'''# HC15xx / SF2000-style static MIPS32
-else ifeq ($(platform), sf2000)
-   TARGET := $(TARGET_NAME)_libretro_sf2000.a
-   CC = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
-   CXX = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-g++
-   AR = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar
-   STATIC_LINKING = 1
-   ENDIANNESS_DEFINES := -DLSB_FIRST
-   PLATFORM_DEFINES := -DUSE_FILE32API -EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic
-   CFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector
-   CXXFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector -fno-rtti -fno-exceptions
+          p = Path("makefile.libretro")
+          s = p.read_text()
+          s = s.replace("FASTCALL = 1", "FASTCALL = 0")
+          s = s.replace("PTR64 ?= 1", "PTR64 ?= 0")
+          s = s.replace("INCLUDE_7Z_SUPPORT = 1", "INCLUDE_7Z_SUPPORT = 0")
 
-# Windows
-else
-'''
+          marker = "# Windows\nelse\n"
+          branch = "\n".join([
+              "# HC15xx / SF2000-style static MIPS32",
+              "else ifeq ($(platform), sf2000)",
+              "   TARGET := $(TARGET_NAME)_libretro_sf2000.a",
+              "   CC = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc",
+              "   CXX = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-g++",
+              "   AR = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar",
+              "   STATIC_LINKING = 1",
+              "   ENDIANNESS_DEFINES := -DLSB_FIRST",
+              "   PLATFORM_DEFINES := -DUSE_FILE32API -EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic",
+              "   CFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector",
+              "   CXXFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector -fno-rtti -fno-exceptions",
+              "",
+              "# Windows",
+              "else",
+              ""
+          ])
           if marker not in s:
               raise SystemExit("platform insertion marker missing")
-          s=s.replace(marker,branch)
+          s = s.replace(marker, branch, 1)
 
-          old='$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR) $(FBA_BURN_DRIVERS_DIR)/capcom $(FBA_BURN_DRIVERS_DIR)/cave $(FBA_BURN_DRIVERS_DIR)/coleco $(FBA_BURN_DRIVERS_DIR)/cps3 $(FBA_BURN_DRIVERS_DIR)/dataeast $(FBA_BURN_DRIVERS_DIR)/galaxian $(FBA_BURN_DRIVERS_DIR)/irem $(FBA_BURN_DRIVERS_DIR)/konami $(FBA_BURN_DRIVERS_DIR)/megadrive $(MIDWAY_DIR) $(FBA_BURN_DRIVERS_DIR)/neogeo $(FBA_BURN_DRIVERS_DIR)/pce $(FBA_BURN_DRIVERS_DIR)/pgm $(FBA_BURN_DRIVERS_DIR)/pre90s $(FBA_BURN_DRIVERS_DIR)/psikyo $(FBA_BURN_DRIVERS_DIR)/pst90s $(FBA_BURN_DRIVERS_DIR)/sega $(FBA_BURN_DRIVERS_DIR)/sg1000 $(SMS_DIR) $(FBA_BURN_DRIVERS_DIR)/snes $(FBA_BURN_DRIVERS_DIR)/taito $(FBA_BURN_DRIVERS_DIR)/toaplan'
-          new='$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR)/capcom/d_cps1.cpp'
+          old = '$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR) $(FBA_BURN_DRIVERS_DIR)/capcom $(FBA_BURN_DRIVERS_DIR)/cave $(FBA_BURN_DRIVERS_DIR)/coleco $(FBA_BURN_DRIVERS_DIR)/cps3 $(FBA_BURN_DRIVERS_DIR)/dataeast $(FBA_BURN_DRIVERS_DIR)/galaxian $(FBA_BURN_DRIVERS_DIR)/irem $(FBA_BURN_DRIVERS_DIR)/konami $(FBA_BURN_DRIVERS_DIR)/megadrive $(MIDWAY_DIR) $(FBA_BURN_DRIVERS_DIR)/neogeo $(FBA_BURN_DRIVERS_DIR)/pce $(FBA_BURN_DRIVERS_DIR)/pgm $(FBA_BURN_DRIVERS_DIR)/pre90s $(FBA_BURN_DRIVERS_DIR)/psikyo $(FBA_BURN_DRIVERS_DIR)/pst90s $(FBA_BURN_DRIVERS_DIR)/sega $(FBA_BURN_DRIVERS_DIR)/sg1000 $(SMS_DIR) $(FBA_BURN_DRIVERS_DIR)/snes $(FBA_BURN_DRIVERS_DIR)/taito $(FBA_BURN_DRIVERS_DIR)/toaplan'
+          new = '$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR)/capcom/d_cps1.cpp'
           if old not in s:
               raise SystemExit("driverlist generation marker missing")
-          s=s.replace(old,new)
+          s = s.replace(old, new, 1)
           p.write_text(s)
           PY
 
