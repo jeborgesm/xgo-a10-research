@@ -2,12 +2,12 @@
  * Native CPS1 external-core loader for XGO.
  *
  * Intended patch site:
- *   run_game + Arcade/FBA dispatch JAL at 0x80360e00
+ *   run_game + Arcade/FBA runtime JAL at 0x80360df8
  *
  * run_game() has already preloaded the selected CPS1 ZIP into gp_buf_64m before
  * this function is called. This loader validates and installs only the external
  * core image. If anything is wrong, it restores the heap ceiling and calls the
- * untouched stock run_fba() implementation.
+ * untouched stock arcade runtime wrapper.
  */
 
 typedef unsigned int u32;
@@ -46,7 +46,7 @@ static FILE *(*const fw_fopen)(const char *, const char *) = (void *)0x802b3524;
 static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b3698;
 static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static int (*const dly_tsk)(unsigned) = (void *)0x8030f480;
-static void (*const stock_run_fba)(const char *, int) = (void *)0x8035e4b4;
+static void (*const stock_run_fba)(const char *, int) = (void *)0x80360848;
 static void (*const os_disable_interrupt)(void) = (void *)0x802e0750;
 static void (*const os_enable_interrupt)(void) = (void *)0x802e0778;
 
