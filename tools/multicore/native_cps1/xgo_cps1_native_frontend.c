@@ -5,8 +5,8 @@ typedef int bool;
 #define false 0
 #define XGO_SYSTEM_ARCADE 0x0040u
 #define MAX_ROM_SIZE 0x04000000u
-#define XGO_ZFB_THUMBNAIL_SIZE 59904u
-#define XGO_ZFB_ZIPNAME_OFFSET (XGO_ZFB_THUMBNAIL_SIZE + 4u)
+#define XGO_ZFB_THUMBNAIL_SIZE_A 59904u
+#define XGO_ZFB_THUMBNAIL_SIZE_B 59905u
 #define XGO_ARCADE_BIN_PREFIX "/mnt/sda1/ARCADE/bin/"
 
 /* crtbegin normally provides this for C++ static-object registration.
@@ -84,9 +84,9 @@ int __core_entry_c(const char *filename,int load_state)
     struct retro_game_info old_game_info;
     unsigned old_run_file_size,rom_size;
     const unsigned char *zfb;
-    const char *zip_name;
+    const char *zip_name=0;
     char zip_path[160];
-    unsigned i, j;
+    unsigned i, j, sep, candidate;
     unsigned short old_system_family;
     int (*old_state_save)(const char*),(*old_state_load)(const char*);
     unsigned (*old_get_region)(void);
@@ -103,27 +103,39 @@ int __core_entry_c(const char *filename,int load_state)
     /*
      * XGO arcade menu entries are .zfb wrappers, not the real ROM ZIPs.
      * Stock run_game() has already preloaded the selected wrapper into
-     * ROM_BUFFER. Its on-card layout is:
+     * ROM_BUFFER.
      *
-     *   59904 bytes RGB565 thumbnail
-     *       4 bytes zero
-     *       N bytes real ZIP basename (e.g. "sf2.zip")
-     *       2 bytes zero
-     *
-     * FBA2012 identifies the driver from the ZIP basename, so recover the
-     * embedded name and point the core at ARCADE/bin/<name>.zip.
+     * SF2000-family documentation disagrees by one byte on the thumbnail
+     * boundary (59904 vs 59905), and Test 06 proved that hard-coding 59904
+     * rejects the XGO wrapper before core entry. Probe both known family
+     * layouts and accept only a four-zero separator followed by a sane
+     * NUL-terminated .zip basename.
      */
-    if (rom_size <= XGO_ZFB_ZIPNAME_OFFSET + 2u)
-        return -1;
-
     zfb=(const unsigned char*)ROM_BUFFER;
-    if(zfb[XGO_ZFB_THUMBNAIL_SIZE+0] ||
-       zfb[XGO_ZFB_THUMBNAIL_SIZE+1] ||
-       zfb[XGO_ZFB_THUMBNAIL_SIZE+2] ||
-       zfb[XGO_ZFB_THUMBNAIL_SIZE+3])
-        return -1;
+    for(candidate=0; candidate<2 && !zip_name; ++candidate) {
+        sep = candidate ? XGO_ZFB_THUMBNAIL_SIZE_B : XGO_ZFB_THUMBNAIL_SIZE_A;
+        if(rom_size <= sep + 4u + 5u)
+            continue;
+        if(zfb[sep+0] || zfb[sep+1] || zfb[sep+2] || zfb[sep+3])
+            continue;
 
-    zip_name=(const char*)(zfb + XGO_ZFB_ZIPNAME_OFFSET);
+        {
+            const char *p=(const char*)(zfb + sep + 4u);
+            unsigned n=0;
+            while(n<64 && sep+4u+n<rom_size && p[n])
+                ++n;
+            if(n<5 || n>=64 || sep+4u+n>=rom_size)
+                continue;
+            if(!((p[n-4]=='.') &&
+                 (p[n-3]=='z' || p[n-3]=='Z') &&
+                 (p[n-2]=='i' || p[n-2]=='I') &&
+                 (p[n-1]=='p' || p[n-1]=='P')))
+                continue;
+            zip_name=p;
+        }
+    }
+    if(!zip_name)
+        return -1;
 
     j=0;
     for(i=0; XGO_ARCADE_BIN_PREFIX[i] && j+1<sizeof(zip_path); ++i)
