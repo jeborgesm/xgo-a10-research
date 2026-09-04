@@ -70,7 +70,14 @@ extern int xgo_core_state_load(const char*);
 #define GFN_STATE_SAVE (*(int (**)(const char*))0x80c33ac0u)
 #define GFN_LOAD_GAME (*(bool (**)(const struct retro_game_info*))0x80c33accu)
 #define GFN_UNLOAD_GAME (*(void (**)(void))0x80c33ad4u)
-#define GFN_FRAMESKIP (*(void**)0x80c33ae0u)
+#define GFN_FRAMESKIP (*(void (**)(int))0x80c33ae0u)
+
+volatile int xgo_mame2000_skip_render = 0;
+
+void xgo_mame2000_set_frameskip(int skip)
+{
+    xgo_mame2000_skip_render = skip ? 1 : 0;
+}
 #define GFN_RUN (*(void (**)(void))0x80c33ae4u)
 
 unsigned xgo_diag_get_region(void){return retro_get_region();}
@@ -103,7 +110,7 @@ int __core_entry_c(const char *filename,int load_state)
     void (*old_get_av)(struct retro_system_av_info*);
     bool (*old_load_game)(const struct retro_game_info*);
     void (*old_unload_game)(void),(*old_run)(void);
-    void *old_frameskip;
+    void (*old_frameskip)(int);
 
     init_core_runtime();
 
@@ -167,10 +174,11 @@ int __core_entry_c(const char *filename,int load_state)
     GFN_LOAD_GAME=xgo_core_load_game;
     GFN_UNLOAD_GAME=xgo_core_unload_game;
     GFN_RUN=xgo_core_run;
-    GFN_FRAMESKIP=0;
+    GFN_FRAMESKIP=xgo_mame2000_set_frameskip;
 
     xgo_stock_run_emulator(load_state);
     retro_deinit();
+    xgo_mame2000_skip_render=0;
 
     GFN_STATE_SAVE=old_state_save;
     GFN_STATE_LOAD=old_state_load;
