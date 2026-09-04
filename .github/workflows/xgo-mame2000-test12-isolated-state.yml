@@ -1,0 +1,175 @@
+name: XGO MAME2000 Test12 isolated state
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-mame2000-test12-isolated-state.yml'
+      - 'tools/multicore/native_mame2000/**'
+      - 'tools/multicore/native_nes/**'
+      - 'tools/multicore/xgo_minimal_environment_shim.c'
+      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+          /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc --version | tee toolchain-version.txt
+
+      - name: Fetch pinned MAME2000
+        run: |
+          set -euxo pipefail
+          git clone --recursive https://github.com/madcock/libretro-mame2000.git /tmp/mame2000
+          cd /tmp/mame2000
+          git checkout 231929ab69e7538bc1d98f59634b8d7fee2ddde7
+          git submodule update --init --recursive
+          git rev-parse HEAD | tee "$GITHUB_WORKSPACE/core-commit.txt"
+          cd "$GITHUB_WORKSPACE"
+          python3 tools/multicore/native_mame2000/patch_xgo_input_admin_keys.py
+          python3 tools/multicore/native_mame2000/patch_test12_isolated_state.py
+          grep -n -A12 -B4 'XGO: the stock frontend owns pause' /tmp/mame2000/src/libretro/libretro.c | tee input-patch.txt
+          grep -n 'mame2000_xgo_t12' /tmp/mame2000/src/libretro/libretro.c | tee state-patch.txt
+
+      - name: Record source contract
+        run: |
+          set -euxo pipefail
+          cd /tmp/mame2000
+          {
+            echo '=== SF2000 build block ==='
+            awk '/# SF2000/{flag=1} flag{print} /# MIYOO/{if(flag){exit}}' Makefile
+            echo
+            echo '=== libretro system info/load/run ==='
+            grep -n -A35 -B8 'void retro_get_system_info' src/libretro/libretro.c | head -n 120
+            grep -n -A90 -B8 'bool retro_load_game' src/libretro/libretro.c | head -n 180
+            grep -n -A60 -B8 'void retro_run' src/libretro/libretro.c | head -n 120
+            echo
+            echo '=== SFII ROM contract ==='
+            awk '/ROM_START\( sf2 \)/{flag=1} flag{print} /ROM_END/{if(flag){exit}}' src/drivers/cps1.c
+          } | tee "$GITHUB_WORKSPACE/source-contract.txt"
+
+      - name: Fetch pinned SF2000 libretro-common support
+        run: |
+          set -euxo pipefail
+          git clone --recursive https://github.com/madcock/libretro-common.git /tmp/libretro-common
+          cd /tmp/libretro-common
+          git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af
+          git submodule update --init --recursive
+          git rev-parse HEAD | tee "$GITHUB_WORKSPACE/libretro-common-commit.txt"
+
+      - name: Build SF2000 MAME2000 archive
+        run: |
+          set -euxo pipefail
+          cd /tmp/mame2000
+          make clean || true
+          make -j2 platform=sf2000
+          cp mame2000_libretro_sf2000.a "$GITHUB_WORKSPACE/mame2000.a"
+
+      - name: Compile XGO runtime
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/mame2000/src/libretro/libretro-common/include'
+          "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+          "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_frontend.c -o frontend.o
+          "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_environment.c -o mame_environment.o
+          "$cc" $flags -DSF2000 -I/tmp/libretro-common/include -c /tmp/libretro-common/libco/libco.c -o libco.o
+          "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_path_support.c -o path_support.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
+          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h             -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Link XGO MAME2000 candidate
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic             -static -nostartfiles             -Wl,--gc-sections             -Wl,-Map,xgo-mame2000.map             -Wl,-T,tools/multicore/native_nes/xgo_core.ld             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld             core_entry.o gp_bridges.o frontend.o mame_environment.o libco.o path_support.o state.o environment.o sbrk.o syscalls.o             -Wl,--start-group mame2000.a -lc -lm -lgcc -Wl,--end-group             -o xgo-mame2000.elf
+
+          "$nm" -u xgo-mame2000.elf | tee undefined.txt
+          test ! -s undefined.txt
+          "$nm" -n xgo-mame2000.elf > symbols.txt
+          "$objdump" -d xgo-mame2000.elf > disasm.txt
+          "$objcopy" -O binary xgo-mame2000.elf xgo-mame2000.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '$3 == name {h=$1; if (length(h)>8) h=substr(h,length(h)-7); printf "0x%s\n",h; exit}' symbols.txt
+          }
+
+          start=$(symbol_hex __image_start)
+          entry=$(symbol_hex __core_entry__)
+          file_end=$(symbol_hex __file_end)
+          image_end=$(symbol_hex __image_end)
+          test "$start" = '0x87000000'
+          test "$entry" = '0x87000000'
+
+          payload_size=$(stat -c %s xgo-mame2000.bin)
+          start_n=$((start))
+          image_end_n=$((image_end))
+          memory_size=$((image_end_n-start_n))
+          reserved_size=$((0x87cdae00-0x87000000))
+          headroom=$((reserved_size-memory_size))
+          (( memory_size >= payload_size ))
+          (( memory_size <= reserved_size ))
+
+          python3 tools/multicore/probe/pack_xgoc.py             xgo-mame2000.bin core-mame2000-cps1.xgc             --entry-offset 0 --memory-size "$memory_size" | tee pack.txt
+          python3 tools/multicore/probe/inspect_xgoc.py core-mame2000-cps1.xgc | tee inspect.txt
+
+          {
+            echo "core_commit=231929ab69e7538bc1d98f59634b8d7fee2ddde7"
+            echo "system_family=0x40"
+            echo "audio_policy=11025"
+            echo "payload_size=$payload_size"
+            echo "memory_size=$memory_size"
+            echo "reserved_size=$reserved_size"
+            echo "headroom=$headroom"
+            echo "serialize_note=MAME2000 exposes size-0 libretro state stubs"
+          } | tee candidate-summary.txt
+          sha256sum xgo-mame2000.elf xgo-mame2000.bin core-mame2000-cps1.xgc | tee output.sha256
+
+      - name: Preserve audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-mame2000-test12-isolated-state
+          path: |
+            toolchain-version.txt
+            core-commit.txt
+            libretro-common-commit.txt
+            source-contract.txt
+            input-patch.txt
+            state-patch.txt
+            mame2000.a
+            xgo-mame2000.elf
+            xgo-mame2000.bin
+            core-mame2000-cps1.xgc
+            xgo-mame2000.map
+            symbols.txt
+            disasm.txt
+            undefined.txt
+            pack.txt
+            inspect.txt
+            candidate-summary.txt
+            output.sha256
+          retention-days: 30
