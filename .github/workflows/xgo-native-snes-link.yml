@@ -39,6 +39,8 @@ jobs:
       - name: Build and audit injected SNES loader
         run: |
           set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm
           bash tools/multicore/native_snes/build_native_snes_loader.sh
           python3 -m py_compile tools/multicore/native_snes/build_native_snes_asd.py
           stat -c 'loader_size=%s' tools/multicore/native_snes/xgo_snes_loader.bin | tee loader-summary.txt
