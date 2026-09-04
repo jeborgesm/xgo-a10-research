@@ -40,6 +40,9 @@ jobs:
           git checkout 231929ab69e7538bc1d98f59634b8d7fee2ddde7
           git submodule update --init --recursive
           git rev-parse HEAD | tee "$GITHUB_WORKSPACE/core-commit.txt"
+          cd "$GITHUB_WORKSPACE"
+          python3 tools/multicore/native_mame2000/patch_xgo_input_admin_keys.py
+          grep -n -A12 -B4 'XGO: the stock frontend owns pause' /tmp/mame2000/src/libretro/libretro.c | tee input-patch.txt
 
       - name: Record source contract
         run: |
@@ -153,6 +156,7 @@ jobs:
             core-commit.txt
             libretro-common-commit.txt
             source-contract.txt
+            input-patch.txt
             mame2000.a
             xgo-mame2000.elf
             xgo-mame2000.bin
