@@ -4,7 +4,7 @@ Reverse engineering, preservation, and experimental software work for the **XGO 
 
 The XGO is an **SF2000-derived HC15xx/MIPS platform**, but it is not simply an SF2000 in a different shell. This repository started as firmware and hardware archaeology and has now reached a much more important milestone: **custom native code and an external libretro emulator core have been loaded and executed successfully on real XGO hardware.**
 
-> **Current status (September 2026): external NES/FCEUmm gameplay is hardware-confirmed.** The next phase is turning the NES proof into a reusable XGO libretro runtime and proving it with a second core.
+> **Current status (September 2026): external NES/FCEUmm gameplay and the first on-device interactive per-game button mapper are hardware-confirmed.** The mapper exposes the stock XGO keymap machinery through a recovered pause-menu position while preserving the XGO's per-game `.kmp` persistence.
 
 > Do **not** flash stock SF2000 firmware onto an XGO based only on platform similarity. The XGO remains a distinct hardware/firmware target.
 
@@ -18,6 +18,32 @@ The project therefore has two related purposes:
 2. **Experimental development** — use that understanding to safely execute custom software and external libretro cores while preserving as much of the stock XGO frontend and hardware support as possible.
 
 The second goal is no longer hypothetical.
+
+## Major milestone: interactive on-device button mapper
+
+The XGO now has a hardware-confirmed interactive button mapper integrated into the stock in-game pause menu as a fifth option, `Mapper`.
+
+The recovered path is:
+
+```text
+Start+Select pause menu
+  -> Mapper
+  -> six physical controls: X / Y / L / A / B / R
+  -> choose logical target with arrows
+  -> A/Confirm saves and resumes gameplay
+  -> existing per-game <game>.kmp persistence
+```
+
+The feature has been exercised successfully with NES, SNES, and CPS1 titles, and remaps survive game exit/relaunch. The implementation deliberately reuses the manufacturer's mapper interaction model discovered in the GB300 family while retaining the XGO's superior per-game persistence path rather than adopting GB300's global `KeyMapInfo.kmp` design.
+
+The final hardware-confirmed presentation build is **interactive mapper v19**. A long-lived graphical regression was traced to v8 resource generation: a 35-pixel-wide strip (`x=225..259`) of the intact v7 mapper had been overwritten with stock artwork. v19 recombines the intact v7 geometry with the mature v14 mapper behavior and corrected selector coordinates.
+
+See:
+
+- [`findings/interactive-xgo-mapper-v19-v7-geometry-v14-behavior.md`](findings/interactive-xgo-mapper-v19-v7-geometry-v14-behavior.md)
+- [`findings/family-native-mapper-ui-state-model.md`](findings/family-native-mapper-ui-state-model.md)
+- [`findings/gb300-v1-native-mapper-handler-and-commit-path.md`](findings/gb300-v1-native-mapper-handler-and-commit-path.md)
+- [`findings/xgo-per-game-kmp-format-and-sf2000-branch-point.md`](findings/xgo-per-game-kmp-format-and-sf2000-branch-point.md)
 
 ## Major milestone: external native NES core running on hardware
 
