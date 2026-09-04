@@ -5,8 +5,8 @@ typedef int bool;
 #define false 0
 #define XGO_SYSTEM_ARCADE 0x0040u
 #define MAX_ROM_SIZE 0x04000000u
-#define XGO_ZFB_THUMBNAIL_SIZE_A 59904u
-#define XGO_ZFB_THUMBNAIL_SIZE_B 59905u
+#define XGO_STOCK_SYSTEM_DIR ((const char*)0x810a0eb0u)
+#define XGO_STOCK_GAME_NAME  ((const char*)0x8109fce8u)
 #define XGO_ARCADE_BIN_PREFIX "/mnt/sda1/ARCADE/bin/"
 
 /* crtbegin normally provides this for C++ static-object registration.
@@ -83,10 +83,10 @@ int __core_entry_c(const char *filename,int load_state)
 {
     struct retro_game_info old_game_info;
     unsigned old_run_file_size,rom_size;
-    const unsigned char *zfb;
-    const char *zip_name=0;
-    char zip_path[160];
-    unsigned i, j, sep, candidate;
+    const char *system_dir;
+    const char *game_name;
+    char zip_path[192];
+    unsigned i, j;
     unsigned short old_system_family;
     int (*old_state_save)(const char*),(*old_state_load)(const char*);
     unsigned (*old_get_region)(void);
@@ -101,51 +101,35 @@ int __core_entry_c(const char *filename,int load_state)
         return -1;
 
     /*
-     * XGO arcade menu entries are .zfb wrappers, not the real ROM ZIPs.
-     * Stock run_game() has already preloaded the selected wrapper into
-     * ROM_BUFFER.
+     * By the time the corrected arcade runtime hook is reached, stock XGO has
+     * already resolved the selected arcade package. Reuse the exact frontend
+     * globals stock itself feeds to "%s/bin/%s":
      *
-     * SF2000-family documentation disagrees by one byte on the thumbnail
-     * boundary (59904 vs 59905), and Test 06 proved that hard-coding 59904
-     * rejects the XGO wrapper before core entry. Probe both known family
-     * layouts and accept only a four-zero separator followed by a sane
-     * NUL-terminated .zip basename.
+     *   0x810a0eb0 = current selected system/list directory
+     *   0x8109fce8 = current game/archive filename
+     *
+     * Do not inspect ROM_BUFFER here; Test 06/07 proved it is no longer a
+     * reliable representation of the original .zfb wrapper at this stage.
      */
-    zfb=(const unsigned char*)ROM_BUFFER;
-    for(candidate=0; candidate<2 && !zip_name; ++candidate) {
-        sep = candidate ? XGO_ZFB_THUMBNAIL_SIZE_B : XGO_ZFB_THUMBNAIL_SIZE_A;
-        if(rom_size <= sep + 4u + 5u)
-            continue;
-        if(zfb[sep+0] || zfb[sep+1] || zfb[sep+2] || zfb[sep+3])
-            continue;
-
-        {
-            const char *p=(const char*)(zfb + sep + 4u);
-            unsigned n=0;
-            while(n<64 && sep+4u+n<rom_size && p[n])
-                ++n;
-            if(n<5 || n>=64 || sep+4u+n>=rom_size)
-                continue;
-            if(!((p[n-4]=='.') &&
-                 (p[n-3]=='z' || p[n-3]=='Z') &&
-                 (p[n-2]=='i' || p[n-2]=='I') &&
-                 (p[n-1]=='p' || p[n-1]=='P')))
-                continue;
-            zip_name=p;
-        }
-    }
-    if(!zip_name)
+    system_dir=XGO_STOCK_SYSTEM_DIR;
+    game_name=XGO_STOCK_GAME_NAME;
+    if(!system_dir || !*system_dir || !game_name || !*game_name)
         return -1;
 
     j=0;
-    for(i=0; XGO_ARCADE_BIN_PREFIX[i] && j+1<sizeof(zip_path); ++i)
-        zip_path[j++]=XGO_ARCADE_BIN_PREFIX[i];
+    for(i=0; system_dir[i] && i<128 && j+1<sizeof(zip_path); ++i)
+        zip_path[j++]=system_dir[i];
+    if(i==0 || i>=128 || j+5>=sizeof(zip_path))
+        return -1;
 
-    for(i=0; i<64 && j+1<sizeof(zip_path); ++i) {
-        unsigned char ch=(unsigned char)zip_name[i];
-        if(!ch)
-            break;
-        /* Embedded value is a basename only; reject path traversal/separators. */
+    zip_path[j++]='/';
+    zip_path[j++]='b';
+    zip_path[j++]='i';
+    zip_path[j++]='n';
+    zip_path[j++]='/';
+
+    for(i=0; game_name[i] && i<64 && j+1<sizeof(zip_path); ++i) {
+        unsigned char ch=(unsigned char)game_name[i];
         if(ch=='/' || ch=='\\')
             return -1;
         zip_path[j++]=(char)ch;
