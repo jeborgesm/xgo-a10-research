@@ -135,7 +135,18 @@ int __core_entry_c(const char *filename,int load_state)
     GFN_FRAMESKIP=0;
 
     xgo_stock_run_emulator(load_state);
-    retro_deinit();
+
+    /*
+     * FBA2012 deliberately implements retro_unload_game() as a no-op and puts
+     * its heavy BurnDrv/GameInp/BurnLib shutdown in retro_deinit(). On XGO the
+     * stock pause/QUIT path has already unwound run_emulator() and returned all
+     * frontend ownership before we get here. Hardware Test 03 froze when this
+     * post-loop retro_deinit() ran.
+     *
+     * External-core RAM is disposable: the XGOC image is reloaded on every
+     * launch and its private sbrk arena lies inside the stock ROM arena. Do not
+     * perform the FBA global teardown on the stock-menu return path.
+     */
 
     GFN_STATE_SAVE=old_state_save;
     GFN_STATE_LOAD=old_state_load;
