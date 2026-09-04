@@ -33,6 +33,24 @@ extern void xgo_stock_video_refresh(const void*,unsigned,unsigned,size_t);
 extern size_t xgo_stock_audio_sample_batch(const short*,size_t);
 extern void xgo_stock_input_poll(void);
 extern short xgo_stock_input_state(unsigned,unsigned,unsigned,unsigned);
+
+#define RETRO_DEVICE_JOYPAD   1u
+#define RETRO_DEVICE_KEYBOARD 3u
+
+static short xgo_mame2000_input_state(unsigned port,
+                                      unsigned device,
+                                      unsigned index,
+                                      unsigned id)
+{
+    /*
+     * XGO stock input is a 2-port, 16-ID JOYPAD callback only.
+     * MAME2000 also polls the entire libretro keyboard namespace. Never feed
+     * those keyboard IDs into the stock 16-entry joypad lookup table.
+     */
+    if(device != RETRO_DEVICE_JOYPAD || index != 0 || port >= 2 || id >= 16)
+        return 0;
+    return xgo_stock_input_state(port, device, index, id);
+}
 extern void xgo_stock_run_emulator(int);
 extern unsigned xgo_core_get_region(void);
 extern void xgo_core_get_av(struct retro_system_av_info*);
@@ -130,7 +148,7 @@ int __core_entry_c(const char *filename,int load_state)
     retro_set_video_refresh(xgo_stock_video_refresh);
     retro_set_audio_sample_batch(xgo_stock_audio_sample_batch);
     retro_set_input_poll(xgo_stock_input_poll);
-    retro_set_input_state(xgo_stock_input_state);
+    retro_set_input_state(xgo_mame2000_input_state);
     retro_set_environment(xgo_mame2000_environment);
     retro_init();
 
