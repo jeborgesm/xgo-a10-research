@@ -84,7 +84,7 @@ jobs:
           "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
           "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_frontend.c -o frontend.o
           "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_environment.c -o mame_environment.o
-          "$cc" $flags -I/tmp/libretro-common/include -c /tmp/libretro-common/libco/libco.c -o libco.o
+          "$cc" $flags -DSF2000 -I/tmp/libretro-common/include -c /tmp/libretro-common/libco/libco.c -o libco.o
           "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_path_support.c -o path_support.o
           "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
           "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
