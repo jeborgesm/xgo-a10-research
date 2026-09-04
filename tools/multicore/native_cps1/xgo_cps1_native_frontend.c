@@ -1,5 +1,6 @@
 /* Native-main-list FB Alpha 2012 CPS-1 frontend for XGO Core #3. */
 #include <stddef.h>
+#include <stdio.h>
 typedef int bool;
 #define true 1
 #define false 0
@@ -72,6 +73,18 @@ void xgo_diag_run(void){retro_run();}
 #include <reent.h>
 extern void __libc_init_array(void);
 extern void __sinit(struct _reent*);
+void xgo_a68k_trace_reset(void)
+{
+    FILE *f=fopen("/mnt/sda1/xgo-a68k-trace.txt","wb");
+    if(f){ fputs("XGO A68K TRACE 16\n",f); fclose(f); }
+}
+
+void xgo_a68k_trace(const char *s)
+{
+    FILE *f=fopen("/mnt/sda1/xgo-a68k-trace.txt","ab");
+    if(f){ fputs(s,f); fputc('\n',f); fclose(f); }
+}
+
 static void init_core_runtime(void)
 {
     _REENT_INIT_PTR(_REENT);
@@ -179,7 +192,9 @@ int __core_entry_c(const char *filename,int load_state)
     GFN_RUN=xgo_core_run;
     GFN_FRAMESKIP=0;
 
+    xgo_a68k_trace("F10 before stock run_emulator");
     xgo_stock_run_emulator(load_state);
+    xgo_a68k_trace("F11 after stock run_emulator");
     retro_deinit();
 
     GFN_STATE_SAVE=old_state_save;
