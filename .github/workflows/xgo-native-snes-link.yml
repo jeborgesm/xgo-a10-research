@@ -1,0 +1,124 @@
+name: XGO native SNES link candidate
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-native-snes-link.yml'
+      - 'tools/multicore/native_snes/**'
+      - 'tools/multicore/native_nes/**'
+      - 'tools/multicore/xgo_minimal_environment_shim.c'
+      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape-mips32.tar.gz
+          sudo tar -xzf /tmp/codescape-mips32.tar.gz -C /opt
+
+      - name: Fetch and build pinned Snes9x2005
+        run: |
+          set -euxo pipefail
+          git clone --recursive https://github.com/madcock/snes9x2005.git /tmp/snes
+          cd /tmp/snes
+          git checkout fa69dd6a3caf279cc1f457e65e360f8b9a3683ed
+          git submodule update --init --recursive
+          make clean || true
+          make -j2 platform=sf2000 LOAD_FROM_MEMORY=1
+          cp snes9x2005_libretro_sf2000.a "$GITHUB_WORKSPACE/snes9x2005.a"
+
+      - name: Compile shared XGO runtime
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/snes/libretro-common/include'
+          "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+          "$cc" $flags -c tools/multicore/native_snes/xgo_snes_native_frontend.c -o frontend.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
+          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h             -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Link Core #2 candidate
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+          objdump="$tools/mips-mti-elf-objdump"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic             -static -nostartfiles             -Wl,--gc-sections             -Wl,-Map,xgo-snes.map             -Wl,-T,tools/multicore/native_nes/xgo_core.ld             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld             core_entry.o gp_bridges.o frontend.o state.o environment.o sbrk.o syscalls.o             -Wl,--start-group               snes9x2005.a -lc -lm -lgcc             -Wl,--end-group             -o xgo-snes.elf
+
+          "$nm" -u xgo-snes.elf | tee undefined.txt
+          test ! -s undefined.txt
+          "$nm" -n xgo-snes.elf > symbols.txt
+          "$objdump" -d xgo-snes.elf > disasm.txt
+          "$objcopy" -O binary xgo-snes.elf xgo-snes.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '$3 == name {h=$1; if (length(h)>8) h=substr(h,length(h)-7); printf "0x%s\n",h; exit}' symbols.txt
+          }
+          start=$(symbol_hex __image_start)
+          entry=$(symbol_hex __core_entry__)
+          file_end=$(symbol_hex __file_end)
+          image_end=$(symbol_hex __image_end)
+          test "$start" = '0x87000000'
+          test "$entry" = '0x87000000'
+
+          payload_size=$(stat -c %s xgo-snes.bin)
+          memory_size=$((image_end - start))
+          reserved_size=$((0x87cdae00 - 0x87000000))
+          headroom=$((reserved_size - memory_size))
+          (( payload_size <= file_end - start ))
+          (( memory_size >= payload_size ))
+          (( memory_size <= reserved_size ))
+
+          python3 tools/multicore/probe/pack_xgoc.py             xgo-snes.bin core-snes9x2005.xgc             --entry-offset 0             --memory-size "$memory_size" | tee pack.txt
+          python3 tools/multicore/probe/inspect_xgoc.py core-snes9x2005.xgc | tee inspect.txt
+
+          {
+            echo "core_commit=fa69dd6a3caf279cc1f457e65e360f8b9a3683ed"
+            echo "load_from_memory=1"
+            echo "system_family=0x08"
+            echo "stock_snes_audio_rate=11025"
+            echo "payload_size=$payload_size"
+            echo "memory_size=$memory_size"
+            echo "reserved_size=$reserved_size"
+            echo "headroom=$headroom"
+            echo
+            grep -E ' (__image_start|__file_end|__image_end|__core_entry__|_gp)$' symbols.txt
+          } | tee candidate-summary.txt
+
+          sha256sum xgo-snes.elf xgo-snes.bin core-snes9x2005.xgc | tee output.sha256
+          cat candidate-summary.txt
+          cat output.sha256
+
+      - name: Preserve candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-native-snes-link-candidate
+          path: |
+            xgo-snes.elf
+            xgo-snes.bin
+            core-snes9x2005.xgc
+            xgo-snes.map
+            symbols.txt
+            disasm.txt
+            undefined.txt
+            pack.txt
+            inspect.txt
+            candidate-summary.txt
+            output.sha256
+          retention-days: 30
