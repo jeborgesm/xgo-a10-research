@@ -5,6 +5,9 @@ typedef int bool;
 #define false 0
 #define XGO_SYSTEM_ARCADE 0x0040u
 #define MAX_ROM_SIZE 0x04000000u
+#define XGO_ZFB_THUMBNAIL_SIZE 59904u
+#define XGO_ZFB_ZIPNAME_OFFSET (XGO_ZFB_THUMBNAIL_SIZE + 4u)
+#define XGO_ARCADE_BIN_PREFIX "/mnt/sda1/ARCADE/bin/"
 
 /* crtbegin normally provides this for C++ static-object registration.
  * External XGOC images use -nostartfiles, so provide the freestanding anchor
@@ -80,6 +83,10 @@ int __core_entry_c(const char *filename,int load_state)
 {
     struct retro_game_info old_game_info;
     unsigned old_run_file_size,rom_size;
+    const unsigned char *zfb;
+    const char *zip_name;
+    char zip_path[160];
+    unsigned i, j;
     unsigned short old_system_family;
     int (*old_state_save)(const char*),(*old_state_load)(const char*);
     unsigned (*old_get_region)(void);
@@ -90,8 +97,50 @@ int __core_entry_c(const char *filename,int load_state)
 
     init_core_runtime();
     rom_size=RUN_FILE_SIZE;
-    if(!filename || !*filename)
+    if(!filename || !*filename || !ROM_BUFFER)
         return -1;
+
+    /*
+     * XGO arcade menu entries are .zfb wrappers, not the real ROM ZIPs.
+     * Stock run_game() has already preloaded the selected wrapper into
+     * ROM_BUFFER. Its on-card layout is:
+     *
+     *   59904 bytes RGB565 thumbnail
+     *       4 bytes zero
+     *       N bytes real ZIP basename (e.g. "sf2.zip")
+     *       2 bytes zero
+     *
+     * FBA2012 identifies the driver from the ZIP basename, so recover the
+     * embedded name and point the core at ARCADE/bin/<name>.zip.
+     */
+    if (rom_size <= XGO_ZFB_ZIPNAME_OFFSET + 2u)
+        return -1;
+
+    zfb=(const unsigned char*)ROM_BUFFER;
+    if(zfb[XGO_ZFB_THUMBNAIL_SIZE+0] ||
+       zfb[XGO_ZFB_THUMBNAIL_SIZE+1] ||
+       zfb[XGO_ZFB_THUMBNAIL_SIZE+2] ||
+       zfb[XGO_ZFB_THUMBNAIL_SIZE+3])
+        return -1;
+
+    zip_name=(const char*)(zfb + XGO_ZFB_ZIPNAME_OFFSET);
+
+    j=0;
+    for(i=0; XGO_ARCADE_BIN_PREFIX[i] && j+1<sizeof(zip_path); ++i)
+        zip_path[j++]=XGO_ARCADE_BIN_PREFIX[i];
+
+    for(i=0; i<64 && j+1<sizeof(zip_path); ++i) {
+        unsigned char ch=(unsigned char)zip_name[i];
+        if(!ch)
+            break;
+        /* Embedded value is a basename only; reject path traversal/separators. */
+        if(ch=='/' || ch=='\\')
+            return -1;
+        zip_path[j++]=(char)ch;
+    }
+    if(i==0 || i>=64)
+        return -1;
+    zip_path[j]=0;
 
     old_game_info.path=GAME_INFO.path;
     old_game_info.data=GAME_INFO.data;
@@ -118,11 +167,11 @@ int __core_entry_c(const char *filename,int load_state)
     retro_set_environment(xgo_cps1_environment);
     retro_init();
 
-    /* FBA2012 CPS1 is full-path based and reopens the ZIP to resolve the
-     * constituent arcade ROMs. Keep the stock filename; data is harmless. */
-    GAME_INFO.path=filename;
-    GAME_INFO.data=ROM_BUFFER;
-    GAME_INFO.size=rom_size;
+    /* FBA2012 CPS1 is full-path based and must see the real ARCADE/bin ZIP,
+     * not the menu-facing .zfb wrapper path. */
+    GAME_INFO.path=zip_path;
+    GAME_INFO.data=0;
+    GAME_INFO.size=0;
     GAME_INFO.meta=0;
 
     GFN_STATE_SAVE=xgo_core_state_save;
