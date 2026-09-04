@@ -36,6 +36,13 @@ jobs:
           make -j2 platform=sf2000 LOAD_FROM_MEMORY=1
           cp snes9x2005_libretro_sf2000.a "$GITHUB_WORKSPACE/snes9x2005.a"
 
+      - name: Build and audit injected SNES loader
+        run: |
+          set -euxo pipefail
+          bash tools/multicore/native_snes/build_native_snes_loader.sh
+          python3 -m py_compile tools/multicore/native_snes/build_native_snes_asd.py
+          stat -c 'loader_size=%s' tools/multicore/native_snes/xgo_snes_loader.bin | tee loader-summary.txt
+
       - name: Compile shared XGO runtime
         run: |
           set -euxo pipefail
@@ -121,4 +128,6 @@ jobs:
             inspect.txt
             candidate-summary.txt
             output.sha256
+            loader-summary.txt
+            tools/multicore/native_snes/xgo_snes_loader.bin
           retention-days: 30
