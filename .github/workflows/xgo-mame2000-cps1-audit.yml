@@ -58,15 +58,13 @@ jobs:
             awk '/ROM_START\( sf2 \)/{flag=1} flag{print} /ROM_END/{if(flag){exit}}' src/drivers/cps1.c
           } | tee "$GITHUB_WORKSPACE/source-contract.txt"
 
-      - name: Fetch and build pinned SF2000 libretro-common support
+      - name: Fetch pinned SF2000 libretro-common support
         run: |
           set -euxo pipefail
           git clone --recursive https://github.com/madcock/libretro-common.git /tmp/libretro-common
           cd /tmp/libretro-common
           git checkout 9362316bf1da38160b324a1515bfb83e44ebd7af
           git submodule update --init --recursive
-          make -j2
-          cp libretro-common.a "$GITHUB_WORKSPACE/libretro-common.a"
           git rev-parse HEAD | tee "$GITHUB_WORKSPACE/libretro-common-commit.txt"
 
       - name: Build SF2000 MAME2000 archive
@@ -86,6 +84,8 @@ jobs:
           "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
           "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_frontend.c -o frontend.o
           "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_environment.c -o mame_environment.o
+          "$cc" $flags -I/tmp/libretro-common/include -c /tmp/libretro-common/libco/libco.c -o libco.o
+          "$cc" $flags -c tools/multicore/native_mame2000/xgo_mame2000_path_support.c -o path_support.o
           "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
           "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
           "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
@@ -152,7 +152,6 @@ jobs:
             toolchain-version.txt
             core-commit.txt
             libretro-common-commit.txt
-            libretro-common.a
             source-contract.txt
             mame2000.a
             xgo-mame2000.elf
