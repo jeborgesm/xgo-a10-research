@@ -3,7 +3,7 @@
 
 This tool never touches SPI NOR and never creates Firmware.upk. It accepts only
 the exact preserved XGO firmware revision, injects a loader into the verified
-zero-filled firmware cave, redirects the NES dispatch JAL, and reseals LCFG.
+zero-filled firmware cave, redirects the SNES dispatch JAL, and reseals LCFG.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ LCFG_CRC_OFFSET = 0x18C
 
 LOADER_OFFSET = 0x1500
 LOADER_END = 0x2180
-SSNES_JAL_OFFSET = 0x360E40
+SNES_JAL_OFFSET = 0x360E40
 
 # XGO stock at 0x80360e40: jal 0x8035f9d8 (run_snes)
 EXPECTED_STOCK_SNES_JAL = bytes.fromhex("76 7e 0d 0c")
@@ -93,7 +93,7 @@ def main() -> None:
     if crc32_mpeg2(bytes(patched[PAYLOAD_OFFSET:])) != crc:
         raise SystemExit("Internal error: LCFG CRC verification failed")
     if patched[SNES_JAL_OFFSET:SNES_JAL_OFFSET + 4] != LOADER_JAL:
-        raise SystemExit("Internal error: native SSNES JAL patch failed")
+        raise SystemExit("Internal error: native SNES JAL patch failed")
 
     args.output_asd.write_bytes(patched)
 
