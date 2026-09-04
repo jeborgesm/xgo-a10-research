@@ -41,6 +41,12 @@ extern void xgo_core_run(void);
 extern int xgo_core_state_save(const char*);
 extern int xgo_core_state_load(const char*);
 
+unsigned xgo_diag_get_region(void){return retro_get_region();}
+void xgo_diag_get_av(struct retro_system_av_info *i){retro_get_system_av_info(i);}
+bool xgo_diag_load_game(const struct retro_game_info *i){return retro_load_game(i);}
+void xgo_diag_unload_game(void){retro_unload_game();}
+void xgo_diag_run(void){retro_run();}
+
 #define GAME_INFO (*(volatile struct retro_game_info*)0x80c2e914u)
 #define ROM_BUFFER (*(void**)0x80c33ad8u)
 #define RUN_FILE_SIZE (*(volatile unsigned*)0x80c33a7cu)
