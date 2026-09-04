@@ -100,7 +100,7 @@ jobs:
           objcopy="$tools/mips-mti-elf-objcopy"
           objdump="$tools/mips-mti-elf-objdump"
 
-          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic             -static -nostartfiles             -Wl,--gc-sections             -Wl,-Map,xgo-mame2000.map             -Wl,-T,tools/multicore/native_nes/xgo_core.ld             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld             core_entry.o gp_bridges.o frontend.o mame_environment.o state.o environment.o sbrk.o syscalls.o             -Wl,--start-group mame2000.a -lc -lm -lgcc -Wl,--end-group             -o xgo-mame2000.elf
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic             -static -nostartfiles             -Wl,--gc-sections             -Wl,-Map,xgo-mame2000.map             -Wl,-T,tools/multicore/native_nes/xgo_core.ld             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld             core_entry.o gp_bridges.o frontend.o mame_environment.o libco.o path_support.o state.o environment.o sbrk.o syscalls.o             -Wl,--start-group mame2000.a -lc -lm -lgcc -Wl,--end-group             -o xgo-mame2000.elf
 
           "$nm" -u xgo-mame2000.elf | tee undefined.txt
           test ! -s undefined.txt
