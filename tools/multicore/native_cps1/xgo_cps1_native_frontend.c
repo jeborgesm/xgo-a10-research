@@ -6,6 +6,11 @@ typedef int bool;
 #define XGO_SYSTEM_ARCADE 0x0040u
 #define MAX_ROM_SIZE 0x04000000u
 
+/* crtbegin normally provides this for C++ static-object registration.
+ * External XGOC images use -nostartfiles, so provide the freestanding anchor
+ * explicitly. __libc_init_array() still executes the actual constructors. */
+void *__dso_handle = &__dso_handle;
+
 struct retro_game_info { const char *path; const void *data; size_t size; const char *meta; };
 struct retro_system_av_info;
 typedef bool (*environment_cb)(unsigned,void*);
