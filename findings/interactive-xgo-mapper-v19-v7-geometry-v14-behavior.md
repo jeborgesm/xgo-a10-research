@@ -110,12 +110,21 @@ card ZIP SHA-256:
 c45925f965cf86b4e1efc622b02aabb5545122814743aaf7723d4dbf6ba4ec81
 ```
 
-## Hardware gate
+## Hardware result — PASS
 
-1. Verify the complete left border is visible.
-2. Move both yellow selectors through all six rows and verify unambiguous row alignment.
-3. Perform one arbitrary remap.
-4. Press A/Confirm to save and resume.
-5. Relaunch the same game and verify persistence.
+v19 passed the physical-device presentation gate on September 3, 2026.
 
-If this passes, the v8 resource regression is considered closed.
+Confirmed on the tested XGO Plus:
+
+- the complete mapper geometry, including the previously missing left side, is visible;
+- the yellow physical and target selectors are centered closely enough to make every selected row unambiguous;
+- interactive remapping remains functional;
+- A/Confirm saves the mapping and resumes gameplay;
+- per-game mapping persistence remains functional across game exit/relaunch;
+- the mapper has been exercised successfully with NES, SNES, and CPS1 titles.
+
+The v8 resource regression is therefore **closed**. v19 is the hardware-confirmed mapper release candidate and should supersede the rejected v11-v18 visual/diagnostic experiments.
+
+## Preservation note
+
+The final feature should be preserved primarily as reproducible patch/build logic, exact offsets/semantics, resource-generation steps, hashes, and hardware evidence. A redistributable release artifact should avoid publishing the proprietary stock XGO firmware or stock resource files unless redistribution rights are established. Prefer a patcher that accepts a user-supplied verified stock card/firmware and produces the v19 files locally.
