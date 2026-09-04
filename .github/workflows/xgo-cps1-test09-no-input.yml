@@ -81,7 +81,7 @@ jobs:
           "$objcopy" -O binary xgo-cps1-test09.elf xgo-cps1-test09.bin
 
           start=$((0x87000000))
-          image_end_hex=$("$nm" -n xgo-cps1-test09.elf | awk '$3=="__image_end"{print $1; exit}')
+          image_end_hex=$("$nm" -n xgo-cps1-test09.elf | awk '$3=="__image_end"{h=$1; if(length(h)>8) h=substr(h,length(h)-7); print h; exit}')
           image_end=$((16#$image_end_hex))
           memory_size=$((image_end-start))
 
