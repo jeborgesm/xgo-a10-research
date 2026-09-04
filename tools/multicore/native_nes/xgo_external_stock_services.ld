@@ -38,11 +38,17 @@ run_emulator                = 0x8035ed48;
 /* Stock globals intentionally shared with the external frontend/runtime. */
 g_errno                 = 0x80c2d640;
 g_retro_game_info       = 0x80c2e914;
-gfn_state_save          = 0x80c33a70;
+
+/*
+ * State callback ordering re-verified from run_nes @ 0x8035f63c:
+ *   0x80c33a70 receives 0x8035f50c (load_state path)
+ *   0x80c33ac0 receives 0x8035f3f0 (save_state path)
+ */
+gfn_state_load          = 0x80c33a70;
 g_run_file_size         = 0x80c33a7c;
 gfn_retro_get_region    = 0x80c33a9c;
 gfn_get_system_av_info  = 0x80c33aac;
-gfn_state_load          = 0x80c33ac0;
+gfn_state_save          = 0x80c33ac0;
 gfn_retro_load_game     = 0x80c33acc;
 gfn_retro_unload_game   = 0x80c33ad4;
 gp_buf_64m              = 0x80c33ad8;
