@@ -60,19 +60,20 @@ Direct MIPS xrefs land inside the stock `SekInit` dispatcher:
 The active selector is loaded from stock global:
 
 ```text
-gp = 0x80c114f4
+gp = 0x80c34774
 lw t0,-23952(gp)
-=> 0x80c0b764
+=> 0x80c2e9e4
 ```
 
 Therefore the stock firmware retains a runtime/backend selector with the same key values as the old handheld FBA lineage:
 
 ```text
 0 -> C68K
+1 -> Musashi path (strong inference from the three-way dispatcher and matching family numbering)
 2 -> A68K
 ```
 
-This does **not yet prove** which value XGO selects for CPS1 at launch. It gives us the exact next static-analysis target: trace writes to `0x80c0b764` and determine the selected core for CPS1/NeoGeo/other 68K families.
+This does **not yet prove** which value XGO selects for CPS1 at launch. It gives us the exact next static-analysis target: trace writes to `0x80c2e9e4` and determine the selected core for CPS1/NeoGeo/other 68K families.
 
 ## Family ancestor: FBA-a320 defaults to C68K, not A68K
 
@@ -190,7 +191,7 @@ It is:
 
 Priority static-analysis targets:
 
-1. Trace all writes/readers of XGO global `0x80c0b764` to identify the stock 68K selector policy.
+1. Trace all writes/readers of XGO global `0x80c2e9e4` to identify the stock 68K selector policy.
 2. Identify the XGO environment callback behavior for `fba-cpu-speed-adjust` and whether CPS1 receives a non-100% value.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
