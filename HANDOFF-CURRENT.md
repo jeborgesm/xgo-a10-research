@@ -146,3 +146,42 @@ stock FBA
 ```
 
 Do not resume A68K ROM bisection unless a new, specific research question requires it.
+
+
+## Audio OSD branch progress
+
+Static archaeology has now recovered the first audio-OSD anchors.
+
+Confirmed runtime symbols:
+
+```text
+g_volume         0x80c33a54
+set_audio_volume 0x801b3b40
+```
+
+The stock frontend alone imposes the four-step `0 -> 33 -> 66 -> 99 -> 0` policy. `set_audio_volume` masks the requested value to 8 bits and forwards it to the sound-device API; the next wrapper at `0x80279d20` again forwards the 8-bit value without four-step quantization.
+
+Therefore intermediate volume values can reach the final stock sound driver, although actual perceptual granularity remains a hardware question.
+
+Preferred first OSD experiment:
+
+```text
+volume-button event
+  -> set transient expiry state
+
+retro_video_refresh_cb
+  -> while active, composite a tiny RGB565 bar into outgoing frame
+  -> preserve the normal single run_screen_write call
+```
+
+This avoids touching the audio callback, sound task, CPS1 scheduler, display geometry, or adding a second OSD/DMA write per frame.
+
+Primary result:
+
+`findings/audio-osd-volume-state-and-render-strategy.md`
+
+The exact protected scheduler-success firmware was not available in the current working-file set, so no hardware candidate has yet been composed. Do not fall back to pristine stock firmware; the next candidate must be applied to the protected baseline with SHA-256:
+
+```text
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
+```
