@@ -4,6 +4,11 @@ from pathlib import Path
 p=Path("/tmp/cps1/src/burn/drv/capcom/d_cps1.cpp")
 s=p.read_text()
 
+anchor="static INT32 Cps1LoadRoms(INT32 bLoad)\n"
+if anchor not in s:
+    raise SystemExit("Cps1LoadRoms declaration anchor not found")
+s=s.replace(anchor, 'extern "C" void xgo_a68k_trace(const char *);\n\n'+anchor, 1)
+
 repls=[
 (
 '\tCps1LoadRoms(1);\n\t\n\tif (AmendProgRomCallback) AmendProgRomCallback();',
