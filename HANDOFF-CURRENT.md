@@ -276,3 +276,33 @@ Hardware regression gate is pending. Do not promote this artifact to `golden/` u
 Primary finding:
 
 `findings/audio-osd-v1-exact-patch-surface-and-candidate.md`
+
+
+## Audio OSD v1 archival promotion
+
+Hardware test passed and the exact tested ZIP is now preserved in the private artifact vault at both:
+
+```text
+xgo-audio-osd-v1-on-cps1-scheduler.zip
+golden/xgo-audio-osd-v1-on-cps1-scheduler.zip
+```
+
+Artifact ID:
+
+```text
+audio-osd-v1-on-cps1-scheduler
+```
+
+ZIP SHA-256:
+
+```text
+bdf66f60b0ed105449582e7845a9c9d8d98e3e8e6ae0a695ec9c73dc28685f76
+```
+
+Firmware SHA-256:
+
+```text
+1fc85114909d6107ff80be6e199d54dd1d9b918454ceede61d5108246d6f50c1
+```
+
+This is now the protected baseline for the next finer-volume-control experiment.
