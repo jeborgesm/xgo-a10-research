@@ -87,3 +87,5 @@ jobs:
             sf2000-sound.txt
             gb300v2-sound.txt
           retention-days: 30
+
+# trigger after workflow registration
