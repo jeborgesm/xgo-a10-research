@@ -206,7 +206,7 @@ jeborgesm/xgo-a10-artifacts
 visibility: PRIVATE — VERIFIED 2026-09-05
 ```
 
-The user populated the vault with the retained XGO research binaries, including the golden mapper-v19, SNES Test02, and current CPS1 scheduler baseline. The current vault layout is repository-root filenames; `artifacts/golden-artifacts.json` records the canonical paths.
+The user populated the vault with the retained XGO research binaries. Canonical hardware-confirmed milestones are additionally copied into the private `golden/` folder while their original root copies remain untouched. `artifacts/golden-artifacts.json` records the canonical golden paths.
 
 Current protected baseline artifact ID:
 
