@@ -195,6 +195,12 @@ g_errno        = 0x80c2d640;
 /* Battery classifier output (-1,0..4). */
 g_battery_level = 0x80c2d0d8;
 
+/* Frontend volume state persisted as Archive.sys word 2. */
+g_volume = 0x80c33a54;
+
+/* Applies an 8-bit frontend volume value to the stock sound device. */
+set_audio_volume = 0x801b3b40;
+
 /* Sound-task control word. Emulator wrappers clear bit 0 and wait for 0. */
 g_snd_task_flags = 0x80c2e80c;
 
