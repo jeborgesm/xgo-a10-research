@@ -142,6 +142,45 @@ jobs:
               --start-address=$start --stop-address=$stop "$file" | tee -a fba-hook-disassembly.txt
           done < fba-hook-locations.txt
 
+      - name: Compare scheduler hot-path structure
+        shell: bash
+        run: |
+          cat > compare_hotpath.py <<'PY'
+          from pathlib import Path
+          import struct, hashlib
+
+          def words(path,start,count):
+              b=Path(path).read_bytes()
+              off=start-0x80000000
+              return list(struct.unpack_from('<'+'I'*count,b,off))
+
+          def shape(w):
+              op=w>>26
+              if op==0:
+                  return w
+              if op in (2,3):
+                  return w & 0xfc000000
+              # preserve opcode + rs + rt, mask immediate/branch displacement
+              return w & 0xffff0000
+
+          sf_start=0x803589a4
+          gb_start=0x8035c89c
+          # Through the main timing/frameskip/save-control loop before the
+          # later state-file branches dominate the function.
+          count=(0x80358f50-sf_start)//4
+          sf=[shape(w) for w in words('sf2000.asd',sf_start,count)]
+          gb=[shape(w) for w in words('gb300v2.asd',gb_start,count)]
+          mism=[i for i,(a,b) in enumerate(zip(sf,gb)) if a!=b]
+          print('instruction_count=',count)
+          print('structural_matches=',count-len(mism))
+          print('structural_mismatches=',len(mism))
+          print('match_percent=',100.0*(count-len(mism))/count)
+          print('sf_shape_sha256=',hashlib.sha256(b''.join(struct.pack('<I',x) for x in sf)).hexdigest())
+          print('gb_shape_sha256=',hashlib.sha256(b''.join(struct.pack('<I',x) for x in gb)).hexdigest())
+          print('first_mismatch_relative_offsets=',','.join(hex(i*4) for i in mism[:80]))
+          PY
+          python3 compare_hotpath.py | tee scheduler-structural-compare.txt
+
       - name: Preserve artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -152,4 +191,5 @@ jobs:
             scheduler-normalized.txt
             fba-hook-locations.txt
             fba-hook-disassembly.txt
+            scheduler-structural-compare.txt
           retention-days: 30
