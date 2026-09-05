@@ -43,7 +43,7 @@ jobs:
           cd /tmp/fba42
 
           cp /tmp/rs97/src/cpu/m68000_intf.cpp src/cpu/m68000_intf.cpp
-          cp /tmp/rs97/src/cpu/m68000_intf.h   src/cpu/m68000_intf.h
+          # Keep the later 621e371 header/API surface; patch C68K support into it.
           rm -rf src/cpu/c68k
           cp -a /tmp/rs97/src/cpu/c68k src/cpu/c68k
 
@@ -58,6 +58,63 @@ jobs:
           if old not in s:
               raise SystemExit('donor nSekCpuCore initializer not found')
           p.write_text(s.replace(old,new,1))
+
+          # Extend the later 621e371 header rather than replacing it, so
+          # later driver declarations (SekShouldInterrupt/SekBurnUntilInt/etc.)
+          # remain available while the donor implementation supplies C68K.
+          p=Path('src/cpu/m68000_intf.h')
+          s=p.read_text()
+          old='#define EMU_M68K\t\t\t\t\t\t\t\t// Use Musashi 68000 emulator\n'
+          if old not in s:
+              # tolerate whitespace drift
+              old='#define EMU_M68K'
+              pos=s.find(old)
+              if pos < 0:
+                  raise SystemExit('target EMU_M68K marker missing')
+              end=s.find('\n',pos)+1
+              replacement='''#if defined BUILD_C68K
+ #define EMU_C68K
+ #include "c68k.h"
+#endif
+#if defined BUILD_M68K
+ #define EMU_M68K
+#endif
+'''
+              s=s[:pos]+replacement+s[end:]
+          else:
+              replacement='''#if defined BUILD_C68K
+ #define EMU_C68K
+ #include "c68k.h"
+#endif
+#if defined BUILD_M68K
+ #define EMU_M68K
+#endif
+'''
+              s=s.replace(old,replacement,1)
+
+          anchor='#define SEK_MAX\t(4)'
+          if anchor not in s:
+              raise SystemExit('SEK_MAX marker missing')
+          defs='''#define SEK_CORE_A68K (2)
+#define SEK_CORE_M68K (1)
+#define SEK_CORE_C68K (0)
+extern INT32 nSekCpuCore;
+
+'''
+          s=s.replace(anchor,defs+anchor,1)
+
+          anchor='#ifdef EMU_M68K\n extern "C" INT32 nSekM68KContextSize[SEK_MAX];'
+          if anchor not in s:
+              raise SystemExit('target M68K extern marker missing')
+          c68='''#ifdef EMU_C68K
+ extern "C" c68k_struc * SekC68KCurrentContext;
+ extern "C" c68k_struc * SekC68KContext[SEK_MAX];
+ #define c68k_ICount (SekC68KCurrentContext->ICount)
+#endif
+
+'''
+          s=s.replace(anchor,c68+anchor,1)
+          p.write_text(s)
 
           p=Path('makefile.libretro')
           s=p.read_text()
