@@ -1151,82 +1151,73 @@ Substantial chunks of the pacing/catch-up/frameskip-call path are also exact rel
 Therefore no evidence was found that SF2000 1.71 introduced a later arcade scheduler/backend/audio fix that XGO lacks. The key stock-FBA performance mechanisms predate 1.71 and are conserved across the family.
 
 
-## Scheduler comparison: shared hot-path policy, divergent surrounding frontend
+## Scheduler comparison: shared private FBA contract, divergent XGO pacing policy
 
-A first positional comparison of the complete SF2000 and GB300 v2 `run_emulator()` bodies produced only a ~3% instruction-position match. That result was misleading because it assumed corresponding instructions remained at identical relative offsets.
+A first positional comparison of the complete SF2000 and GB300 v2 `run_emulator()` bodies produced only a ~3% instruction-position match. A later sequence alignment improved local correspondence but still showed that the complete frontend loops contain substantial inserted/rearranged UI, state and control logic.
 
-A sequence alignment that tolerates insertions/deletions gives the more useful picture:
+Those generic whole-function similarity scores are **not the deciding scheduler evidence**.
 
-```text
-SF2000 analyzed instructions: 373
-GB300v2 analyzed instructions: 439
-aligned identical normalized instructions: 80
-overall sequence ratio: ~0.197
-```
-
-This proves that the **complete frontend loop evolved materially** between SF2000 08/03 and GB300 v2. GB300 contains substantial inserted/rearranged frontend, state, menu and control logic.
-
-However, the performance-critical scheduler blocks align directly.
-
-Examples:
+More targeted binary archaeology already established the actual pacing lineage:
 
 ```text
-SF2000 +0x0b8 @ 0x80358a5c
-GB300v2 +0x0c4 @ 0x8035c960
-11-instruction aligned block:
-    AV/sample-rate setup
-    sound-driver setup
-    active callback dispatch
-
-SF2000 +0x1a8 @ 0x80358b4c
-GB300v2 +0x1b4 @ 0x8035ca50
-8-instruction aligned block:
-    lateness/accumulator state
-    boolean frameskip-state generation
-    private frameskip-hook dispatch
+SF2000 08/03  -> wall-time / ideal-frame-count scheduler
+SF2000 1.71   -> same wall-time / ideal-frame-count scheduler
+GB300 v2      -> same wall-time / ideal-frame-count scheduler
+XGO           -> different incremental drift/debt scheduler
 ```
 
-Both firmwares also retain the same PAL/NTSC setup constants:
+The family therefore conserves the **private FBA performance contract** but not the exact frontend pacing algorithm.
+
+Shared across the stock arcade family:
 
 ```text
-PAL:
-  50 Hz
-  20000 usec diagnostic period
-  3528 diagnostic sound_len
-
-NTSC:
-  60 Hz
-  16667 usec diagnostic period
-  2940 diagnostic sound_len
+C68K ordinary-68000 backend
+22050-Hz / 367-sample FBA audio
+gfn_frameskip private callback
+frameskip(1) -> pBurnDraw = NULL
+frameskip(0) -> alternating FBA draw buffers
+retro_run still executes every emulated frame
+audio still executes on draw-skipped frames
 ```
 
-XGO independently reproduces the same scheduler semantics:
+The scheduler feeding that contract differs.
+
+### SF2000 / GB300 pacing
+
+The sibling scheduler anchors emulation to total elapsed wall time:
 
 ```text
-elapsed < target:
-    wait / continue pacing
-
-elapsed >= target:
-    advance timing accumulator
-
-more than one additional frame period late:
-    frameskip flag = 1
-otherwise:
-    frameskip flag = 0
-
-if gfn_frameskip != NULL:
-    gfn_frameskip(flag)
-
-retro_run() still executes every emulated frame
+elapsed_ms = tick_now - tick_start
+ideal_frame = elapsed_ms * target_fps / 1000
+next_frame = completed_frame + 1
 ```
 
-Therefore the correct family conclusion is:
+When behind, it permits up to three catch-up frames and asserts the private frameskip flag during catch-up so FBA emulates without rendering. When early, it sleeps toward the absolute ideal deadline.
 
-> The entire stock frontend is not byte-identical across SF2000, GB300 v2 and XGO, but the arcade performance contract—frame-period pacing plus adaptive render-only frameskip—is conserved.
+Because the schedule is continually recomputed from total elapsed time, small per-frame errors do not accumulate indefinitely.
 
-There is currently no evidence that GB300 v2 acquired a fundamentally different arcade scheduler that explains performance unavailable to XGO.
+### XGO pacing
 
-The earlier naïve 3% positional-diff result should **not** be interpreted as evidence of unrelated scheduler design.
+XGO instead carries incremental frame-period/debt state:
+
+```text
+PAL:  20 ms
+NTSC: repeating 17, 17, 16 ms
+```
+
+Its loop advances from the previous frame timing state, carries residual overrun debt, asserts frameskip only after lateness exceeds roughly another frame period, and discards sufficiently large accumulated debt.
+
+This is a materially different lag-recovery policy.
+
+### Correct interpretation
+
+The private FBA render-skip optimization is family-wide.
+
+The **XGO scheduler that decides when to invoke it is fork-specific**.
+
+Therefore the leading XGO-specific performance hypothesis is no longer a missing CPU backend or audio optimization. It is the pacing/recovery policy driving the already-proven stock FBA draw-skip mechanism.
+
+The earlier sequence-alignment job remains useful as evidence that the surrounding frontend evolved, but it must not be used to override the targeted scheduler reconstruction above.
 
 ## Working hypothesis
 
