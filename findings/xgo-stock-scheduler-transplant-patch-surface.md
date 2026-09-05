@@ -158,6 +158,189 @@ and the observed frameskip-flag GP slot is:
 
 The remaining timing globals around this region must be named precisely before any binary patch is emitted, but the performance-critical decision block is already localized.
 
+
+## Exact XGO pacing-state map
+
+Direct disassembly of the preserved XGO `run_emulator()` at `0x8035ed48`, using authoritative:
+
+```text
+XGO_STOCK_GP = 0x80c34774
+```
+
+now identifies the scheduler state precisely.
+
+### Persistent/global timing inputs
+
+```text
+0x80c2d128  target_fps
+             PAL  = 50
+             NTSC = 60
+
+0x80c2d118  active integer frame period in milliseconds
+             PAL  = 20
+             NTSC = 17/17/16 cadence
+
+0x80c2e870  previous/current tick anchor used by pacing loop
+
+0x80c33a74  residual overrun/debt carried into next frame
+
+0x80c33a90  frameskip flag passed to gfn_frameskip()
+
+0x80c33ae0  gfn_frameskip callback pointer
+
+0x80c33ae4  active retro_run callback pointer
+```
+
+Two nearby setup words are diagnostic/configuration values rather than required scheduler state:
+
+```text
+0x80c2d12c  20000 / 16667 usec diagnostic period
+0x80c2d114  3528 / 2940 diagnostic sound_len
+```
+
+The corrected audio analysis already established that these do not impose a hard PCM budget.
+
+### Local register state
+
+The two counters previously suspected to be firmware globals are actually local `run_emulator()` register state:
+
+```text
+s2 = 0 at 0x8035edfc
+s3 = 0 at 0x8035ee0c
+```
+
+`s3` is the NTSC modulo-3 cadence counter. It increments at:
+
+```asm
+8035efe0  addiu s3,s3,1
+8035efe4  li    a2,3
+8035efe8  beq   s3,a2,0x8035f170
+8035efec  li    v0,17
+```
+
+This implements the repeating integer cadence:
+
+```text
+17 ms
+17 ms
+16 ms
+```
+
+for exactly 60 frames per second over each 50-ms / 3-frame group.
+
+`s2` is local transient late/catch-up bookkeeping, not persistent firmware state.
+
+### Exact XGO incremental-debt loop
+
+The central timing sequence is:
+
+```asm
+8035eee8  jal   os_get_tick_count
+8035eef0  lw    v1,0x80c33a74       ; residual debt
+8035eef4  lw    a0,0x80c2e870       ; prior tick
+8035eef8  lw    a1,0x80c2d118       ; frame period
+8035eefc  move  a2,v0               ; current tick
+8035ef00  addu  v0,v0,v1
+8035ef04  subu  v0,v0,a0            ; adjusted elapsed
+8035ef08  sltu  t1,v0,a1
+8035ef0c  bne   t1,zero,wait
+8035ef10  subu  a0,v0,a1            ; overrun
+8035ef14  sltu  t2,a1,a0            ; overrun > another frame period?
+8035ef18  sw    a2,0x80c2e870       ; update tick anchor
+8035ef20  sw    a0,0x80c33a74       ; carry debt
+8035ef24  addiu a3,a1,10
+8035ef28  sltu  t3,a3,a0            ; overrun > period + 10?
+8035ef30  sw    zero,0x80c33a74     ; then discard debt
+...
+8035ef44  sw    1,0x80c33a90        ; assert frameskip
+...
+8035efd4  sw    zero,0x80c33a90     ; clear frameskip
+```
+
+If the frame is early, XGO takes:
+
+```asm
+8035f080  jal   dly_tsk
+8035f084  li    a0,1
+8035f088  branch back to pacing loop
+```
+
+Thus the previously reconstructed incremental-debt model is now tied to exact firmware storage.
+
+## New-state requirement for sibling policy
+
+A wall-time/ideal-frame implementation does not need to repurpose any of the XGO debt/cadence globals.
+
+It requires only two private words:
+
+```text
+scheduler_start_tick
+completed_frame_count
+```
+
+Everything else can reuse proven XGO state/services:
+
+```text
+target_fps     -> 0x80c2d128
+tick source    -> os_get_tick_count()
+frameskip flag -> 0x80c33a90
+frameskip hook -> 0x80c33ae0
+retro_run      -> existing XGO path
+```
+
+This is safer than overloading `0x80c33a74` or other stock state whose secondary consumers may not yet be fully named.
+
+## Patch redirection boundary
+
+The smallest useful behavioral interception is the timing decision region beginning around:
+
+```text
+0x8035eee8
+```
+
+and ending before the existing callback dispatch / general frame-processing path.
+
+The patch should return with only the existing XGO frameskip flag changed.
+
+The following must remain stock:
+
+```text
+0x8035f0d4  load frameskip argument
+0x8035f0d8  call gfn_frameskip
+...
+existing retro_run dispatch
+existing menu/state/input/audio logic
+```
+
+Therefore the desired helper contract is conceptually:
+
+```c
+void xgo_scheduler_policy(void)
+{
+    // read target_fps and wall clock
+    // update private start_tick / completed_frame
+    // bounded sibling-style catch-up
+    // write only 0x80c33a90 (frameskip flag)
+    // return to stock dispatch path
+}
+```
+
+## Code-cave constraint
+
+The historically verified low firmware cave:
+
+```text
+0x80001500..0x8000217f
+```
+
+is already part of protected native-NES/external-core infrastructure, and mapper work also uses the neighboring low injection area.
+
+It must **not** be reused casually for this scheduler experiment.
+
+A separate non-conflicting executable cave or an explicitly coordinated shared injection layout must be proven before generating a hardware candidate.
+
+This keeps the protected mapper-v19 and external-NES baselines intact.
+
 ## Minimal transplant strategy
 
 The first hardware candidate should **not** copy raw SF2000 instructions into XGO.
