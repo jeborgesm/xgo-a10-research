@@ -1108,6 +1108,48 @@ This is a concrete architectural reason why a nominally newer FBA core under the
 
 It also explains why the successful family multicore architecture needed an explicit environment bridge rather than merely loading arbitrary libretro cores under the untouched stock callback set.
 
+
+## SF2000 1.71 does not introduce a new arcade-performance architecture
+
+The later stock SF2000 1.71 firmware was compared directly against the preserved 08/03 image.
+
+```text
+SF2000 08/03 size  12,624,436
+SF2000 1.71 size   12,624,628
+```
+
+The later image preserves matching inherited blocks for the exact mechanisms already identified:
+
+```text
+08/03 run_emulator      0x803589a4 -> 1.71 0x80358af0  (64-byte exact block)
+08/03 FBA frameskip     0x803659cc -> 1.71 0x80365b38  (64-byte exact block)
+08/03 FBA retro_run     0x80365e34 -> 1.71 0x80365fa0  (24-byte exact block)
+08/03 22050/367 init    0x80367400 -> 1.71 0x8036756c  (24-byte exact block)
+08/03 SekInit compare   0x8036db90 -> 1.71 0x8036dcfc  (48-byte exact block)
+08/03 audio callback    0x80358430 -> 1.71 0x8035857c  (24-byte exact block)
+08/03 audio ring writer 0x80356864 -> 1.71 0x803569b0  (64-byte exact block)
+```
+
+The later binary still contains:
+
+```text
+SekInit SEK_CORE_C68K
+SekInit SEK_CORE_A68K
+fba-cpu-speed-adjust
+v0.2.97.42 621e371
+```
+
+and the adjacent vendor audio constants move to:
+
+```text
+22050 @ 0x8036756c
+367   @ 0x80367570
+```
+
+Substantial chunks of the pacing/catch-up/frameskip-call path are also exact relocated matches.
+
+Therefore no evidence was found that SF2000 1.71 introduced a later arcade scheduler/backend/audio fix that XGO lacks. The key stock-FBA performance mechanisms predate 1.71 and are conserved across the family.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
