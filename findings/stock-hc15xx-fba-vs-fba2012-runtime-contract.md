@@ -253,6 +253,63 @@ Provide the remaining vendor-specific evidence:
 
 
 
+
+## Exact XGO arcade callback install contract
+
+Direct XGO disassembly of the arcade wrapper install block at `0x80360870..0x80360964` now bounds the vendor frontend extension precisely.
+
+Using the authoritative XGO GP and stock global map, the wrapper installs:
+
+```text
+stock slot                    XGO arcade function
+
+gfn_state_save   0x80c33a70  <- 0x80360718
+gfn_state_load   0x80c33ac0  <- 0x803605fc
+
+gfn_retro_get_region
+                 0x80c33a9c  <- 0x8036c220
+
+gfn_get_system_av_info
+                 0x80c33aac  <- 0x8036c028
+
+gfn_retro_load_game
+                 0x80c33acc  <- 0x8036d658
+
+gfn_retro_unload_game
+                 0x80c33ad4  <- 0x8036b890
+
+gfn_frameskip    0x80c33ae0  <- 0x8036bdc0  (_SetFrameSkip)
+
+gfn_retro_run    0x80c33ae4  <- 0x8036c228
+```
+
+The key materialization is:
+
+```asm
+80360908  lui   t7,0x8037
+80360924  addiu t6,t7,-16960       ; 0x8036bdc0
+...
+80360954  sw    t6,-3220(gp)       ; gfn_frameskip
+```
+
+The same block installs the ordinary libretro-facing callbacks around it.
+
+This is significant because it shows that the arcade performance integration is not a large private API surface. At the stock frontend boundary, the relevant extension is essentially:
+
+```c
+void SetFrameSkip(int skip);
+```
+
+in addition to the normal core callbacks already expected by `run_emulator()`.
+
+No second adjacent arcade-private performance hook is installed in this callback table.
+
+Therefore the minimal wrapper contract for reproducing stock behavior is now bounded as:
+
+1. ordinary libretro callbacks;
+2. one private `SetFrameSkip(bool)` entry point;
+3. stock `run_emulator()` calls that private hook before each `retro_run()`.
+
 ## Vendor framebuffer patch is exactly a doubled upstream allocation
 
 Upstream `Aftnet/fbalpha@621e371` allocates one libretro framebuffer after `BurnDrvGetFullSize()`:
