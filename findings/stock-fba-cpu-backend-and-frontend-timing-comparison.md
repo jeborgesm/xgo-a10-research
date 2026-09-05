@@ -388,6 +388,73 @@ vendor HC15xx modifications
 
 This substantially weakens the premise that A68K is the key to reproducing stock CPS1 performance. The conserved family solution instead points first to **C68K plus lower audio workload plus vendor frontend pacing**.
 
+
+## Later-family audio-ring recovery fix: GB300 v2 has it, XGO does not
+
+A second comparison pass disassembled the stock frontend audio transport around:
+
+```text
+SF2000 08/03  run_sound_advance = 0x80356168
+GB300 v2      run_sound_advance = 0x8035adb4
+XGO           run_sound_advance = 0x8035cba0
+```
+
+The SF2000 and GB300 v2 functions share the same ring-buffer transport structure:
+
+- convert libretro frame count to bytes with `frames << 2`;
+- wait when producer/consumer pointers would overlap;
+- copy directly when contiguous space is available;
+- split the copy across the ring end when wrapping;
+- update the producer/write pointer.
+
+GB300 v2, however, contains an additional recovery tail that is absent from the older SF2000 implementation. After calculating the next ring position, the later code checks the resulting buffer relationship and, on the recovery condition, clears the producer/occupancy state and calls a helper with argument `1` before continuing.
+
+Normalized sibling diff shows the added GB300 v2 tail:
+
+```asm
+... compute next ring position ...
+sw   next_position, producer_state
+li   a0,1
+jal  <recovery helper>
+sw   zero, producer_state
+...
+```
+
+Direct disassembly of the preserved XGO `run_sound_advance()` shows that XGO does **not** contain this later recovery tail. Its wrapped-copy path ends with:
+
+```asm
+8035cc8c  move  a1,s4
+8035cc90  move  a2,s3
+8035cc94  jal   memcpy
+8035cc98  addu  a0,t5,a3
+8035cc9c  lw    a0,<ring_base>
+8035cca0  addu  a1,s4,s3
+8035cca4  jal   memcpy
+8035cca8  move  a2,s0
+8035ccac  sw    s0,<producer_state>
+...
+8035ccc8  jr    ra
+8035cccc  addiu sp,sp,40
+```
+
+There is no post-update threshold/reset/helper sequence before return.
+
+This establishes a real later-family divergence:
+
+```text
+SF2000 08/03 : original ring transport
+XGO          : original-style ring transport
+GB300 v2     : ring transport + recovery tail
+```
+
+This is the first concrete later-family runtime fix found in this CPS1 optimization pivot that is present in GB300 v2 but absent from XGO.
+
+### Why it matters
+
+The user-observed XGO stock CPS1 symptom is not catastrophic failure; it is intermittent lag/choppiness. A missing audio-ring recovery mechanism is therefore a plausible contributor because a producer/consumer drift or stale occupancy condition could force extra waits inside `run_sound_advance()`, which is called synchronously from every libretro audio batch.
+
+This is **not yet proof** that the GB300 v2 recovery fixes XGO CPS1 lag. The helper target and exact trigger semantics must be resolved before proposing a patch. But unlike the abandoned ROM bisection, this is now a concrete family-derived mechanism directly in the stock runtime path.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
@@ -402,6 +469,6 @@ Priority static-analysis targets:
 2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
-5. Diff stock `run_emulator` pacing/frameskip behavior across SF2000 08/03, GB300 v2, and XGO now that the core-side audio/backend traits are shown to be conserved.
+5. Resolve the GB300 v2 audio-ring recovery helper/condition and determine whether transplanting that small runtime fix into XGO is safe before any hardware candidate.
 
 No hardware candidate should be built until these static comparisons produce a concrete transplant or patch hypothesis.
