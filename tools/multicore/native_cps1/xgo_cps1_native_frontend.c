@@ -49,6 +49,9 @@ extern void xgo_core_unload_game(void);
 extern void xgo_core_run(void);
 extern int xgo_core_state_save(const char*);
 extern int xgo_core_state_load(const char*);
+#ifdef XGO_STOCK_FBA_CONTRACT
+extern void xgo_fba_stock_frameskip(int flag);
+#endif
 
 #define GAME_INFO (*(volatile struct retro_game_info*)0x80c2e914u)
 #define ROM_BUFFER (*(void**)0x80c33ad8u)
@@ -254,7 +257,11 @@ int __core_entry_c(const char *filename,int load_state)
     GFN_LOAD_GAME=xgo_core_load_game;
     GFN_UNLOAD_GAME=xgo_core_unload_game;
     GFN_RUN=xgo_core_run;
+#ifdef XGO_STOCK_FBA_CONTRACT
+    GFN_FRAMESKIP=(void*)xgo_fba_stock_frameskip;
+#else
     GFN_FRAMESKIP=0;
+#endif
 
     xgo_a68k_trace("F10 before stock run_emulator");
     xgo_stock_run_emulator(load_state);
