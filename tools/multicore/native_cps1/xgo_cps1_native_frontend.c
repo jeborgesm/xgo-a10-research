@@ -263,9 +263,13 @@ int __core_entry_c(const char *filename,int load_state)
     GFN_FRAMESKIP=0;
 #endif
 
+#ifndef XGO_STOCK_FBA_CONTRACT
     xgo_a68k_trace("F10 before stock run_emulator");
+#endif
     xgo_stock_run_emulator(load_state);
+#ifndef XGO_STOCK_FBA_CONTRACT
     xgo_a68k_trace("F11 after stock run_emulator");
+#endif
     retro_deinit();
 
     GFN_STATE_SAVE=old_state_save;
