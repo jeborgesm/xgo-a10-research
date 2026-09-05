@@ -35,7 +35,7 @@ jobs:
               multu $t2,$t3
               mflo  $t4
               addiu $t5,$zero,1000
-              divu  $t4,$t5
+              .word 0x018d001b              # raw: divu $zero,$t4,$t5; divisor is literal 1000
               mflo  $t6                     # ideal_frame
               lw    $t7,-30280($gp)         # completed_frame_count
               addiu $t8,$t7,1               # next_frame
