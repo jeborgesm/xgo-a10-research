@@ -100,6 +100,18 @@ jobs:
               '',
           ])
           s = s.replace(anchor, c68 + anchor, 1)
+
+          # Later non-CPS driver code names the Musashi autovector constant
+          # even when Musashi is disabled. RS97 carries this compatibility
+          # fallback for exactly that build configuration.
+          anchor = '#define SEK_MAX\t(4)'
+          compat = '\n'.join([
+              '#ifndef M68K_INT_ACK_AUTOVECTOR',
+              ' #define M68K_INT_ACK_AUTOVECTOR 0xffffffff',
+              '#endif',
+              '',
+          ])
+          s = s.replace(anchor, compat + anchor, 1)
           p.write_text(s)
 
           # Makefile: exact Codescape MIPS static build, no Musashi for this CPS1 proof.
