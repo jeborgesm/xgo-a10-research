@@ -1008,6 +1008,64 @@ Before altering CPU cores or FBA ROM handling again, evaluate whether XGO can sa
 
 A scheduler-only transplant or equivalent minimal patch is now a substantially better-founded hardware experiment than another external emulator replacement.
 
+
+## Why the newer FBA2012 path does not inherit stock frameskip behavior automatically
+
+Direct source comparison against the frozen `libretro/fbalpha2012_cps1` lineage shows a meaningful CPS1 rendering-contract change.
+
+### Old family CPS1 loop
+
+The FBA-a320-era CPS1 engine used by the stock family gates drawing through `pBurnDraw`:
+
+```cpp
+if (pBurnDraw) {
+    CpsDraw();
+}
+```
+
+This is exactly what the vendor private hook exploits by setting the active draw pointer to `NULL` when the stock frontend is late.
+
+### FBA2012 CPS1 loop
+
+The frozen FBA2012 CPS1 engine instead uses:
+
+```cpp
+if (!nSkipFrame) {
+    CpsDraw();
+}
+```
+
+and its libretro wrapper sets `nSkipFrame` from its own frameskip subsystem.
+
+That subsystem is activated through:
+
+```text
+RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK
+```
+
+with automatic mode driven by frontend audio-buffer underrun status.
+
+If the frontend does not support that environment command, FBA2012 explicitly disables its frameskip monitoring.
+
+The ordinary XGO stock environment callback does not expose this libretro audio-buffer-status facility. SF2000 Multicore implements it only in its **custom multicore wrapper**, where it bridges the request back into the stock-private `gfn_frameskip` mechanism.
+
+Therefore:
+
+```text
+stock vendor FBA:
+    stock scheduler -> gfn_frameskip -> pBurnDraw NULL -> CpsDraw skipped
+
+plain FBA2012 under stock environment:
+    no SET_AUDIO_BUFFER_STATUS_CALLBACK support
+    -> FBA2012 frameskip inactive
+    -> nSkipFrame remains 0
+    -> CpsDraw executes every frame
+```
+
+This is a concrete architectural reason why a nominally newer FBA core under the HC15xx stock frontend does **not** automatically reproduce stock arcade performance.
+
+It also explains why the successful family multicore architecture needed an explicit environment bridge rather than merely loading arbitrary libretro cores under the untouched stock callback set.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
