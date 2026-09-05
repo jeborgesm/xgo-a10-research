@@ -428,6 +428,81 @@ Accordingly:
 
 This correction preserves the research rule that family evidence must produce a concrete mechanism before hardware testing.
 
+
+## Exact audio callback/ring-writer comparison: conserved across the family
+
+The libretro audio callbacks are structurally identical in SF2000 08/03, GB300 v2, and XGO.
+
+They all:
+
+1. read the stock millisecond tick;
+2. call the actual PCM ring writer;
+3. read the tick again;
+4. measure callback duration;
+5. if the call took at least 21 ms, store the current tick in a frontend timing global;
+6. return zero rather than the conventional consumed-frame count.
+
+Exact ring-writer targets:
+
+```text
+SF2000 08/03  retro_audio_sample_batch_cb 0x80358430
+                -> ring writer 0x80356864
+
+GB300 v2      retro_audio_sample_batch_cb 0x8035c25c
+                -> ring writer 0x8035b4b0
+
+XGO           retro_audio_sample_batch_cb 0x8035e7d8
+                -> ring writer 0x8035cba0
+```
+
+The callback body in all three includes the same threshold:
+
+```asm
+tick_before = os_get_tick_count()
+ring_writer(data, frames)
+tick_after  = os_get_tick_count()
+elapsed = tick_after - tick_before
+if (elapsed >= 21)
+    timing_global = tick_after
+return 0
+```
+
+The exact SF2000 and GB300 v2 ring writers are also instruction-for-instruction equivalent modulo relocated GP globals and libc addresses. XGO's preserved ring writer has the same control-flow and operation sequence:
+
+- `byte_count = frames << 2`;
+- compute producer end position;
+- if the write would collide with the consumer region, repeatedly `dly_tsk(1)`;
+- contiguous `memcpy` when no wrap is required;
+- split `memcpy` when crossing the ring end;
+- update the producer pointer;
+- return.
+
+Therefore the stock PCM producer path and its blocking semantics are a **conserved family mechanism**, not a later GB300 improvement.
+
+This also clarifies the earlier misleading diff: the apparent GB300-only recovery code belonged to the next sound-driver function and was exposed only because the SF2000 disassembly window had been truncated.
+
+### Consequence
+
+The remaining high-value runtime comparison is now one layer higher:
+
+> the `run_emulator()` timing/frameskip state machine that decides when to run frames, when to invoke the optional `gfn_frameskip` callback, and how the 21-ms audio timing global affects pacing.
+
+On XGO, `run_emulator()` reads `gfn_frameskip = 0x80c33ae0` at:
+
+```text
+0x8035ef54
+0x8035ef70
+```
+
+and, when non-null, calls it at:
+
+```asm
+8035f0d4  lw    a0,<frameskip_flag>
+8035f0d8  jalr  v0              ; gfn_frameskip(flag)
+```
+
+The flag is maintained by the surrounding timing accumulator rather than by the FBA core itself. This is the next family-diff target.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
@@ -442,6 +517,6 @@ Priority static-analysis targets:
 2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
-5. Resolve exact corresponding audio-batch and ring-buffer function boundaries across SF2000, GB300 v2, and XGO before declaring any later-family runtime fix.
+5. Diff the exact `run_emulator()` timing accumulator and `gfn_frameskip(flag)` decision path across SF2000 08/03, GB300 v2, and XGO.
 
 No hardware candidate should be built until these static comparisons produce a concrete transplant or patch hypothesis.
