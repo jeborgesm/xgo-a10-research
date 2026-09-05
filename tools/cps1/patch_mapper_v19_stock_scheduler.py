@@ -50,8 +50,8 @@ WORD_PATCHES = {
 # The main and early blocks must still contain exact known XGO stock/v19 bytes.
 # Hashes are over the original bytes, not the patched bytes. They make the
 # patch refuse a v19 derivative whose scheduler code has already changed.
-EXPECTED_MAIN_SHA256 = "__MAIN_ORIGINAL_SHA__"
-EXPECTED_EARLY_SHA256 = "__EARLY_ORIGINAL_SHA__"
+EXPECTED_MAIN_SHA256 = "d67c117fa1e6721da5f616de16014751e3ac3c297a5fa889246d8a66dfd02b09"
+EXPECTED_EARLY_SHA256 = "b28cce0792c966fc666c0a7e59b9506056d6dbe016356ac42c73daead28d1157"
 
 def crc32_mpeg2(data: bytes) -> int:
     crc = 0xFFFFFFFF
