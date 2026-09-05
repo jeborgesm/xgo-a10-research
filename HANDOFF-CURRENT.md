@@ -185,3 +185,51 @@ The exact protected scheduler-success firmware was not available in the current 
 ```text
 9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
 ```
+
+
+## Golden artifact preservation workflow
+
+The project no longer treats the researcher's local Downloads folder as the canonical binary archive.
+
+Public repository responsibilities:
+
+```text
+docs/artifact-preservation.md
+artifacts/golden-artifacts.json
+tools/artifacts/verify_golden_artifact.py
+```
+
+Private binary vault target:
+
+```text
+jeborgesm/xgo-a10-artifacts
+visibility: PRIVATE
+```
+
+Current protected baseline artifact ID:
+
+```text
+cps1-scheduler-v1-on-snes-test02
+```
+
+Canonical filename:
+
+```text
+xgo-cps1-scheduler-v1-on-snes-test02.zip
+```
+
+Exact ZIP SHA-256:
+
+```text
+0c5a50f7d4b7f1b2b9a5f91a6b8856e3019a994ed43fc79a3f2579b38eaa9f8f
+```
+
+Firmware SHA-256:
+
+```text
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
+```
+
+Future branch closure rule:
+
+A hardware-confirmed binary candidate is not considered fully preserved until its exact ZIP is recorded in `golden-artifacts.json` and copied to the private artifact vault. Handoffs should reference the artifact ID, not depend on local filenames.
