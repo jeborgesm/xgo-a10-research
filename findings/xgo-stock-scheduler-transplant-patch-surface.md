@@ -763,3 +763,56 @@ The family archaeology has now produced a concrete mechanism suitable for a cont
 > **Keep XGO's stock FBA and private draw-skip implementation, but evaluate replacing only XGO's incremental drift/debt pacing policy with the sibling wall-time bounded-catch-up policy.**
 
 No hardware package should be built until the exact XGO state/global map and branch patch surface are completed.
+
+
+## Hardware candidate composed onto current protected baseline
+
+The user's restored card was not bare mapper-v19. It was the later hardware-test baseline:
+
+```text
+mapper-v19 + native Snes9x2005 Core #2 Test02
+
+bisrv.asd SHA-256:
+8db8d091f7896e0847d63455ec325bdc9889a2caeebd3d37525c0005006a226a
+```
+
+Its manifest proves it was composed from golden mapper-v19 while preserving the mapper and adding:
+
+```text
+relocated SNES loader @ 0x80002230
+SNES dispatch JAL @ 0x80360e40
+external /cores/snes9x2005/core.xgc
+```
+
+Direct byte verification against the uploaded Test02 firmware confirmed:
+
+- every scheduler small-edit site still matches original XGO/v19 bytes;
+- the complete original main scheduler block hash is unchanged:
+  `d67c117fa1e6721da5f616de16014751e3ac3c297a5fa889246d8a66dfd02b09`;
+- the early scheduler island hash is unchanged:
+  `b28cce0792c966fc666c0a7e59b9506056d6dbe016356ac42c73daead28d1157`;
+- the SNES loader region and SNES dispatch word are outside the scheduler patch surface.
+
+Therefore the scheduler candidate was composed directly onto this protected Test02 baseline rather than asking the user to regress to bare mapper-v19.
+
+Generated candidate firmware:
+
+```text
+SHA-256:
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
+
+LCFG CRC-32/MPEG-2:
+0xf9b3715e
+```
+
+The generated overlay ZIP contains only:
+
+```text
+README-HARDWARE-TEST.txt
+XGO-SCHEDULER-V1-MANIFEST.txt
+bios/bisrv.asd
+```
+
+so existing `Resources`, `cores`, ROMs, KMP files, and other SD-card content remain untouched.
+
+This is the preferred first hardware test baseline.
