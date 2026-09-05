@@ -34,7 +34,11 @@ jobs:
               --start-address=$((ss)) --stop-address=$((se)) "$file" > "$name-sound.txt"
           }
           dump sf2000.asd sf2000 0x803589a4 0x80359d1c 0x80356168 0x80356380
-          dump gb300v2.asd gb300v2 0x8035c89c 0x8035de78 0x8035adb4 0x8035b000
+          dump gb300v2.asd gb300v2 0x8035c89c 0x8035de78 0x8035adb4 0x8035b080
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80358430)) --stop-address=$((0x80358490)) sf2000.asd > sf2000-audiocb.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035c25c)) --stop-address=$((0x8035c2bc)) gb300v2.asd > gb300v2-audiocb.txt
 
       - name: Extract scheduler and frameskip landmarks
         shell: bash
@@ -77,6 +81,12 @@ jobs:
           cat sf2000-sound.txt
           echo "===== GB300V2 SOUND FULL ====="
           cat gb300v2-sound.txt
+            sf2000-audiocb.txt
+            gb300v2-audiocb.txt
+          echo "===== SF2000 AUDIO CALLBACK ====="
+          cat sf2000-audiocb.txt
+          echo "===== GB300V2 AUDIO CALLBACK ====="
+          cat gb300v2-audiocb.txt
 
       - name: Preserve reports
         uses: actions/upload-artifact@v4
