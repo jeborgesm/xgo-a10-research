@@ -109,6 +109,14 @@ jobs:
           insert='BURN_BLACKLIST += $(FBA_CPU_DIR)/c68k/c68k_ini.c \\\n\t$(FBA_CPU_DIR)/c68k/c68k_op.c\n\n'
           s=s[:first]+insert+s[first:]
 
+          # Force the include fragments out at final SOURCES_C formation;
+          # the makefile initializes BURN_BLACKLIST after platform handling.
+          old='SOURCES_C := $(filter-out $(BURN_BLACKLIST),$(foreach dir,$(FBA_SRC_DIRS),$(wildcard $(dir)/*.c)))'
+          new='SOURCES_C := $(filter-out $(BURN_BLACKLIST) $(FBA_CPU_DIR)/c68k/c68k_ini.c $(FBA_CPU_DIR)/c68k/c68k_op.c,$(foreach dir,$(FBA_SRC_DIRS),$(wildcard $(dir)/*.c)))'
+          if old not in s:
+              raise SystemExit('SOURCES_C marker missing')
+          s=s.replace(old,new,1)
+
           old='\t-I$(FBA_CPU_DIR) \\\n'
           if old not in s:
               raise SystemExit('CPU include marker missing')
