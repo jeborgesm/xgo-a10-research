@@ -73,6 +73,10 @@ jobs:
           head -n 1200 run.diff
           echo "===== SOUND DIFF ====="
           head -n 800 sound.diff
+          echo "===== SF2000 SOUND FULL ====="
+          cat sf2000-sound.txt
+          echo "===== GB300V2 SOUND FULL ====="
+          cat gb300v2-sound.txt
 
       - name: Preserve reports
         uses: actions/upload-artifact@v4
