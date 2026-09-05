@@ -62,6 +62,39 @@ Constraints:
 - do not move timing-sensitive audio work into printf/log paths that could perturb pacing;
 - prefer existing stock framebuffer/text routines over a new renderer.
 
+## Priority roadmap after audio OSD
+
+The user explicitly set the next research priorities:
+
+```text
+1. Audio OSD experiments                         <- current branch
+2. On-device game-library scan/list regeneration <- next priority
+3. Additional reliable emulator cores            <- after library work
+```
+
+### Next priority: on-device game-library regeneration
+
+Research question:
+
+> Can XGO itself scan ROM folders on command and regenerate/update the stock main game lists, eliminating the need for a Windows-side library-building application?
+
+Earlier work considered an external Windows application as a practical way to add games to the stock lists. Re-open that only as a comparison/reference implementation. The preferred direction is now to determine whether the device can perform the same discovery/index-generation work itself.
+
+Investigation should establish:
+
+- exact stock list/index/database formats and all dependent assets;
+- whether filenames, display names, ordering, thumbnails/previews, system IDs, favorites, mapper/config records, or offsets are precomputed;
+- which stock code reads those structures and whether any dormant scanner/indexer already exists;
+- whether sibling HC15xx/SF2000/GB300 firmware contains an on-device refresh/rebuild mechanism;
+- minimum RAM/CPU/storage cost of scanning folders on XGO;
+- safe trigger mechanism, preferably an explicit user command rather than scanning every boot;
+- atomic/recoverable list regeneration so interruption cannot destroy the existing library;
+- how custom ROMs coexist with stock entries and per-game mapper/save metadata.
+
+Do not assume a new screen is required until the stock list architecture is understood. First determine whether regenerated entries can feed the existing stock game-list UI directly.
+
+If new emulator/system support later requires game categories the stock UI cannot represent, treat **new screens/system browsers** as a separate UI architecture problem. That may be a substantially larger lift and should build on the library-format/scanner findings rather than precede them.
+
 ## Secondary/future research track: additional reliable cores
 
 This is intentionally deferred until the audio OSD branch has a stable baseline.
