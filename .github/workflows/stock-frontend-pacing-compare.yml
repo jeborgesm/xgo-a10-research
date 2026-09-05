@@ -81,8 +81,6 @@ jobs:
           cat sf2000-sound.txt
           echo "===== GB300V2 SOUND FULL ====="
           cat gb300v2-sound.txt
-            sf2000-audiocb.txt
-            gb300v2-audiocb.txt
           echo "===== SF2000 AUDIO CALLBACK ====="
           cat sf2000-audiocb.txt
           echo "===== GB300V2 AUDIO CALLBACK ====="
@@ -100,6 +98,8 @@ jobs:
             gb300v2-run.txt
             sf2000-sound.txt
             gb300v2-sound.txt
+            sf2000-audiocb.txt
+            gb300v2-audiocb.txt
           retention-days: 30
 
 # trigger after workflow registration
