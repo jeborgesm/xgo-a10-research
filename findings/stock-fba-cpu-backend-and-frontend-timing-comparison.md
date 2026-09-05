@@ -401,6 +401,33 @@ It therefore avoids the expensive CPS drawing/output work while preserving CPU e
 
 This is qualitatively different from the earlier external MAME2000 experiment where frame skipping was layered outside a different core. The family stock mechanism is integrated directly with the FBA draw pointer and stock frontend scheduler.
 
+
+### Render-skip hook is conserved across the stock family
+
+A semantic binary scan was then run against the preserved SF2000 08/03 and GB300 v2 stock images. The scanner matched the complete 12-instruction private FBA hook shape while ignoring only GP-relative storage offsets.
+
+The FBA-region matches are:
+
+```text
+SF2000 08/03  0x803659cc
+GB300 v2      0x80369f2c
+XGO           0x8036bdc0
+```
+
+Each match has the same behavior signature:
+
+```text
+if (frameskip_flag != 0):
+    active draw buffer = NULL
+else:
+    toggle buffer index
+    active draw buffer = framebuffers[index]
+```
+
+The scanner also found unrelated structural matches elsewhere in each firmware, but the addresses above reside in the corresponding embedded FBA regions and track the family FBA relocation deltas established by the earlier `SekInit` and audio-tuple comparison.
+
+Therefore adaptive render-only frameskip plus FBA double-buffer selection is a **conserved stock-family arcade mechanism** across SF2000 08/03, GB300 v2 and XGO.
+
 ### Double-buffering
 
 When drawing is enabled, the private hook toggles between two frame-buffer pointers before each rendered frame.
