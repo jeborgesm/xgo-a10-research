@@ -108,6 +108,26 @@ See:
 - [`findings/hardware-test-stage6-controller-preload-null-deref.md`](findings/hardware-test-stage6-controller-preload-null-deref.md)
 - [`findings/xgo-bidirectional-gp-abi.md`](findings/xgo-bidirectional-gp-abi.md)
 
+## Golden binary preservation
+
+The public archaeology repository deliberately does not store proprietary firmware bytes. Exact hardware-confirmed binaries are preserved separately in the **private** companion vault `jeborgesm/xgo-a10-artifacts`.
+
+The canonical milestones are indexed here:
+
+- [`artifacts/golden-artifacts.json`](artifacts/golden-artifacts.json) — artifact IDs, SHA-256 identities, provenance, parent baselines, and canonical private-vault paths.
+- [`docs/artifact-preservation.md`](docs/artifact-preservation.md) — promotion and preservation policy.
+- [`tools/artifacts/verify_golden_artifact.py`](tools/artifacts/verify_golden_artifact.py) — exact ZIP/member verifier.
+
+Current golden chain:
+
+```text
+mapper-v19
+  -> snes-test02-on-mapper-v19
+     -> cps1-scheduler-v1-on-snes-test02   [CURRENT PROTECTED BASELINE]
+```
+
+The private vault retains the original experimental history at repository root and keeps additional byte-identical copies of canonical hardware-confirmed milestones under `golden/`. Handoffs and future experiments should refer to artifact IDs rather than local filenames.
+
 ## Yes — the custom code is preserved
 
 The hardware-tested work is **source-controlled in this repository**, not just represented by generated binaries or chat notes. Git history also preserves the intermediate diagnostic experiments and failed hypotheses that led to the working implementation.

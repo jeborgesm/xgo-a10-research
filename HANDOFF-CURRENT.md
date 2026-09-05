@@ -1,123 +1,237 @@
 # HANDOFF-CURRENT
 
-## Branch closure: research-post-mapper-runtime
+## Active branch
 
-This branch is ready to merge.
+`research-audio-osd`
 
-### Hardware-confirmed result
+Created from merged `main` commit:
 
-The stock CPS1 scheduler-only transplant is hardware-confirmed successful on the protected baseline:
+```text
+2a12bd0fdf0999f2cbffbe9802dc9e25485b2a21
+```
+
+The previous `research-post-mapper-runtime` branch is closed and merged.
+
+## Protected hardware baseline
+
+Preserve the successful composed baseline:
 
 ```text
 Mapper v19
 + native Snes9x2005 Core #2 Test02
-+ sibling-derived wall-time / bounded-catchup scheduler
++ hardware-confirmed sibling-derived CPS1 scheduler
 ```
 
-Input protected firmware SHA-256:
-
-```text
-8db8d091f7896e0847d63455ec325bdc9889a2caeebd3d37525c0005006a226a
-```
-
-Successful scheduler candidate SHA-256:
+Successful scheduler candidate firmware SHA-256:
 
 ```text
 9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
 ```
 
-Hardware observation:
+Do not regress this baseline while instrumenting audio.
 
-- Street Fighter II Ryu-vs-Guile was the known slowdown/frame-drop case.
-- With the new scheduler, there was no prolonged "underwater" slowdown.
-- Frame drops were minimal.
-- Gameplay remained normal enough to complete and win the fight.
-- Existing protected baseline behavior continued to work as expected.
+## Immediate scope: audio OSD experiments
+
+Goal:
+
+> expose useful stock audio state on-screen with the smallest possible runtime disturbance.
+
+Research order:
+
+1. Recover the stock volume/mute/mixer state variables and their update paths.
+2. Identify the least invasive existing OSD/text/blit path available during gameplay.
+3. Prove a tiny diagnostic overlay can be drawn without altering emulator cadence.
+4. Start with read-only telemetry.
+5. Only after that consider interactive audio controls or richer diagnostics.
+
+Preferred first OSD values:
+
+```text
+volume level
+mute state
+active sample rate
+audio batch/frame count if cheaply available
+ring-buffer fill/occupancy if a stable stock value exists
+```
+
+Constraints:
+
+- no new emulator core in this branch initially;
+- do not touch the successful CPS1 scheduler unless instrumentation proves a conflict;
+- preserve Mapper v19 and native SNES baseline;
+- do not move timing-sensitive audio work into printf/log paths that could perturb pacing;
+- prefer existing stock framebuffer/text routines over a new renderer.
+
+## Priority roadmap after audio OSD
+
+The user explicitly set the next research priorities:
+
+```text
+1. Audio OSD experiments                         <- current branch
+2. On-device game-library scan/list regeneration <- next priority
+3. Additional reliable emulator cores            <- after library work
+```
+
+### Next priority: on-device game-library regeneration
+
+Research question:
+
+> Can XGO itself scan ROM folders on command and regenerate/update the stock main game lists, eliminating the need for a Windows-side library-building application?
+
+Earlier work considered an external Windows application as a practical way to add games to the stock lists. Re-open that only as a comparison/reference implementation. The preferred direction is now to determine whether the device can perform the same discovery/index-generation work itself.
+
+Investigation should establish:
+
+- exact stock list/index/database formats and all dependent assets;
+- whether filenames, display names, ordering, thumbnails/previews, system IDs, favorites, mapper/config records, or offsets are precomputed;
+- which stock code reads those structures and whether any dormant scanner/indexer already exists;
+- whether sibling HC15xx/SF2000/GB300 firmware contains an on-device refresh/rebuild mechanism;
+- minimum RAM/CPU/storage cost of scanning folders on XGO;
+- safe trigger mechanism, preferably an explicit user command rather than scanning every boot;
+- atomic/recoverable list regeneration so interruption cannot destroy the existing library;
+- how custom ROMs coexist with stock entries and per-game mapper/save metadata.
+
+Do not assume a new screen is required until the stock list architecture is understood. First determine whether regenerated entries can feed the existing stock game-list UI directly.
+
+If new emulator/system support later requires game categories the stock UI cannot represent, treat **new screens/system browsers** as a separate UI architecture problem. That may be a substantially larger lift and should build on the library-format/scanner findings rather than precede them.
+
+## Secondary/future research track: additional reliable cores
+
+This is intentionally deferred until the audio OSD branch has a stable baseline.
+
+Question:
+
+> Which additional emulator cores can run reliably enough on XGO to be worth supporting?
+
+Use a compatibility-first survey rather than "does it boot?"
+
+Evaluate each candidate on:
+
+```text
+CPU cost / MIPS32 suitability
+memory footprint
+video format / resolution
+audio sample rate and batching
+stock frontend ABI compatibility
+input/controller requirements
+save-state behavior
+representative-game performance
+return-to-menu stability
+```
+
+Classify results as:
+
+```text
+A — reliable/playable
+B — works with limitations
+C — boots but impractical
+D — incompatible
+```
+
+Prioritize lightweight 8/16-bit cores and HC15xx/SF2000-family ports before heavier systems.
+
+Do not assume that generic libretro compatibility means practical XGO compatibility.
+
+## Authoritative CPS1 conclusion carried forward
+
+The successful CPS1 result remains:
+
+```text
+stock FBA
++ C68K
++ 22050-Hz / 367-sample audio
++ private render-only frameskip
++ sibling wall-time / bounded-catchup pacing
+= hardware-confirmed removal of prolonged underwater slowdown
+```
+
+Do not resume A68K ROM bisection unless a new, specific research question requires it.
+
+
+## Audio OSD branch progress
+
+Static archaeology has now recovered the first audio-OSD anchors.
+
+Confirmed runtime symbols:
+
+```text
+g_volume         0x80c33a54
+set_audio_volume 0x801b3b40
+```
+
+The stock frontend alone imposes the four-step `0 -> 33 -> 66 -> 99 -> 0` policy. `set_audio_volume` masks the requested value to 8 bits and forwards it to the sound-device API; the next wrapper at `0x80279d20` again forwards the 8-bit value without four-step quantization.
+
+Therefore intermediate volume values can reach the final stock sound driver, although actual perceptual granularity remains a hardware question.
+
+Preferred first OSD experiment:
+
+```text
+volume-button event
+  -> set transient expiry state
+
+retro_video_refresh_cb
+  -> while active, composite a tiny RGB565 bar into outgoing frame
+  -> preserve the normal single run_screen_write call
+```
+
+This avoids touching the audio callback, sound task, CPS1 scheduler, display geometry, or adding a second OSD/DMA write per frame.
 
 Primary result:
 
-`findings/hardware-test-stock-cps1-sibling-scheduler-success.md`
+`findings/audio-osd-volume-state-and-render-strategy.md`
 
-### Authoritative technical conclusion
-
-Family-wide archaeology established:
+The exact protected scheduler-success firmware was not available in the current working-file set, so no hardware candidate has yet been composed. Do not fall back to pristine stock firmware; the next candidate must be applied to the protected baseline with SHA-256:
 
 ```text
-ordinary CPS1/68000 -> C68K
-FBA audio           -> 22050 Hz / 367 samples
-private frameskip   -> render-only suppression via NULL pBurnDraw
-emulation/audio     -> continue on skipped-render frames
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
 ```
 
-The FBA-side mechanisms are conserved across SF2000, GB300 v2 and XGO.
 
-The important XGO divergence was frontend pacing:
+## Golden artifact preservation workflow
+
+The project no longer treats the researcher's local Downloads folder as the canonical binary archive.
+
+Public repository responsibilities:
 
 ```text
-SF2000 / GB300
-  -> wall-time / ideal-frame-count scheduler
-  -> bounded catch-up
-  -> aggressive short render-skip recovery
-
-XGO
-  -> incremental drift/debt scheduler
-  -> poorer recovery
-  -> prolonged slow-motion under transient load
+docs/artifact-preservation.md
+artifacts/golden-artifacts.json
+tools/artifacts/verify_golden_artifact.py
 ```
 
-Replacing only XGO's pacing policy with the sibling-style wall-time/bounded-catchup policy fixed the known CPS1 slowdown stress case on hardware.
+Private binary vault:
 
-### Important superseded directions
+```text
+jeborgesm/xgo-a10-artifacts
+visibility: PRIVATE — VERIFIED 2026-09-05
+```
 
-Do not resume A68K ROM bisection as the default CPS1 strategy.
+The user populated the vault with the retained XGO research binaries. Canonical hardware-confirmed milestones are additionally copied into the private `golden/` folder while their original root copies remain untouched. `artifacts/golden-artifacts.json` records the canonical golden paths.
 
-Do not assume a replacement FBA core is required for CPS1 performance.
+Current protected baseline artifact ID:
 
-The external/A68K work remains useful archaeological evidence, but the successful stock-FBA scheduler path is now the preferred CPS1 baseline.
+```text
+cps1-scheduler-v1-on-snes-test02
+```
 
-### Lessons learned
+Canonical filename:
 
-1. Compare sibling stock firmware before replacing a subsystem wholesale.
-2. CPU backend, audio workload, scheduler and frontend callback semantics form one performance contract.
-3. "Faster core" does not automatically mean better device behavior.
-4. Manufacturer-family implementations can reveal intended fixes much faster than repeated blind binary bisection.
-5. Preserve known-good card baselines and compose experiments onto them rather than rolling back unrelated confirmed features.
+```text
+xgo-cps1-scheduler-v1-on-snes-test02.zip
+```
 
-## Next branch
+Exact ZIP SHA-256:
 
-Open a clean branch for **audio OSD experiments**.
+```text
+0c5a50f7d4b7f1b2b9a5f91a6b8856e3019a994ed43fc79a3f2579b38eaa9f8f
+```
 
-Suggested branch name:
+Firmware SHA-256:
 
-`research-audio-osd`
+```text
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
+```
 
-Initial scope:
+Future branch closure rule:
 
-1. recover the stock audio-volume / mixer state available to the frontend;
-2. identify a low-risk OSD render path for temporary on-screen audio diagnostics;
-3. avoid disturbing stock emulator timing while instrumenting audio state;
-4. keep the scheduler-success baseline protected.
-
-## Future research track: additional reliable cores
-
-After the audio OSD branch, investigate which additional libretro cores can run reliably on XGO.
-
-Use the lessons from NES/SNES/FBA work:
-
-- prefer HC15xx/SF2000-family ports or similarly constrained MIPS32 cores first;
-- analyze CPU cost, audio rate, video format, memory footprint and frontend ABI before hardware packaging;
-- reuse stock frontend services where practical;
-- test representative games, not just successful boot;
-- classify each candidate as:
-  - reliable/playable;
-  - works with limitations;
-  - technically boots but impractical;
-  - incompatible.
-
-Potential families worth surveying later include lightweight 8/16-bit systems and other community cores already proven on SF2000/GB300-class hardware. Do not assume compatibility solely from libretro API support.
-
-## Branch closure rule
-
-Merge `research-post-mapper-runtime` before beginning audio OSD work.
-
-Start the next branch from updated `main`, not from an intermediate experimental commit.
+A hardware-confirmed binary candidate is not considered fully preserved until its exact ZIP is recorded in `golden-artifacts.json` and copied to the private artifact vault. Handoffs should reference the artifact ID, not depend on local filenames.

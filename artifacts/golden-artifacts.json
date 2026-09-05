@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "vault": {
+    "provider": "github",
+    "repository": "jeborgesm/xgo-a10-artifacts",
+    "visibility_required": "private",
+    "note": "Repository verified private on 2026-09-05. User uploaded the preserved research binaries at repository root; keep repository private.",
+    "layout": "golden copies plus retained root originals"
+  },
+  "artifacts": [
+    {
+      "id": "mapper-v19",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault",
+      "canonical_filename": "xgo-interactive-mapper-v19-card.zip",
+      "vault_path": "golden/xgo-interactive-mapper-v19-card.zip",
+      "zip_sha256": "c45925f965cf86b4e1efc622b02aabb5545122814743aaf7723d4dbf6ba4ec81",
+      "firmware_sha256": "466b336ee601f16314b73fbc66f0135a7090942157fce77c749391fbaa4189ab",
+      "finding": "findings/golden-mapper-v19-artifact-recovered.md"
+    },
+    {
+      "id": "snes-test02-on-mapper-v19",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault",
+      "canonical_filename": "xgo-native-snes-core2-test02-v19.zip",
+      "vault_path": "golden/xgo-native-snes-core2-test02-v19.zip",
+      "zip_sha256": "6c8fec790fb8a3d2f93e3d405912aca46d4b1b6db6609775faea74ffdde95869",
+      "firmware_sha256": "8db8d091f7896e0847d63455ec325bdc9889a2caeebd3d37525c0005006a226a",
+      "parent_artifact": "mapper-v19",
+      "finding": "findings/golden-mapper-v19-artifact-recovered.md"
+    },
+    {
+      "id": "cps1-scheduler-v1-on-snes-test02",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault",
+      "canonical_filename": "xgo-cps1-scheduler-v1-on-snes-test02.zip",
+      "supplied_filename": "xgo-cps1-scheduler-v1-on-snes-test02(1).zip",
+      "vault_path": "golden/xgo-cps1-scheduler-v1-on-snes-test02.zip",
+      "zip_sha256": "0c5a50f7d4b7f1b2b9a5f91a6b8856e3019a994ed43fc79a3f2579b38eaa9f8f",
+      "firmware_sha256": "9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607",
+      "parent_artifact": "snes-test02-on-mapper-v19",
+      "finding": "findings/hardware-test-stock-cps1-sibling-scheduler-success.md",
+      "members": [
+        {
+          "path": "README-HARDWARE-TEST.txt",
+          "size": 1658,
+          "sha256": "57397706e3e5d1b7e6ccc637e839666425f329f94b8dd2188c0abbd038d4c23c"
+        },
+        {
+          "path": "XGO-SCHEDULER-V1-MANIFEST.txt",
+          "size": 589,
+          "sha256": "a0d7221419b4fe501c8a6fe7a111a30e7e31d6dc2004d43a614c7a682b7787af"
+        },
+        {
+          "path": "bios/bisrv.asd",
+          "size": 12768452,
+          "sha256": "9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607"
+        }
+      ],
+      "hardware_observation": "Street Fighter II Ryu-vs-Guile no longer exhibited prolonged underwater slowdown; frame drops were minimal and the fight was completed normally."
+    }
+  ]
+}
