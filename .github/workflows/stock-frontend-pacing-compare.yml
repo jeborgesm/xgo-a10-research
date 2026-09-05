@@ -1,0 +1,171 @@
+name: Stock frontend pacing compare
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/stock-frontend-pacing-compare.yml'
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch preserved stock firmware
+        run: |
+          set -eux
+          BASE=https://raw.githubusercontent.com/Trademarked69/sf2000_multicore/d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0/assets/os
+          curl -L --fail --retry 3 "$BASE/bisrv_08_03.asd" -o sf2000.asd
+          curl -L --fail --retry 3 "$BASE/bisrv_GB300_V2.asd" -o gb300v2.asd
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y binutils-mips-linux-gnu
+
+      - name: Disassemble pacing regions
+        shell: bash
+        run: |
+          dump() {
+            file=$1; name=$2; rs=$3; re=$4; ss=$5; se=$6
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+              --start-address=$((rs)) --stop-address=$((re)) "$file" > "$name-run.txt"
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+              --start-address=$((ss)) --stop-address=$((se)) "$file" > "$name-sound.txt"
+          }
+          dump sf2000.asd sf2000 0x803589a4 0x80359d1c 0x80356168 0x80356380
+          dump gb300v2.asd gb300v2 0x8035c89c 0x8035de78 0x8035adb4 0x8035b080
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80358430)) --stop-address=$((0x80358490)) sf2000.asd > sf2000-audiocb.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035c25c)) --stop-address=$((0x8035c2bc)) gb300v2.asd > gb300v2-audiocb.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80356864)) --stop-address=$((0x80356994)) sf2000.asd > sf2000-ringwriter.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035b4b0)) --stop-address=$((0x8035b5e0)) gb300v2.asd > gb300v2-ringwriter.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x803589a4)) --stop-address=$((0x80358d40)) sf2000.asd > sf2000-pacing-head.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035c89c)) --stop-address=$((0x8035cc40)) gb300v2.asd > gb300v2-pacing-head.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80001260)) --stop-address=$((0x80001290)) sf2000.asd > sf2000-gp.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80001260)) --stop-address=$((0x80001290)) gb300v2.asd > gb300v2-gp.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80358dc0)) --stop-address=$((0x80358e50)) sf2000.asd > sf2000-pacing-tail.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035cbf0)) --stop-address=$((0x8035cc90)) gb300v2.asd > gb300v2-pacing-tail.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x803659cc)) --stop-address=$((0x80365a1c)) sf2000.asd > sf2000-fba-frameskip.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80369f2c)) --stop-address=$((0x80369f7c)) gb300v2.asd > gb300v2-fba-frameskip.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80365e34)) --stop-address=$((0x80365e78)) sf2000.asd > sf2000-fba-run-entry.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8036a394)) --stop-address=$((0x8036a3d8)) gb300v2.asd > gb300v2-fba-run-entry.txt
+
+      - name: Extract scheduler and frameskip landmarks
+        shell: bash
+        run: |
+          cat > focus.py <<'PY'
+          from pathlib import Path
+          pats = [
+              'jal', 'jalr', 'sll', 'srl', 'beq', 'bne', 'slti', 'sltu',
+              'div', 'mult', '0x3c0', '0x0b7c', '0x0dc8', '0x0e5c',
+              '0x411b', '0x4e20', '0xac44', '0xbb80'
+          ]
+          for p in ['sf2000-run.txt','gb300v2-run.txt','sf2000-sound.txt','gb300v2-sound.txt']:
+              print('\n===== '+p+' =====')
+              for line in Path(p).read_text(errors='replace').splitlines():
+                  lo=line.lower()
+                  if any(x.lower() in lo for x in pats):
+                      print(line)
+          PY
+          python3 focus.py | tee pacing-focused.txt
+
+      - name: Diff sibling functions
+        shell: bash
+        run: |
+          normalize() {
+            sed -E 's/^[[:space:]]*[0-9a-f]+:[[:space:]]+([0-9a-f]{8}[[:space:]]+)?//' "$1" |
+            sed -E 's/0x80[0-9a-f]{6}/ADDR/g; s/[[:space:]]+/ /g' |
+            sed '/^$/d'
+          }
+          normalize sf2000-run.txt > sf2000-run.norm
+          normalize gb300v2-run.txt > gb300v2-run.norm
+          normalize sf2000-sound.txt > sf2000-sound.norm
+          normalize gb300v2-sound.txt > gb300v2-sound.norm
+          diff -u sf2000-run.norm gb300v2-run.norm > run.diff || true
+          diff -u sf2000-sound.norm gb300v2-sound.norm > sound.diff || true
+          echo "===== RUN DIFF ====="
+          head -n 1200 run.diff
+          echo "===== SOUND DIFF ====="
+          head -n 800 sound.diff
+          echo "===== SF2000 SOUND FULL ====="
+          cat sf2000-sound.txt
+          echo "===== GB300V2 SOUND FULL ====="
+          cat gb300v2-sound.txt
+          echo "===== SF2000 AUDIO CALLBACK ====="
+          cat sf2000-audiocb.txt
+          echo "===== GB300V2 AUDIO CALLBACK ====="
+          cat gb300v2-audiocb.txt
+          echo "===== SF2000 RING WRITER ====="
+          cat sf2000-ringwriter.txt
+          echo "===== GB300V2 RING WRITER ====="
+          cat gb300v2-ringwriter.txt
+          echo "===== SF2000 PACING HEAD ====="
+          cat sf2000-pacing-head.txt
+          echo "===== GB300V2 PACING HEAD ====="
+          cat gb300v2-pacing-head.txt
+          echo "===== SF2000 GP ====="
+          cat sf2000-gp.txt
+          echo "===== GB300V2 GP ====="
+          cat gb300v2-gp.txt
+          echo "===== SF2000 PACING TAIL ====="
+          cat sf2000-pacing-tail.txt
+          echo "===== GB300V2 PACING TAIL ====="
+          cat gb300v2-pacing-tail.txt
+          echo "===== SF2000 FBA FRAMESKIP ====="
+          cat sf2000-fba-frameskip.txt
+          echo "===== GB300V2 FBA FRAMESKIP ====="
+          cat gb300v2-fba-frameskip.txt
+          echo "===== SF2000 FBA RUN ENTRY ====="
+          cat sf2000-fba-run-entry.txt
+          echo "===== GB300V2 FBA RUN ENTRY ====="
+          cat gb300v2-fba-run-entry.txt
+
+      - name: Preserve reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-frontend-pacing-compare
+          path: |
+            pacing-focused.txt
+            run.diff
+            sound.diff
+            sf2000-run.txt
+            gb300v2-run.txt
+            sf2000-sound.txt
+            gb300v2-sound.txt
+            sf2000-audiocb.txt
+            gb300v2-audiocb.txt
+            sf2000-ringwriter.txt
+            gb300v2-ringwriter.txt
+            sf2000-pacing-head.txt
+            gb300v2-pacing-head.txt
+            sf2000-gp.txt
+            gb300v2-gp.txt
+            sf2000-pacing-tail.txt
+            gb300v2-pacing-tail.txt
+            sf2000-fba-frameskip.txt
+            gb300v2-fba-frameskip.txt
+            sf2000-fba-run-entry.txt
+            gb300v2-fba-run-entry.txt
+          retention-days: 30
+
+# trigger after workflow registration
+
+# gp trigger
+
+# pacing-tail trigger
+
+# fba-hook trigger

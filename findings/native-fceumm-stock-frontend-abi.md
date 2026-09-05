@@ -206,12 +206,9 @@ which is exactly the FCEUmm audio-batch format.
 
 The XGO callback returns zero rather than the conventional number of consumed frames. This is nonstandard, but it is harmless for the pinned core: `retro_run()` invokes `audio_batch_cb(sound, ssize)` and ignores the return value.
 
-The minimal environment shim advertises 44.1 kHz through the target-sample-rate query. This matches XGO `run_emulator()`'s observed PCM byte budgets:
+The minimal environment shim advertises 44.1 kHz through the target-sample-rate query. Later stock-audio archaeology corrected the earlier assumption that `3528/2940` were enforced PCM byte budgets: those values are write-only diagnostic/state fields, while `run_emulator()` initializes the sound driver from the core-advertised sample rate and the batch callback copies exactly the frame count supplied by the core.
 
-```text
-50 Hz: 3528 bytes/frame = 882 stereo samples = 44100 / 50
-60 Hz: 2940 bytes/frame = 735 stereo samples = 44100 / 60
-```
+Therefore FCEUmm's 44.1-kHz rate remains a valid configuration, but it is **not required by a hard-wired 44.1-kHz scheduler model**. See `findings/stock-libretro-audio-timing.md` for the corrected data-flow analysis.
 
 ## Video ABI
 

@@ -1,0 +1,87 @@
+name: XGO stock scheduler inplace proof
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-stock-scheduler-inplace-proof.yml'
+      - 'tools/cps1/xgo_stock_scheduler_v1.S'
+      - 'tools/cps1/xgo_stock_scheduler_v1.ld'
+      - 'tools/cps1/patch_mapper_v19_stock_scheduler.py'
+  workflow_dispatch:
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq binutils-mips-linux-gnu
+
+      - name: Assemble fixed-address scheduler helper
+        shell: bash
+        run: |
+          mips-linux-gnu-as -EL -mips32 -o scheduler.o tools/cps1/xgo_stock_scheduler_v1.S
+          mips-linux-gnu-ld -EL -T tools/cps1/xgo_stock_scheduler_v1.ld -o scheduler.elf scheduler.o
+          mips-linux-gnu-objdump -d scheduler.elf | tee scheduler-disassembly.txt
+          mips-linux-gnu-nm -n scheduler.elf | tee scheduler-symbols.txt
+          mips-linux-gnu-objcopy -O binary -j .main_sched scheduler.elf scheduler-main.bin
+          mips-linux-gnu-objcopy -O binary -j .early_sched scheduler.elf scheduler-early.bin
+
+      - name: Verify exact fit and patcher machine-code identity
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee scheduler-proof.txt
+          import importlib.util, pathlib, re, subprocess, struct
+
+          nm=subprocess.check_output(['mips-linux-gnu-nm','-n','scheduler.elf'],text=True)
+          syms={}
+          for line in nm.splitlines():
+              p=line.split()
+              if len(p)>=3:
+                  syms[p[2]]=int(p[0],16)
+
+          obj=subprocess.check_output(['mips-linux-gnu-objdump','-h','scheduler.elf'],text=True)
+          secs={}
+          for line in obj.splitlines():
+              m=re.match(r'\s*\d+\s+(\.\S+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',line)
+              if m:
+                  secs[m.group(1)]=(int(m.group(2),16),int(m.group(3),16))
+
+          main_size,main_vma=secs['.main_sched']
+          early_size,early_vma=secs['.early_sched']
+          print(f'main:  start=0x{main_vma:08x} size=0x{main_size:x} end=0x{main_vma+main_size:08x}')
+          print(f'early: start=0x{early_vma:08x} size=0x{early_size:x} end=0x{early_vma+early_size:08x}')
+          assert main_vma==0x8035eee8
+          assert main_vma+main_size <= 0x8035ef70
+          assert early_vma==0x8035f070
+          assert early_vma+early_size <= 0x8035f090
+
+          spec=importlib.util.spec_from_file_location('patcher','tools/cps1/patch_mapper_v19_stock_scheduler.py')
+          mod=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(mod)
+          main_expected=b''.join(struct.pack('<I',w) for w in mod.MAIN_WORDS)
+          early_expected=b''.join(struct.pack('<I',w) for w in mod.EARLY_WORDS)
+          main_actual=pathlib.Path('scheduler-main.bin').read_bytes()
+          early_actual=pathlib.Path('scheduler-early.bin').read_bytes()
+          assert main_actual == main_expected
+          assert early_actual == early_expected
+          print('PATCHER_MACHINE_CODE=PASS')
+          print('FIT=PASS')
+          PY
+
+      - name: Preserve static proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-stock-scheduler-inplace-proof
+          path: |
+            scheduler-disassembly.txt
+            scheduler-symbols.txt
+            scheduler-proof.txt
+            scheduler.elf
+            scheduler-main.bin
+            scheduler-early.bin
+          retention-days: 30

@@ -1,0 +1,160 @@
+name: XGO exact FBA42 CPS1 audit
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-fba42-cps1-audit.yml'
+      - 'tools/multicore/native_cps1/**'
+      - 'tools/multicore/native_nes/**'
+      - 'tools/multicore/xgo_minimal_environment_shim.c'
+      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape.tar.gz
+          sudo tar -xzf /tmp/codescape.tar.gz -C /opt
+
+      - name: Fetch exact XGO stock FBA source revision
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/madcock/sf2000-fbalpha.git /tmp/fba42
+          cd /tmp/fba42
+          git checkout 621e371e553eb7814f12504b23f78de4715b7d11
+          git rev-parse HEAD | tee "$GITHUB_WORKSPACE/fba42-commit.txt"
+          grep -E 'VER_(MAJOR|MINOR|BETA|ALPHA)' src/burn/version.h | tee "$GITHUB_WORKSPACE/fba42-version.txt"
+
+      - name: Add HC15xx static platform and CPS1-only driver table
+        run: |
+          set -euxo pipefail
+          cd /tmp/fba42
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("makefile.libretro")
+          s = p.read_text()
+          s = s.replace("FASTCALL = 1", "FASTCALL = 0")
+          s = s.replace("PTR64 ?= 1", "PTR64 ?= 0")
+          s = s.replace("INCLUDE_7Z_SUPPORT = 1", "INCLUDE_7Z_SUPPORT = 0")
+
+          marker = "# Windows\nelse\n"
+          branch = "\n".join([
+              "# HC15xx / SF2000-style static MIPS32",
+              "else ifeq ($(platform), sf2000)",
+              "   TARGET := $(TARGET_NAME)_libretro_sf2000.a",
+              "   CC = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc",
+              "   CXX = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-g++",
+              "   AR = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar",
+              "   STATIC_LINKING = 1",
+              "   ENDIANNESS_DEFINES := -DLSB_FIRST",
+              "   PLATFORM_DEFINES := -DUSE_FILE32API -EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic",
+              "   CFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector",
+              "   CXXFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector -fno-rtti -fno-exceptions",
+              "",
+              "# Windows",
+              "else",
+              ""
+          ])
+          if marker not in s:
+              raise SystemExit("platform insertion marker missing")
+          s = s.replace(marker, branch, 1)
+
+          old = '$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR) $(FBA_BURN_DRIVERS_DIR)/capcom $(FBA_BURN_DRIVERS_DIR)/cave $(FBA_BURN_DRIVERS_DIR)/coleco $(FBA_BURN_DRIVERS_DIR)/cps3 $(FBA_BURN_DRIVERS_DIR)/dataeast $(FBA_BURN_DRIVERS_DIR)/galaxian $(FBA_BURN_DRIVERS_DIR)/irem $(FBA_BURN_DRIVERS_DIR)/konami $(FBA_BURN_DRIVERS_DIR)/megadrive $(MIDWAY_DIR) $(FBA_BURN_DRIVERS_DIR)/neogeo $(FBA_BURN_DRIVERS_DIR)/pce $(FBA_BURN_DRIVERS_DIR)/pgm $(FBA_BURN_DRIVERS_DIR)/pre90s $(FBA_BURN_DRIVERS_DIR)/psikyo $(FBA_BURN_DRIVERS_DIR)/pst90s $(FBA_BURN_DRIVERS_DIR)/sega $(FBA_BURN_DRIVERS_DIR)/sg1000 $(SMS_DIR) $(FBA_BURN_DRIVERS_DIR)/snes $(FBA_BURN_DRIVERS_DIR)/taito $(FBA_BURN_DRIVERS_DIR)/toaplan'
+          new = '$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR)/capcom/d_cps1.cpp'
+          if old not in s:
+              raise SystemExit("driverlist generation marker missing")
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+          make -f makefile.libretro generate-files platform=sf2000 PTR64=0
+          grep -c '^DRV' src/dep/generated/driverlist.h | tee "$GITHUB_WORKSPACE/cps1-driver-count.txt"
+
+      - name: Build exact FBA42 CPS1 archive
+        run: |
+          set -euxo pipefail
+          cd /tmp/fba42
+          make -f makefile.libretro -j2 platform=sf2000 PTR64=0
+          cp fbalpha_libretro_sf2000.a "$GITHUB_WORKSPACE/fba42-cps1.a"
+
+      - name: Compile XGO runtime
+        run: |
+          set -euxo pipefail
+          cc=/opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -DXGO_WITH_NEWLIB -Itools/multicore/include -I/tmp/fba42/src/burner/libretro'
+          "$cc" $flags -c tools/multicore/native_nes/xgo_core_entry.s -o core_entry.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_gp_bridges.s -o gp_bridges.o
+          "$cc" $flags -c tools/multicore/native_cps1/xgo_cps1_native_frontend.c -o frontend.o
+          "$cc" $flags -c tools/multicore/native_cps1/xgo_cps1_environment.c -o environment_cps1.o
+          "$cc" $flags -c tools/multicore/native_nes/xgo_libretro_state.c -o state.o
+          "$cc" $flags -c tools/multicore/xgo_minimal_environment_shim.c -o environment.o
+          "$cc" $flags -c tools/multicore/xgo_preloaded_rom_sbrk.c -o sbrk.o
+          "$cc" $flags -include tools/multicore/native_nes/xgo_stock_gp_redirects.h -c tools/multicore/native_nes/xgo_newlib_syscalls.c -o syscalls.o
+
+      - name: Link exact FBA42 CPS1 candidate
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc="$tools/mips-mti-elf-gcc"
+          nm="$tools/mips-mti-elf-nm"
+          objcopy="$tools/mips-mti-elf-objcopy"
+
+          "$cc" -EL -march=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -static -nostartfiles             -Wl,--gc-sections -Wl,-Map,xgo-fba42-cps1.map             -Wl,-T,tools/multicore/native_nes/xgo_core.ld             -Wl,-T,tools/multicore/native_nes/xgo_external_stock_services.ld             core_entry.o gp_bridges.o frontend.o state.o environment_cps1.o environment.o sbrk.o syscalls.o             -Wl,--start-group fba42-cps1.a -lstdc++ -lc -lm -lgcc -Wl,--end-group             -o xgo-fba42-cps1.elf
+
+          "$nm" -u xgo-fba42-cps1.elf | tee undefined.txt
+          test ! -s undefined.txt
+          "$nm" -n xgo-fba42-cps1.elf > symbols.txt
+          "$objcopy" -O binary xgo-fba42-cps1.elf xgo-fba42-cps1.bin
+
+          symbol_hex() {
+            local name="$1"
+            awk -v name="$name" '$3 == name {h=$1; if (length(h)>8) h=substr(h,length(h)-7); printf "0x%s\n",h; exit}' symbols.txt
+          }
+          start=$(symbol_hex __image_start)
+          file_end=$(symbol_hex __file_end)
+          image_end=$(symbol_hex __image_end)
+          payload_size=$(stat -c %s xgo-fba42-cps1.bin)
+          memory_size=$((image_end-start))
+          reserved_size=$((0x87cdae00-0x87000000))
+          headroom=$((reserved_size-memory_size))
+          (( memory_size <= reserved_size ))
+
+          python3 tools/multicore/probe/pack_xgoc.py xgo-fba42-cps1.bin core-fba42-cps1.xgc --entry-offset 0 --memory-size "$memory_size"
+          python3 tools/multicore/probe/inspect_xgoc.py core-fba42-cps1.xgc
+
+          {
+            echo source_commit=621e371e553eb7814f12504b23f78de4715b7d11
+            echo source_version=0.2.97.42
+            echo payload_size=$payload_size
+            echo memory_size=$memory_size
+            echo reserved_size=$reserved_size
+            echo headroom=$headroom
+          } | tee candidate-summary.txt
+          sha256sum xgo-fba42-cps1.elf xgo-fba42-cps1.bin core-fba42-cps1.xgc | tee output.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-fba42-cps1-exact-audit
+          path: |
+            fba42-commit.txt
+            fba42-version.txt
+            cps1-driver-count.txt
+            fba42-cps1.a
+            xgo-fba42-cps1.elf
+            xgo-fba42-cps1.bin
+            core-fba42-cps1.xgc
+            xgo-fba42-cps1.map
+            symbols.txt
+            undefined.txt
+            candidate-summary.txt
+            output.sha256
+          retention-days: 30

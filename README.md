@@ -45,6 +45,34 @@ See:
 - [`findings/gb300-v1-native-mapper-handler-and-commit-path.md`](findings/gb300-v1-native-mapper-handler-and-commit-path.md)
 - [`findings/xgo-per-game-kmp-format-and-sf2000-branch-point.md`](findings/xgo-per-game-kmp-format-and-sf2000-branch-point.md)
 
+## Major milestone: stock CPS1 slowdown fixed by sibling scheduler archaeology
+
+Family-wide comparison of the stock arcade implementation across **SF2000, GB300 v2, and XGO** recovered the actual performance contract used by the manufacturer's FBA stack:
+
+```text
+C68K for ordinary CPS1/68000 execution
+22050-Hz / 367-sample FBA audio
+private render-only frameskip
+continued emulation/audio during skipped-render frames
+```
+
+The key XGO-specific divergence was not the FBA engine itself but its frontend pacing policy. SF2000/GB300 use an absolute wall-time / bounded-catchup scheduler, while XGO used an incremental drift/debt scheduler that could remain in prolonged slow-motion after transient load.
+
+A scheduler-only transplant was implemented entirely inside XGO's existing timing code, preserving the stock FBA core, Mapper v19, and the native SNES Test02 baseline.
+
+Hardware test on the known Street Fighter II Ryu-vs-Guile stress case confirmed:
+
+- no prolonged "underwater" slowdown;
+- minimal frame drops;
+- normal playable fight speed;
+- existing protected baseline behavior remained intact.
+
+See:
+
+- [`findings/hardware-test-stock-cps1-sibling-scheduler-success.md`](findings/hardware-test-stock-cps1-sibling-scheduler-success.md)
+- [`findings/stock-fba-cpu-backend-and-frontend-timing-comparison.md`](findings/stock-fba-cpu-backend-and-frontend-timing-comparison.md)
+- [`findings/xgo-stock-scheduler-transplant-patch-surface.md`](findings/xgo-stock-scheduler-transplant-patch-surface.md)
+
 ## Major milestone: external native NES core running on hardware
 
 The XGO now successfully launches and plays an NES ROM through an **external FCEUmm libretro core** stored on the SD card rather than through the firmware's embedded NES emulator.

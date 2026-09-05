@@ -1,0 +1,37 @@
+name: XGO mapper-v19 safe SNES loader
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-native-snes-v19-loader.yml'
+      - 'tools/multicore/native_snes/xgo_snes_loader.c'
+      - 'tools/multicore/native_snes/xgo_snes_loader_v19.ld'
+      - 'tools/multicore/native_snes/build_native_snes_v19_loader.sh'
+      - 'tools/multicore/probe/xgo_probe_init.s'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LLVM tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm
+      - name: Build relocated mapper-v19-safe loader
+        run: |
+          set -euxo pipefail
+          bash tools/multicore/native_snes/build_native_snes_v19_loader.sh
+          sha256sum tools/multicore/native_snes/xgo_snes_v19_loader.bin | tee loader.sha256
+          stat -c 'loader_size=%s' tools/multicore/native_snes/xgo_snes_v19_loader.bin | tee loader-size.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-native-snes-v19-loader
+          path: |
+            tools/multicore/native_snes/xgo_snes_v19_loader.bin
+            tools/multicore/native_snes/xgo_snes_v19_loader.elf
+            loader.sha256
+            loader-size.txt
+          retention-days: 90

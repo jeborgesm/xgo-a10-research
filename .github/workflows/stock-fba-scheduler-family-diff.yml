@@ -1,0 +1,249 @@
+name: Stock FBA scheduler family diff
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/stock-fba-scheduler-family-diff.yml'
+  workflow_dispatch:
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch preserved stock binaries
+        run: |
+          set -eux
+          BASE=https://raw.githubusercontent.com/Trademarked69/sf2000_multicore/d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0/assets/os
+          curl -L --fail --retry 3 "$BASE/bisrv_08_03.asd" -o sf2000.asd
+          curl -L --fail --retry 3 "$BASE/bisrv_GB300_V2.asd" -o gb300v2.asd
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq binutils-mips-linux-gnu
+
+      - name: Disassemble frontend scheduler functions
+        shell: bash
+        run: |
+          dis() {
+            f=$1; start=$2; stop=$3; label=$4
+            echo "===== $label $f 0x$start..0x$stop ====="
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000               --start-address=$((0x$start)) --stop-address=$((0x$stop)) "$f"
+          }
+          {
+            dis sf2000.asd 80355f00 80356220 "SF2000 transport"
+            dis sf2000.asd 80358370 80358510 "SF2000 callbacks"
+            dis sf2000.asd 803589a4 80359580 "SF2000 run_emulator"
+            dis sf2000.asd 803587bc 803589a4 "SF2000 environment"
+
+            dis gb300v2.asd 8035ab50 8035ae70 "GB300v2 transport"
+            dis gb300v2.asd 8035c190 8035c340 "GB300v2 callbacks"
+            dis gb300v2.asd 8035c89c 8035d4b0 "GB300v2 run_emulator"
+            dis gb300v2.asd 8035c5e8 8035c89c "GB300v2 environment"
+          } > scheduler-disassembly.txt
+
+          grep -En             '44100|22050|3528|2940|20000|16667|0xac44|0x5622|0x0dc8|0x0b7c|jal|jalr|dly_tsk|frameskip|lw.*\(gp\)|sw.*\(gp\)|sll.*0x2|memcpy|tick|div|mult'             scheduler-disassembly.txt > scheduler-focused.txt || true
+
+          cat scheduler-focused.txt
+
+      - name: Structural opcode normalization
+        shell: bash
+        run: |
+          cat > normalize.py <<'PY'
+          from pathlib import Path
+          import re
+
+          txt=Path('scheduler-disassembly.txt').read_text(errors='replace')
+          sections={}
+          cur=None
+          for line in txt.splitlines():
+              if line.startswith('===== '):
+                  cur=line
+                  sections[cur]=[]
+                  continue
+              if cur and re.match(r'\s*[0-9a-f]+:\s+[0-9a-f ]+\s+', line):
+                  asm=re.sub(r'^\s*[0-9a-f]+:\s+[0-9a-f ]+\s+', '', line)
+                  # Normalize absolute addresses/immediates enough to expose inherited control-flow shape.
+                  asm=re.sub(r'0x[0-9a-f]+', 'IMM', asm)
+                  asm=re.sub(r'\b[0-9]+\b', 'N', asm)
+                  sections[cur].append(asm.strip())
+
+          for k,v in sections.items():
+              print(k)
+              print('instructions=',len(v))
+              print('\n'.join(v[:80]))
+              print()
+          PY
+          python3 normalize.py > scheduler-normalized.txt
+          head -n 500 scheduler-normalized.txt
+
+      - name: Locate conserved FBA render-skip hook
+        shell: bash
+        run: |
+          cat > find_hook.py <<'PY'
+          from pathlib import Path
+          import struct
+
+          # Match the private FBA hook semantically while ignoring GP-relative offsets.
+          # Expected shape:
+          #   beq a0,zero,+3
+          #   lw  a3,off(gp)
+          #   jr  ra
+          #   sw  zero,off(gp)
+          #   addiu v0,gp,off
+          #   xori a0,a3,1
+          #   sll a2,a0,2
+          #   addu v1,a2,v0
+          #   lw a1,0(v1)
+          #   sw a0,off(gp)
+          #   jr ra
+          #   sw a1,off(gp)
+          fixed = {
+              0: 0x10800003,
+              2: 0x03e00008,
+              5: 0x38e40001,
+              6: 0x00043080,
+              7: 0x00c21821,
+              8: 0x8c650000,
+              10:0x03e00008,
+          }
+          def op(w): return w>>26
+          def rs(w): return (w>>21)&31
+          def rt(w): return (w>>16)&31
+          def scan(path):
+              b=Path(path).read_bytes()
+              words=struct.unpack('<'+'I'*(len(b)//4), b[:len(b)//4*4])
+              hits=[]
+              for i in range(len(words)-12):
+                  ok=all(words[i+k]==v for k,v in fixed.items())
+                  if not ok: continue
+                  w1,w3,w4,w9,w11=[words[i+k] for k in (1,3,4,9,11)]
+                  # lw a3,off(gp); sw zero,off(gp); addiu v0,gp,off;
+                  # sw a0,off(gp); sw a1,off(gp)
+                  if not (op(w1)==35 and rs(w1)==28 and rt(w1)==7): continue
+                  if not (op(w3)==43 and rs(w3)==28 and rt(w3)==0): continue
+                  if not (op(w4)==9  and rs(w4)==28 and rt(w4)==2): continue
+                  if not (op(w9)==43 and rs(w9)==28 and rt(w9)==4): continue
+                  if not (op(w11)==43 and rs(w11)==28 and rt(w11)==5): continue
+                  hits.append(0x80000000+i*4)
+              print(path, 'hook_hits=', ','.join(hex(x) for x in hits))
+          scan('sf2000.asd')
+          scan('gb300v2.asd')
+          PY
+          python3 find_hook.py | tee fba-hook-locations.txt
+
+          while read -r file rest; do
+            addr=$(echo "$rest" | sed -n 's/.*hook_hits=\(0x[0-9a-f]*\).*/\1/p')
+            [ -n "$addr" ] || continue
+            start=$((addr-32)); stop=$((addr+96))
+            echo "===== $file hook @ $addr =====" | tee -a fba-hook-disassembly.txt
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+              --start-address=$start --stop-address=$stop "$file" | tee -a fba-hook-disassembly.txt
+          done < fba-hook-locations.txt
+
+      - name: Compare scheduler hot-path structure
+        shell: bash
+        run: |
+          cat > compare_hotpath.py <<'PY'
+          from pathlib import Path
+          import struct, hashlib
+
+          def words(path,start,count):
+              b=Path(path).read_bytes()
+              off=start-0x80000000
+              return list(struct.unpack_from('<'+'I'*count,b,off))
+
+          def shape(w):
+              op=w>>26
+              if op==0:
+                  return w
+              if op in (2,3):
+                  return w & 0xfc000000
+              # preserve opcode + rs + rt, mask immediate/branch displacement
+              return w & 0xffff0000
+
+          sf_start=0x803589a4
+          gb_start=0x8035c89c
+          # Through the main timing/frameskip/save-control loop before the
+          # later state-file branches dominate the function.
+          count=(0x80358f50-sf_start)//4
+          sf=[shape(w) for w in words('sf2000.asd',sf_start,count)]
+          gb=[shape(w) for w in words('gb300v2.asd',gb_start,count)]
+          mism=[i for i,(a,b) in enumerate(zip(sf,gb)) if a!=b]
+          print('instruction_count=',count)
+          print('structural_matches=',count-len(mism))
+          print('structural_mismatches=',len(mism))
+          print('match_percent=',100.0*(count-len(mism))/count)
+          print('sf_shape_sha256=',hashlib.sha256(b''.join(struct.pack('<I',x) for x in sf)).hexdigest())
+          print('gb_shape_sha256=',hashlib.sha256(b''.join(struct.pack('<I',x) for x in gb)).hexdigest())
+          print('first_mismatch_relative_offsets=',','.join(hex(i*4) for i in mism[:80]))
+          PY
+          python3 compare_hotpath.py | tee scheduler-structural-compare.txt
+
+      - name: Sequence-align normalized scheduler code
+        shell: bash
+        run: |
+          cat > align_scheduler.py <<'PY'
+          from pathlib import Path
+          import subprocess,re,difflib
+
+          def dis(path,start,stop):
+              out=subprocess.check_output([
+                  'mips-linux-gnu-objdump','-D','-b','binary','-m','mips:isa32','-EL',
+                  '--adjust-vma=0x80000000',f'--start-address={start}',f'--stop-address={stop}',path
+              ],text=True,errors='replace')
+              seq=[]
+              raw=[]
+              for line in out.splitlines():
+                  m=re.match(r'\s*([0-9a-f]+):\s+[0-9a-f ]+\s+([^\s]+)\s*(.*)',line)
+                  if not m: continue
+                  addr=int(m.group(1),16); op=m.group(2); args=m.group(3)
+                  # Keep opcode/register dataflow; remove relocatable addresses and constants.
+                  args=re.sub(r'0x[0-9a-f]+','IMM',args)
+                  args=re.sub(r'(?<![a-zA-Z_])-?\d+','N',args)
+                  args=re.sub(r'[-+]?N\(([^)]+)\)',r'OFF(\1)',args)
+                  norm=(op+' '+args).strip()
+                  seq.append(norm); raw.append((addr,line.strip()))
+              return seq,raw
+
+          sf,sfr=dis('sf2000.asd',0x803589a4,0x80358f80)
+          gb,gbr=dis('gb300v2.asd',0x8035c89c,0x8035cf80)
+          sm=difflib.SequenceMatcher(a=sf,b=gb,autojunk=False)
+          blocks=sm.get_matching_blocks()
+          total=sum(b.size for b in blocks)
+          print('sf_instructions=',len(sf))
+          print('gb_instructions=',len(gb))
+          print('aligned_identical_instructions=',total)
+          print('coverage_sf_percent=',100*total/len(sf))
+          print('coverage_gb_percent=',100*total/len(gb))
+          print('ratio=',sm.ratio())
+          print('\n=== matching blocks >= 4 instructions ===')
+          for b in blocks:
+              if b.size < 4: continue
+              print(f'sf+0x{(sfr[b.a][0]-0x803589a4):x} @0x{sfr[b.a][0]:08x}  gb+0x{(gbr[b.b][0]-0x8035c89c):x} @0x{gbr[b.b][0]:08x}  len={b.size}')
+              for k in range(min(b.size,8)):
+                  print(' ',sf[b.a+k])
+          print('\n=== opcodes around adaptive frameskip signature ===')
+          for name,seq,raw in [('SF',sf,sfr),('GB',gb,gbr)]:
+              for i,s in enumerate(seq):
+                  if s.startswith('jalr') and i+1 < len(seq):
+                      window=' | '.join(seq[max(0,i-12):min(len(seq),i+8)])
+                      if 'sltu' in window and 'subu' in window:
+                          print(name,hex(raw[i][0]),window)
+          PY
+          python3 align_scheduler.py | tee scheduler-sequence-alignment.txt
+
+      - name: Preserve artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-fba-scheduler-family-diff
+          path: |
+            scheduler-disassembly.txt
+            scheduler-focused.txt
+            scheduler-normalized.txt
+            fba-hook-locations.txt
+            fba-hook-disassembly.txt
+            scheduler-structural-compare.txt
+            scheduler-sequence-alignment.txt
+          retention-days: 30
