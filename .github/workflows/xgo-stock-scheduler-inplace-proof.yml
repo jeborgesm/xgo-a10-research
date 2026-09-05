@@ -55,14 +55,14 @@ jobs:
               sw    $zero,-30304($gp)
               sw    $t6,-30280($gp)         # snap completed to ideal
               sw    $zero,-3300($gp)        # frameskip = 0
-              b     0x8035ef70               # stock gfn_frameskip dispatch
+              j     0x8035ef70               # stock gfn_frameskip dispatch
               nop
 
           catchup:
               sw    $t0,-30304($gp)
               addiu $t1,$zero,1
               sw    $t1,-3300($gp)          # frameskip = 1
-              b     0x8035ef70
+              j     0x8035ef70
               nop
 
           .section .early_sched,"ax",@progbits
@@ -70,7 +70,7 @@ jobs:
           early_wait:
               jal   0x8030f480               # dly_tsk
               addiu $a0,$zero,1             # delay slot
-              b     main_sched
+              j     main_sched
               nop
           ASM
 
