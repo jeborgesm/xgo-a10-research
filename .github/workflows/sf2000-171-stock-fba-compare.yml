@@ -1,0 +1,112 @@
+name: SF2000 1.71 stock FBA lineage compare
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/sf2000-171-stock-fba-compare.yml'
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch SF2000 stock 08/03 and 1.71
+        run: |
+          set -eux
+          curl -L --fail --retry 3 \
+            https://raw.githubusercontent.com/Trademarked69/sf2000_multicore/d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0/assets/os/bisrv_08_03.asd \
+            -o sf2000-0803.asd
+          curl -L --fail --retry 3 \
+            https://github.com/Dteyn/Datafrog_SF2000_Vanilla/releases/download/v1.71/bisrv-v1.71-10_13.zip \
+            -o sf171.zip
+          unzip -o sf171.zip
+          find . -maxdepth 2 -type f -printf '%p %s\n'
+          F=$(find . -maxdepth 2 -type f -name 'bisrv.asd' | head -1)
+          cp "$F" sf2000-171.asd
+          sha256sum sf2000-0803.asd sf2000-171.asd
+          stat -c '%n %s' sf2000-0803.asd sf2000-171.asd
+
+      - name: Match inherited runtime blocks
+        shell: bash
+        run: |
+          cat > match.py <<'PY'
+          from pathlib import Path
+          import hashlib, struct
+          old=Path('sf2000-0803.asd').read_bytes()
+          new=Path('sf2000-171.asd').read_bytes()
+
+          anchors={
+            'run_emulator':0x803589a4,
+            'fba_frameskip':0x803659cc,
+            'fba_run':0x80365e34,
+            'fba_audio_tuple':0x80367400,
+            'sekinit_68000':0x8036db90,
+            'audio_callback':0x80358430,
+            'audio_ring_writer':0x80356864,
+          }
+
+          print('old_size',len(old),'new_size',len(new))
+          for name,va in anchors.items():
+              off=va-0x80000000
+              print('\nANCHOR',name,'old_va',hex(va))
+              for n in (128,96,64,48,32,24,16):
+                  sig=old[off:off+n]
+                  hits=[]
+                  p=0
+                  while True:
+                      p=new.find(sig,p)
+                      if p<0: break
+                      hits.append(p); p+=1
+                  if hits:
+                      print('match_len',n,'new_vas',','.join(hex(0x80000000+x) for x in hits[:20]))
+                      break
+              else:
+                  print('NO_MATCH_16')
+          
+          # diagnostic strings and key constants
+          for s in [b'SekInit SEK_CORE_C68K',b'SekInit SEK_CORE_A68K',
+                    b'fba-cpu-speed-adjust',b'v0.2.97.42 621e371']:
+              o=new.find(s)
+              print('string',s.decode(),'=',hex(0x80000000+o) if o>=0 else 'NOT_FOUND')
+
+          # locate adjacent 22050/367 immediates
+          words=struct.unpack('<'+'I'*(len(new)//4),new[:len(new)//4*4])
+          def sx16(x): return x-0x10000 if x&0x8000 else x
+          def const_sites(v):
+              out=[]
+              for i,w in enumerate(words):
+                  op=w>>26; rs=(w>>21)&31; imm=w&0xffff
+                  got=None
+                  if rs==0 and op==0x0d: got=imm
+                  elif rs==0 and op in (0x08,0x09): got=sx16(imm)&0xffffffff
+                  if got==v: out.append(0x80000000+i*4)
+              return out
+          a=const_sites(22050); b=set(const_sites(367))
+          print('22050_367_pairs',','.join(f'{hex(x)}/{hex(x+d)}' for x in a for d in range(-16,20,4) if x+d in b))
+          PY
+          python3 match.py | tee sf171-match.txt
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y binutils-mips-linux-gnu
+
+      - name: Disassemble likely 1.71 scheduler
+        shell: bash
+        run: |
+          # 1.71 is extremely close in size to 08/03. Emit the old-address
+          # window plus nearby bytes so a shifted block is obvious.
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80358980)) --stop-address=$((0x80358e60)) sf2000-171.asd \
+            > sf171-pacing.txt
+          cat sf171-pacing.txt
+
+      - name: Preserve report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf2000-171-stock-fba-compare
+          path: |
+            sf171-match.txt
+            sf171-pacing.txt
+          retention-days: 30
