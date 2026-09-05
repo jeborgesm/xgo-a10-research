@@ -295,6 +295,99 @@ FBA engine/backend
     + stock video transport
 ```
 
+
+## Exact stock-family binary comparison
+
+A dedicated archaeology workflow on this branch analyzed the preserved stock binaries from historical `Trademarked69/sf2000_multicore` commit `d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0`.
+
+Artifacts:
+
+```text
+SF2000 08/03:
+  assets/os/bisrv_08_03.asd
+  size   12,624,436 bytes
+  sha256 c0afbfd09069773076934d2f4970226d1a8d188d067f60e04afcbb17be26515b
+
+GB300 v2:
+  assets/os/bisrv_GB300_V2.asd
+  size   12,949,540 bytes
+  sha256 253942ed35c9d874d7fc08d44af4213499cf891582fc176a9c066f935887bf11
+```
+
+Both binaries contain the exact same FBA/libretro identity as XGO:
+
+```text
+FB Alpha
+v0.2.97.42 621e371
+fba-cpu-speed-adjust
+SekInit SEK_CORE_C68K
+SekInit SEK_CORE_A68K
+SekReset SEK_CORE_C68K
+SekReset SEK_CORE_A68K
+```
+
+### Conserved vendor audio tuple
+
+The characteristic adjacent constants are present in all three firmwares:
+
+| Firmware | 22050 site | 367 site |
+| --- | --- | --- |
+| SF2000 08/03 | `0x80367400` | `0x80367404` |
+| GB300 v2 | `0x8036b960` | `0x8036b964` |
+| XGO | `0x8036d7f4` | `0x8036d7f8` |
+
+This establishes that the 22.05-kHz / 367-sample FBA configuration is a **conserved HC15xx-family vendor modification**, not an XGO-specific optimization.
+
+### Conserved SekInit backend logic
+
+The family-source `SekInit` 68000 comparison pattern is likewise present in all three:
+
+```text
+SF2000 08/03  0x8036db90
+GB300 v2      0x803720f0
+XGO           0x80373f84
+```
+
+The C68K/A68K diagnostic xrefs move consistently with those functions:
+
+```text
+SF2000 C68K SekInit log: 0x8036e064 / 0x8036e06c
+SF2000 A68K SekInit log: 0x8036e118 / 0x8036e120
+
+GB300v2 C68K SekInit log: 0x803725c4 / 0x803725cc
+GB300v2 A68K SekInit log: 0x80372678 / 0x80372680
+
+XGO C68K SekInit log: 0x80374458 / 0x80374460
+XGO A68K SekInit log: 0x8037450c / 0x80374514
+```
+
+The address deltas are consistent with inherited code blocks rather than independent implementations.
+
+### Family-level conclusion
+
+The stock arcade architecture now has a much firmer shape:
+
+```text
+old FBA-a320 engine ancestry
+        |
+        +-- three-way Sek backend support (C68K / Musashi / A68K)
+        +-- C68K default for ordinary 68000 CPUs
+        +-- Musashi fallback for non-68000 Sek CPU types
+        |
+later v0.2.97.42 / 621e371 libretro wrapper
+        |
+vendor HC15xx modifications
+        +-- 22050-Hz FBA audio
+        +-- 367-sample frame audio buffer
+        +-- stock run_emulator pacing/audio transport
+        |
+        +-- SF2000 08/03
+        +-- GB300 v2
+        +-- XGO
+```
+
+This substantially weakens the premise that A68K is the key to reproducing stock CPS1 performance. The conserved family solution instead points first to **C68K plus lower audio workload plus vendor frontend pacing**.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
@@ -309,6 +402,6 @@ Priority static-analysis targets:
 2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
-5. Acquire/compare GB300 v2 stock binary values at the equivalent selector/timing sites.
+5. Diff stock `run_emulator` pacing/frameskip behavior across SF2000 08/03, GB300 v2, and XGO now that the core-side audio/backend traits are shown to be conserved.
 
 No hardware candidate should be built until these static comparisons produce a concrete transplant or patch hypothesis.
