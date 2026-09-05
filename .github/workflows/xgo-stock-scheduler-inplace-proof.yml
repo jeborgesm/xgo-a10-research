@@ -79,7 +79,7 @@ jobs:
           {
             . = 0x8035eee8;
             .main_sched : { *(.main_sched) }
-            . = 0x8035f060;
+            . = 0x8035f070;
             .early_sched : { *(.early_sched) }
           }
           LD
@@ -115,7 +115,7 @@ jobs:
           print(f'early: start=0x{early_vma:08x} size=0x{early_size:x} end=0x{early_vma+early_size:08x}')
           assert main_vma==0x8035eee8
           assert main_vma+main_size <= 0x8035ef70
-          assert early_vma==0x8035f060
+          assert early_vma==0x8035f070
           assert early_vma+early_size <= 0x8035f090
           print('FIT=PASS')
           PY
