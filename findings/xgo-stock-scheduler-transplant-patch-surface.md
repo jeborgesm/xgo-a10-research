@@ -501,6 +501,155 @@ A custom hand-written helper could potentially reuse XGO's existing `s2` registe
 
 For the first scheduler-only candidate, three private words are safer and clearer.
 
+
+## In-place scheduler transplant is statically feasible
+
+The state and control-flow reconstruction now shows that a separate code cave is not required.
+
+XGO already has two timing-code regions that can host the sibling policy:
+
+```text
+main current debt scheduler:
+  0x8035eee8 .. 0x8035ef6c
+
+secondary early/re-entry timing path:
+  0x8035f060 .. 0x8035f08c
+```
+
+The untouched stock callback dispatch begins immediately afterward and can remain the common return target.
+
+### State assignment with no new RAM
+
+Use the three timing-owned/write-only words as:
+
+```text
+0x80c33a74  scheduler_start_tick
+0x80c2d12c  completed_frame_count
+0x80c2d114  catchup_count
+```
+
+The ordinary region setup already calls `os_get_tick_count()` at:
+
+```text
+0x8035eea0
+```
+
+so its following stores can be retargeted:
+
+```text
+0x8035ee94  completed_frame_count = 0
+0x8035ee9c  catchup_count = 0
+0x8035eeac  scheduler_start_tick = tick_now
+```
+
+This eliminates all lazy-initialization code from the hot loop.
+
+### Pause/audio re-entry reset
+
+The existing re-entry path around `0x8035f03c` already obtains a fresh tick and waits for sound-driver stabilization.
+
+After that wait, the current timing-state stores can be retargeted to:
+
+```text
+scheduler_start_tick = fresh tick
+completed_frame_count = 0
+catchup_count = 0
+```
+
+then branch back to the new wall-time scheduler entry.
+
+Thus time spent in pause/menu/audio reinitialization will not appear as gameplay lateness.
+
+### Main replacement budget
+
+Without lazy initialization, the sibling wall-time/catch-up decision can be implemented in approximately 32 MIPS instructions:
+
+```c
+now = os_get_tick_count();
+elapsed = now - scheduler_start_tick;
+fps = target_fps;
+
+ideal = (elapsed * fps) / 1000;
+next = completed_frame_count + 1;
+
+if (ideal < next) {
+    goto early_wait;
+}
+
+completed_frame_count = next;
+
+if (next < ideal && catchup_count < 3) {
+    catchup_count++;
+    frameskip_flag = 1;
+} else {
+    catchup_count = 0;
+    completed_frame_count = ideal;
+    frameskip_flag = 0;
+}
+
+goto stock_frameskip_dispatch;
+```
+
+The available main block is large enough for this instruction budget while using only caller-scratch registers.
+
+### Early path can retain 1-ms polling
+
+An exact sibling implementation computes the complete absolute sleep delta and sleeps that amount.
+
+For the **minimal transplant**, this is not necessary to obtain the important scheduler property.
+
+When:
+
+```text
+ideal_frame < next_frame
+```
+
+the helper can retain XGO's existing behavior:
+
+```c
+dly_tsk(1);
+retry_wall_time_calculation();
+```
+
+This still anchors the decision to absolute wall time on every retry. It differs only in wake-up granularity/efficiency, not in the logical deadline or catch-up decision.
+
+The secondary timing island needs only:
+
+```asm
+jal   dly_tsk
+li    a0,1          ; delay slot
+b     new_scheduler_entry
+nop
+```
+
+which fits comfortably inside `0x8035f060..0x8035f08c`.
+
+### Untouched return contract
+
+Both normal and catch-up decisions return to the existing XGO path that loads:
+
+```text
+gfn_frameskip @ 0x80c33ae0
+```
+
+and eventually invokes it with:
+
+```text
+frameskip flag @ 0x80c33a90
+```
+
+The existing FBA private hook and `retro_run()` dispatch therefore remain byte-for-byte stock.
+
+## Revised cave decision
+
+Because the sibling policy can fit inside the XGO timing code it replaces, the preferred first implementation is now:
+
+> **in-place scheduler replacement; no external cave and no new RAM state.**
+
+This is materially safer than injecting into an unrelated zero region and avoids conflicts with protected mapper-v19/native-NES low-memory infrastructure.
+
+A separate cave should be considered only if assembler-level proof shows the final helper cannot fit the documented in-place budget.
+
 ## Code-cave constraint
 
 The historically verified low firmware cave:
