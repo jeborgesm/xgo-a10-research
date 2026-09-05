@@ -1,0 +1,129 @@
+name: Stock FBA family compare
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/stock-fba-family-compare.yml'
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch preserved family stock firmware
+        run: |
+          set -eux
+          BASE=https://raw.githubusercontent.com/Trademarked69/sf2000_multicore/d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0/assets/os
+          curl -L --fail --retry 3 "$BASE/bisrv_08_03.asd" -o sf2000.asd
+          curl -L --fail --retry 3 "$BASE/bisrv_GB300_V2.asd" -o gb300v2.asd
+          sha256sum sf2000.asd gb300v2.asd
+          stat -c '%n %s bytes' sf2000.asd gb300v2.asd
+
+      - name: Analyze FBA runtime signatures
+        shell: bash
+        run: |
+          cat > compare.py <<'PY'
+          from pathlib import Path
+          import hashlib, struct
+
+          def sx16(v):
+              return v - 0x10000 if v & 0x8000 else v
+
+          def cstr(b, off):
+              e=b.find(b'\0',off)
+              return b[off:e].decode('latin1','replace') if e >= 0 else ''
+
+          def direct_const_sites(b, value):
+              out=[]
+              for pos in range(0,len(b)-4,4):
+                  w=struct.unpack_from('<I',b,pos)[0]
+                  op=w>>26; rs=(w>>21)&31; imm=w&0xffff
+                  got=None
+                  if rs==0 and op==0x0d: got=imm
+                  elif rs==0 and op in (0x08,0x09): got=sx16(imm)&0xffffffff
+                  if got==value: out.append(0x80000000+pos)
+              return out
+
+          def ptr_refs(b, va):
+              needle=struct.pack('<I',va)
+              out=[]; p=0
+              while True:
+                  p=b.find(needle,p)
+                  if p<0: break
+                  out.append(0x80000000+p); p+=1
+              return out
+
+          def string_xrefs(b, va):
+              out=[]
+              for pos in range(0,len(b)-8,4):
+                  w=struct.unpack_from('<I',b,pos)[0]
+                  if w>>26 != 0x0f: continue
+                  rt=(w>>16)&31; hi=w&0xffff
+                  for d in (4,8,12,16,20,24):
+                      if pos+d+4>len(b): continue
+                      q=struct.unpack_from('<I',b,pos+d)[0]
+                      op=q>>26; rs=(q>>21)&31; lo=q&0xffff
+                      if rs!=rt: continue
+                      got=None
+                      if op in (0x08,0x09): got=((hi<<16)+sx16(lo))&0xffffffff
+                      elif op==0x0d: got=((hi<<16)|lo)&0xffffffff
+                      if got==va:
+                          out.append((0x80000000+pos,0x80000000+pos+d))
+              return out
+
+          def analyze(path):
+              b=Path(path).read_bytes()
+              print(f'===== {path} =====')
+              print(f'size={len(b)} hex=0x{len(b):x}')
+              print(f'sha256={hashlib.sha256(b).hexdigest()}')
+              for s in [
+                  b'FB Alpha', b'v0.2.97.42 621e371',
+                  b'fba-cpu-speed-adjust',
+                  b'SekInit SEK_CORE_C68K',
+                  b'SekInit SEK_CORE_A68K',
+                  b'SekReset SEK_CORE_C68K',
+                  b'SekReset SEK_CORE_A68K',
+              ]:
+                  o=b.find(s)
+                  print(f'string {s.decode("latin1")!r}: off={hex(o) if o>=0 else "NOT_FOUND"} va={hex(0x80000000+o) if o>=0 else "-"}')
+                  if o>=0:
+                      print('  ptr_refs=' + ','.join(hex(x) for x in ptr_refs(b,0x80000000+o)[:12]))
+                      print('  code_xrefs=' + ','.join(f'{hex(a)}/{hex(c)}' for a,c in string_xrefs(b,0x80000000+o)[:12]))
+              for v in (11025,22050,367,44100,48000,801):
+                  sites=direct_const_sites(b,v)
+                  print(f'const {v}: count={len(sites)} sites=' + ','.join(hex(x) for x in sites[:40]))
+
+              # Search for the characteristic vendor FBA audio init tuple:
+              # li reg,22050 and li reg,367 within 32 bytes, followed by stores.
+              sites220=direct_const_sites(b,22050)
+              sites367=set(direct_const_sites(b,367))
+              pairs=[]
+              for a in sites220:
+                  for d in range(-32,36,4):
+                      if a+d in sites367:
+                          pairs.append((a,a+d))
+              print('22050/367-near-pairs=' + ','.join(f'{hex(a)}/{hex(c)}' for a,c in pairs))
+
+              # Find exact SekInit family-source fallback bytecode semantically:
+              # constant 0x68000 is commonly built with lui 0x0006 + ori 0x8000.
+              pat=struct.pack('<II',0x3c050006,0x34a48000)
+              p=0; found=[]
+              while True:
+                  p=b.find(pat,p)
+                  if p<0: break
+                  found.append(0x80000000+p); p+=1
+              print('SekInit-68000-compare-pattern=' + ','.join(hex(x) for x in found))
+              print()
+
+          analyze('sf2000.asd')
+          analyze('gb300v2.asd')
+          PY
+          python3 compare.py | tee family-report.txt
+
+      - name: Preserve report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-fba-family-compare
+          path: family-report.txt
+          retention-days: 30
