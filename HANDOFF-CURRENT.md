@@ -235,3 +235,44 @@ Firmware SHA-256:
 Future branch closure rule:
 
 A hardware-confirmed binary candidate is not considered fully preserved until its exact ZIP is recorded in `golden-artifacts.json` and copied to the private artifact vault. Handoffs should reference the artifact ID, not depend on local filenames.
+
+
+## Audio OSD v1 candidate
+
+Static patch-surface work is complete.
+
+Protected input artifact:
+
+```text
+cps1-scheduler-v1-on-snes-test02
+firmware SHA-256
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
+```
+
+Verified free cave in that exact protected image:
+
+```text
+0x80002780..0x80002fff
+2176 bytes
+```
+
+OSD v1:
+
+```text
+blob size      1548 bytes
+blob SHA-256   2556cad397c66f5ac98a4f772b05d67eb86eb946bc785c781f1e426ec8954227
+headroom       628 bytes
+hook           run_screen_write tail jump @ 0x8035c458
+output FW SHA  1fc85114909d6107ff80be6e199d54dd1d9b918454ceede61d5108246d6f50c1
+candidate ZIP  bdf66f60b0ed105449582e7845a9c9d8d98e3e8e6ae0a695ec9c73dc28685f76
+```
+
+The hook preserves one stock OSD write per visible frame. It backs up the 64x8 source-frame area, overlays the bar, performs the normal synchronous stock region write, restores the source pixels, and returns.
+
+No audio callback, GPIO volume path, hardware mute path, mapper, SNES loader, or CPS1 scheduler changes.
+
+Hardware regression gate is pending. Do not promote this artifact to `golden/` until it passes.
+
+Primary finding:
+
+`findings/audio-osd-v1-exact-patch-surface-and-candidate.md`
