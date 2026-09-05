@@ -157,28 +157,104 @@ Latest reconciliation commit:
 
 `dc426946e27d5a636d4a5d790f9da5781630f3cc`
 
-## Immediate next work — STILL NO HARDWARE TEST YET
+## Current hardware candidate — scheduler v1
+
+Family research has now produced a concrete scheduler-only XGO candidate.
+
+Primary record:
+
+`findings/xgo-cps1-scheduler-v1-hardware-candidate.md`
+
+Versioned implementation:
+
+```text
+tools/cps1/xgo_stock_scheduler_v1.S
+tools/cps1/xgo_stock_scheduler_v1.ld
+tools/cps1/patch_mapper_v19_stock_scheduler.py
+tools/cps1/PATCH-SCHEDULER-V1.cmd
+tools/cps1/README-SCHEDULER-V1.txt
+```
+
+Successful assembler/patcher identity audit:
+
+```text
+workflow run 33986173065
+PATCHER_MACHINE_CODE=PASS
+FIT=PASS
+
+main helper:
+  0x8035eee8..0x8035ef67
+  0x80 bytes
+
+early-wait island:
+  0x8035f070..0x8035f07f
+  0x10 bytes
+```
+
+The candidate:
+
+- keeps stock FBA;
+- keeps C68K;
+- keeps 22050-Hz / 367-sample stock FBA audio;
+- keeps the stock private FBA draw-skip hook;
+- keeps XGO input/video/audio/menu/keymap behavior;
+- changes only the frame pacing/catch-up policy.
+
+The scheduler policy is derived from SF2000 08/03, SF2000 1.71 and GB300 v2:
+
+```text
+absolute wall-time anchor
+ideal-frame-count comparison
+bounded catch-up, max 3
+existing gfn_frameskip used during catch-up
+```
+
+No new executable cave and no new BSS are required.
+
+Scheduler state reuses three timing-owned XGO words:
+
+```text
+0x80c33a74  start_tick
+0x80c2d12c  completed_frame_count
+0x80c2d114  catchup_count
+```
+
+The user-facing patcher deliberately accepts only exact mapper-v19 firmware:
+
+```text
+SHA-256
+466b336ee601f16314b73fbc66f0135a7090942157fce77c749391fbaa4189ab
+```
+
+It never modifies the input in place.
+
+## Immediate next work — HARDWARE OBSERVATION
+
+The static gate is now passed.
 
 Do **not** resume A68K ROM bisection.
 
-Do **not** build a new CPS1 core yet.
+Next step is the first scheduler-v1 hardware observation.
 
-Next research target:
+Test order:
 
-1. Reconstruct the sibling wall-time/catch-up scheduler into clean pseudocode with exact state variables and branch thresholds.
-2. Reconstruct the XGO incremental debt scheduler to the same level.
-3. Identify the smallest scheduler-only transplant or behavioral patch that would let XGO use the sibling catch-up policy while preserving XGO UI/input/audio/FBA code.
-4. Only after that concrete patch surface is proven should a minimal hardware candidate be built.
+1. Build candidate from the currently hardware-confirmed mapper-v19 `bios/bisrv.asd`.
+2. Verify normal boot/menu.
+3. Verify Mapper still opens/saves/resumes.
+4. Verify ordinary non-CPS1 behavior is unchanged enough to establish frontend stability.
+5. Test the same CPS1 titles used for stock baseline, especially SFII and Cadillacs and Dinosaurs.
+6. Observe whether transient slowdowns recover faster and whether catch-up appears as short render-drop bursts instead of prolonged slow-motion.
+7. Record result in GitHub before changing any additional variable.
 
-Preferred experiment shape, if the static work succeeds:
+Reject candidate if there is any new:
 
-```text
-XGO stock firmware
-  + unchanged stock FBA
-  + unchanged C68K
-  + unchanged stock audio/input/video
-  + unchanged private FBA draw-skip hook
-  + scheduler-only pacing/catch-up patch
-```
+- Loading stall;
+- black-screen regression;
+- mapper/menu failure;
+- audio instability;
+- compatibility loss;
+- return-to-menu failure.
 
-This is now better-founded than any external-emulator replacement.
+Rollback is the exact mapper-v19 `bios/bisrv.asd`.
+
+The candidate does not touch SPI NOR and does not use `Firmware.upk`.
