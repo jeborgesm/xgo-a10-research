@@ -44,6 +44,10 @@ jobs:
             'sekinit_68000':0x8036db90,
             'audio_callback':0x80358430,
             'audio_ring_writer':0x80356864,
+            'pacing_core':0x80358afc,
+            'pacing_catchup':0x80358b04,
+            'pacing_sleep_tail':0x80358df0,
+            'pacing_frameskip_call':0x80358e28,
           }
 
           print('old_size',len(old),'new_size',len(new))
