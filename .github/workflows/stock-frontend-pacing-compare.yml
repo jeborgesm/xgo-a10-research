@@ -1,0 +1,89 @@
+name: Stock frontend pacing compare
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/stock-frontend-pacing-compare.yml'
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch preserved stock firmware
+        run: |
+          set -eux
+          BASE=https://raw.githubusercontent.com/Trademarked69/sf2000_multicore/d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0/assets/os
+          curl -L --fail --retry 3 "$BASE/bisrv_08_03.asd" -o sf2000.asd
+          curl -L --fail --retry 3 "$BASE/bisrv_GB300_V2.asd" -o gb300v2.asd
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y binutils-mips-linux-gnu
+
+      - name: Disassemble pacing regions
+        shell: bash
+        run: |
+          dump() {
+            file=$1; name=$2; rs=$3; re=$4; ss=$5; se=$6
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+              --start-address=$((rs)) --stop-address=$((re)) "$file" > "$name-run.txt"
+            mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+              --start-address=$((ss)) --stop-address=$((se)) "$file" > "$name-sound.txt"
+          }
+          dump sf2000.asd sf2000 0x803589a4 0x80359d1c 0x80356168 0x80356380
+          dump gb300v2.asd gb300v2 0x8035c89c 0x8035de78 0x8035adb4 0x8035b000
+
+      - name: Extract scheduler and frameskip landmarks
+        shell: bash
+        run: |
+          cat > focus.py <<'PY'
+          from pathlib import Path
+          pats = [
+              'jal', 'jalr', 'sll', 'srl', 'beq', 'bne', 'slti', 'sltu',
+              'div', 'mult', '0x3c0', '0x0b7c', '0x0dc8', '0x0e5c',
+              '0x411b', '0x4e20', '0xac44', '0xbb80'
+          ]
+          for p in ['sf2000-run.txt','gb300v2-run.txt','sf2000-sound.txt','gb300v2-sound.txt']:
+              print('\n===== '+p+' =====')
+              for line in Path(p).read_text(errors='replace').splitlines():
+                  lo=line.lower()
+                  if any(x.lower() in lo for x in pats):
+                      print(line)
+          PY
+          python3 focus.py | tee pacing-focused.txt
+
+      - name: Diff sibling functions
+        shell: bash
+        run: |
+          normalize() {
+            sed -E 's/^[[:space:]]*[0-9a-f]+:[[:space:]]+([0-9a-f]{8}[[:space:]]+)?//' "$1" |
+            sed -E 's/0x80[0-9a-f]{6}/ADDR/g; s/[[:space:]]+/ /g' |
+            sed '/^$/d'
+          }
+          normalize sf2000-run.txt > sf2000-run.norm
+          normalize gb300v2-run.txt > gb300v2-run.norm
+          normalize sf2000-sound.txt > sf2000-sound.norm
+          normalize gb300v2-sound.txt > gb300v2-sound.norm
+          diff -u sf2000-run.norm gb300v2-run.norm > run.diff || true
+          diff -u sf2000-sound.norm gb300v2-sound.norm > sound.diff || true
+          echo "===== RUN DIFF ====="
+          head -n 1200 run.diff
+          echo "===== SOUND DIFF ====="
+          head -n 800 sound.diff
+
+      - name: Preserve reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-frontend-pacing-compare
+          path: |
+            pacing-focused.txt
+            run.diff
+            sound.diff
+            sf2000-run.txt
+            gb300v2-run.txt
+            sf2000-sound.txt
+            gb300v2-sound.txt
+          retention-days: 30
