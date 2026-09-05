@@ -604,6 +604,98 @@ It is not sufficient to inspect `621e371` and conclude that stock FBA has no fra
 
 The family comparison must therefore treat the **vendor wrapper patches**, not just the identified upstream commit, as first-class optimization code.
 
+
+## Private FBA draw-skip hook is conserved in SF2000, GB300 v2, and XGO
+
+The predicted sibling hook addresses were verified directly against the preserved stock binaries.
+
+```text
+SF2000 08/03  gfn_frameskip target 0x803659cc
+GB300 v2      gfn_frameskip target 0x80369f2c
+XGO           gfn_frameskip target 0x8036bdc0
+```
+
+All three implement the same logic:
+
+```c
+if (frameskip_flag != 0) {
+    active_fba_draw_pointer = NULL;
+    return;
+}
+
+framebuffer_index ^= 1;
+active_fba_draw_pointer = framebuffer_table[framebuffer_index];
+```
+
+The exact sibling disassembly confirms the same control-flow and operation sequence.
+
+SF2000:
+
+```asm
+803659cc  beqz  a0,0x803659dc
+803659d0  lw    a3,-24288(gp)
+803659d4  jr    ra
+803659d8  sw    zero,-24276(gp)
+803659dc  addiu v0,gp,-24296
+803659e0  xori  a0,a3,1
+803659e4  sll   a2,a0,2
+803659e8  addu  v1,a2,v0
+803659ec  lw    a1,0(v1)
+803659f0  sw    a0,-24288(gp)
+803659f4  jr    ra
+803659f8  sw    a1,-24276(gp)
+```
+
+GB300 v2:
+
+```asm
+80369f2c  beqz  a0,0x80369f3c
+80369f30  lw    a3,-24144(gp)
+80369f34  jr    ra
+80369f38  sw    zero,-24132(gp)
+80369f3c  addiu v0,gp,-24152
+80369f40  xori  a0,a3,1
+80369f44  sll   a2,a0,2
+80369f48  addu  v1,a2,v0
+80369f4c  lw    a1,0(v1)
+80369f50  sw    a0,-24144(gp)
+80369f54  jr    ra
+80369f58  sw    a1,-24132(gp)
+```
+
+XGO:
+
+```asm
+8036bdc0  beq   a0,zero,0x8036bdd0
+8036bdc4  lw    a3,-24260(gp)
+8036bdc8  jr    ra
+8036bdcc  sw    zero,-24248(gp)
+8036bdd0  addiu v0,gp,-24268
+8036bdd4  xori  a0,a3,1
+8036bdd8  sll   a2,a0,2
+8036bddc  addu  v1,a2,v0
+8036bde0  lw    a1,0(v1)
+8036bde4  sw    a0,-24260(gp)
+8036bde8  jr    ra
+8036bdec  sw    a1,-24248(gp)
+```
+
+The corresponding FBA run entries are also conserved:
+
+```text
+SF2000    0x80365e34
+GB300 v2  0x8036a394
+XGO       0x8036c228
+```
+
+Each immediately reads the vendor-selected active draw pointer and copies it into the FBA draw target before frame execution.
+
+This establishes a family-wide stock optimization:
+
+> the HC15xx vendor deliberately restored old FBA-style render suppression through a nonstandard private frontend/core ABI after adopting the later libretro wrapper.
+
+A generic libretro replacement that only implements the public API will not automatically inherit this optimization.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
@@ -618,6 +710,6 @@ Priority static-analysis targets:
 2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
-5. Confirm the private FBA draw-skip hook across SF2000/GB300 v2, then compare their shared wall-time scheduler against XGO's different 20/17-ms drift scheduler.
+5. Treat private FBA draw suppression as confirmed family baseline; compare the SF2000/GB300 wall-time scheduler against XGO's different incremental drift scheduler to identify whether XGO's pacing policy is the remaining source of stock lag.
 
 No hardware candidate should be built until these static comparisons produce a concrete transplant or patch hypothesis.
