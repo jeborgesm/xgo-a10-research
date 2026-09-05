@@ -39,6 +39,10 @@ jobs:
             --start-address=$((0x80358430)) --stop-address=$((0x80358490)) sf2000.asd > sf2000-audiocb.txt
           mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
             --start-address=$((0x8035c25c)) --stop-address=$((0x8035c2bc)) gb300v2.asd > gb300v2-audiocb.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80356864)) --stop-address=$((0x80356994)) sf2000.asd > sf2000-ringwriter.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035b4b0)) --stop-address=$((0x8035b5e0)) gb300v2.asd > gb300v2-ringwriter.txt
 
       - name: Extract scheduler and frameskip landmarks
         shell: bash
@@ -85,6 +89,10 @@ jobs:
           cat sf2000-audiocb.txt
           echo "===== GB300V2 AUDIO CALLBACK ====="
           cat gb300v2-audiocb.txt
+          echo "===== SF2000 RING WRITER ====="
+          cat sf2000-ringwriter.txt
+          echo "===== GB300V2 RING WRITER ====="
+          cat gb300v2-ringwriter.txt
 
       - name: Preserve reports
         uses: actions/upload-artifact@v4
@@ -100,6 +108,8 @@ jobs:
             gb300v2-sound.txt
             sf2000-audiocb.txt
             gb300v2-audiocb.txt
+            sf2000-ringwriter.txt
+            gb300v2-ringwriter.txt
           retention-days: 30
 
 # trigger after workflow registration
