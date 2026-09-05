@@ -73,6 +73,69 @@ void xgo_diag_run(void){retro_run();}
 #include <reent.h>
 extern void __libc_init_array(void);
 extern void __sinit(struct _reent*);
+
+#ifdef XGO_TRACE_DIRECT_FS
+/*
+ * Test18+ diagnostic path: bypass newlib stdio completely. Test17 proved that
+ * D11 is written but D12 is never reached even though the two calls are
+ * adjacent in DrvInit(). A trace call can therefore be the blocker after its
+ * payload is written (for example in stdio stream teardown/fclose).
+ *
+ * Use the already-proven XGO stock filesystem service bridge directly so each
+ * checkpoint is durable without FILE*, stdio buffering, or newlib fclose.
+ */
+extern int fs_open(const char *path, int flags, int mode);
+extern int fs_write(int fd, const void *buf, unsigned count);
+extern int fs_close(int fd);
+
+#define XGO_FS_O_WRONLY 0x0001
+#define XGO_FS_O_APPEND 0x0008
+#define XGO_FS_O_CREAT  0x0100
+#define XGO_FS_O_TRUNC  0x0200
+
+static int xgo_trace_started;
+
+static unsigned xgo_trace_strlen(const char *s)
+{
+    unsigned n=0;
+    while (s && s[n]) ++n;
+    return n;
+}
+
+void xgo_a68k_trace_reset(void)
+{
+    int fd=fs_open("/mnt/sda1/xgo-a68k-trace.txt",
+                   XGO_FS_O_WRONLY|XGO_FS_O_CREAT|XGO_FS_O_TRUNC,0666);
+    static const char hdr[]="XGO A68K TRACE DIRECT FS\n";
+    if(fd>=0) {
+        fs_write(fd,hdr,(unsigned)(sizeof(hdr)-1));
+        fs_close(fd);
+    }
+    xgo_trace_started=1;
+}
+
+void xgo_a68k_trace(const char *s)
+{
+    int flags=XGO_FS_O_WRONLY|XGO_FS_O_CREAT;
+    int fd;
+    static const char hdr[]="XGO A68K TRACE DIRECT FS\n";
+    static const char nl[]="\n";
+
+    if(xgo_trace_started) flags|=XGO_FS_O_APPEND;
+    else flags|=XGO_FS_O_TRUNC;
+
+    fd=fs_open("/mnt/sda1/xgo-a68k-trace.txt",flags,0666);
+    if(fd>=0) {
+        if(!xgo_trace_started)
+            fs_write(fd,hdr,(unsigned)(sizeof(hdr)-1));
+        if(s)
+            fs_write(fd,s,xgo_trace_strlen(s));
+        fs_write(fd,nl,1);
+        fs_close(fd);
+        xgo_trace_started=1;
+    }
+}
+#else
 void xgo_a68k_trace_reset(void)
 {
     FILE *f=fopen("/mnt/sda1/xgo-a68k-trace.txt","wb");
@@ -84,6 +147,7 @@ void xgo_a68k_trace(const char *s)
     FILE *f=fopen("/mnt/sda1/xgo-a68k-trace.txt","ab");
     if(f){ fputs(s,f); fputc('\n',f); fclose(f); }
 }
+#endif
 
 static void init_core_runtime(void)
 {
