@@ -1,0 +1,179 @@
+name: Exact FBA42 portable C68K splice audit
+
+on:
+  push:
+    branches: [ research-post-mapper-runtime ]
+    paths:
+      - '.github/workflows/xgo-fba42-portable-c68k-splice-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install exact HC15xx Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape.tar.gz
+          sudo tar -xzf /tmp/codescape.tar.gz -C /opt
+
+      - name: Fetch exact FBA42 base and portable C68K donor
+        run: |
+          set -euxo pipefail
+
+          git clone https://github.com/madcock/sf2000-fbalpha.git /tmp/fba42
+          cd /tmp/fba42
+          git checkout 621e371e553eb7814f12504b23f78de4715b7d11
+          git rev-parse HEAD | tee "$GITHUB_WORKSPACE/fba42-commit.txt"
+
+          git clone https://github.com/thefossilrecord/fba-sdl-rs97.git /tmp/rs97
+          cd /tmp/rs97
+          git checkout 49cfafcba8f55d09621387381ecf048d9d140ce0
+          git rev-parse HEAD | tee "$GITHUB_WORKSPACE/c68k-donor-commit.txt"
+
+      - name: Splice portable three-way Sek integration into FBA42
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd /tmp/fba42
+
+          cp /tmp/rs97/src/cpu/m68000_intf.cpp src/cpu/m68000_intf.cpp
+          cp /tmp/rs97/src/cpu/m68000_intf.h   src/cpu/m68000_intf.h
+          rm -rf src/cpu/c68k
+          cp -a /tmp/rs97/src/cpu/c68k src/cpu/c68k
+
+          # CPS1-only stock proof: ordinary 68000 must begin on portable C68K.
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('src/cpu/m68000_intf.cpp')
+          s=p.read_text()
+          old='INT32 nSekCpuCore = SEK_CORE_M68K;'
+          new='INT32 nSekCpuCore = SEK_CORE_C68K;'
+          if old not in s:
+              raise SystemExit('donor nSekCpuCore initializer not found')
+          p.write_text(s.replace(old,new,1))
+
+          p=Path('makefile.libretro')
+          s=p.read_text()
+
+          s=s.replace('FASTCALL = 1','FASTCALL = 0')
+          s=s.replace('PTR64 ?= 1','PTR64 ?= 0')
+          s=s.replace('INCLUDE_7Z_SUPPORT = 1','INCLUDE_7Z_SUPPORT = 0')
+
+          marker='# Windows\nelse\n'
+          branch='\n'.join([
+              '# HC15xx compile-only portable-C68K audit',
+              'else ifeq ($(platform), sf2000_c68k_audit)',
+              '   TARGET := $(TARGET_NAME)_libretro_sf2000_c68k_audit.a',
+              '   CC = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-gcc',
+              '   CXX = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-g++',
+              '   AR = /opt/mips32-mti-elf/2019.09-03-2/bin/mips-mti-elf-ar',
+              '   STATIC_LINKING = 1',
+              '   ENDIANNESS_DEFINES := -DLSB_FIRST',
+              '   PLATFORM_DEFINES := -DUSE_FILE32API -DBUILD_C68K -EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic',
+              '   CFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector',
+              '   CXXFLAGS += -ffunction-sections -fdata-sections -fno-stack-protector -fno-rtti -fno-exceptions',
+              '',
+              '# Windows',
+              'else',
+              ''
+          ])
+          if marker not in s:
+              raise SystemExit('platform marker missing')
+          s=s.replace(marker,branch,1)
+
+          # Do not compile Musashi for this CPS1-only source-splice proof.
+          old='   M68K_DIR := $(FBA_CPU_DIR)/m68k'
+          if old not in s:
+              raise SystemExit('M68K_DIR marker missing')
+          s=s.replace(old,'   M68K_DIR :=',1)
+
+          # Add the portable C68K source directory and include directory.
+          old='FBA_CPU_DIRS := $(FBA_CPU_DIR) \\\n'
+          if old not in s:
+              raise SystemExit('FBA_CPU_DIRS marker missing')
+          s=s.replace(old,old+'\t$(FBA_CPU_DIR)/c68k \\\n',1)
+
+          old='\t-I$(FBA_CPU_DIR) \\\n'
+          if old not in s:
+              raise SystemExit('CPU include marker missing')
+          s=s.replace(old,old+'\t-I$(FBA_CPU_DIR)/c68k \\\n',1)
+
+          # CPS1 driver-list only, same exact-FBA42 audit policy.
+          old='$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR) $(FBA_BURN_DRIVERS_DIR)/capcom $(FBA_BURN_DRIVERS_DIR)/cave $(FBA_BURN_DRIVERS_DIR)/coleco $(FBA_BURN_DRIVERS_DIR)/cps3 $(FBA_BURN_DRIVERS_DIR)/dataeast $(FBA_BURN_DRIVERS_DIR)/galaxian $(FBA_BURN_DRIVERS_DIR)/irem $(FBA_BURN_DRIVERS_DIR)/konami $(FBA_BURN_DRIVERS_DIR)/megadrive $(MIDWAY_DIR) $(FBA_BURN_DRIVERS_DIR)/neogeo $(FBA_BURN_DRIVERS_DIR)/pce $(FBA_BURN_DRIVERS_DIR)/pgm $(FBA_BURN_DRIVERS_DIR)/pre90s $(FBA_BURN_DRIVERS_DIR)/psikyo $(FBA_BURN_DRIVERS_DIR)/pst90s $(FBA_BURN_DRIVERS_DIR)/sega $(FBA_BURN_DRIVERS_DIR)/sg1000 $(SMS_DIR) $(FBA_BURN_DRIVERS_DIR)/snes $(FBA_BURN_DRIVERS_DIR)/taito $(FBA_BURN_DRIVERS_DIR)/toaplan'
+          new='$(PERL) $(FBA_SCRIPTS_DIR)/gamelist.pl -o $(FBA_GENERATED_DIR)/driverlist.h -l gamelist.txt $(FBA_BURN_DRIVERS_DIR)/capcom/d_cps1.cpp'
+          if old not in s:
+              raise SystemExit('driver-list marker missing')
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
+          PY
+
+          {
+            echo '=== donor selector ==='
+            grep -n 'nSekCpuCore =' src/cpu/m68000_intf.cpp
+            echo '=== donor fallback ==='
+            grep -n 'only m68k supports' -A2 src/cpu/m68000_intf.cpp
+            echo '=== portable C68K calls ==='
+            grep -nE 'C68k_(Init|Reset|Exec)' src/cpu/m68000_intf.cpp | head -n 30
+            echo '=== c68k sources ==='
+            find src/cpu/c68k -maxdepth 1 -type f -printf '%f\n' | sort
+          } | tee "$GITHUB_WORKSPACE/splice-report.txt"
+
+      - name: Generate CPS1 table and build compile-only archive
+        run: |
+          set -euxo pipefail
+          cd /tmp/fba42
+
+          make -f makefile.libretro generate-files platform=sf2000_c68k_audit PTR64=0
+          make -f makefile.libretro -j2 platform=sf2000_c68k_audit PTR64=0
+
+          cp fbalpha_libretro_sf2000_c68k_audit.a "$GITHUB_WORKSPACE/fba42-portable-c68k-cps1.a"
+
+      - name: Audit archive symbols and architecture
+        run: |
+          set -euxo pipefail
+          tools=/opt/mips32-mti-elf/2019.09-03-2/bin
+          nm="$tools/mips-mti-elf-nm"
+          objdump="$tools/mips-mti-elf-objdump"
+
+          "$nm" fba42-portable-c68k-cps1.a > archive-symbols.txt
+
+          grep -E ' C68k_(Init|Reset|Exec)$' archive-symbols.txt
+          grep -E ' nSekCpuCore$' archive-symbols.txt
+          grep -E ' SekInit$' archive-symbols.txt
+
+          if grep -Eq ' [UT] m68k_execute$| [UT] m68k_init$| [UT] m68k_ICount$' archive-symbols.txt; then
+            echo 'ERROR: Musashi survived in CPS1-only portable-C68K audit'
+            exit 1
+          fi
+
+          "$objdump" -f fba42-portable-c68k-cps1.a | head -n 120 | tee archive-architecture.txt
+          sha256sum fba42-portable-c68k-cps1.a | tee output.sha256
+
+          {
+            echo 'purpose=compile-only exact-FBA42 portable-C68K splice audit'
+            echo 'hardware_package=NO'
+            echo 'base=621e371e553eb7814f12504b23f78de4715b7d11'
+            echo 'c68k_donor=49cfafcba8f55d09621387381ecf048d9d140ce0'
+            echo 'cpu_backend=C68K_only_for_CPS1_compile_proof'
+          } | tee audit-summary.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fba42-portable-c68k-splice-audit
+          path: |
+            fba42-commit.txt
+            c68k-donor-commit.txt
+            splice-report.txt
+            archive-symbols.txt
+            archive-architecture.txt
+            output.sha256
+            audit-summary.txt
+          retention-days: 30
