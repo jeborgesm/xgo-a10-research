@@ -121,39 +121,64 @@ Preserve unless an explicit experiment says otherwise:
 
 Do not casually replace the full SD package or shared firmware while testing one CPS1 variable.
 
-## Immediate next work — NO HARDWARE TEST YET
+## Current authoritative stock-FBA findings
 
-Perform comparative family research first.
+Family-wide comparative archaeology has now established the following:
 
-Suggested sequence:
+- ordinary CPS1/68000 stock execution strongly points to **C68K**, not A68K;
+- the stock family conserves the vendor FBA audio configuration **22050 Hz / 367 samples**;
+- XGO does not expose `fba-cpu-speed-adjust` through its stock environment callback;
+- stock FBA installs a private `gfn_frameskip` hook;
+- `frameskip(1)` sets the FBA draw buffer / `pBurnDraw` path to NULL while `retro_run()` and audio continue;
+- `frameskip(0)` re-enables drawing and alternates between two stock frame buffers;
+- this render-only skip mechanism is conserved in SF2000 08/03, SF2000 1.71, GB300 v2, and XGO;
+- the earlier interpretation that `3528/2940` imposed a hard 44.1-kHz scheduler budget is superseded; stock FBA explicitly advertises and runs at 22050 Hz through the libretro/sound-driver boundary.
 
-1. Acquire/identify stock arcade implementation artifacts for XGO, SF2000 and GB300 v2 from existing repository assets/research and trusted sibling repositories.
-2. Establish binary/source lineage: FBA version/fork, embedded libretro wrapper, vendor patches.
-3. Compare stock CPU backends and MIPS-specific 68000 implementation.
-4. Compare frame scheduler, frameskip, audio sync/sample rate and CPS1 timing paths.
-5. Search sibling firmware/history for later arcade fixes or performance changes.
-6. Produce a concrete diff/hypothesis before building another XGO hardware candidate.
+Most important scheduler result:
 
-The user explicitly prefers this research-led workflow because related firmware/codebases have repeatedly yielded high-value answers without blind bit-by-bit hardware probing.
-
-## Workflow expectation
-
-The established XGO Archeology workflow is:
-
-```
-family/source/binary research
-    -> concrete hypothesis
-    -> preserve analysis in GitHub
-    -> minimal controlled build
-    -> hardware observation
-    -> commit hardware result
-    -> next hypothesis
+```text
+SF2000 08/03  -> wall-time / ideal-frame-count scheduler
+SF2000 1.71   -> same wall-time / ideal-frame-count scheduler
+GB300 v2      -> same wall-time / ideal-frame-count scheduler
+XGO           -> different incremental drift/debt scheduler
 ```
 
-NOT:
+The siblings continuously anchor pacing to total elapsed wall time and can issue up to three catch-up frames, using the private FBA draw-skip hook during catch-up.
 
-```
-speculate -> make ZIP -> user swaps files repeatedly -> reconstruct after chat rollover
+XGO instead uses incremental PAL/NTSC frame-period state (PAL 20 ms; NTSC 17/17/16 ms cadence), carries residual overrun debt, asserts frameskip only after sufficient lateness, and discards sufficiently large debt.
+
+This is currently the **leading XGO-specific lag-recovery hypothesis** because the major FBA engine-side optimizations are otherwise conserved across the family.
+
+Primary finding:
+
+`findings/stock-fba-cpu-backend-and-frontend-timing-comparison.md`
+
+Latest reconciliation commit:
+
+`dc426946e27d5a636d4a5d790f9da5781630f3cc`
+
+## Immediate next work — STILL NO HARDWARE TEST YET
+
+Do **not** resume A68K ROM bisection.
+
+Do **not** build a new CPS1 core yet.
+
+Next research target:
+
+1. Reconstruct the sibling wall-time/catch-up scheduler into clean pseudocode with exact state variables and branch thresholds.
+2. Reconstruct the XGO incremental debt scheduler to the same level.
+3. Identify the smallest scheduler-only transplant or behavioral patch that would let XGO use the sibling catch-up policy while preserving XGO UI/input/audio/FBA code.
+4. Only after that concrete patch surface is proven should a minimal hardware candidate be built.
+
+Preferred experiment shape, if the static work succeeds:
+
+```text
+XGO stock firmware
+  + unchanged stock FBA
+  + unchanged C68K
+  + unchanged stock audio/input/video
+  + unchanged private FBA draw-skip hook
+  + scheduler-only pacing/catch-up patch
 ```
 
-The user values momentum and does not want to re-explain project history after a chat rollover.
+This is now better-founded than any external-emulator replacement.
