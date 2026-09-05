@@ -193,6 +193,68 @@ fba-controls-p1
 fba-controls-p2
 ```
 
+
+## XGO vendor FBA lowers the libretro wrapper audio load
+
+The exact upstream `621e371` libretro wrapper hardcodes:
+
+```cpp
+AUDIO_SAMPLERATE      = 48000
+AUDIO_SEGMENT_LENGTH  = 801
+```
+
+The preserved XGO stock binary does something materially different in the FBA game-load initialization path:
+
+```asm
+8036d7e0  lui   a0,0x809a
+8036d7e4  addiu t3,a0,0x50b8
+8036d7e8  lw    a0,0(t3)              ; stock FBA audio buffer pointer
+8036d7ec  lui   v1,0x80d3
+8036d7f0  addiu t2,v1,-13520
+8036d7f4  addiu t1,zero,22050
+8036d7f8  addiu t0,zero,367
+...
+8036d804  sw    t2,-24108(gp)         ; pBurnSoundOut-like global
+8036d808  sw    t1,-24100(gp)         ; 22050 Hz
+8036d80c  sw    t0,-24104(gp)         ; 367 samples/frame buffer length
+```
+
+Using the authoritative XGO GP `0x80c34774`, these globals are:
+
+```text
+0x80c2e948
+0x80c2e94c
+0x80c2e950
+```
+
+The code shape corresponds directly to the upstream wrapper's `retro_load_game()` assignments to `pBurnSoundOut`, `nBurnSoundRate`, and `nBurnSoundLen`, but XGO has replaced the upstream 48 kHz / 801-sample values with 22.05 kHz / 367.
+
+This aligns with the older handheld `fba-a320` lineage, whose default frontend sample rate is also 22050 Hz.
+
+This is a concrete vendor optimization: XGO's embedded arcade build generates substantially less audio data per emulated frame than the untouched 2017 libretro wrapper.
+
+## XGO frontend does not expose the FBA CPU-overclock option
+
+The embedded FBA wrapper contains the upstream option string:
+
+```text
+fba-cpu-speed-adjust
+```
+
+but XGO's stock `retro_environment_cb` at `0x8035eb64` handles `RETRO_ENVIRONMENT_GET_VARIABLE` (command 15) only for these keys:
+
+```text
+fceumm_region
+picodrive_region_fps
+catsfc_VideoMode
+```
+
+The handler compares the requested key against those three strings and returns false for other keys.
+
+Therefore the embedded FBA wrapper cannot receive a stock-frontend value for `fba-cpu-speed-adjust`. Its upstream `check_variables()` logic leaves `nBurnCPUSpeedAdjust` at the core default when GET_VARIABLE fails.
+
+This rules out a previously plausible explanation for stock CPS1 speed: XGO is not secretly driving the old FBA wrapper through its 110-200% CPU-overclock option. The more promising optimizations are now the C68K backend, reduced audio workload, and stock scheduler/frame-pacing integration.
+
 ## HC15xx frontend integration is part of the performance model
 
 The SF2000 multicore loader demonstrates that replacement cores do not own the whole runtime. They are inserted under stock firmware services:
@@ -244,7 +306,7 @@ It is:
 Priority static-analysis targets:
 
 1. Treat C68K as the leading stock-CPS1 backend hypothesis and confirm it against SF2000/GB300 v2 binaries.
-2. Identify the XGO environment callback behavior for `fba-cpu-speed-adjust` and whether CPS1 receives a non-100% value.
+2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
 5. Acquire/compare GB300 v2 stock binary values at the equivalent selector/timing sites.
