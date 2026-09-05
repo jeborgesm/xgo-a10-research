@@ -1,123 +1,115 @@
 # HANDOFF-CURRENT
 
-## Branch closure: research-post-mapper-runtime
+## Active branch
 
-This branch is ready to merge.
+`research-audio-osd`
 
-### Hardware-confirmed result
+Created from merged `main` commit:
 
-The stock CPS1 scheduler-only transplant is hardware-confirmed successful on the protected baseline:
+```text
+2a12bd0fdf0999f2cbffbe9802dc9e25485b2a21
+```
+
+The previous `research-post-mapper-runtime` branch is closed and merged.
+
+## Protected hardware baseline
+
+Preserve the successful composed baseline:
 
 ```text
 Mapper v19
 + native Snes9x2005 Core #2 Test02
-+ sibling-derived wall-time / bounded-catchup scheduler
++ hardware-confirmed sibling-derived CPS1 scheduler
 ```
 
-Input protected firmware SHA-256:
-
-```text
-8db8d091f7896e0847d63455ec325bdc9889a2caeebd3d37525c0005006a226a
-```
-
-Successful scheduler candidate SHA-256:
+Successful scheduler candidate firmware SHA-256:
 
 ```text
 9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
 ```
 
-Hardware observation:
+Do not regress this baseline while instrumenting audio.
 
-- Street Fighter II Ryu-vs-Guile was the known slowdown/frame-drop case.
-- With the new scheduler, there was no prolonged "underwater" slowdown.
-- Frame drops were minimal.
-- Gameplay remained normal enough to complete and win the fight.
-- Existing protected baseline behavior continued to work as expected.
+## Immediate scope: audio OSD experiments
 
-Primary result:
+Goal:
 
-`findings/hardware-test-stock-cps1-sibling-scheduler-success.md`
+> expose useful stock audio state on-screen with the smallest possible runtime disturbance.
 
-### Authoritative technical conclusion
+Research order:
 
-Family-wide archaeology established:
+1. Recover the stock volume/mute/mixer state variables and their update paths.
+2. Identify the least invasive existing OSD/text/blit path available during gameplay.
+3. Prove a tiny diagnostic overlay can be drawn without altering emulator cadence.
+4. Start with read-only telemetry.
+5. Only after that consider interactive audio controls or richer diagnostics.
 
-```text
-ordinary CPS1/68000 -> C68K
-FBA audio           -> 22050 Hz / 367 samples
-private frameskip   -> render-only suppression via NULL pBurnDraw
-emulation/audio     -> continue on skipped-render frames
-```
-
-The FBA-side mechanisms are conserved across SF2000, GB300 v2 and XGO.
-
-The important XGO divergence was frontend pacing:
+Preferred first OSD values:
 
 ```text
-SF2000 / GB300
-  -> wall-time / ideal-frame-count scheduler
-  -> bounded catch-up
-  -> aggressive short render-skip recovery
-
-XGO
-  -> incremental drift/debt scheduler
-  -> poorer recovery
-  -> prolonged slow-motion under transient load
+volume level
+mute state
+active sample rate
+audio batch/frame count if cheaply available
+ring-buffer fill/occupancy if a stable stock value exists
 ```
 
-Replacing only XGO's pacing policy with the sibling-style wall-time/bounded-catchup policy fixed the known CPS1 slowdown stress case on hardware.
+Constraints:
 
-### Important superseded directions
+- no new emulator core in this branch initially;
+- do not touch the successful CPS1 scheduler unless instrumentation proves a conflict;
+- preserve Mapper v19 and native SNES baseline;
+- do not move timing-sensitive audio work into printf/log paths that could perturb pacing;
+- prefer existing stock framebuffer/text routines over a new renderer.
 
-Do not resume A68K ROM bisection as the default CPS1 strategy.
+## Secondary/future research track: additional reliable cores
 
-Do not assume a replacement FBA core is required for CPS1 performance.
+This is intentionally deferred until the audio OSD branch has a stable baseline.
 
-The external/A68K work remains useful archaeological evidence, but the successful stock-FBA scheduler path is now the preferred CPS1 baseline.
+Question:
 
-### Lessons learned
+> Which additional emulator cores can run reliably enough on XGO to be worth supporting?
 
-1. Compare sibling stock firmware before replacing a subsystem wholesale.
-2. CPU backend, audio workload, scheduler and frontend callback semantics form one performance contract.
-3. "Faster core" does not automatically mean better device behavior.
-4. Manufacturer-family implementations can reveal intended fixes much faster than repeated blind binary bisection.
-5. Preserve known-good card baselines and compose experiments onto them rather than rolling back unrelated confirmed features.
+Use a compatibility-first survey rather than "does it boot?"
 
-## Next branch
+Evaluate each candidate on:
 
-Open a clean branch for **audio OSD experiments**.
+```text
+CPU cost / MIPS32 suitability
+memory footprint
+video format / resolution
+audio sample rate and batching
+stock frontend ABI compatibility
+input/controller requirements
+save-state behavior
+representative-game performance
+return-to-menu stability
+```
 
-Suggested branch name:
+Classify results as:
 
-`research-audio-osd`
+```text
+A — reliable/playable
+B — works with limitations
+C — boots but impractical
+D — incompatible
+```
 
-Initial scope:
+Prioritize lightweight 8/16-bit cores and HC15xx/SF2000-family ports before heavier systems.
 
-1. recover the stock audio-volume / mixer state available to the frontend;
-2. identify a low-risk OSD render path for temporary on-screen audio diagnostics;
-3. avoid disturbing stock emulator timing while instrumenting audio state;
-4. keep the scheduler-success baseline protected.
+Do not assume that generic libretro compatibility means practical XGO compatibility.
 
-## Future research track: additional reliable cores
+## Authoritative CPS1 conclusion carried forward
 
-After the audio OSD branch, investigate which additional libretro cores can run reliably on XGO.
+The successful CPS1 result remains:
 
-Use the lessons from NES/SNES/FBA work:
+```text
+stock FBA
++ C68K
++ 22050-Hz / 367-sample audio
++ private render-only frameskip
++ sibling wall-time / bounded-catchup pacing
+= hardware-confirmed removal of prolonged underwater slowdown
+```
 
-- prefer HC15xx/SF2000-family ports or similarly constrained MIPS32 cores first;
-- analyze CPU cost, audio rate, video format, memory footprint and frontend ABI before hardware packaging;
-- reuse stock frontend services where practical;
-- test representative games, not just successful boot;
-- classify each candidate as:
-  - reliable/playable;
-  - works with limitations;
-  - technically boots but impractical;
-  - incompatible.
-
-Potential families worth surveying later include lightweight 8/16-bit systems and other community cores already proven on SF2000/GB300-class hardware. Do not assume compatibility solely from libretro API support.
-
-## Branch closure rule
-
-Merge `research-post-mapper-runtime` before beginning audio OSD work.
-
-Start the next branch from updated `main`, not from an intermediate experimental commit.
+Do not resume A68K ROM bisection unless a new, specific research question requires it.
