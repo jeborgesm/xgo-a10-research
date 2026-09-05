@@ -291,6 +291,60 @@ retro_run      -> existing XGO path
 
 This is safer than overloading `0x80c33a74` or other stock state whose secondary consumers may not yet be fully named.
 
+
+## Existing XGO words can host the three scheduler states
+
+A full GP-relative reference scan produced a better solution than adding private BSS.
+
+Two XGO setup words previously identified as diagnostic-only are **write-only across the entire preserved firmware**:
+
+```text
+0x80c2d12c  diagnostic 20000 / 16667 usec value
+             executable reads: 0
+             executable writes: 1
+
+0x80c2d114  diagnostic 3528 / 2940 sound_len value
+             executable reads: 0
+             executable writes: 1
+```
+
+The existing residual-debt word is confined to XGO's current scheduler/reinitialization path:
+
+```text
+0x80c33a74  residual debt
+             references are only inside run_emulator timing setup/re-entry
+```
+
+By contrast, `0x80c2e870` must **not** be repurposed because it has an additional writer outside the central scheduler path.
+
+Therefore a scheduler-only transplant can reuse:
+
+```text
+0x80c2d12c  scheduler_start_tick
+0x80c2d114  completed_frame_count
+0x80c33a74  catchup_count
+```
+
+or any equivalent assignment among those three.
+
+The helper must overwrite their region-setup values on first entry, so the old diagnostic constants do not matter.
+
+This removes the need for:
+
+- new BSS allocation;
+- mutable state stored inside injected code;
+- stealing unrelated firmware globals.
+
+It also reduces rollback risk because all three words already belong to the replaced timing/diagnostic path.
+
+## S2 reuse rejected
+
+A complete scan of XGO `run_emulator()` shows that saved register `s2` is reused extensively later for save/state/menu/file operations.
+
+Although `s2` begins as transient lateness bookkeeping in the pacing region, it cannot safely become the persistent sibling catch-up counter across the full frame loop.
+
+The first scheduler transplant should therefore use the three existing words above rather than relying on a custom callee-saved-register contract.
+
 ## Patch redirection boundary
 
 The smallest useful behavioral interception is the timing decision region beginning around:
