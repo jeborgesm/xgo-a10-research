@@ -145,3 +145,5 @@ jobs:
 # trigger after workflow registration
 
 # gp trigger
+
+# pacing-tail trigger
