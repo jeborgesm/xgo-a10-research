@@ -87,26 +87,67 @@ Do **not** use FBA2012 v0.2.97.29 as the reconstruction base.
 
 ### Donor
 
-Preferred lineage donor:
+**Preferred integration donor:**
+
+```text
+thefossilrecord/fba-sdl-rs97
+commit 49cfafcba8f55d09621387381ecf048d9d140ce0
+```
+
+This tree is especially valuable because it already carries the FBA-a320-style portable C68K integration under the **newer API/file names** expected by later FBA trees:
+
+```text
+src/cpu/m68000_intf.cpp
+src/cpu/m68000_intf.h
+src/cpu/c68k/*
+```
+
+It preserves:
+
+```text
+SEK_CORE_C68K = 0
+SEK_CORE_M68K = 1
+SEK_CORE_A68K = 2
+
+portable c68k_struc backend
+Musashi backend
+A68K backend
+SekSetTASCallback
+newer INT32/UINT32 typedef API
+non-68000 -> Musashi fallback
+```
+
+Its `SekInit` contains the same key stock-family rule:
+
+```cpp
+if (nCount == 0 &&
+    nCPUType != 0x68000 &&
+    nSekCpuCore != SEK_CORE_M68K)
+{
+    nSekCpuCore = SEK_CORE_M68K;
+}
+```
+
+The donor currently initializes:
+
+```cpp
+INT32 nSekCpuCore = SEK_CORE_M68K;
+```
+
+which should be changed to the stock HC15xx default:
+
+```cpp
+INT32 nSekCpuCore = SEK_CORE_C68K;
+```
+
+**Ancestry/reference donors:**
 
 ```text
 dmitrysmagin/fba-a320
-or the directly preserved
 littlehui/miyoo-emu/fba-a320-miyoo
 ```
 
-Relevant donor files:
-
-```text
-src/burn/sek.cpp
-src/burn/sek.h
-
-src/cpu/c68k/c68k.c
-src/cpu/c68k/c68k.h
-src/cpu/c68k/c68k_ini.c
-src/cpu/c68k/c68k_op.c
-src/cpu/c68k/c68kmacro.h
-```
+remain useful for proving the older handheld lineage and defaults, but `fba-sdl-rs97` is the cleaner source-level transplant donor because it already matches the later `m68000_intf.*` interface.
 
 ### Required selector contract
 
