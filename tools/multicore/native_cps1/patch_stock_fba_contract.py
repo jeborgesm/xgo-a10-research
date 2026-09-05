@@ -47,6 +47,16 @@ old_cpp.unlink()
 shutil.copy2(cps2 / "src/cpu/m68000_intf.c", cps1 / "src/cpu/m68000_intf.c")
 shutil.copy2(cps2 / "src/cpu/m68000_intf.h", cps1 / "src/cpu/m68000_intf.h")
 
+# The sibling interface revision uses retro_inline.h, which is not present in
+# the older pinned CPS1 libretro-common tree. Use ordinary compiler inline
+# semantics instead; this changes no CPU behavior.
+for rel in ("src/cpu/m68000_intf.c", "src/cpu/m68000_intf.h"):
+    p = cps1 / rel
+    s = p.read_text()
+    s = s.replace("#include <retro_inline.h>\n", "")
+    s = s.replace("static INLINE ", "static inline ")
+    p.write_text(s)
+
 # The CPS1 makefile already has a C68K switch, but its original source tree
 # never shipped the implementation/interface needed to make it real.
 mk = (cps1 / "makefile.libretro").read_text()
