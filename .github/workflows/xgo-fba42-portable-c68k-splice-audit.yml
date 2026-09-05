@@ -100,6 +100,15 @@ jobs:
               raise SystemExit('FBA_CPU_DIRS marker missing')
           s=s.replace(old,old+'\t$(FBA_CPU_DIR)/c68k \\\n',1)
 
+          # c68k_ini.c and c68k_op.c are include fragments pulled into
+          # c68k.c (computed-goto tables/labels), not standalone units.
+          marker='BURN_BLACKLIST +='
+          first=s.find(marker)
+          if first < 0:
+              raise SystemExit('BURN_BLACKLIST marker missing')
+          insert='BURN_BLACKLIST += $(FBA_CPU_DIR)/c68k/c68k_ini.c \\\n\t$(FBA_CPU_DIR)/c68k/c68k_op.c\n\n'
+          s=s[:first]+insert+s[first:]
+
           old='\t-I$(FBA_CPU_DIR) \\\n'
           if old not in s:
               raise SystemExit('CPU include marker missing')
