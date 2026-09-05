@@ -252,6 +252,66 @@ Provide the remaining vendor-specific evidence:
 - stock frontend pacing integration.
 
 
+
+## Vendor framebuffer patch is exactly a doubled upstream allocation
+
+Upstream `Aftnet/fbalpha@621e371` allocates one libretro framebuffer after `BurnDrvGetFullSize()`:
+
+```cpp
+g_fba_frame = (uint32_t*)malloc(width * height * sizeof(uint32_t));
+```
+
+The XGO stock load path performs the corresponding calculation as:
+
+```asm
+8036dfb4  ... get full width/height
+8036dfbc  lw    v1,width
+8036dfc0  lw    t9,height
+8036dfc4  mult  v1,t9
+8036dfc8  mflo  t8
+8036dfcc  jal   allocator
+8036dfd0  sll   a0,t8,3       ; width * height * 8 bytes
+```
+
+It then initializes the private double-buffer state:
+
+```asm
+8036e00c  sw    v0,active_buffer
+8036e010  sw    v0,buffer0
+8036e018  sw    zero,buffer_index
+
+8036dfe4  mult  width,height
+8036e020  mflo  t6
+8036e024  sll   t5,t6,2       ; width * height * 4
+8036e028  addu  t4,t5,v0
+8036e034  sw    t4,buffer1
+```
+
+Therefore:
+
+```text
+allocation = width * height * 8
+
+buffer0 = base
+buffer1 = base + width * height * 4
+active  = buffer0
+index   = 0
+```
+
+This is exactly two upstream-sized `uint32_t` frame surfaces in one allocation.
+
+Combined with the private frameskip hook:
+
+```text
+draw enabled:
+    toggle buffer0/buffer1
+
+draw skipped:
+    active_buffer = NULL
+```
+
+the vendor framebuffer modification can be reconstructed at source level as a small wrapper patch rather than an unknown graphics subsystem.
+
 ## FBA-a320 contains the direct source ancestor of HC15xx render skipping
 
 The strongest source-level lineage match now comes from `dmitrysmagin/fba-a320`.
