@@ -1150,6 +1150,84 @@ Substantial chunks of the pacing/catch-up/frameskip-call path are also exact rel
 
 Therefore no evidence was found that SF2000 1.71 introduced a later arcade scheduler/backend/audio fix that XGO lacks. The key stock-FBA performance mechanisms predate 1.71 and are conserved across the family.
 
+
+## Scheduler comparison: shared hot-path policy, divergent surrounding frontend
+
+A first positional comparison of the complete SF2000 and GB300 v2 `run_emulator()` bodies produced only a ~3% instruction-position match. That result was misleading because it assumed corresponding instructions remained at identical relative offsets.
+
+A sequence alignment that tolerates insertions/deletions gives the more useful picture:
+
+```text
+SF2000 analyzed instructions: 373
+GB300v2 analyzed instructions: 439
+aligned identical normalized instructions: 80
+overall sequence ratio: ~0.197
+```
+
+This proves that the **complete frontend loop evolved materially** between SF2000 08/03 and GB300 v2. GB300 contains substantial inserted/rearranged frontend, state, menu and control logic.
+
+However, the performance-critical scheduler blocks align directly.
+
+Examples:
+
+```text
+SF2000 +0x0b8 @ 0x80358a5c
+GB300v2 +0x0c4 @ 0x8035c960
+11-instruction aligned block:
+    AV/sample-rate setup
+    sound-driver setup
+    active callback dispatch
+
+SF2000 +0x1a8 @ 0x80358b4c
+GB300v2 +0x1b4 @ 0x8035ca50
+8-instruction aligned block:
+    lateness/accumulator state
+    boolean frameskip-state generation
+    private frameskip-hook dispatch
+```
+
+Both firmwares also retain the same PAL/NTSC setup constants:
+
+```text
+PAL:
+  50 Hz
+  20000 usec diagnostic period
+  3528 diagnostic sound_len
+
+NTSC:
+  60 Hz
+  16667 usec diagnostic period
+  2940 diagnostic sound_len
+```
+
+XGO independently reproduces the same scheduler semantics:
+
+```text
+elapsed < target:
+    wait / continue pacing
+
+elapsed >= target:
+    advance timing accumulator
+
+more than one additional frame period late:
+    frameskip flag = 1
+otherwise:
+    frameskip flag = 0
+
+if gfn_frameskip != NULL:
+    gfn_frameskip(flag)
+
+retro_run() still executes every emulated frame
+```
+
+Therefore the correct family conclusion is:
+
+> The entire stock frontend is not byte-identical across SF2000, GB300 v2 and XGO, but the arcade performance contract—frame-period pacing plus adaptive render-only frameskip—is conserved.
+
+There is currently no evidence that GB300 v2 acquired a fundamentally different arcade scheduler that explains performance unavailable to XGO.
+
+The earlier naïve 3% positional-diff result should **not** be interpreted as evidence of unrelated scheduler design.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
