@@ -369,6 +369,37 @@ draw skipped:
 
 the vendor framebuffer modification can be reconstructed at source level as a small wrapper patch rather than an unknown graphics subsystem.
 
+
+## C68K donor is portable C, not Cyclone ARM assembly
+
+The name `C68K` must not be conflated with later FBA trees that use Cyclone under a C68K-style selector.
+
+The direct FBA-a320 ancestor contains:
+
+```text
+src/cpu/c68k/c68k.c
+src/cpu/c68k/c68k.h
+src/cpu/c68k/c68k_ini.c
+src/cpu/c68k/c68k_op.c
+src/cpu/c68k/c68kmacro.h
+```
+
+and its three-way `sek.cpp` drives that core through APIs such as:
+
+```text
+C68k_Init
+C68k_Reset
+C68k_Exec
+```
+
+This is a portable C 68000 implementation, not an ARM-only assembly backend.
+
+That is consistent with the stock HC15xx MIPS binary, whose `SekInit`/reset paths carry the same C68K-oriented structure and diagnostic labels.
+
+Therefore there is no architecture paradox in stock XGO using C68K. A MIPS build can compile this donor directly.
+
+This makes the FBA-a320 C68K implementation a substantially better reconstruction donor than later libretro-lite trees where the `C68K` selector is implemented with Cyclone.
+
 ## FBA-a320 contains the direct source ancestor of HC15xx render skipping
 
 The strongest source-level lineage match now comes from `dmitrysmagin/fba-a320`.
