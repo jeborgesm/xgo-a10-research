@@ -696,6 +696,164 @@ This establishes a family-wide stock optimization:
 
 A generic libretro replacement that only implements the public API will not automatically inherit this optimization.
 
+
+## XGO scheduler is a real fork divergence; SF2000 1.71 retains the older wall-time scheduler
+
+To determine whether XGO's pacing loop represented a later HC15xx scheduler generation, stock SF2000 1.71 (October 13, 2023) was compared with the preserved SF2000 08/03 build.
+
+SF2000 1.71 firmware:
+
+```text
+size: 12,624,628 bytes
+source: Dteyn/Datafrog_SF2000_Vanilla v1.71 firmware-only release
+```
+
+The FBA/runtime blocks remain inherited unchanged, with relocation caused by intervening firmware changes:
+
+```text
+08/03 block                  SF2000 1.71
+run_emulator 0x803589a4   -> 0x80358af0
+FBA frameskip 0x803659cc  -> 0x80365b38
+FBA run 0x80365e34        -> 0x80365fa0
+FBA audio tuple 0x80367400-> 0x8036756c
+SekInit core 0x8036db90   -> 0x8036dcfc
+audio callback 0x80358430 -> 0x8035857c
+ring writer 0x80356864    -> 0x803569b0
+```
+
+Most importantly, the scheduler itself is still the 08/03 implementation:
+
+```text
+08/03 pacing catch-up   0x80358b04
+1.71                    0x80358c50
+match: 128 bytes exact
+
+08/03 pacing sleep tail 0x80358df0
+1.71                    0x80358f3c
+match: 48 bytes exact
+
+08/03 frameskip call    0x80358e28
+1.71                    0x80358f74
+match: 32 bytes exact
+```
+
+Therefore XGO's scheduler is **not** a later SF2000 scheduler that eventually propagated upstream. Among the stock family binaries now compared:
+
+```text
+SF2000 08/03  -> wall-time / ideal-frame-count scheduler
+SF2000 1.71   -> same wall-time / ideal-frame-count scheduler
+GB300 v2      -> same wall-time / ideal-frame-count scheduler
+XGO           -> different incremental drift/debt scheduler
+```
+
+### SF2000 / GB300 scheduler model
+
+The shared sibling scheduler computes the ideal emulated-frame count from total elapsed wall time:
+
+```text
+elapsed_ms = tick_now - tick_start
+ideal_frame = elapsed_ms * target_fps / 1000
+next_frame = completed_frame + 1
+```
+
+When behind:
+
+- it permits up to three consecutive catch-up frames;
+- `frameskip_flag = catchup_count > 0`;
+- the private FBA hook consumes that flag and sets the FBA draw pointer to NULL;
+- catch-up frames therefore emulate without rendering.
+
+When early, it computes the absolute ideal deadline for the current frame:
+
+```text
+deadline_ms = ((next_frame - 1) * 1000) / target_fps
+sleep_ms = deadline_ms - elapsed_ms
+```
+
+and sleeps until that deadline.
+
+This scheduler is anchored to total wall time, so small per-frame timing errors do not accumulate indefinitely.
+
+### XGO scheduler model
+
+XGO instead keeps an incremental frame-period and residual-time debt.
+
+Its pacing state includes:
+
+```text
+target_fps:
+  PAL  = 50
+  NTSC = 60
+
+frame period:
+  PAL  = 20 ms
+  NTSC = repeating 17, 17, 16 ms
+```
+
+The NTSC cadence is deliberate integer timing:
+
+```text
+17 + 17 + 16 = 50 ms for 3 frames
+=> exactly 60 frames / second
+```
+
+Each loop effectively performs:
+
+```text
+adjusted_elapsed = now + residual_debt - previous_tick
+
+if adjusted_elapsed < frame_period:
+    dly_tsk(1)
+    retry
+
+overrun = adjusted_elapsed - frame_period
+residual_debt = overrun
+
+if overrun > frame_period:
+    frameskip_flag = 1
+
+    if overrun > frame_period + 10 ms:
+        residual_debt = 0
+else:
+    frameskip_flag = 0
+```
+
+The same private FBA draw-skip hook then consumes `frameskip_flag`.
+
+This is a materially different recovery policy from the sibling wall-time scheduler.
+
+### Why this is now the leading XGO-specific performance hypothesis
+
+The user-observed stock XGO symptom is intermittent lag rather than baseline inability to run CPS1.
+
+The FBA engine-side optimizations are now shown to be conserved:
+
+- C68K default for ordinary 68000;
+- 22.05-kHz / 367-sample FBA audio;
+- private draw-skip hook;
+- FBA run wrapper;
+- audio callback and ring writer.
+
+The major runtime difference remaining directly in the performance path is the scheduler feeding the draw-skip hook.
+
+The sibling policy continuously anchors itself to total wall time and can suppress drawing on as many as three catch-up frames.
+
+XGO's policy carries incremental debt, uses a one-frame overrun test, and discards sufficiently large debt once it exceeds approximately one frame period plus 10 ms.
+
+This does **not yet prove** the XGO scheduler causes the observed lag. It does provide the first concrete XGO-specific mechanism whose behavior is directly related to lag recovery while all tested siblings retain a different policy.
+
+### Current optimization hypothesis
+
+Before altering CPU cores or FBA ROM handling again, evaluate whether XGO can safely adopt the sibling wall-time pacing/catch-up policy while preserving:
+
+- XGO's device-specific frontend/UI;
+- XGO audio transport;
+- XGO input/keymap runtime;
+- XGO stock FBA binary;
+- XGO private FBA draw-skip callback.
+
+A scheduler-only transplant or equivalent minimal patch is now a substantially better-founded hardware experiment than another external emulator replacement.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
@@ -710,6 +868,6 @@ Priority static-analysis targets:
 2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
-5. Treat private FBA draw suppression as confirmed family baseline; compare the SF2000/GB300 wall-time scheduler against XGO's different incremental drift scheduler to identify whether XGO's pacing policy is the remaining source of stock lag.
+5. Treat XGO's scheduler as the leading fork-specific lag-recovery hypothesis; map a minimal scheduler-only transplant/tuning strategy before building any hardware candidate.
 
 No hardware candidate should be built until these static comparisons produce a concrete transplant or patch hypothesis.
