@@ -503,6 +503,107 @@ and, when non-null, calls it at:
 
 The flag is maintained by the surrounding timing accumulator rather than by the FBA core itself. This is the next family-diff target.
 
+
+## XGO vendor FBA restores real draw skipping through a private frontend hook
+
+The upstream `621e371` libretro wrapper contains no `RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK` request and no frameskip callback. Its `retro_run()` always sets `pBurnDraw` to the FBA framebuffer before `BurnDrvFrame()`.
+
+The XGO vendor build adds a private mechanism outside that upstream API.
+
+The stock arcade launcher installs:
+
+```text
+gfn_retro_run  = 0x8036c228
+gfn_frameskip  = 0x8036bdc0
+```
+
+at the end of the arcade wrapper immediately before jumping into stock `run_emulator()`.
+
+With XGO stock GP `0x80c34774`:
+
+```text
+gfn_frameskip = 0x80c33ae0  -> GP - 3220
+gfn_retro_run = 0x80c33ae4  -> GP - 3216
+```
+
+The private FBA frameskip hook is:
+
+```asm
+8036bdc0  beq   a0,zero,0x8036bdd0
+8036bdc4  lw    a3,-24260(gp)
+
+; a0 != 0: skip drawing this emulated frame
+8036bdc8  jr    ra
+8036bdcc  sw    zero,-24248(gp)
+
+; a0 == 0: select the next real framebuffer
+8036bdd0  addiu v0,gp,-24268
+8036bdd4  xori  a0,a3,1
+8036bdd8  sll   a2,a0,2
+8036bddc  addu  v1,a2,v0
+8036bde0  lw    a1,0(v1)
+8036bde4  sw    a0,-24260(gp)
+8036bde8  jr    ra
+8036bdec  sw    a1,-24248(gp)
+```
+
+The involved XGO globals are:
+
+```text
+0x80c2e8a8  two-entry framebuffer pointer table
+0x80c2e8b0  current framebuffer selector
+0x80c2e8bc  active FBA draw pointer
+```
+
+The FBA `retro_run()` entry at `0x8036c228` then loads this vendor-selected draw pointer:
+
+```asm
+8036c24c  lw    v0,-24248(gp)
+...
+8036c258  sw    v0,-24088(gp)
+```
+
+The destination global is the FBA-side draw target used for the frame.
+
+Therefore the stock HC15xx integration has recreated the old handheld FBA optimization in a private frontend/core ABI:
+
+```text
+stock run_emulator timing
+        |
+        +-- behind schedule?
+        |      |
+        |      +-- gfn_frameskip(1)
+        |              -> active FBA draw pointer = NULL
+        |              -> BurnDrvFrame still emulates
+        |              -> expensive FBA video rendering is suppressed
+        |
+        +-- normal frame
+               |
+               +-- gfn_frameskip(0)
+                       -> alternate real framebuffer
+                       -> normal draw/render
+```
+
+This is directly analogous to the old `fba-a320` SDL loop:
+
+```cpp
+pBurnDraw = NULL;
+if (bDraw) {
+    pBurnDraw = BurnVideoBuffer;
+}
+BurnDrvFrame();
+```
+
+where catch-up frames are emulated without drawing and only the final frame is rendered.
+
+This private hook is a major stock-performance mechanism that generic libretro integration does not reproduce automatically. It explains why simply dropping in a nominally newer FBA/MAME core under the stock frontend can perform worse even when CPU emulation itself is comparable.
+
+### Important correction to upstream-only inference
+
+It is not sufficient to inspect `621e371` and conclude that stock FBA has no frameskip support. The vendor binary extends the wrapper with this private `gfn_frameskip` ABI even though upstream `621e371` does not expose it through standard libretro.
+
+The family comparison must therefore treat the **vendor wrapper patches**, not just the identified upstream commit, as first-class optimization code.
+
 ## Working hypothesis
 
 The highest-value next question is no longer "can A68K load SFII?"
@@ -517,6 +618,6 @@ Priority static-analysis targets:
 2. Compare the XGO 22.05 kHz / 367-sample FBA audio path against SF2000 and GB300 v2.
 3. Recover the effective XGO FBA audio rate / segment length and compare it with upstream `621e371` and SF2000.
 4. Locate stock frameskip/frame-pacing logic around `run_emulator()`, not inside the external core.
-5. Diff the exact `run_emulator()` timing accumulator and `gfn_frameskip(flag)` decision path across SF2000 08/03, GB300 v2, and XGO.
+5. Confirm the private FBA draw-skip hook across SF2000/GB300 v2, then compare their shared wall-time scheduler against XGO's different 20/17-ms drift scheduler.
 
 No hardware candidate should be built until these static comparisons produce a concrete transplant or patch hypothesis.
