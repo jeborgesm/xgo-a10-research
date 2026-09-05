@@ -181,6 +181,59 @@ jobs:
           PY
           python3 compare_hotpath.py | tee scheduler-structural-compare.txt
 
+      - name: Sequence-align normalized scheduler code
+        shell: bash
+        run: |
+          cat > align_scheduler.py <<'PY'
+          from pathlib import Path
+          import subprocess,re,difflib
+
+          def dis(path,start,stop):
+              out=subprocess.check_output([
+                  'mips-linux-gnu-objdump','-D','-b','binary','-m','mips:isa32','-EL',
+                  '--adjust-vma=0x80000000',f'--start-address={start}',f'--stop-address={stop}',path
+              ],text=True,errors='replace')
+              seq=[]
+              raw=[]
+              for line in out.splitlines():
+                  m=re.match(r'\s*([0-9a-f]+):\s+[0-9a-f ]+\s+([^\s]+)\s*(.*)',line)
+                  if not m: continue
+                  addr=int(m.group(1),16); op=m.group(2); args=m.group(3)
+                  # Keep opcode/register dataflow; remove relocatable addresses and constants.
+                  args=re.sub(r'0x[0-9a-f]+','IMM',args)
+                  args=re.sub(r'(?<![a-zA-Z_])-?\d+','N',args)
+                  args=re.sub(r'[-+]?N\(([^)]+)\)',r'OFF(\1)',args)
+                  norm=(op+' '+args).strip()
+                  seq.append(norm); raw.append((addr,line.strip()))
+              return seq,raw
+
+          sf,sfr=dis('sf2000.asd',0x803589a4,0x80358f80)
+          gb,gbr=dis('gb300v2.asd',0x8035c89c,0x8035cf80)
+          sm=difflib.SequenceMatcher(a=sf,b=gb,autojunk=False)
+          blocks=sm.get_matching_blocks()
+          total=sum(b.size for b in blocks)
+          print('sf_instructions=',len(sf))
+          print('gb_instructions=',len(gb))
+          print('aligned_identical_instructions=',total)
+          print('coverage_sf_percent=',100*total/len(sf))
+          print('coverage_gb_percent=',100*total/len(gb))
+          print('ratio=',sm.ratio())
+          print('\n=== matching blocks >= 4 instructions ===')
+          for b in blocks:
+              if b.size < 4: continue
+              print(f'sf+0x{(sfr[b.a][0]-0x803589a4):x} @0x{sfr[b.a][0]:08x}  gb+0x{(gbr[b.b][0]-0x8035c89c):x} @0x{gbr[b.b][0]:08x}  len={b.size}')
+              for k in range(min(b.size,8)):
+                  print(' ',sf[b.a+k])
+          print('\n=== opcodes around adaptive frameskip signature ===')
+          for name,seq,raw in [('SF',sf,sfr),('GB',gb,gbr)]:
+              for i,s in enumerate(seq):
+                  if s.startswith('jalr') and i+1 < len(seq):
+                      window=' | '.join(seq[max(0,i-12):min(len(seq),i+8)])
+                      if 'sltu' in window and 'subu' in window:
+                          print(name,hex(raw[i][0]),window)
+          PY
+          python3 align_scheduler.py | tee scheduler-sequence-alignment.txt
+
       - name: Preserve artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -192,4 +245,5 @@ jobs:
             fba-hook-locations.txt
             fba-hook-disassembly.txt
             scheduler-structural-compare.txt
+            scheduler-sequence-alignment.txt
           retention-days: 30
