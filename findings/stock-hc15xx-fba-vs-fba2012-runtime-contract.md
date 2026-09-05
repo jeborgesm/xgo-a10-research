@@ -251,6 +251,118 @@ Provide the remaining vendor-specific evidence:
 - alternating frame buffers;
 - stock frontend pacing integration.
 
+
+## FBA-a320 contains the direct source ancestor of HC15xx render skipping
+
+The strongest source-level lineage match now comes from `dmitrysmagin/fba-a320`.
+
+Its default configuration is already the same cluster of choices seen in stock HC15xx:
+
+```cpp
+options.samplerate = 2;   // 22050 Hz
+options.frameskip  = -1;  // automatic frameskip
+options.m68kcore   = 0;   // C68K
+```
+
+More importantly, its frame runner implements the same render-only suppression strategy.
+
+`src/sdl-dingux/run.cpp`:
+
+```cpp
+int RunOneFrame(bool bDraw, int fps)
+{
+    ...
+    pBurnDraw = NULL;
+
+    if (bDraw) {
+        nFramesRendered++;
+        pBurnDraw = (unsigned char *)BurnVideoBuffer;
+    }
+
+    BurnDrvFrame();
+
+    if (bDraw) {
+        VideoTrans();
+        ...
+        VideoFlip();
+    }
+}
+```
+
+Thus an overdue frame is still fully emulated, including CPU and sound generation, but graphics rendering/output is disabled by setting `pBurnDraw = NULL`.
+
+Its main timing loop in `src/sdl-dingux/sdl_run.cpp` performs catch-up as:
+
+```cpp
+timer = GetTicks() / frametime;
+now   = timer;
+ticks = now - done;
+
+if (ticks < 1)
+    continue;
+
+if (ticks > 10)
+    ticks = 10;
+
+for (i = 0; i < ticks - 1; i++) {
+    RunOneFrame(false, fps);
+    SndPlay();
+}
+
+RunOneFrame(true, fps);
+SndPlay();
+
+done = now;
+```
+
+This is conceptually the same policy now recovered from HC15xx stock:
+
+```text
+if behind:
+    emulate overdue frames without drawing
+    keep audio/game state progressing
+
+when caught up enough:
+    render a frame
+```
+
+The HC15xx vendor adaptation changes the API boundary:
+
+```text
+FBA-a320 SDL frontend:
+    RunOneFrame(false)
+        -> pBurnDraw = NULL
+        -> BurnDrvFrame()
+
+HC15xx libretro frontend:
+    gfn_frameskip(1)
+        -> active FBA draw buffer = NULL
+    retro_run()
+        -> BurnDrvFrame()
+```
+
+The core optimization is the same.
+
+This substantially strengthens the ancestry model:
+
+```text
+FBA-a320 handheld runtime
+    ├─ default C68K
+    ├─ default 22050 Hz
+    ├─ automatic catch-up frameskip
+    └─ pBurnDraw=NULL on skipped frames
+             |
+             | vendor adaptation into libretro/HC15xx
+             v
+HC15xx stock FBA
+    ├─ C68K default
+    ├─ 22050 Hz / 367 samples
+    ├─ stock frontend lateness detector
+    └─ gfn_frameskip -> pBurnDraw=NULL
+```
+
+The stock family's private frameskip callback is therefore best understood as a libretro-facing refactoring of an existing FBA-a320 handheld optimization, not an independent HC15xx invention.
+
 ## Research direction
 
 The next useful question is **not** how to make the failed A68K ROM loader proceed.
