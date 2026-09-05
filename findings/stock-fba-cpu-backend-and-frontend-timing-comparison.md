@@ -296,6 +296,133 @@ FBA engine/backend
 ```
 
 
+
+## Stock frontend adaptive frameskip: render-only suppression
+
+Direct XGO disassembly now identifies the stock scheduler's frameskip contract.
+
+The shared stock loop loads:
+
+```text
+gfn_frameskip = 0x80c33ae0
+```
+
+and calls it once per emulated frame when the pointer is non-null.
+
+The timing logic uses the stock millisecond tick source and the selected 50/60-Hz frame period. When the frontend is more than one complete frame period behind schedule, it sets an internal flag to 1; otherwise the flag is 0.
+
+Relevant XGO control flow:
+
+```asm
+8035ef08  sltu  t1,v0,a1          ; elapsed < target frame ms?
+8035ef0c  bne   t1,zero,wait
+8035ef10  subu  a0,v0,a1          ; lateness beyond target
+8035ef14  sltu  t2,a1,a0          ; more than another frame late?
+...
+8035ef44  sw    t4,-3300(gp)      ; frameskip flag = 1
+...
+8035efd4  sw    zero,-3300(gp)    ; frameskip flag = 0
+...
+8035ef70  lw    v0,-3220(gp)      ; gfn_frameskip
+...
+8035f0d4  lw    a0,-3300(gp)
+8035f0d8  jalr  v0
+```
+
+This is adaptive lateness-driven render skipping. The frontend does **not** skip the core's `retro_run()` call.
+
+### XGO stock FBA's private frameskip hook
+
+The stock arcade wrapper installs:
+
+```text
+gfn_frameskip = 0x8036bdc0
+```
+
+The hook is:
+
+```asm
+8036bdc0  beq   a0,zero,0x8036bdd0
+8036bdc4  lw    a3,-24260(gp)
+8036bdc8  jr    ra
+8036bdcc  sw    zero,-24248(gp)       ; skip: frame-buffer pointer = NULL
+
+8036bdd0  addiu v0,gp,-24268
+8036bdd4  xori  a0,a3,0x1             ; toggle 0/1
+8036bdd8  sll   a2,a0,2
+8036bddc  addu  v1,a2,v0
+8036bde0  lw    a1,0(v1)              ; select one of two frame buffers
+8036bde4  sw    a0,-24260(gp)
+8036bde8  jr    ra
+8036bdec  sw    a1,-24248(gp)
+```
+
+So:
+
+```text
+frameskip(1):
+    active FBA draw buffer = NULL
+
+frameskip(0):
+    alternate between two stock frame buffers
+    active FBA draw buffer = selected buffer
+```
+
+### What `retro_run()` does with the NULL buffer
+
+The stock FBA `retro_run` entry is `0x8036c228`.
+
+At the beginning it copies the selected frame-buffer pointer into the FBA draw pointer used by the frame engine:
+
+```asm
+8036c24c  lw    v0,-24248(gp)
+8036c258  sw    v0,-24088(gp)
+```
+
+The core then continues normal frame execution and audio generation. Near the output phase:
+
+```asm
+8036c358  lw    a0,-24248(gp)
+...
+8036c368  bne   a0,zero,0x8036c3d0
+...
+8036c370  ...                           ; no video path when buffer is NULL
+...
+8036c3d0  jalr  video callback          ; only when draw buffer exists
+...
+8036c3e4  jalr  audio callback          ; audio path still runs
+```
+
+This is the key optimization:
+
+> When the frontend is late, stock FBA still emulates the frame and produces audio, but disables drawing and omits the video callback for that frame.
+
+It therefore avoids the expensive CPS drawing/output work while preserving CPU emulation, input, game timing and audio continuity.
+
+This is qualitatively different from the earlier external MAME2000 experiment where frame skipping was layered outside a different core. The family stock mechanism is integrated directly with the FBA draw pointer and stock frontend scheduler.
+
+### Double-buffering
+
+When drawing is enabled, the private hook toggles between two frame-buffer pointers before each rendered frame.
+
+This gives the stock arcade path a combined strategy:
+
+```text
+normal:
+    emulate
+    render into alternating buffer
+    video callback
+    audio callback
+
+late:
+    emulate
+    pBurnDraw = NULL
+    no video rendering/output
+    audio callback
+```
+
+This mechanism is now a leading explanation for why stock arcade remains responsive on HC15xx hardware even when individual games exceed the comfortable rendering budget.
+
 ## Exact stock-family binary comparison
 
 A dedicated archaeology workflow on this branch analyzed the preserved stock binaries from historical `Trademarked69/sf2000_multicore` commit `d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0`.
