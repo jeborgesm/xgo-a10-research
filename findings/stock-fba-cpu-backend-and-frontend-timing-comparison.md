@@ -1009,6 +1009,48 @@ Before altering CPU cores or FBA ROM handling again, evaluate whether XGO can sa
 A scheduler-only transplant or equivalent minimal patch is now a substantially better-founded hardware experiment than another external emulator replacement.
 
 
+
+## C68K itself is not a secret vendor CPU engine
+
+The stock-family C68K ancestry was compared against the later C68K tree retained by `libretro/fbalpha2012_cps2`.
+
+Old family source:
+
+```text
+littlehui/miyoo-emu
+fba-a320-miyoo/src/cpu/c68k/
+```
+
+Later FBA2012 C68K source:
+
+```text
+libretro/fbalpha2012_cps2
+src/cpu/c68k/
+```
+
+The two large generated execution tables are **byte-for-byte identical**:
+
+```text
+c68k_ini.c   identical, 76,266 bytes
+c68k_op.c    identical, 176,916 bytes
+```
+
+The small source differences are limited to:
+
+- a later optional `FBA_DEBUG` callback in `c68k.c`;
+- the matching debug callback member in `c68k.h`;
+- three immediate-read macros in `c68kmacro.h`.
+
+The old family macros reconstruct little-endian 16/32-bit immediate values byte-by-byte, while the later tree uses direct `UINT16` / `UINT32` loads.
+
+There is no evidence here of a proprietary Data Frog/XGO 68000 instruction engine or vendor-specific C68K opcode optimization.
+
+This changes the interpretation of the stock advantage:
+
+> The important stock property is that the family **selects C68K for ordinary 68000 CPS1 execution**, not that it owns a uniquely optimized C68K implementation.
+
+The frozen `fbalpha2012_cps1` repository used for the external path is especially relevant: its makefile defaults to `EMU_C68K = 0`, compiles Musashi via `EMU_M68K`, and its inspected source tree does not even contain the referenced `src/cpu/c68k` implementation files. A C68K build therefore requires explicitly restoring/adding that backend rather than merely flipping the default switch in that frozen tree.
+
 ## Why the newer FBA2012 path does not inherit stock frameskip behavior automatically
 
 Direct source comparison against the frozen `libretro/fbalpha2012_cps1` lineage shows a meaningful CPS1 rendering-contract change.
