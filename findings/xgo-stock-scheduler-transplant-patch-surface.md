@@ -271,11 +271,12 @@ Thus the previously reconstructed incremental-debt model is now tied to exact fi
 
 A wall-time/ideal-frame implementation does not need to repurpose any of the XGO debt/cadence globals.
 
-It requires only two private words:
+It requires three private state words unless an existing XGO saved register is deliberately repurposed:
 
 ```text
 scheduler_start_tick
 completed_frame_count
+catchup_count
 ```
 
 Everything else can reuse proven XGO state/services:
@@ -324,6 +325,127 @@ void xgo_scheduler_policy(void)
     // return to stock dispatch path
 }
 ```
+
+
+## Exact sibling wall-time scheduler reconstruction
+
+The SF2000 08/03 pacing core is now reconstructed directly from the preserved binary rather than summarized from behavior.
+
+Relevant state:
+
+```text
+s2            start_tick captured once for the run_emulator session
+s0            consecutive catch-up/render-skip count
+gp-3364       completed_frame_count
+gp-3336       frameskip flag
+gp-30296      target_fps
+```
+
+With SF2000 stock GP `0x80c114f4`:
+
+```text
+completed_frame_count = 0x80c107d0
+frameskip flag        = 0x80c107ec
+target_fps            = 0x80c09e9c
+```
+
+The critical sequence begins at `0x80358afc`:
+
+```asm
+80358afc  jal   os_get_tick_count
+80358b04  lw    a2,target_fps
+80358b08  subu  a3,v0,s2             ; elapsed_ms = now - start_tick
+80358b0c  li    ra,1000
+80358b10  mult  a3,a2
+80358b14  lw    v0,completed_frame
+80358b18  addiu a1,v0,1              ; next_frame = completed + 1
+...
+80358b28  divu  a0,ra
+80358b30  mflo  a0                   ; ideal_frame = elapsed*fps/1000
+80358b34  sltu  t9,a0,a1
+80358b38  bnez  t9,early_path        ; ideal_frame < next_frame
+80358b3c  sw    a1,completed_frame
+80358b40  slti  v1,s0,3              ; catchup_count < 3
+80358b44  sltu  t1,a1,a0             ; next_frame < ideal_frame
+80358b48  and   a2,t1,v1
+80358b4c  bnez  a2,catchup
+80358b50  addiu s0,s0,1              ; delay slot: increment catchup
+80358b54  move  s0,zero              ; otherwise stop catch-up burst
+80358b58  sw    a0,completed_frame    ; snap logical frame to wall-time ideal
+80358b5c  lw    v0,gfn_frameskip
+80358b60  slt   a0,zero,s0
+80358b64  bnez  v0,call_frameskip
+80358b68  sw    a0,frameskip_flag
+```
+
+This produces the exact bounded catch-up rule:
+
+```c
+elapsed_ms = now - start_tick;
+ideal_frame = (elapsed_ms * target_fps) / 1000;
+next_frame = completed_frame + 1;
+
+if (ideal_frame < next_frame) {
+    // early: sleep to absolute frame deadline
+} else {
+    completed_frame = next_frame;
+
+    if (next_frame < ideal_frame && catchup_count < 3) {
+        catchup_count++;
+    } else {
+        catchup_count = 0;
+        completed_frame = ideal_frame;
+    }
+
+    frameskip = (catchup_count > 0);
+}
+```
+
+### Exact early/deadline path
+
+The sibling early path at `0x80358df0` computes the absolute deadline without accumulating per-frame debt:
+
+```asm
+80358df0  sll   t2,a1,5              ; 32 * next_frame
+80358df4  subu  t7,t2,a1             ; 31 * next_frame
+80358df8  sll   t6,t7,2              ; 124 * next_frame
+80358dfc  addu  t0,t6,a1             ; 125 * next_frame
+80358e00  sll   t5,t0,3              ; 1000 * next_frame
+80358e04  addiu t4,t5,-1000          ; 1000 * (next_frame - 1)
+80358e08  div   t4,target_fps
+80358e10  mflo  t3                   ; deadline_ms
+80358e14  subu  a0,t3,elapsed_ms     ; sleep_ms
+80358e18  blez  a0,no_sleep
+80358e20  jal   dly_tsk               ; sleep exact positive delta
+```
+
+Equivalent:
+
+```c
+deadline_ms = ((next_frame - 1) * 1000) / target_fps;
+sleep_ms = deadline_ms - elapsed_ms;
+
+if (sleep_ms > 0)
+    dly_tsk(sleep_ms);
+```
+
+This confirms the key behavioral distinction from XGO: sibling pacing is continuously re-anchored to absolute elapsed wall time.
+
+## Private-state requirement correction
+
+The cleanest helper implementation requires:
+
+```text
+scheduler_start_tick
+completed_frame_count
+catchup_count
+```
+
+The earlier two-word estimate omitted the fact that the sibling catch-up counter is held in saved register `s0` across frame-loop iterations.
+
+A custom hand-written helper could potentially reuse XGO's existing `s2` register as the catch-up counter, but that should be treated as a separate optimization only after proving every XGO `s2` consumer in `run_emulator()`.
+
+For the first scheduler-only candidate, three private words are safer and clearer.
 
 ## Code-cave constraint
 
