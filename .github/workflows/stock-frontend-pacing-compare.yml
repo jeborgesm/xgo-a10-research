@@ -51,6 +51,10 @@ jobs:
             --start-address=$((0x80001260)) --stop-address=$((0x80001290)) sf2000.asd > sf2000-gp.txt
           mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
             --start-address=$((0x80001260)) --stop-address=$((0x80001290)) gb300v2.asd > gb300v2-gp.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x80358dc0)) --stop-address=$((0x80358e50)) sf2000.asd > sf2000-pacing-tail.txt
+          mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000 \
+            --start-address=$((0x8035cbf0)) --stop-address=$((0x8035cc90)) gb300v2.asd > gb300v2-pacing-tail.txt
 
       - name: Extract scheduler and frameskip landmarks
         shell: bash
@@ -109,6 +113,10 @@ jobs:
           cat sf2000-gp.txt
           echo "===== GB300V2 GP ====="
           cat gb300v2-gp.txt
+          echo "===== SF2000 PACING TAIL ====="
+          cat sf2000-pacing-tail.txt
+          echo "===== GB300V2 PACING TAIL ====="
+          cat gb300v2-pacing-tail.txt
 
       - name: Preserve reports
         uses: actions/upload-artifact@v4
@@ -130,6 +138,8 @@ jobs:
             gb300v2-pacing-head.txt
             sf2000-gp.txt
             gb300v2-gp.txt
+            sf2000-pacing-tail.txt
+            gb300v2-pacing-tail.txt
           retention-days: 30
 
 # trigger after workflow registration
