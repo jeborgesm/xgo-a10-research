@@ -94,6 +94,18 @@
       "parent_artifact": "audio-osd-v1-on-cps1-scheduler",
       "finding": "findings/hardware-test-audio-osd-v2-fine-volume-pass.md",
       "hardware_observation": "Fine volume values 0,9,...,99 are audibly distinct and the continuous OSD tracks them correctly. Main 640x480 menus require an explicit repaint trigger."
+    },
+    {
+      "id": "audio-osd-v8-button-event-only",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-audio-osd-v8-button-event-only-test.zip",
+      "vault_path": "golden/xgo-audio-osd-v8-button-event-only-test.zip",
+      "zip_sha256": "ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a",
+      "firmware_sha256": "4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954",
+      "parent_artifact": "audio-osd-v2-fine-volume",
+      "finding": "HANDOFF-CURRENT.md",
+      "hardware_observation": "Final Audio OSD PASS: fine volume, gray border, button-event-only trigger, correct main-menu timeout, no boot false OSD, uninterrupted gameplay."
     }
   ]
 }
