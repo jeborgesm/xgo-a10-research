@@ -415,3 +415,44 @@ Immediate next targets:
 4. only then design an explicit on-device rebuild command.
 
 No firmware has been modified and no hardware-test ZIP has been generated on this branch yet.
+
+
+### Deeper list-architecture results
+
+The scanner caller gate is now closed:
+
+- current-list state: `gp-0xdf4`;
+- selected-list state: `gp-0xda4`;
+- one-shot scan flag: `gp-0x5f64`;
+- the scan flag has exactly one read and one write in the firmware and no reset path;
+- all three globals are zero-initialized BSS, so first stable frontend state is list 0 / `ROMS` with scan flag clear;
+- after `tsmfk.tax` generation the flag is latched and later built-in pages cannot invoke the scanner in that session.
+
+The earlier label for `0x803536ec` has been corrected: that routine handles 16-bit-record persistence resources such as `Hisas.boa`, not the main 32-bit-offset game-string catalogs.
+
+The real built-in browser random-accesses catalog strings by reading a 32-bit offset and then seeking to `4 + count*4 + offset`.
+
+Language selection is now proven:
+
+```text
+English/Arabic/Hebrew/Spanish/Russian -> filename/English slot 0
+Chinese                                -> display-title slot 1
+slot 2                                 -> search-oriented path
+```
+
+List ID 11 remains `None / None / None`. No direct list-ID-11 special branch was found in the main browser; combined with the one-shot scanner already being consumed by ID 0, this now strongly favors an empty/dormant fifth Arcade placeholder over a dynamic raw-ZIP list.
+
+Safe built-in regeneration strategy is now **stable merge**, not full alphabetical rebuild:
+
+- keep every existing entry/index in place;
+- append only newly discovered physical ROMs;
+- append aligned fallback records to all three metadata catalogs;
+- do not delete or reorder in the first implementation;
+- this preserves existing Favorites/History indices automatically.
+
+The browser's per-list count array begins at `0x80d2894c`. Built-in counts are lazy-loaded from catalog offset 0 when a cached count is zero. Therefore after a successful rebuild the runtime can invalidate just `count[list_id]` and let stock code reload the new count; a full frontend restart is not required.
+
+New findings:
+
+- `findings/game-list-loader-caller-gate-and-metadata-semantics.md`
+- `findings/safe-built-in-library-regeneration-strategy.md`
