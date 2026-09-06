@@ -141,6 +141,7 @@ A frontend flag at `gp-0x5f64` is checked before this path, and the scanner sets
 ### STRONG EVIDENCE
 
 - the routine is the normal XGO `ROMS -> Resources/tsmfk.tax` generator;
+- its state globals are in BSS beyond the stored ASD payload and therefore begin zero-initialized under the normal startup model; with list ID 0 = `ROMS` and the one-shot flag initially clear, the observed control flow is consistent with a startup/initial-frontend regeneration before built-in list navigation;
 - the mechanism is inherited from the same SF2000/GB300 firmware family.
 
 ### OPEN
