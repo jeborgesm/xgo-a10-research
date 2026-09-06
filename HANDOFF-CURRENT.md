@@ -347,3 +347,35 @@ FW SHA-256  67e8474db2c0a85e230517adb2a699877b046b74fceddc0a2e2bb59fc9145dec
 ```
 
 V3 changes only sparse 640x480 main-menu repaint timing. Do not promote V3 to golden until hardware passes.
+
+
+## Audio OSD branch closure — final hardware PASS
+
+Final hardware-confirmed artifact:
+
+```text
+xgo-audio-osd-v8-button-event-only-test.zip
+ZIP SHA-256      ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+firmware SHA-256 4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+```
+
+Hardware result: PASS.
+
+Final behavior:
+- 11 audible nonzero volume levels plus mute: 0,9,18,...,99,0;
+- transient 64x8 volume OSD;
+- 1-pixel RGB565 0x8410 gray border;
+- main-menu OSD appears only after a physical Volume-button event;
+- repeated presses update it and restart the timeout;
+- disappears after approximately one second of inactivity;
+- no false OSD immediately after splash/boot;
+- gameplay remains uninterrupted;
+- in-game pause-menu OSD works;
+- no loading/black/loading regression;
+- physical button event, not arbitrary g_volume changes, is the semantic OSD trigger.
+
+Archive status: promote exact v8 ZIP to `golden/` in the private artifact vault.
+
+Branch `research-audio-osd` is complete and ready to merge to `main`.
+
+Future UI idea, deliberately out of scope here: investigate replacing/customizing the device splash screen.
