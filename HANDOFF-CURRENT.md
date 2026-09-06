@@ -2,7 +2,7 @@
 
 ## Active branch
 
-`research-audio-osd`
+`research-game-list-scanning`
 
 Created from merged `main` commit:
 
@@ -379,3 +379,39 @@ Archive status: promote exact v8 ZIP to `golden/` in the private artifact vault.
 Branch `research-audio-osd` is complete and ready to merge to `main`.
 
 Future UI idea, deliberately out of scope here: investigate replacing/customizing the device splash screen.
+
+
+## Game-list scanning branch — initial archaeology
+
+Branch created from merged Audio OSD main after PR #12.
+
+Protected baseline remains:
+
+```text
+audio-osd-v8-button-event-only
+ZIP SHA-256      ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+firmware SHA-256 4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+```
+
+Do not modify that artifact in place.
+
+Initial native result:
+
+- XGO contains an on-device directory scanner/list writer at stock runtime `0x80353ae0`;
+- it enumerates files through the stock filesystem layer, rejects directories, normalizes/validates ROM extensions, alphabetically sorts accepted filenames, and writes the stock `count + offsets + strings` list format;
+- list ID 0 maps `ROMS` to `tsmfk.tax` in all three resource slots;
+- the scanner has a one-shot runtime flag, strongly matching the SF2000/GB300 behavior of rebuilding the User-ROM index during startup/initial frontend entry;
+- built-in FC/SFC/MD/GB/GBC/GBA/curated-Arcade pages remain different: they use synchronized filename/title/search-key triplets, so blindly applying the User-ROM scanner to them would leave metadata misaligned.
+
+Primary finding:
+
+`findings/on-device-user-rom-list-scanner-and-writer.md`
+
+Immediate next targets:
+
+1. close the exact caller-state gate for the list-0 startup scan;
+2. trace fixed-list loading and list ID 11 special handling;
+3. recover the minimum metadata regeneration rules needed to safely expose added ROMs in stock built-in pages;
+4. only then design an explicit on-device rebuild command.
+
+No firmware has been modified and no hardware-test ZIP has been generated on this branch yet.
