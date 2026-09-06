@@ -456,3 +456,51 @@ New findings:
 
 - `findings/game-list-loader-caller-gate-and-metadata-semantics.md`
 - `findings/safe-built-in-library-regeneration-strategy.md`
+
+### Search semantics and byte-exact append proof
+
+Further archaeology closed the Search path and reduced the first built-in update to a minimal transform:
+
+- normal display language-slot map is `0,1,0,0,0,0`: Chinese uses slot 1, the other five languages use slot 0;
+- Search uses a separate map `0,2,0,0,0,0`: Chinese Search uses slot 2; other languages search slot 0;
+- Chinese Search starts at list ID 1 and deliberately skips User Games/list 0;
+- Search candidate matching normalizes characters and matches ASCII A-Z / 0-9 while ignoring punctuation/spacing;
+- Search results are stored as `{ uint16 list_id, uint16 game_index }`, capacity 200;
+- only English state 0 explicitly strips the filename extension in the observed display path;
+- therefore a safe new-entry fallback is exact filename / basename / basename rather than manufacturing a separate compact search key.
+
+Stable append byte audit:
+
+- all 31 recovered XGO list resources end exactly at the final NUL; no padding/footer exists;
+- existing offsets are relative to the string blob, so adding one entry does not require changing any old offset;
+- exact append transform is: increment count, copy all old offsets unchanged, add one offset equal to old blob length, copy old blob byte-for-byte, append new UTF-8 string + NUL;
+- this preserves every original OEM string byte and every existing game index.
+
+Offline FC proof candidate:
+
+`Bomber Man 2.zfc` is physically present but absent from the 744-entry FC catalog.
+
+Prototype output:
+
+`rdbui.tax` 744->745, SHA-256 `18e96c0543f98e513af4a2cf4e7679d922e1d26bad7d242d1eb59492890556ab`
+`fhcfg.nec` 744->745, SHA-256 `c958891b891093ba1a3b23838798a89925f2419f10322e4059c5ad4f9b51e8de`
+`nethn.bvs` 744->745, SHA-256 `4d76f100fd672ff7557517e9fd671238c0002e5fac955856d0f831a5b9d7e62e`
+
+Assertions prove all 744 old offsets and all old string-blob bytes are unchanged.
+
+Repository tool:
+
+`tools/game_lists/prototype_append_existing_fc_rom.py`
+
+Filesystem recovery result:
+
+- `0x802abf50` is a live directory-removal operation;
+- no stock `rename` string, mapped wrapper, or frontend atomic-replace use has been found;
+- first on-device catalog update should therefore use backups plus a persistent transaction-phase marker and recovery on next boot, not depend on atomic rename.
+
+New findings:
+
+- `findings/search-semantics-browser-state-and-transaction-recovery.md`
+- `findings/byte-exact-stable-append-proof.md`
+
+No firmware or hardware-test ZIP has been generated.
