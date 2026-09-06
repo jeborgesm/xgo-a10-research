@@ -546,3 +546,46 @@ Primary finding:
 Hardware PASS criteria: final FC entry appears, launches, Search remains valid, Chinese mode does not mis-index/crash, and existing Favorite/History references remain stable.
 
 Do not begin the on-device writer/transaction implementation until this static catalog contract passes hardware.
+### Game List Test01 hardware result and Test02 control
+
+Test01 artifact:
+
+`xgo-game-list-test01-bomberman2-static-triplet.zip`
+`ZIP SHA-256 45182596fd1f0598f356901b06ffc3cca94dcfcb445ac8e3b272702c6f9a3350`
+
+Hardware result:
+
+- FC entry count increased to 745;
+- entry 745 displayed as `Bomber Man 2`;
+- selecting it reached the game runtime;
+- screen flashed and then remained black;
+- stock pause menu still worked and quit returned normally.
+
+Interpretation: catalog append/display/index/dispatch PASS; `Bomber Man 2.zfc` gameplay FAIL/black screen. Do not treat the black screen as a catalog-format failure.
+
+The user had no Favorite before Test01. A `Mega Man` Favorite has now been created specifically as an index-stability sentinel for later tests.
+
+Test02 is a stricter control that appends a duplicate catalog reference to the already-stock-listed physical wrapper `FC/Mega Man 1.zfc` while preserving its original index.
+
+Expected FC tail:
+
+`745 Bomber Man 2`
+`746 Mega Man 1`
+
+Test02 artifact:
+
+`xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+`ZIP SHA-256 40f6dce8380f61942f2f4f472b0c137fed8a6042cb00b0b3b669c99090d15a73`
+
+Test02 outputs:
+
+`rdbui.tax` SHA-256 `263926964e4c5aa5508c7f44490f1e6ff397947c83f52c2c3c28069be71c1335`
+`fhcfg.nec` SHA-256 `b9af569cb185187f506d51a2622caf9d41a5f9d9914effbd56451a0a3d8d2153`
+`nethn.bvs` SHA-256 `0d0001520b645d795128d915a665c7e8c251ee29a57abc2f425043d824ed7ef1`
+
+Test02 hardware gate: launch entry 746 and verify normal Mega Man gameplay; then open the pre-existing Mega Man Favorite and verify it still resolves to the same original game.
+
+Findings:
+
+- `findings/hardware-test-game-list-test01-partial-pass.md`
+- `findings/game-list-test02-known-good-duplicate-candidate.md`
