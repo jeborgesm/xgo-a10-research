@@ -132,18 +132,35 @@ refresh in-memory counts only after all three are valid
 
 An atomic rename primitive has not yet been identified in the mapped XGO filesystem wrappers, so exact commit mechanics remain open.
 
-## Session-state requirement
+## Session-state requirement — simplified by stock lazy reload
 
-The main browser uses per-list in-memory counts rather than re-reading count fields for every operation.
+The main browser caches one 32-bit count per list in the shared array beginning at:
 
-Therefore writing corrected resource files is not by itself enough for an immediate same-session UI refresh.
+```text
+0x80d2894c
+```
 
-The eventual command must either:
+The scanner uses the same array while generating the User-ROM list.
 
-- update the corresponding in-memory count/state after commit; or
-- intentionally return through a frontend initialization path that reloads those values.
+Deeper control-flow tracing shows the built-in browser already has a lazy reload path: when the current list's cached count is zero, it seeks to offset 0 of the selected catalog and reads the 4-byte count directly into that list's count slot.
 
-This is now a required part of the design.
+One confirmed instance is around:
+
+```text
+0x80357f1c..0x80357f54
+```
+
+Therefore a future rebuild does **not** need to reconstruct the complete frontend initialization sequence.
+
+After a successful catalog commit it can invalidate the affected cache by setting:
+
+```text
+count[list_id] = 0
+```
+
+and allow the stock browser to reload the new count from the resource on its normal path.
+
+This substantially reduces the runtime integration required. Cursor/page state still needs to be kept within the new count, but the count itself already has a native reload mechanism.
 
 ## Recommended first hardware experiment
 
