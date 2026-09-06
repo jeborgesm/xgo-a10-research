@@ -306,3 +306,44 @@ Firmware SHA-256:
 ```
 
 This is now the protected baseline for the next finer-volume-control experiment.
+
+
+## Audio OSD v2 fine-volume hardware PASS
+
+The fine-volume experiment is hardware-confirmed and is now the protected baseline.
+
+Artifact ID:
+
+```text
+audio-osd-v2-fine-volume
+```
+
+Private golden artifact:
+
+```text
+golden/xgo-audio-osd-v2-fine-volume-test.zip
+```
+
+Exact tested ZIP SHA-256:
+
+```text
+086c60d7595843c778b04663aa5922ccd05ac966b1c4cb5ee736a78edbba428c
+```
+
+Firmware SHA-256:
+
+```text
+6b3261a9871c2b5678428ae1985176718c140178564ea924241bf6889ec714ac
+```
+
+Hardware confirms distinct intermediate audio levels and continuous OSD progression.
+
+Current follow-up candidate:
+
+```text
+xgo-audio-osd-v3-menu-refresh-test.zip
+ZIP SHA-256 15edc2b239cc9c7f9fed09ff0c3363ded2bc7fb10bd1345072abfc144bfad8bc
+FW SHA-256  67e8474db2c0a85e230517adb2a699877b046b74fceddc0a2e2bb59fc9145dec
+```
+
+V3 changes only sparse 640x480 main-menu repaint timing. Do not promote V3 to golden until hardware passes.
