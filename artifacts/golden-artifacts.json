@@ -82,6 +82,18 @@
         }
       ],
       "hardware_observation": "Transient bottom-left volume bar works during gameplay and pause menu, disappears automatically, and preserves Mapper/SNES/CPS1 scheduler behavior. CPS game-selection menu does not use this presentation path."
+    },
+    {
+      "id": "audio-osd-v2-fine-volume",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault",
+      "canonical_filename": "xgo-audio-osd-v2-fine-volume-test.zip",
+      "vault_path": "golden/xgo-audio-osd-v2-fine-volume-test.zip",
+      "zip_sha256": "086c60d7595843c778b04663aa5922ccd05ac966b1c4cb5ee736a78edbba428c",
+      "firmware_sha256": "6b3261a9871c2b5678428ae1985176718c140178564ea924241bf6889ec714ac",
+      "parent_artifact": "audio-osd-v1-on-cps1-scheduler",
+      "finding": "findings/hardware-test-audio-osd-v2-fine-volume-pass.md",
+      "hardware_observation": "Fine volume values 0,9,...,99 are audibly distinct and the continuous OSD tracks them correctly. Main 640x480 menus require an explicit repaint trigger."
     }
   ]
 }
