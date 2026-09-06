@@ -58,6 +58,54 @@
         }
       ],
       "hardware_observation": "Street Fighter II Ryu-vs-Guile no longer exhibited prolonged underwater slowdown; frame drops were minimal and the fight was completed normally."
+    },
+    {
+      "id": "audio-osd-v1-on-cps1-scheduler",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault",
+      "canonical_filename": "xgo-audio-osd-v1-on-cps1-scheduler.zip",
+      "vault_path": "golden/xgo-audio-osd-v1-on-cps1-scheduler.zip",
+      "zip_sha256": "bdf66f60b0ed105449582e7845a9c9d8d98e3e8e6ae0a695ec9c73dc28685f76",
+      "firmware_sha256": "1fc85114909d6107ff80be6e199d54dd1d9b918454ceede61d5108246d6f50c1",
+      "parent_artifact": "cps1-scheduler-v1-on-snes-test02",
+      "finding": "findings/hardware-test-audio-osd-v1-pass.md",
+      "members": [
+        {
+          "path": "README-HARDWARE-TEST.txt",
+          "size": 1133,
+          "sha256": "ac59d89215865f7d57c11d83f14ed75bcffdfaec9cdd6593677729fd075e329d"
+        },
+        {
+          "path": "bios/bisrv.asd",
+          "size": 12768452,
+          "sha256": "1fc85114909d6107ff80be6e199d54dd1d9b918454ceede61d5108246d6f50c1"
+        }
+      ],
+      "hardware_observation": "Transient bottom-left volume bar works during gameplay and pause menu, disappears automatically, and preserves Mapper/SNES/CPS1 scheduler behavior. CPS game-selection menu does not use this presentation path."
+    },
+    {
+      "id": "audio-osd-v2-fine-volume",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault",
+      "canonical_filename": "xgo-audio-osd-v2-fine-volume-test.zip",
+      "vault_path": "golden/xgo-audio-osd-v2-fine-volume-test.zip",
+      "zip_sha256": "086c60d7595843c778b04663aa5922ccd05ac966b1c4cb5ee736a78edbba428c",
+      "firmware_sha256": "6b3261a9871c2b5678428ae1985176718c140178564ea924241bf6889ec714ac",
+      "parent_artifact": "audio-osd-v1-on-cps1-scheduler",
+      "finding": "findings/hardware-test-audio-osd-v2-fine-volume-pass.md",
+      "hardware_observation": "Fine volume values 0,9,...,99 are audibly distinct and the continuous OSD tracks them correctly. Main 640x480 menus require an explicit repaint trigger."
+    },
+    {
+      "id": "audio-osd-v8-button-event-only",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-audio-osd-v8-button-event-only-test.zip",
+      "vault_path": "golden/xgo-audio-osd-v8-button-event-only-test.zip",
+      "zip_sha256": "ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a",
+      "firmware_sha256": "4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954",
+      "parent_artifact": "audio-osd-v2-fine-volume",
+      "finding": "HANDOFF-CURRENT.md",
+      "hardware_observation": "Final Audio OSD PASS: fine volume, gray border, button-event-only trigger, correct main-menu timeout, no boot false OSD, uninterrupted gameplay."
     }
   ]
 }

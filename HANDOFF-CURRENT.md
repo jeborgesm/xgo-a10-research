@@ -235,3 +235,147 @@ Firmware SHA-256:
 Future branch closure rule:
 
 A hardware-confirmed binary candidate is not considered fully preserved until its exact ZIP is recorded in `golden-artifacts.json` and copied to the private artifact vault. Handoffs should reference the artifact ID, not depend on local filenames.
+
+
+## Audio OSD v1 candidate
+
+Static patch-surface work is complete.
+
+Protected input artifact:
+
+```text
+cps1-scheduler-v1-on-snes-test02
+firmware SHA-256
+9136479687e921fc478ad89ccce3af94296366768a83600312b3bed5ee294607
+```
+
+Verified free cave in that exact protected image:
+
+```text
+0x80002780..0x80002fff
+2176 bytes
+```
+
+OSD v1:
+
+```text
+blob size      1548 bytes
+blob SHA-256   2556cad397c66f5ac98a4f772b05d67eb86eb946bc785c781f1e426ec8954227
+headroom       628 bytes
+hook           run_screen_write tail jump @ 0x8035c458
+output FW SHA  1fc85114909d6107ff80be6e199d54dd1d9b918454ceede61d5108246d6f50c1
+candidate ZIP  bdf66f60b0ed105449582e7845a9c9d8d98e3e8e6ae0a695ec9c73dc28685f76
+```
+
+The hook preserves one stock OSD write per visible frame. It backs up the 64x8 source-frame area, overlays the bar, performs the normal synchronous stock region write, restores the source pixels, and returns.
+
+No audio callback, GPIO volume path, hardware mute path, mapper, SNES loader, or CPS1 scheduler changes.
+
+Hardware regression gate is pending. Do not promote this artifact to `golden/` until it passes.
+
+Primary finding:
+
+`findings/audio-osd-v1-exact-patch-surface-and-candidate.md`
+
+
+## Audio OSD v1 archival promotion
+
+Hardware test passed and the exact tested ZIP is now preserved in the private artifact vault at both:
+
+```text
+xgo-audio-osd-v1-on-cps1-scheduler.zip
+golden/xgo-audio-osd-v1-on-cps1-scheduler.zip
+```
+
+Artifact ID:
+
+```text
+audio-osd-v1-on-cps1-scheduler
+```
+
+ZIP SHA-256:
+
+```text
+bdf66f60b0ed105449582e7845a9c9d8d98e3e8e6ae0a695ec9c73dc28685f76
+```
+
+Firmware SHA-256:
+
+```text
+1fc85114909d6107ff80be6e199d54dd1d9b918454ceede61d5108246d6f50c1
+```
+
+This is now the protected baseline for the next finer-volume-control experiment.
+
+
+## Audio OSD v2 fine-volume hardware PASS
+
+The fine-volume experiment is hardware-confirmed and is now the protected baseline.
+
+Artifact ID:
+
+```text
+audio-osd-v2-fine-volume
+```
+
+Private golden artifact:
+
+```text
+golden/xgo-audio-osd-v2-fine-volume-test.zip
+```
+
+Exact tested ZIP SHA-256:
+
+```text
+086c60d7595843c778b04663aa5922ccd05ac966b1c4cb5ee736a78edbba428c
+```
+
+Firmware SHA-256:
+
+```text
+6b3261a9871c2b5678428ae1985176718c140178564ea924241bf6889ec714ac
+```
+
+Hardware confirms distinct intermediate audio levels and continuous OSD progression.
+
+Current follow-up candidate:
+
+```text
+xgo-audio-osd-v3-menu-refresh-test.zip
+ZIP SHA-256 15edc2b239cc9c7f9fed09ff0c3363ded2bc7fb10bd1345072abfc144bfad8bc
+FW SHA-256  67e8474db2c0a85e230517adb2a699877b046b74fceddc0a2e2bb59fc9145dec
+```
+
+V3 changes only sparse 640x480 main-menu repaint timing. Do not promote V3 to golden until hardware passes.
+
+
+## Audio OSD branch closure — final hardware PASS
+
+Final hardware-confirmed artifact:
+
+```text
+xgo-audio-osd-v8-button-event-only-test.zip
+ZIP SHA-256      ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+firmware SHA-256 4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+```
+
+Hardware result: PASS.
+
+Final behavior:
+- 11 audible nonzero volume levels plus mute: 0,9,18,...,99,0;
+- transient 64x8 volume OSD;
+- 1-pixel RGB565 0x8410 gray border;
+- main-menu OSD appears only after a physical Volume-button event;
+- repeated presses update it and restart the timeout;
+- disappears after approximately one second of inactivity;
+- no false OSD immediately after splash/boot;
+- gameplay remains uninterrupted;
+- in-game pause-menu OSD works;
+- no loading/black/loading regression;
+- physical button event, not arbitrary g_volume changes, is the semantic OSD trigger.
+
+Archive status: promote exact v8 ZIP to `golden/` in the private artifact vault.
+
+Branch `research-audio-osd` is complete and ready to merge to `main`.
+
+Future UI idea, deliberately out of scope here: investigate replacing/customizing the device splash screen.
