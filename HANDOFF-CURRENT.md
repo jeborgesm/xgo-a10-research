@@ -504,3 +504,45 @@ New findings:
 - `findings/byte-exact-stable-append-proof.md`
 
 No firmware or hardware-test ZIP has been generated.
+### Special frontend state closure and Game-List Test01
+
+Special frontend state map is now:
+
+```text
+0..11  normal game categories
+12     Favorites
+13     History
+14     User Menu / Setup
+15     Search
+```
+
+The User Menu has exactly three selectable rows with wrap range `0..2`:
+
+```text
+0 User Games
+1 Language
+2 TV System
+```
+
+Search is entered through a separate input path into state 15; it is not a fourth selectable row. Therefore a polished Refresh Games action cannot simply be appended as row 3 without modifying renderer/navigation bounds.
+
+The earliest safe future transaction-recovery hook is immediately before the stock once-per-session `ROMS -> tsmfk.tax` scan at `0x80359404`, after SD/Resources are available and before normal built-in list browsing.
+
+Static catalog semantics are now isolated from runtime mutation with Hardware Test01:
+
+```text
+xgo-game-list-test01-bomberman2-static-triplet.zip
+ZIP SHA-256 45182596fd1f0598f356901b06ffc3cca94dcfcb445ac8e3b272702c6f9a3350
+```
+
+Private artifact vault status: archived at repository root, intentionally non-golden pending hardware.
+
+Test01 changes only the synchronized FC catalog triplet from 744 to 745 entries and appends the already-present physical ROM `Bomber Man 2.zfc`. No firmware and no ROM payload are included. All 744 prior indices remain unchanged.
+
+Primary finding:
+
+`findings/hardware-test-game-list-test01-static-triplet-candidate.md`
+
+Hardware PASS criteria: final FC entry appears, launches, Search remains valid, Chinese mode does not mis-index/crash, and existing Favorite/History references remain stable.
+
+Do not begin the on-device writer/transaction implementation until this static catalog contract passes hardware.
