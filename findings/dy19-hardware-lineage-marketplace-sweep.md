@@ -116,3 +116,112 @@ Current evidence supports three overlapping layers:
 3. **Revision lineage** — model labels are not sufficient. DY12 and DY19 both have evidence of materially different batches/revisions.
 
 Future teardown-image matching must therefore capture **model + exterior revision + PCB silkscreen + firmware hash** whenever possible.
+
+
+## Major hardware comparator recovered: Q19 teardown
+
+A complete, provenance-safe Q19 teardown by Steward Fu has been recovered.
+
+This is unusually valuable because independent 4PDA hardware analysis describes Q19 as a **close relative of SF2000 and GB300 with a power-bank function**, and identifies the shared HCSEMI B210 platform. Another 4PDA report says the SF2000 bootloader update can run on X60 and Q19 because they are on the same hardware family.
+
+Steward Fu's teardown provides direct board-level evidence.
+
+### Q19 PCB identity
+
+Main PCB silkscreen:
+
+```text
+XYC-Q20-A-V3.0
+2023-04-14
+T=1.0mm
+```
+
+Secondary marking visible on the board edge:
+
+```text
+ZXD-16
+```
+
+### Identified Q19 components
+
+Steward Fu identifies:
+
+- CPU: package marking intentionally removed/ground;
+- RAM: Hynix `HY5PS1G1631C FP-S6` — 1-Gbit DDR2, consistent with the 128-MB SF2000-family memory configuration;
+- SPI NOR: `UC25HQ40`;
+- power-management IC: `IP5219`;
+- audio: `OPA1612`-marked devices;
+- at least one additional IC with removed marking.
+
+This component set is substantially more useful than generic enclosure similarity.
+
+### Physical interfaces visible in teardown
+
+The PCB photographs expose:
+
+- USB-C connector;
+- Micro-USB connector marked `MICRO-P2`;
+- 3.5-mm AV jack;
+- microSD slot;
+- slide power switch;
+- battery solder pads;
+- speaker pads;
+- LCD FPC connector;
+- analog joystick soldered as a module;
+- separate LCD FPC marked `XCY-32LCD...24PIN`.
+
+The battery itself is clearly marked:
+
+```text
+BJY 906090
+6000mAh
+3.7V
+22.2Wh
+2305
+```
+
+Thus, at least this Q19 revision physically contains a cell labeled 6000 mAh / 22.2 Wh.
+
+### Why Q19 matters to XGO
+
+This creates a much firmer comparator chain:
+
+```text
+SF2000 ----+
+           |
+X60 -------+--- HCSEMI B210 / shared bootloader-era family
+           |
+Q19 -------+--- power-bank branch, now with full PCB teardown
+                       |
+                       +-- useful architectural ancestor/comparator
+                           for DY19 -> XGO investigation
+```
+
+Q19 is **not evidence that XGO uses the identical PCB**. It is valuable because it documents how the known SF2000-family platform was physically integrated into a power-bank handheld before/alongside DY19.
+
+### Critical caution: PGP AIO Union X35 naming collision
+
+The investigation also resolves a misleading community association. 4PDA's bnister states that a device sold as X35 uses an Actions ATS3603/ATJ227x platform and is not the same hardware as X60, despite near-identical external appearance and similar SD-card organization.
+
+Later DY19-thread reports describe a PGP AIO Union X35 with firmware behavior resembling Q19/SF2000. Retail listings also use inconsistent model strings such as VW-X50.
+
+Therefore `PGP AIO Union X35` is not a safe hardware identifier by itself. Exact PCB/revision evidence is required before using any X35 photograph or firmware as a comparator.
+
+## Newly identified Q19 image corpus to preserve
+
+The Steward Fu teardown includes original high-resolution photographs of:
+
+1. exterior views;
+2. rear shell;
+3. physical 6000-mAh battery;
+4. microSD/port side;
+5. controls and conductive contacts;
+6. PCB solder side;
+7. PCB component side;
+8. LCD and its 24-pin FPC;
+9. close-up of CPU/RAM/power circuitry.
+
+Source:
+https://steward-fu.github.io/website/handheld/q19_teardown.htm
+
+These images are high-value external comparative artifacts and should be archived as originals with source metadata and hashes, separately from XGO golden evidence.
