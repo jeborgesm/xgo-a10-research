@@ -10,41 +10,46 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Query Bilibili search and video APIs
+      - name: Query known Bilibili video metadata and uploader archive
         shell: bash
         run: |
           set -euxo pipefail
           python3 - <<'PY'
-          import json, urllib.parse, urllib.request, time
-          ua={'User-Agent':'Mozilla/5.0'}
-          titles=[
-            '充电宝游戏机 自定义添加游戏工具',
-            '充电宝游戏机新系统包介绍',
-            'DY-12变色翻转问题成功修复',
-            '充电宝游戏机刷机sf2000（时趣DY-19）2：汉化游戏导入',
-          ]
+          import json, urllib.parse, urllib.request, re, time
+          ua={'User-Agent':'Mozilla/5.0','Referer':'https://www.bilibili.com/'}
           def get(url):
             req=urllib.request.Request(url,headers=ua)
             return json.load(urllib.request.urlopen(req,timeout=30))
-          for title in titles:
-            print('\n### SEARCH',title)
-            url='https://api.bilibili.com/x/web-interface/wbi/search/type?'+urllib.parse.urlencode({
-              'search_type':'video','keyword':title,'page':1
-            })
+          known=['BV1iG2NYAE6c','BV1jxt4ztEyy','BV1859aBrEan','BV15GX7YVENt']
+          mids=set()
+          for bvid in known:
+            print('\n### VIEW',bvid)
             try:
-              data=get(url)
-              print('code',data.get('code'),'message',data.get('message'))
-              results=((data.get('data') or {}).get('result') or [])
-              for x in results[:10]:
-                rec={k:x.get(k) for k in ['bvid','aid','title','author','mid','description','pubdate','duration','arcurl']}
-                print(json.dumps(rec,ensure_ascii=False))
-                bvid=x.get('bvid')
-                if bvid:
-                  try:
-                    v=get('https://api.bilibili.com/x/web-interface/view?'+urllib.parse.urlencode({'bvid':bvid}))
-                    d=v.get('data') or {}
-                    print('VIEW',json.dumps({k:d.get(k) for k in ['bvid','aid','title','desc','pubdate','owner','dynamic']},ensure_ascii=False))
-                  except Exception as e: print('VIEW ERROR',repr(e))
+              v=get('https://api.bilibili.com/x/web-interface/view?'+urllib.parse.urlencode({'bvid':bvid}))
+              print('code',v.get('code'),'message',v.get('message'))
+              d=v.get('data') or {}
+              slim={k:d.get(k) for k in ['bvid','aid','title','desc','pubdate','owner','dynamic','pic']}
+              print(json.dumps(slim,ensure_ascii=False))
+              owner=d.get('owner') or {}
+              if owner.get('mid'): mids.add(owner['mid'])
+            except Exception as e: print('VIEW ERROR',repr(e))
+          print('\nMIDS',sorted(mids))
+          # Query uploader video lists and select power-bank/DY12/DY19 titles.
+          for mid in sorted(mids):
+            for pn in range(1,8):
+              url='https://api.bilibili.com/x/space/wbi/arc/search?'+urllib.parse.urlencode({
+                'mid':mid,'pn':pn,'ps':50,'order':'pubdate'
+              })
+              try:
+                data=get(url)
+                print('SPACE',mid,pn,'code',data.get('code'),data.get('message'))
+                vlist=((((data.get('data') or {}).get('list') or {}).get('vlist')) or [])
+                for x in vlist:
+                  title=x.get('title','')
+                  if any(k in title for k in ['充电宝','DY-12','DY12','DY-19','DY19']):
+                    print('MATCH',json.dumps({k:x.get(k) for k in ['bvid','aid','title','description','created','length','pic']},ensure_ascii=False))
+                if not vlist: break
                 time.sleep(.5)
-            except Exception as e: print('SEARCH ERROR',repr(e))
+              except Exception as e:
+                print('SPACE ERROR',mid,pn,repr(e)); break
           PY
