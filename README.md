@@ -280,3 +280,33 @@ Keep an untouched raw image of a known-working card before experimenting. Prefer
 - [tzlion/frogtool](https://github.com/tzlion/frogtool)
 
 These projects are invaluable lineage and comparison sources, but the XGO should be treated as a **related, independently verified target** rather than assumed binary-compatible hardware.
+
+
+## External sibling firmware archaeology
+
+The project now also preserves selectively recovered **external comparator firmware** separately from XGO golden binaries.
+
+The first major corpus is DY19. A custom read-only HTTP-Range FAT32 extractor recovered the DY19 application and selected resources directly from a 31GB Internet Archive card image without downloading the ROM payload.
+
+Key result:
+
+```text
+DY19 BISRV.ASD  12,477,596 bytes
+SHA-256         135ddf837f37570cedbd204036e02bdede876338ad94a9c33cac0db5ac8fe9e4
+```
+
+Direct comparison proves common H1512/SDK/compiler ancestry, substantial low-level binary reuse, divergent board-specific controller/RF code, and an overwhelming DY19→XGO game-catalog subset relationship.
+
+Preservation is intentionally split:
+
+- public repo: extractor source, workflows, hashes, methodology and findings;
+- private artifact vault: external/reference corpus metadata and retained extracted bytes;
+- local analysis archive: complete successful workflow artifact and unpacked selective extraction.
+
+See:
+
+- `findings/dy19-direct-stock-image-comparison.md`
+- `tools/dy19/remote_fat32_extract.py`
+- private vault `external/README.md`
+
+External comparator firmware is **never** part of the XGO golden hardware-tested chain.

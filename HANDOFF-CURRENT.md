@@ -728,3 +728,39 @@ This proves XGO accepts a newly generated method-0/STORE WQW wrapper outside the
 Test03 has been promoted to `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` in the private artifact vault and added to `artifacts/golden-artifacts.json`.
 
 Next engineering/research target: combine the proven primitives into an on-device scanner/importer while preserving existing indices. First implementation should scan for already-packaged unindexed Zxx files. A later import mode can package raw ROM + preconverted RGB565 cover using the proven STORE WQW writer. PNG/JPEG decode remains optional future work unless a cheap stock decoder entry point is recovered.
+
+## External comparator preservation — DY19 direct extraction
+
+The DY19 stock-image recovery target is complete.
+
+A read-only HTTP-Range FAT32 extractor recovered `BIOS/BISRV.ASD` and selected `Resources/` directly from the 31GB Internet Archive image without downloading the ROM payload.
+
+DY19 application identity:
+
+```text
+size    12,477,596
+SHA256  135ddf837f37570cedbd204036e02bdede876338ad94a9c33cac0db5ac8fe9e4
+```
+
+Successful extraction artifact ZIP:
+
+```text
+SHA256  3d7ebfb44fd0c31a6b022b4d58018da9bb7518de1b4ed7493a0d0a6229dc19d6
+```
+
+Preservation locations:
+
+- public reproducibility: `tools/dy19/`, workflow and `findings/dy19-direct-stock-image-comparison.md`;
+- private binary vault: external/reference corpus documented under `external/`;
+- local analysis archive: `XGoAnalisis/DY19/` contains the retained workflow artifact and unpacked extraction.
+
+Do not treat DY19 bytes as an XGO golden baseline.
+
+Direct comparison conclusion:
+
+```text
+XGO = DY19-family H1512 software/content fork
+    + XGO-specific board adaptation
+```
+
+The next hardware-archaeology priority is authentic DY19 PCB/teardown imagery and component identification, especially controller, LCD, RF, power and UART/test-pad regions.
