@@ -933,3 +933,25 @@ stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
 The private CI gate reproduced every expected modified bitmap hash, exact candidate size/hash, exact firmware hash, and passed `unzip -t`. The candidate is archived at the private-vault root (binary archive commit `ea4faae`) and exposed as a CI artifact for hardware retrieval. It is **not golden** pending hardware confirmation.
 
 Next action: hardware Test05 only. Do not attach the Test04 writer yet. The gate is the explicit four-option UI, navigation, preservation of the original three menu actions, and harmless REFRESH stub behavior with no catalog mutation.
+
+
+### Test05 hardware result — UI mechanics partial PASS; visual polish FAIL (2026-09-07)
+
+Hardware candidate:
+```text
+xgo-game-list-test05-explicit-refresh-menu.zip
+size 4,908,988 bytes
+SHA-256 766071faec548b04deffef4e97ba900c965aa09686a05195d6bbda997b7961a4
+firmware SHA-256 30de1ecc9819f0e669a872cd642e23098506a6411f2ce0de74b4dedfc1a0ae21
+```
+
+Observed on hardware:
+- all four 2x2 options are visible;
+- User Games, Language, and TV System still perform their stock functions;
+- REFRESH selection is a harmless no-op as designed;
+- visual defect: dynamic NTSC/PAL text remains at the stock top-right TV-system coordinate and must move down/left into the relocated TV tile;
+- visual defect: blue selection border and A action badge appear on all four tiles after the new layout/navigation, rather than only representing the current selection as intended.
+
+Classification: **Test05 is NOT golden.** The fourth-command mechanics are promising, but visual selection semantics must be corrected before binding Refresh to Test04. Do not attach catalog writes yet.
+
+Next candidate: Test05b/05.1 UI-only correction. Preserve the no-write REFRESH stub while correcting TV mode coordinates and selection overlay behavior.
