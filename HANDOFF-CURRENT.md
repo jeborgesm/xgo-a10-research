@@ -1067,3 +1067,32 @@ writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb87
 ```
 
 Private CI run 34170092288 passed protected inputs, build, ZIP integrity, artifact upload, and vault-root archival. Pending hardware confirmation; not golden.
+
+
+### Test06b hardware result — FINAL EXPLICIT REFRESH UI MILESTONE PASS (2026-09-07)
+
+Hardware confirmation completed successfully. The timed-status refinement works as intended and the user elected to keep the implementation exactly as-is for this milestone.
+
+Confirmed on hardware:
+- visible fourth User Menu item `Refresh` works;
+- explicit Refresh integration remains stable;
+- staged on-device SFC catalog refresh path remains successful;
+- repeated refresh correctly reports `No New Games`;
+- stock-font result feedback displays correctly;
+- result feedback expires automatically after about three seconds and does not remain stuck after navigating away and returning;
+- footer icons, active selector/A badge behavior, NTSC/PAL placement, and stock User Games/Language/TV System behavior remain correct.
+
+Promote the exact tested Test06b artifact to golden:
+
+```text
+xgo-game-list-test06b-timed-status.zip
+size 5,022,902 bytes
+SHA-256 2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042
+firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e
+writer/status blob bytes 1,370
+writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb873d830b591bc
+```
+
+Important scope boundary: Test06b proves the explicit native-style Refresh command and the staged 929->930 writer/status lifecycle. It is intentionally NOT yet the final general filesystem scanner/stable-merge engine. Preserve this exact milestone before beginning that next stage.
+
+Next-stage direction: start from this golden Test06b state and replace the staged `refresh.bin` proof mechanism with the real on-device discovery/stable-merge implementation while preserving the now-golden UI/feedback behavior. Do not reopen completed Test04/Test05/Test06 archaeology unless new hardware evidence requires it.
