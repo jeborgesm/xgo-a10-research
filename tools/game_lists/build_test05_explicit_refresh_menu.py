@@ -17,12 +17,15 @@ This isolates the UI integration before binding row 3 to the hardware-proven
 Test04 writer/scanner work.
 """
 from __future__ import annotations
-import argparse, hashlib, math, struct, zipfile
+import argparse, hashlib, math, struct, tarfile, zipfile
 from pathlib import Path
 
 V8_ZIP_SHA = "ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a"
 V8_FW_SHA = "4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954"
-UI_SOURCE_SHA = "16d4ee25357d725ddc574c86b69f5b570c73deb83dab8f2b98056ed31ab37843"
+UI_SOURCE_SHAS = {
+    "zip": "16d4ee25357d725ddc574c86b69f5b570c73deb83dab8f2b98056ed31ab37843",
+    "tar.xz": "fac668aff96315caab6ee86d5a3e8d5b5c20dc1477a6fe41ecb7361a814b028e",
+}
 UI_MEMBERS = {
     "qasf.bel":  (614400,"907a008fe8562ade903d8a1494546783636b5d705a84ca2e60b9e8d3cd45cce4"),
     "dxkgi.ctp": (614400,"dbd09592acc4531c75d195663c1fcb47acffa119387224100bd77df0ba7094bd"),
@@ -177,11 +180,17 @@ def zi(name):
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--v8-zip',type=Path,required=True); ap.add_argument('--ui-source',type=Path,required=True); ap.add_argument('--output',type=Path,required=True); args=ap.parse_args()
     assert sha(args.v8_zip.read_bytes())==V8_ZIP_SHA
-    assert sha(args.ui_source.read_bytes())==UI_SOURCE_SHA
+    source_hash=sha(args.ui_source.read_bytes())
+    assert source_hash in UI_SOURCE_SHAS.values(), source_hash
     with zipfile.ZipFile(args.v8_zip) as z: fw=bytearray(z.read('bios/bisrv.asd'))
     assert sha(fw)==V8_FW_SHA
-    with zipfile.ZipFile(args.ui_source) as z:
-        ui={n:z.read(n) for n in UI_MEMBERS}
+    if source_hash == UI_SOURCE_SHAS['zip']:
+        with zipfile.ZipFile(args.ui_source) as z:
+            ui={n:z.read(n) for n in UI_MEMBERS}
+    else:
+        with tarfile.open(args.ui_source, 'r:xz') as t:
+            members={m.name.lstrip('./'):m for m in t.getmembers() if m.isfile()}
+            ui={n:t.extractfile(members[n]).read() for n in UI_MEMBERS}
     for n,b in ui.items(): assert (len(b),sha(b))==UI_MEMBERS[n]
 
     def word(addr): return struct.unpack_from('<I',fw,addr-BASE)[0]
