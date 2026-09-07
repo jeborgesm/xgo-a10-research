@@ -118,3 +118,37 @@ The immediate target remains obtaining a genuine DY19 `bisrv.asd` and performing
 - 4PDA DY19 discussion: `https://4pda.to/forum/index.php?showtopic=1090810`
 - 4PDA SF2000 discussion: `https://4pda.to/forum/index.php?showtopic=1067862`
 - Handhelds Wiki DY19 page, including stock firmware reference: `https://handhelds.wiki/DY19_Power_Bank_and_Game_Console`
+
+
+## 2026-09-07 X35 full-card-image lead
+
+A later PGP AIO Union C35/X35 thread provides a concrete firmware-recovery artifact.
+
+On 2026-04-21, contributor Wild Hornet posted:
+
+```text
+full dump of PGP AIO Portable Union X35, 7.5 GB
+```
+
+and explicitly described X35 as a **modification of Data Frog SF2000**.
+
+The dump was hosted on Google Drive with a request that someone mirror it because the contributor intended to remove it after roughly one month.
+
+Source:
+https://4pda.to/forum/index.php?showtopic=1060903&st=160
+post #142
+
+The search index now exposes only a truncated Drive URL and no verified mirror has yet been located. Therefore the payload is **known to have existed but is not currently possessed by this project**.
+
+This is still valuable because an original X35 image would provide another board-specific `bisrv.asd` for testing the XGO controller-scanner signature and display/input adaptation model.
+
+### New recovery priority
+
+Search mirrors using all of:
+- `PGP AIO Portable Union X35`
+- `7.5 GB` / `7,5 Гб`
+- Wild Hornet
+- original post date 2026-04-21
+- model/product code `PKTP30`
+
+Retail catalog pages independently identify Union X35 as model/part `PKTP30`, 3.5-inch, microSD, AV-output handheld, providing an additional stable search key.
