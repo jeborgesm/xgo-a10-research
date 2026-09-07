@@ -175,3 +175,75 @@ Until their linked payloads are downloaded and inspected:
 - do not assume "PS1" support means acceptable XGO performance;
 - do not assume DY12 display patches apply to A10;
 - do treat the ecosystem as strong comparative evidence and a concrete artifact-recovery target.
+
+
+## Direct Bilibili metadata recovery: system-pack contents
+
+The preserved GitHub Actions Bilibili probe successfully queried the direct video API for:
+
+`BV1jxt4ztEyy` — `充电宝游戏机新系统包介绍`
+
+Verified uploader:
+
+- name: `炒鸡大帅比9961`
+- Bilibili MID: `585781214`
+
+The video's own description explicitly says the package targets:
+
+```text
+dy-19
+sf2000
+dy-12
+```
+
+and notes that, at that release, DY12 required a screen replacement/adaptation.
+
+The package description lists concrete software changes:
+
+- adds **BBK / 步步高 dictionary-game support**;
+- strengthens/upgrades the **GBA core**, with Dragon Ball Advanced Adventure cited as running smoothly;
+- adds Tomb Raider (GBA);
+- adds **Pico-8** games.
+
+This is much stronger than a generic "new firmware" title. It confirms that the Chinese modding branch is extending the actual emulator/content stack across the DY19/SF2000/DY12 sibling family.
+
+It also establishes a stable external investigator identity (MID 585781214) for future artifact/search work even when Bilibili title search becomes unreliable.
+
+### Bilibili anti-bot behavior
+
+The public API is intermittent from clean cloud runners:
+
+- direct `view` API has succeeded for `BV1jxt4ztEyy`;
+- the same endpoint can later return HTTP 412;
+- uploader-space WBI queries currently return `-352 风控校验失败`;
+- search HTML can collapse to a short challenge page.
+
+Therefore recovered metadata should be preserved when a request succeeds rather than assuming it can always be re-fetched.
+
+The reproducible probe is preserved as:
+
+`.github/workflows/bilibili-dy19-probe.yml`
+
+### Search-index corroboration
+
+Current public search indexes independently surface:
+
+- `充电宝游戏机 自定义添加游戏工具` by `炒鸡大帅比9961`, runtime ~7:47;
+- `DY-12变色翻转问题成功修复` by the same uploader, runtime ~4:49;
+- `充电宝游戏机新系统包介绍`, runtime ~13:55.
+
+This confirms that the tool/display-fix/system-pack videos remain publicly indexed even when the Bilibili API applies anti-bot checks.
+
+### New significance for XGO
+
+The "custom add-game tool" is now potentially more valuable than another sibling firmware image for the immediate game-list-scanning branch.
+
+If recovered, it may reveal:
+
+1. which DY19 list/resource files are rewritten;
+2. whether databases are regenerated or incrementally patched;
+3. how display names and artwork are derived;
+4. whether the tool is a Tadpole/Madpole derivative or an independent implementation;
+5. whether it contains a simple algorithm we can port directly into XGO firmware.
+
+The new system pack is separately high-value for the future core-support branch because it proves contemporary community work exists for enhanced GBA and Pico-8 on this exact H1512 product family.

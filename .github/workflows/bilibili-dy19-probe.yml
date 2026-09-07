@@ -1,0 +1,60 @@
+name: Bilibili power-bank handheld artifact probe
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bilibili-dy19-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recover BVIDs and descriptions
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request, re, time, html
+          hdr={'User-Agent':'Mozilla/5.0','Referer':'https://www.bilibili.com/'}
+          def raw(url):
+            req=urllib.request.Request(url,headers=hdr)
+            return urllib.request.urlopen(req,timeout=30).read()
+          def api(bvid):
+            try:
+              d=json.loads(raw('https://api.bilibili.com/x/web-interface/view?'+urllib.parse.urlencode({'bvid':bvid})))
+              x=d.get('data') or {}
+              return {k:x.get(k) for k in ['bvid','aid','title','desc','pubdate','owner','dynamic','pic']}
+            except Exception as e:
+              return {'bvid':bvid,'error':repr(e)}
+          known=['BV1jxt4ztEyy','BV1859aBrEan','BV15GX7YVENt']
+          for b in known:
+            print('KNOWN',json.dumps(api(b),ensure_ascii=False))
+          terms=[
+            '充电宝游戏机 自定义添加游戏工具',
+            'DY-12变色翻转问题成功修复',
+            '充电宝游戏机刷机sf2000（时趣DY-19）2：汉化游戏导入',
+          ]
+          for term in terms:
+            print('\nSEARCHHTML',term)
+            url='https://search.bilibili.com/all?'+urllib.parse.urlencode({'keyword':term})
+            try:
+              s=raw(url).decode('utf-8','replace')
+              print('len',len(s))
+              # collect BVIDs within a broad neighborhood of the title and then resolve metadata
+              idx=s.find(term)
+              print('title_index',idx)
+              region=s[max(0,idx-20000):idx+20000] if idx>=0 else s
+              ids=[]
+              for b in re.findall(r'BV[0-9A-Za-z]{10}',region):
+                if b not in ids: ids.append(b)
+              print('candidate_bvids',ids[:30])
+              for b in ids[:20]:
+                rec=api(b)
+                title=(rec.get('title') or '')
+                owner=((rec.get('owner') or {}).get('name') if isinstance(rec.get('owner'),dict) else '')
+                if term in title or '充电宝' in title or 'DY-12' in title or 'DY-19' in title:
+                  print('RESOLVED',json.dumps(rec,ensure_ascii=False))
+                time.sleep(.2)
+            except Exception as e: print('HTML ERROR',repr(e))
+          PY
