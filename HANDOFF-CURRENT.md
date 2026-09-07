@@ -602,3 +602,33 @@ This proves the stable-append built-in catalog contract independently of ROM com
 Important identity finding: save/remap/runtime state follows the physical ROM identity/path, not the catalog index. A duplicate catalog reference reaches the same existing saves and runtime configuration.
 
 Next priority: promote the hardware-confirmed Test02 metadata milestone appropriately in the private artifact vault, then move from static catalog proof to the on-device stable-merge scanner/writer design. Preserve existing indices; use the Mega Man Favorite as an index-stability sentinel during future mutation tests.
+### Exact wrapper/import archaeology
+
+Captured `Resources/Test.zsf` fully closes the XGO ZXX wrapper format:
+
+- file size 93,867 bytes;
+- SHA-256 `8e661f5a9246091228dd2eedae65c109d2add7aa3c22cc0231c39dd67b3600f4`;
+- first 59,904 bytes are the 144x208 little-endian RGB565 thumbnail;
+- offset `0xEA00` begins a WQW-obfuscated standard ZIP;
+- WQW transform = ZIP signatures changed to `WQW\x03` / `WQW\x02` / `WQW\x01` and local/central filename bytes XOR `0xE5`; compressed data unchanged;
+- de-obfuscation opens as a normal DEFLATE ZIP containing `手柄测试.sfc`;
+- de-obfuscating then re-obfuscating and concatenating the untouched thumbnail reproduces the original Test.zsf byte-for-byte with the exact same SHA-256.
+
+The stock launcher computes preview size dynamically as `thumbnail_width * thumbnail_height * 2` before calling `run_game`, rather than hard-coding 59,904.
+
+New finding: XGO also contains the exact Lucian Wischik XZip/XUnzip error-string family plus `deflate 1.2.5`, strongly proving ZIP-creation code is linked into the firmware. The corresponding open-source implementation exposes `CreateZip`, `ZipAdd`, and `CloseZip`; exact XGO addresses remain to be mapped.
+
+The first 59,904 bytes of Test.zsf decode correctly as 144x208 little-endian RGB565 and visibly produce the expected Super Famicom controller-test image.
+
+PNG/JPEG-related code exists (`image/png`, `image/jpeg`, JPEG decoder diagnostics), but a compact reusable still-image API is not yet proven.
+
+Recommended staged feature path:
+
+1. Refresh Games: scan existing `.zxx` wrappers and stable-append catalogs.
+2. Import Prepared Game: raw ROM + preconverted 144x208 RGB565 cover -> stock ZIP creator -> WQW -> `.zxx` -> catalog append.
+3. Import Game: PNG/JPEG artwork once a reusable stock decoder or small decoder port is proven.
+
+New findings:
+
+- `findings/exact-xgo-zxx-wrapper-and-wqw-contract.md`
+- `findings/on-device-import-feasibility-stock-zip-and-image-stack.md`
