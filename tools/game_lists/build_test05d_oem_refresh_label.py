@@ -19,7 +19,7 @@ This isolates the UI integration before binding row 3 to the hardware-proven
 Test04 writer/scanner work.
 """
 from __future__ import annotations
-import argparse, hashlib, math, struct, tarfile, zipfile
+import argparse, base64, hashlib, math, struct, tarfile, zipfile, zlib
 from pathlib import Path
 
 V8_ZIP_SHA = "ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a"
