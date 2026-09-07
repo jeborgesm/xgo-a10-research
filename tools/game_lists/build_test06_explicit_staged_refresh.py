@@ -81,6 +81,9 @@ MODE_RB=0x809A6687
 MODE_WB=0x809A3404
 SFC_NAMES=0x80A3C344
 COUNT_SFC=0x80D28954
+TEXT_DRAW=0x803528A4
+POST_TV_HOOK=0x80359BA8
+POST_TV_ORIGINAL=0x80356C04
 SIZES=[UPDATED[n][1] for n in ("urefs.tax","adsnt.nec","xvb6c.bvs")]
 TOTAL=sum(SIZES)
 
@@ -161,10 +164,24 @@ def build_dispatch_writer():
 
     a.ins(lw('s0',-3228,'gp')); a.ins(lui('t0',0x0210)); a.ins(addu('s0','s0','t0'))
 
+    # Read current SFC catalog count first. 930 means this staged update is
+    # already installed; 929 is the expected pre-refresh state. Anything else
+    # is treated as an error rather than blindly overwriting an unknown catalog.
+    a.loadaddr('a0',PATHBUF); a.loadaddr('a1',PATHFMT); a.loadaddr('a2',ROOT)
+    a.loadaddr('t0',SFC_NAMES); a.ins(lw('a3',0,'t0')); a.ins(jal(SPRINTF)); a.ins(nop())
+    a.loadaddr('a0',PATHBUF); a.loadaddr('a1',MODE_RB); a.ins(jal(FOPEN)); a.ins(nop())
+    a.branch('beq','v0','zero','fail'); a.ins(nop()); a.ins(addu('s1','v0','zero'))
+    a.ins(addu('a0','s0','zero')); a.ins(addiu('a1','zero',1)); a.ins(addiu('a2','zero',4)); a.ins(addu('a3','s1','zero'))
+    a.ins(jal(FREAD)); a.ins(nop()); a.ins(addu('s7','v0','zero'))
+    a.ins(addu('a0','s1','zero')); a.ins(jal(FCLOSE)); a.ins(nop())
+    a.ins(addiu('t0','zero',4)); a.branch('bne','s7','t0','fail'); a.ins(nop())
+    a.ins(lw('t0',0,'s0')); a.ins(addiu('t1','zero',930)); a.branch('beq','t0','t1','nochange'); a.ins(nop())
+    a.ins(addiu('t1','zero',929)); a.branch('bne','t0','t1','fail'); a.ins(nop())
+
     a.loadaddr('a0',PATHBUF); a.loadaddr('a1',PATHFMT); a.loadaddr('a2',ROOT); a.loadlabel('a3','srcname')
     a.ins(jal(SPRINTF)); a.ins(nop())
     a.loadaddr('a0',PATHBUF); a.loadaddr('a1',MODE_RB); a.ins(jal(FOPEN)); a.ins(nop())
-    a.branch('beq','v0','zero','restore'); a.ins(nop()); a.ins(addu('s1','v0','zero'))
+    a.branch('beq','v0','zero','fail'); a.ins(nop()); a.ins(addu('s1','v0','zero'))
 
     a.ins(addu('a0','s0','zero')); a.ins(addiu('a1','zero',1)); a.ins(ori('a2','zero',TOTAL)); a.ins(addu('a3','s1','zero'))
     a.ins(jal(FREAD)); a.ins(nop())
@@ -177,20 +194,29 @@ def build_dispatch_writer():
     a.loadaddr('a0',PATHBUF); a.loadaddr('a1',PATHFMT); a.loadaddr('a2',ROOT); a.ins(lw('a3',0,'s2'))
     a.ins(jal(SPRINTF)); a.ins(nop())
     a.loadaddr('a0',PATHBUF); a.loadaddr('a1',MODE_WB); a.ins(jal(FOPEN)); a.ins(nop())
-    a.branch('beq','v0','zero','restore'); a.ins(nop()); a.ins(addu('s6','v0','zero'))
+    a.branch('beq','v0','zero','fail'); a.ins(nop()); a.ins(addu('s6','v0','zero'))
     a.ins(addu('a0','s1','zero')); a.ins(addiu('a1','zero',1)); a.ins(addu('a2','s5','zero')); a.ins(addu('a3','s6','zero'))
     a.ins(jal(FWRITE)); a.ins(nop()); a.ins(addu('s7','v0','zero'))
     a.ins(addu('a0','s6','zero')); a.ins(jal(FCLOSE)); a.ins(nop())
-    a.branch('bne','s7','s5','restore'); a.ins(nop())
+    a.branch('bne','s7','s5','fail'); a.ins(nop())
     a.ins(addu('s1','s1','s5')); a.ins(addiu('s2','s2',4)); a.ins(addiu('s3','s3',4)); a.ins(addiu('s4','s4',-1))
     a.branch('bne','s4','zero','copy_loop'); a.ins(nop())
 
     a.ins(jal(FS_SYNC_WRAP)); a.ins(nop())
     a.loadaddr('t0',COUNT_SFC); a.ins(sw('zero',0,'t0'))
+    a.loadlabel('t0','status'); a.ins(addiu('t1','zero',1)); a.ins(sw('t1',0,'t0'))
     a.branch('beq','zero','zero','restore'); a.ins(nop())
 
     a.label('close_src_restore')
     a.ins(addu('a0','s1','zero')); a.ins(jal(FCLOSE)); a.ins(nop())
+    a.branch('beq','zero','zero','fail'); a.ins(nop())
+
+    a.label('nochange')
+    a.loadlabel('t0','status'); a.ins(addiu('t1','zero',2)); a.ins(sw('t1',0,'t0'))
+    a.branch('beq','zero','zero','restore'); a.ins(nop())
+
+    a.label('fail')
+    a.loadlabel('t0','status'); a.ins(addiu('t1','zero',3)); a.ins(sw('t1',0,'t0'))
 
     a.label('restore')
     a.ins(lw('t0',124,'sp')); a.ins(mthi('t0')); a.ins(lw('t0',128,'sp')); a.ins(mtlo('t0'))
@@ -201,11 +227,41 @@ def build_dispatch_writer():
     # Explicit Refresh returns to User Menu rather than entering User Games.
     a.ins(addiu('fp','zero',1)); a.ins(addiu('s2','zero',1)); a.ins(j(MENU_REDRAW)); a.ins(nop())
 
+    # POST_TV_HOOK jumps here after the stock NTSC/PAL text has been drawn.
+    # Draw one additional status line using the exact same stock text renderer.
+    a.label('status_draw')
+    STATUS_FRAME=64
+    for off,reg in [(16,'ra'),(20,'a0'),(24,'a1'),(28,'a2'),(32,'a3'),(36,'t0'),(40,'t1'),(44,'t3'),(48,'fp')]:
+        a.ins(sw(reg,off-STATUS_FRAME,'sp'))
+    a.ins(addiu('sp','sp',-STATUS_FRAME))
+    a.loadlabel('t0','status'); a.ins(lw('t0',0,'t0'))
+    a.branch('beq','t0','zero','status_done'); a.ins(nop())
+    a.ins(addiu('t1','zero',1)); a.branch('beq','t0','t1','status_updated'); a.ins(nop())
+    a.ins(addiu('t1','zero',2)); a.branch('beq','t0','t1','status_none'); a.ins(nop())
+    a.loadlabel('t3','msg_fail'); a.branch('beq','zero','zero','status_call'); a.ins(nop())
+    a.label('status_updated'); a.loadlabel('t3','msg_updated'); a.branch('beq','zero','zero','status_call'); a.ins(nop())
+    a.label('status_none'); a.loadlabel('t3','msg_none')
+    a.label('status_call')
+    a.ins(lw('a0',-5136,'gp')); a.ins(addiu('a1','zero',245)); a.ins(addiu('a2','zero',205)); a.ins(addiu('a3','zero',0))
+    # Match stock dynamic-text extras: saved s5/t8 values and string pointer.
+    a.ins(lw('t0',16+save_regs.index('s5')*4+STATUS_FRAME,'sp')); a.ins(sw('t0',16,'sp'))
+    a.ins(lw('t0',16+save_regs.index('t8')*4+STATUS_FRAME,'sp')); a.ins(sw('t0',20,'sp'))
+    a.ins(sw('t3',24,'sp')); a.ins(jal(TEXT_DRAW)); a.ins(addiu('fp','zero',0))
+    a.label('status_done')
+    a.ins(addiu('sp','sp',STATUS_FRAME))
+    for off,reg in reversed([(16,'ra'),(20,'a0'),(24,'a1'),(28,'a2'),(32,'a3'),(36,'t0'),(40,'t1'),(44,'t3'),(48,'fp')]):
+        a.ins(lw(reg,off-STATUS_FRAME,'sp'))
+    a.ins(j(POST_TV_ORIGINAL)); a.ins(nop())
+
     while a.pc%4: a.data(b'\0')
     a.label('sizes'); a.data(struct.pack('<III',*SIZES))
     a.label('srcname'); a.data(b'refresh.bin\0')
+    a.label('status'); a.data(struct.pack('<I',0))
+    a.label('msg_updated'); a.data(b'Games Updated\0')
+    a.label('msg_none'); a.data(b'No New Games\0')
+    a.label('msg_fail'); a.data(b'Refresh Failed\0')
     blob=a.emit(); assert CAVE+len(blob)<CAVE_LIMIT
-    return blob
+    return blob,a.labels['status_draw']
 
 def reverse_last_append(data: bytes) -> bytes:
     count=struct.unpack_from('<I',data,0)[0]; assert count==930
@@ -381,11 +437,13 @@ def main():
     put(TVMODE_B_X, addiu('a1','zero',141))
     put(TVMODE_B_Y, addiu('a2','zero',297))
 
-    stub=build_dispatch_writer(); caveoff=CAVE-BASE
+    stub,status_draw=build_dispatch_writer(); caveoff=CAVE-BASE
     assert CAVE+len(stub)<CAVE_LIMIT
     assert fw[caveoff:caveoff+len(stub)]==b'\0'*len(stub)
     fw[caveoff:caveoff+len(stub)]=stub
     put(DISPATCH,j(CAVE))
+    assert word(POST_TV_HOOK)==0x1000F416
+    put(POST_TV_HOOK,j(status_draw))
     crc=crc32_mpeg2(fw[0x200:]); struct.pack_into('<I',fw,0x18c,crc)
 
     screens={n:build_screen(ui[n],ui['qasf.bel'],n) for n in LABEL_X}
