@@ -216,3 +216,32 @@ No Test05 candidate may be promoted to `golden/` until hardware passes.
 ## Reproducer
 
 `tools/game_lists/build_test05_explicit_refresh_menu.py`
+
+
+## Private-vault composition complete — exact hardware candidate ready
+
+The Test05 private-vault composition completed successfully on 2026-09-07 from the exact protected Audio OSD v8 baseline plus a freshly reconstructed compact source bundle containing the seven hash-asserted stock setup resources.
+
+Verified compact UI source bundle:
+
+```text
+setup-ui-stock-source-new.tar.xz
+size 94,664 bytes
+SHA-256 6a1264b9ebf49f4bb28f2185168ca400fbc883a9bacfde6874796baaf813701c
+```
+
+All seven source member hashes matched the deterministic builder's stock-resource assertions. The previously interrupted `staging/test05-ui-source-20260907/` transfer was not reused.
+
+Exact Test05 hardware candidate:
+
+```text
+xgo-game-list-test05-explicit-refresh-menu.zip
+size 4,908,988 bytes
+SHA-256 766071faec548b04deffef4e97ba900c965aa09686a05195d6bbda997b7961a4
+firmware SHA-256 30de1ecc9819f0e669a872cd642e23098506a6411f2ce0de74b4dedfc1a0ae21
+stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
+```
+
+The private CI gate reproduced every expected modified bitmap hash, exact candidate size/hash, exact firmware hash, and passed `unzip -t`. The candidate is archived at the private-vault root (binary archive commit `ea4faae`) and exposed as a CI artifact for hardware retrieval. It is **not golden** pending hardware confirmation.
+
+Next action: hardware Test05 only. Do not attach the Test04 writer yet. The gate is the explicit four-option UI, navigation, preservation of the original three menu actions, and harmless REFRESH stub behavior with no catalog mutation.
