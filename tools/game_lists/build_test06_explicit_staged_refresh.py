@@ -83,6 +83,8 @@ SFC_NAMES=0x80A3C344
 COUNT_SFC=0x80D28954
 TEXT_DRAW=0x803528A4
 POST_TV_HOOK=0x80359BA8
+POST_TV_PAL_A_HOOK=0x8035ACB8
+POST_TV_PAL_B_HOOK=0x8035ACF0
 POST_TV_ORIGINAL=0x80356C04
 SIZES=[UPDATED[n][1] for n in ("urefs.tax","adsnt.nec","xvb6c.bvs")]
 TOTAL=sum(SIZES)
@@ -227,13 +229,13 @@ def build_dispatch_writer():
     # Explicit Refresh returns to User Menu rather than entering User Games.
     a.ins(addiu('fp','zero',1)); a.ins(addiu('s2','zero',1)); a.ins(j(MENU_REDRAW)); a.ins(nop())
 
-    # POST_TV_HOOK jumps here after the stock NTSC/PAL text has been drawn.
-    # Draw one additional status line using the exact same stock text renderer.
+    # The three stock TV-text paths jump here after NTSC/PAL has been drawn.
+    # Add a second OEM-font line indicating the last Refresh result.
     a.label('status_draw')
-    STATUS_FRAME=64
-    for off,reg in [(16,'ra'),(20,'a0'),(24,'a1'),(28,'a2'),(32,'a3'),(36,'t0'),(40,'t1'),(44,'t3'),(48,'fp')]:
-        a.ins(sw(reg,off-STATUS_FRAME,'sp'))
+    status_save=['v0','v1','a0','a1','a2','a3','t0','t1','t2','t3','t4','t5','t6','t7','t8','t9','ra','fp']
+    STATUS_FRAME=112
     a.ins(addiu('sp','sp',-STATUS_FRAME))
+    for idx,reg in enumerate(status_save): a.ins(sw(reg,16+idx*4,'sp'))
     a.loadlabel('t0','status'); a.ins(lw('t0',0,'t0'))
     a.branch('beq','t0','zero','status_done'); a.ins(nop())
     a.ins(addiu('t1','zero',1)); a.branch('beq','t0','t1','status_updated'); a.ins(nop())
@@ -243,15 +245,13 @@ def build_dispatch_writer():
     a.label('status_none'); a.loadlabel('t3','msg_none')
     a.label('status_call')
     a.ins(lw('a0',-5136,'gp')); a.ins(addiu('a1','zero',245)); a.ins(addiu('a2','zero',205)); a.ins(addiu('a3','zero',0))
-    # Match stock dynamic-text extras: saved s5/t8 values and string pointer.
-    a.ins(lw('t0',16+save_regs.index('s5')*4+STATUS_FRAME,'sp')); a.ins(sw('t0',16,'sp'))
-    a.ins(lw('t0',16+save_regs.index('t8')*4+STATUS_FRAME,'sp')); a.ins(sw('t0',20,'sp'))
-    a.ins(sw('t3',24,'sp')); a.ins(jal(TEXT_DRAW)); a.ins(addiu('fp','zero',0))
+    # Match stock setup text-call extras: s5, the current text-color/config
+    # global at gp-30380, and the string pointer.
+    a.ins(sw('s5',16,'sp')); a.ins(lw('t0',-30380,'gp')); a.ins(sw('t0',20,'sp')); a.ins(sw('t3',24,'sp'))
+    a.ins(jal(TEXT_DRAW)); a.ins(addiu('fp','zero',0))
     a.label('status_done')
-    a.ins(addiu('sp','sp',STATUS_FRAME))
-    for off,reg in reversed([(16,'ra'),(20,'a0'),(24,'a1'),(28,'a2'),(32,'a3'),(36,'t0'),(40,'t1'),(44,'t3'),(48,'fp')]):
-        a.ins(lw(reg,off-STATUS_FRAME,'sp'))
-    a.ins(j(POST_TV_ORIGINAL)); a.ins(nop())
+    for idx,reg in reversed(list(enumerate(status_save))): a.ins(lw(reg,16+idx*4,'sp'))
+    a.ins(addiu('sp','sp',STATUS_FRAME)); a.ins(j(POST_TV_ORIGINAL)); a.ins(nop())
 
     while a.pc%4: a.data(b'\0')
     a.label('sizes'); a.data(struct.pack('<III',*SIZES))
@@ -443,7 +443,11 @@ def main():
     fw[caveoff:caveoff+len(stub)]=stub
     put(DISPATCH,j(CAVE))
     assert word(POST_TV_HOOK)==0x1000F416
+    assert word(POST_TV_PAL_A_HOOK)==0x1000EFD2
+    assert word(POST_TV_PAL_B_HOOK)==0x1000EFC4
     put(POST_TV_HOOK,j(status_draw))
+    put(POST_TV_PAL_A_HOOK,j(status_draw))
+    put(POST_TV_PAL_B_HOOK,j(status_draw))
     crc=crc32_mpeg2(fw[0x200:]); struct.pack_into('<I',fw,0x18c,crc)
 
     screens={n:build_screen(ui[n],ui['qasf.bel'],n) for n in LABEL_X}
