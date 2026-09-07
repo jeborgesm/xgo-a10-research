@@ -123,6 +123,22 @@
         "zip_method": "STORE"
       },
       "hardware_observation": "Generated SFC catalog item displayed with the embedded SNES controller-test thumbnail, launched the embedded controller-test ROM, accepted Start/Select input, opened the normal pause menu, and behaved as a normal stock SFC game."
+    },
+    {
+      "id": "game-list-test06b-explicit-refresh-timed-status",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-game-list-test06b-timed-status.zip",
+      "vault_path": "golden/xgo-game-list-test06b-timed-status.zip",
+      "zip_sha256": "2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042",
+      "firmware_sha256": "5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e",
+      "parent_artifacts": [
+        "audio-osd-v8-button-event-only",
+        "game-list-test03-generated-zsf-store"
+      ],
+      "finding": "HANDOFF-CURRENT.md",
+      "hardware_observation": "Final explicit Refresh Games UI milestone PASS: visible fourth User Menu item invokes the hardware-proven staged on-device SFC catalog writer; No New Games feedback works; stock-font status expires after about three seconds and does not persist after leaving/returning; footer, selector, NTSC/PAL placement, and stock menu functions remain correct.",
+      "implementation_scope": "Staged 929-to-930 proof writer only; not yet the final general filesystem scanner/stable-merge engine."
     }
   ]
 }

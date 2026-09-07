@@ -795,3 +795,371 @@ Next external-recovery priority:
 
 Primary finding:
 `findings/dy19-dy12-chinese-modding-ecosystem.md`
+
+## Refresh Games implementation branch
+
+The completed game-list archaeology and 39-image evidence corpus were checkpointed into `main` by PR #13 at merge commit:
+
+```text
+8bdb175b2e73d35e8f336d0039b771b15a8a0ede
+```
+
+Fresh implementation branch:
+
+```text
+research-game-list-refresh-implementation
+```
+
+### Natural trigger
+
+Stock User Menu row 0 (`User Games`) is now the preferred Refresh trigger.
+
+Dispatcher anchor:
+
+```text
+0x80359e94  load selected User Menu row
+0x80359e98  row 0 -> stock User Games destination 0x80357468
+```
+
+The implementation can interpose Refresh here and then continue to the exact stock destination. No fourth menu row and no uncertain raw-button chord are required.
+
+Primary finding:
+
+`findings/refresh-games-implementation-hook-and-staged-proof.md`
+
+### Test04 staged runtime-writer design
+
+Test04 isolates device-side canonical catalog mutation before implementing the full directory scanner.
+
+Protected inputs:
+
+```text
+Audio OSD v8 golden ZIP
+ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+
+Audio OSD v8 firmware
+4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+
+Test03 generated-wrapper golden ZIP
+bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+```
+
+New safe runtime cave:
+
+```text
+0x807dab98..0x807dbb9f
+4104 usable bytes
+```
+
+The referenced table beginning at approximately `0x807dbba0` is intentionally excluded.
+
+Current deterministic writer blob:
+
+```text
+entry       0x807dab98
+size        688 bytes
+SHA-256     88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+headroom    3416 bytes
+```
+
+Test04 install state intentionally restores the original 929-entry SFC triplet while placing `SFC/XGO Import Test.zsf` on disk and staging the known-good 930-entry triplet in `Resources/refresh.bin`.
+
+Expected hardware sequence:
+
+```text
+boot -> SFC 929 / XGO Import Test absent
+User Menu -> User Games
+device rewrites SFC triplet
+SFC cache invalidated
+return to SFC -> 930 / XGO Import Test present
+```
+
+The routine uses stock `fopen/fread/fwrite/fclose` plus the stock filesystem sync wrapper.
+
+**Test04 is deliberately non-transactional and disposable-clone-only.** It is a runtime-write proof, not the final Refresh Games implementation.
+
+Public builder:
+
+`tools/game_lists/build_test04_runtime_refresh.py`
+
+Primary finding:
+
+`findings/game-list-test04-runtime-writer-candidate.md`
+
+Next action: compose Test04 inside the private artifact vault from the exact two golden inputs, archive the generated ZIP at vault root immediately, then hardware-test. Only a hardware pass is eligible for `golden/`.
+
+
+### Test03 vault repair COMPLETE / Test04 candidate READY
+
+The private-vault Test03 golden artifact had an archival corruption caused by an interrupted Base64 transfer. The authoritative hardware-tested Test03 ZIP remained intact locally and was used to repair the vault.
+
+Repair gate passed:
+
+```text
+xgo-game-list-test03-sfc-import-store-wrapper.zip
+size 76,285 bytes
+SHA-256 bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+unzip integrity PASS
+```
+
+The repaired golden Test03 then passed the Test04 CI input audit together with exact Audio OSD v8.
+
+Exact Test04 candidate:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+```
+
+Candidate firmware:
+
+```text
+SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+LCFG CRC-32/MPEG-2 0xb266669f
+```
+
+Writer blob:
+
+```text
+688 bytes
+SHA-256 88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+```
+
+The exact Test04 candidate is archived at the private artifact-vault root and is **not golden** pending hardware.
+
+Hardware procedure:
+
+1. disposable SD clone only;
+2. install Test04;
+3. before invoking User Games, SFC should show 929 games and XGO Import Test must be absent;
+4. invoke `User Menu -> User Games` once;
+5. return to SFC: expected 930 games, final entry XGO Import Test;
+6. launch XGO Import Test and verify controller-test behavior;
+7. reboot and verify 930 persists;
+8. verify the existing Mega Man Favorite still resolves normally;
+9. briefly verify Language and TV System rows still behave normally.
+
+Test04 is intentionally non-transactional. Avoid power loss during the User Games trigger/write sequence.
+
+
+### Hardware milestone — Test04 on-device runtime catalog rewrite PASS
+
+Hardware result: **PASS** on 2026-09-07.
+
+Exact hardware-tested artifact:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+firmware SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+```
+
+Every planned hardware gate passed:
+
+- before the trigger, SFC remained at 929 entries and XGO Import Test was absent;
+- `User Menu -> User Games` executed the injected device-side writer and continued through the normal stock path;
+- afterward SFC reloaded as 930 entries with XGO Import Test as the final entry;
+- XGO Import Test launched and retained the controller-test behavior proven in Test03;
+- after reboot, the 930-entry catalog persisted;
+- the pre-existing Mega Man Favorite/save behavior remained intact;
+- User Menu Language and TV System behavior remained intact.
+
+This closes the architectural question Test04 was designed to answer: **XGO can rewrite the synchronized built-in catalog triplet on-device, invalidate the cached count, and have the unmodified stock browser consume the rewritten persistent catalog.**
+
+Test04 remains a staged/non-transactional proof, not the final Refresh Games implementation. The next implementation step is to replace `Resources/refresh.bin` with the general on-device scan + stable-merge engine and add backup/transaction-marker recovery before canonical catalog replacement.
+
+Archive rule: promote this exact hardware-tested ZIP to private-vault `golden/`; do not rebuild it for promotion.
+
+
+## Private-vault composition complete — exact hardware candidate ready
+
+The Test05 private-vault composition completed successfully on 2026-09-07 from the exact protected Audio OSD v8 baseline plus a freshly reconstructed compact source bundle containing the seven hash-asserted stock setup resources.
+
+Verified compact UI source bundle:
+
+```text
+setup-ui-stock-source-new.tar.xz
+size 94,664 bytes
+SHA-256 6a1264b9ebf49f4bb28f2185168ca400fbc883a9bacfde6874796baaf813701c
+```
+
+All seven source member hashes matched the deterministic builder's stock-resource assertions. The previously interrupted `staging/test05-ui-source-20260907/` transfer was not reused.
+
+Exact Test05 hardware candidate:
+
+```text
+xgo-game-list-test05-explicit-refresh-menu.zip
+size 4,908,988 bytes
+SHA-256 766071faec548b04deffef4e97ba900c965aa09686a05195d6bbda997b7961a4
+firmware SHA-256 30de1ecc9819f0e669a872cd642e23098506a6411f2ce0de74b4dedfc1a0ae21
+stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
+```
+
+The private CI gate reproduced every expected modified bitmap hash, exact candidate size/hash, exact firmware hash, and passed `unzip -t`. The candidate is archived at the private-vault root (binary archive commit `ea4faae`) and exposed as a CI artifact for hardware retrieval. It is **not golden** pending hardware confirmation.
+
+Next action: hardware Test05 only. Do not attach the Test04 writer yet. The gate is the explicit four-option UI, navigation, preservation of the original three menu actions, and harmless REFRESH stub behavior with no catalog mutation.
+
+
+### Test05 hardware result — UI mechanics partial PASS; visual polish FAIL (2026-09-07)
+
+Hardware candidate:
+```text
+xgo-game-list-test05-explicit-refresh-menu.zip
+size 4,908,988 bytes
+SHA-256 766071faec548b04deffef4e97ba900c965aa09686a05195d6bbda997b7961a4
+firmware SHA-256 30de1ecc9819f0e669a872cd642e23098506a6411f2ce0de74b4dedfc1a0ae21
+```
+
+Observed on hardware:
+- all four 2x2 options are visible;
+- User Games, Language, and TV System still perform their stock functions;
+- REFRESH selection is a harmless no-op as designed;
+- visual defect: dynamic NTSC/PAL text remains at the stock top-right TV-system coordinate and must move down/left into the relocated TV tile;
+- visual defect: blue selection border and A action badge appear on all four tiles after the new layout/navigation, rather than only representing the current selection as intended.
+
+Classification: **Test05 is NOT golden.** The fourth-command mechanics are promising, but visual selection semantics must be corrected before binding Refresh to Test04. Do not attach catalog writes yet.
+
+Next candidate: Test05b/05.1 UI-only correction. Preserve the no-write REFRESH stub while correcting TV mode coordinates and selection overlay behavior.
+
+
+### Test05b hardware candidate — polished explicit Refresh UI (2026-09-07)
+
+Built from protected Audio OSD V8 plus the verified stock setup-UI source bundle. No catalog-write path is attached; Refresh remains a no-op stub.
+
+```text
+xgo-game-list-test05b-polished-refresh-menu.zip
+size 4,914,256 bytes
+SHA-256 cae6acf4e5cd1016d1cb380df79355a2142aefd87653059f3baa119371e1d37f
+firmware SHA-256 8638ba5aed222b60052020a9fe2caa12109e7656d5e3eebb29431887066589f1
+stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
+```
+
+Changes relative to Test05:
+- label is title-case `Refresh`;
+- all four tiles and labels are shifted upward 20 pixels to clear the footer controls;
+- dynamic NTSC/PAL draw point is transplanted from the stock TV tile offset to the relocated TV tile;
+- the setup redraw is expanded to a full 640x480 RGB565 copy before the active selector is drawn, intended to prevent stale selector border/A-badge accumulation;
+- rows 0..2 remain stock destinations; row 3 remains a no-write stub.
+
+Hardware gate: verify layout/label clearance, NTSC/PAL placement, exactly one active selector overlay while navigating repeatedly, unchanged stock functions, and no game-count/catalog mutation when Refresh is selected. Do not promote to golden until hardware-confirmed.
+
+
+### Test05c hardware result — functional/geometry PASS; label-style refinement requested (2026-09-07)
+
+Hardware-confirmed behavior:
+- four-item 2x2 layout works;
+- footer icons restored;
+- selector behavior correct;
+- NTSC/PAL positioning correct after the dual-path coordinate fix;
+- rows 0..2 retain stock behavior;
+- Refresh remains a no-op as designed.
+
+Remaining issue is cosmetic only: the bold synthetic Refresh label does not visually match the OEM labels. Test05c is therefore not promoted to golden as the final explicit-menu milestone.
+
+### Test05d hardware candidate — OEM-style regular Refresh label
+
+Test05d freezes all Test05c runtime/geometry fixes and changes only the Refresh label raster. The new label is an antialiased regular sans raster, 84x17 pixels, baseline-aligned with the stock bottom labels. No catalog-write path is attached.
+
+```text
+xgo-game-list-test05d-oem-refresh-label.zip
+size 4,918,184 bytes
+SHA-256 c8ca3bf010f1d658e0c7ceb249473b05ca65541220fa81650adfe762084f9be6
+firmware SHA-256 03d1e5278eb7a8a8b525776ffa8cf7cdc8c10c35e41166bf500cd0f410240845
+stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
+```
+
+Hardware gate for Test05d: visual confirmation that Refresh now matches the regular OEM label style closely enough. No other behavior should differ from Test05c. Do not promote until hardware-confirmed.
+
+
+### Test06 hardware candidate — explicit staged Refresh + stock-font status feedback (2026-09-07)
+
+Test06 combines the two previously hardware-proven pieces: the Test05c/d explicit fourth User Menu command and the Test04 on-device staged SFC catalog writer. Refresh now performs the staged 929->930 rewrite directly from the visible menu item.
+
+User feedback was added before hardware testing by reusing the stock setup-screen text renderer (the same firmware path used for dynamic NTSC/PAL text). A persistent in-RAM status value is rendered after all NTSC/PAL setup draw paths:
+
+- `Games Updated` after a successful staged rewrite;
+- `No New Games` when the canonical SFC catalog already reports 930 entries, in which case all writes are skipped;
+- `Refresh Failed` for unexpected catalog count or read/open/write failures.
+
+The Refresh label itself carries the slightly heavier Test05d raster requested for the next step. All known-good Test05c geometry/footer/selector/TV-text fixes remain frozen.
+
+Exact candidate:
+
+```text
+xgo-game-list-test06-explicit-staged-refresh.zip
+size 5,022,831 bytes
+SHA-256 44e8632b2f71572d9d7e98a75c0dbea00cafa9dd6cfb98eadb149b7c83086fed
+firmware SHA-256 c69627edbc5c8112a5b0ec890ea6ddde1180de952e36944d0da8a1070f0df907
+writer/status blob bytes 1,238
+writer/status blob SHA-256 85d1f32722d8dbf426c9d7c0ecde962b286505f25b6c02ae591a78226be11745
+```
+
+Private CI run 34169680118 passed protected-input verification, builder execution, ZIP integrity, artifact upload, and vault-root archival. This candidate is NOT golden pending hardware confirmation.
+
+Hardware gate:
+1. install on the disposable clone; initial SFC catalog must be 929 and XGO Import Test absent;
+2. open User Menu and select Refresh;
+3. expect return to User Menu plus stock-font `Games Updated` status;
+4. SFC must become 930 with XGO Import Test last and launch normally;
+5. select Refresh again; expect `No New Games` and no rewrite;
+6. reboot and confirm 930 persists, Mega Man Favorite/save remains intact, and User Games/Language/TV System remain normal;
+7. visually verify status text placement under both NTSC and PAL setup states.
+
+The staged writer remains intentionally non-transactional. Do not treat Test06 as the final general Refresh Games scanner yet.
+
+
+### Test06 hardware result — explicit Refresh functional PASS; status persistence polish issue (2026-09-07)
+
+Hardware-confirmed:
+- visible Refresh command performs the staged on-device catalog update successfully;
+- SFC changes to the staged 930-entry catalog as expected;
+- repeated Refresh correctly reports `No New Games`;
+- stock menu behavior and explicit Refresh integration are working.
+
+Observed polish issue: the status message remains resident on the User Menu indefinitely, including after leaving to a game list and returning. Test06 is therefore not the final polished milestone.
+
+### Test06b candidate — timed stock-font Refresh status
+
+Test06b preserves the Test06 writer/status behavior and adds a monotonic 3-second expiry using the stock `os_get_tick_count()` service recovered at runtime address `0x8030fec8`. Each result stores its creation tick; the stock-font status renderer clears the in-RAM status once unsigned elapsed time reaches 3000 ms. Therefore returning to User Menu after the expiry should not resurrect the old message.
+
+```text
+xgo-game-list-test06b-timed-status.zip
+size 5,022,902 bytes
+SHA-256 2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042
+firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e
+writer/status blob bytes 1,370
+writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb873d830b591bc
+```
+
+Private CI run 34170092288 passed protected inputs, build, ZIP integrity, artifact upload, and vault-root archival. Pending hardware confirmation; not golden.
+
+
+### Test06b hardware result — FINAL EXPLICIT REFRESH UI MILESTONE PASS (2026-09-07)
+
+Hardware confirmation completed successfully. The timed-status refinement works as intended and the user elected to keep the implementation exactly as-is for this milestone.
+
+Confirmed on hardware:
+- visible fourth User Menu item `Refresh` works;
+- explicit Refresh integration remains stable;
+- staged on-device SFC catalog refresh path remains successful;
+- repeated refresh correctly reports `No New Games`;
+- stock-font result feedback displays correctly;
+- result feedback expires automatically after about three seconds and does not remain stuck after navigating away and returning;
+- footer icons, active selector/A badge behavior, NTSC/PAL placement, and stock User Games/Language/TV System behavior remain correct.
+
+Promote the exact tested Test06b artifact to golden:
+
+```text
+xgo-game-list-test06b-timed-status.zip
+size 5,022,902 bytes
+SHA-256 2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042
+firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e
+writer/status blob bytes 1,370
+writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb873d830b591bc
+```
+
+Important scope boundary: Test06b proves the explicit native-style Refresh command and the staged 929->930 writer/status lifecycle. It is intentionally NOT yet the final general filesystem scanner/stable-merge engine. Preserve this exact milestone before beginning that next stage.
+
+Next-stage direction: start from this golden Test06b state and replace the staged `refresh.bin` proof mechanism with the real on-device discovery/stable-merge implementation while preserving the now-golden UI/feedback behavior. Do not reopen completed Test04/Test05/Test06 archaeology unless new hardware evidence requires it.

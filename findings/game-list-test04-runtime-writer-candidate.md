@@ -1,0 +1,351 @@
+# Game-List Test04 — on-device staged SFC catalog writer
+
+Date: 2026-09-06
+Branch: `research-game-list-refresh-implementation`
+
+Status: **static implementation complete; exact golden composition pending private-vault CI**
+
+## Purpose
+
+Test04 isolates one remaining architectural question:
+
+> Can the XGO itself rewrite a synchronized built-in game-list triplet from a normal stock frontend action?
+
+The catalog format is already hardware-proven by Test02.
+
+Generated Zxx packaging is already hardware-proven by Test03.
+
+Test04 deliberately does **not** implement the final general-purpose directory scanner. It proves runtime mutation first.
+
+## Protected composition inputs
+
+Firmware base must be the exact final Audio OSD v8 golden artifact:
+
+```text
+golden/xgo-audio-osd-v8-button-event-only-test.zip
+ZIP SHA-256
+ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+
+firmware SHA-256
+4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+```
+
+Known-good staged SFC data comes from the exact hardware-confirmed Test03 golden artifact:
+
+```text
+golden/xgo-game-list-test03-sfc-import-store-wrapper.zip
+ZIP SHA-256
+bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+```
+
+No protected artifact is modified in place.
+
+## Natural stock trigger
+
+The state-14 User Menu row dispatcher is:
+
+```text
+0x80359e94  load selected row
+0x80359e98  beq v1,zero,0x80357468
+0x80359e9c  li t6,1
+```
+
+Row 0 is stock **User Games**.
+
+Test04 replaces only the branch at `0x80359e98` with a jump to the injected dispatcher. The original delay-slot instruction at `0x80359e9c` remains intact.
+
+The injected dispatcher reproduces the stock behavior for all three rows:
+
+```text
+row 0 -> staged Refresh writer -> stock User Games path
+row 1 -> stock Language path
+row 2 -> stock TV System path
+other -> stock fallback path
+```
+
+This avoids a new menu row and avoids relying on uncertain raw controller event identities.
+
+## New safe code cave
+
+The low V8 OSD cave no longer has enough room.
+
+V8 leaves only approximately:
+
+```text
+0x80002ee8..0x80002fef
+264 bytes
+```
+
+before its persistent 16-byte event/state block at `0x80002ff0`.
+
+A deeper firmware scan identified a separate zero-filled region:
+
+```text
+runtime 0x807dab98..0x807dbb9f
+capacity 4104 bytes
+```
+
+A referenced table begins at approximately:
+
+```text
+0x807dbba0
+```
+
+so the candidate intentionally stops before that boundary.
+
+Static reference audit found no direct pointer or constructed-address reference into the usable cave interior. The private builder must still assert that every byte used by the injected routine is zero in the exact V8 firmware before patching.
+
+## Test04 writer
+
+Current deterministic injected blob:
+
+```text
+entry runtime 0x807dab98
+size          688 bytes
+SHA-256       88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+headroom      3416 bytes before 0x807dbba0
+```
+
+The routine saves relevant GPRs plus HI/LO and uses a normal O32 stack frame.
+
+## Runtime data path
+
+The staged refresh source is:
+
+```text
+Resources/refresh.bin
+```
+
+It is a simple concatenation of the already hardware-confirmed Test03 SFC triplet:
+
+```text
+urefs.tax  27017 bytes
+adsnt.nec  21102 bytes
+xvb6c.bvs  10310 bytes
+---------------------
+total      58429 bytes
+```
+
+Before truncating any canonical resource, the entire 58,429-byte payload is read into the native scanner's existing large scratch arena.
+
+The routine reuses stock services:
+
+```text
+sprintf       0x802946d8
+fopen         0x802b3524
+fread         0x802b3698
+fwrite        0x802b42ac
+fclose        0x802b2f40
+fs-sync wrap  0x807d40a8
+```
+
+Canonical SFC resource names are taken from the stock resource-name table beginning at:
+
+```text
+0x80a3c344
+```
+
+After all three writes complete, Test04 calls the stock sync wrapper and invalidates:
+
+```text
+SFC cached count = 0x80d28954
+```
+
+The stock browser can then lazy-reload the new 930-entry count from the resource file.
+
+## Install state intentionally proves runtime mutation
+
+The Test04 ZIP will install:
+
+```text
+SFC/XGO Import Test.zsf
+```
+
+but restore the canonical SFC triplet to its **original 929-entry state**.
+
+It also installs `Resources/refresh.bin` containing the known-good 930-entry Test03 triplet.
+
+Therefore immediately after installation:
+
+```text
+physical wrapper exists
+catalog count = 929
+XGO Import Test is not indexed
+```
+
+Only after the user invokes:
+
+```text
+User Menu -> User Games
+```
+
+should the device itself rewrite the catalogs.
+
+Expected post-trigger state:
+
+```text
+SFC count = 930
+final entry = XGO Import Test
+```
+
+## Original triplet recovery is exact
+
+The Test04 builder does not need a separate stock-card dependency.
+
+The original 929-entry SFC resources are deterministically recovered from the Test03 930-entry files by reversing the final stable append.
+
+The result matches the independently preserved stock-analysis hashes exactly:
+
+```text
+urefs.tax
+26993 bytes
+ba65a0e993772dc7654449f10402be7536f7d8c7fca768c2db0174fc4b863dc0
+
+adsnt.nec
+21082 bytes
+ffc96b0a4efc8177766ef7dafeb519a761bdfff2552d3cb8dbab2be465a7231c
+
+xvb6c.bvs
+10290 bytes
+0a83d27343dd894802d64c8fbc68d8d9a6181d70446a443b9e9209e69a11bb24
+```
+
+## Hardware gate
+
+Use a disposable SD clone.
+
+Before triggering Refresh:
+
+```text
+SFC = 929 games
+XGO Import Test absent
+```
+
+Then:
+
+1. User Menu -> User Games.
+2. Return to SFC.
+3. Confirm count becomes 930.
+4. Confirm final entry is XGO Import Test.
+5. Launch it and verify the controller-test ROM behaves like Test03.
+6. Reboot and confirm 930 persists.
+7. Confirm the pre-existing Mega Man Favorite still resolves normally.
+8. Briefly verify Language and TV System User Menu rows still work.
+
+## Explicit safety limitation
+
+Test04 is intentionally **non-transactional**.
+
+It proves runtime writes only.
+
+A power interruption while the three canonical resources are being rewritten could leave the triplet inconsistent. Therefore Test04 must only be used on a disposable clone.
+
+The final Refresh Games implementation will add backup/transaction-marker recovery before replacing the staged payload with the general scanner/stable-merge engine.
+
+## Reproducer
+
+Public deterministic builder:
+
+```text
+tools/game_lists/build_test04_runtime_refresh.py
+```
+
+The exact candidate ZIP must be generated in the private artifact vault from the two golden input ZIPs and archived there immediately.
+
+No hardware candidate has yet been promoted to golden.
+
+
+## Exact candidate built and archived
+
+After repairing the Test03 private-vault archival corruption, the Test04 builder ran against the exact protected inputs:
+
+```text
+Audio OSD v8 ZIP
+ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+
+Test03 ZIP
+bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+```
+
+CI independently audited the Test03 members before build:
+
+```text
+Resources/urefs.tax
+f2cbc51c08689229216fab1024d7acd7c62480d96812d97c2efe984f1fe63916
+
+Resources/adsnt.nec
+c010fca8f276bd73f34b7c01357979d94680961d4238fbb55521d589228ba2cb
+
+Resources/xvb6c.bvs
+ccc7339310b785dce8537014af408b7e0aa09e9025dc2584ebac49bd159c032b
+
+SFC/XGO Import Test.zsf
+f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1
+```
+
+Exact generated Test04:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+```
+
+Candidate firmware:
+
+```text
+SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+LCFG CRC-32/MPEG-2 0xb266669f
+```
+
+Writer:
+
+```text
+688 bytes
+SHA-256 88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+```
+
+The exact Test04 candidate is archived at the private artifact-vault repository root and is **not golden** pending hardware confirmation.
+
+### Test03 vault repair provenance
+
+The previous `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` had been corrupted by an interrupted Base64 staging transfer. The exact hardware-tested local Test03 artifact was re-staged in independently valid chunks and the repair workflow required all of:
+
+- exact reconstructed size 76,285 bytes;
+- exact SHA-256 `bfef6f95...`;
+- successful `unzip -t`;
+- exact member integrity.
+
+Only after all checks passed was the golden Test03 file replaced.
+
+This was an archival defect only; no Test03 firmware/package archaeology changed.
+
+
+### Hardware milestone — Test04 on-device runtime catalog rewrite PASS
+
+Hardware result: **PASS** on 2026-09-07.
+
+Exact hardware-tested artifact:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+firmware SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+```
+
+Every planned hardware gate passed:
+
+- before the trigger, SFC remained at 929 entries and XGO Import Test was absent;
+- `User Menu -> User Games` executed the injected device-side writer and continued through the normal stock path;
+- afterward SFC reloaded as 930 entries with XGO Import Test as the final entry;
+- XGO Import Test launched and retained the controller-test behavior proven in Test03;
+- after reboot, the 930-entry catalog persisted;
+- the pre-existing Mega Man Favorite/save behavior remained intact;
+- User Menu Language and TV System behavior remained intact.
+
+This closes the architectural question Test04 was designed to answer: **XGO can rewrite the synchronized built-in catalog triplet on-device, invalidate the cached count, and have the unmodified stock browser consume the rewritten persistent catalog.**
+
+Test04 remains a staged/non-transactional proof, not the final Refresh Games implementation. The next implementation step is to replace `Resources/refresh.bin` with the general on-device scan + stable-merge engine and add backup/transaction-marker recovery before canonical catalog replacement.
+
+Archive rule: promote this exact hardware-tested ZIP to private-vault `golden/`; do not rebuild it for promotion.
