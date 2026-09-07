@@ -764,3 +764,34 @@ XGO = DY19-family H1512 software/content fork
 ```
 
 The next hardware-archaeology priority is authentic DY19 PCB/teardown imagery and component identification, especially controller, LCD, RF, power and UART/test-pad regions.
+
+
+## New high-value external investigator: 炒鸡大帅比9961
+
+Chinese Bilibili research has identified an active modder working on the same DY12/DY19-style power-bank handheld family.
+
+Indexed videos include:
+
+```text
+2025-08  充电宝游戏机新系统包介绍
+2026-04  DY-12变色翻转问题成功修复
+2026-05  充电宝游戏机 自定义添加游戏工具
+          充电宝游戏机可以玩PS1游戏？
+```
+
+This is now directly relevant to both current/future roadmap items:
+
+- game-list scanning/regeneration;
+- additional emulator/core support;
+- model-specific LCD adaptation.
+
+A separate `叶落听风者` DY19 SF2000-conversion series includes a 2026 follow-up specifically about importing localized games.
+
+Next external-recovery priority:
+1. recover the custom add-game tool;
+2. recover the modified system pack;
+3. inspect the DY12 display-orientation/color patch;
+4. compare their list-generation behavior against XGO's native databases.
+
+Primary finding:
+`findings/dy19-dy12-chinese-modding-ecosystem.md`
