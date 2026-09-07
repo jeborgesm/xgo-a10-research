@@ -170,3 +170,23 @@ The current wrapper work proves that once RGB565 thumbnail bytes exist, packagin
 3. if it passes, treat WQW generation as hardware proven;
 4. then determine the cheapest cover-image import contract for the handheld;
 5. only after wrapper and catalog append are both proven, combine them into an on-device Import/Refresh workflow.
+## Test03 hardware result — PASS
+
+Hardware confirmed `xgo-game-list-test03-sfc-import-store-wrapper.zip`.
+
+Observed on XGO:
+
+- final SFC item `XGO Import Test` appears in the stock SFC list;
+- it displays the SNES controller-test thumbnail from the generated wrapper;
+- selecting it launches the embedded controller-test ROM;
+- Start and Select input work;
+- the normal pause menu opens;
+- runtime behavior is consistent with a normal stock SFC game entry.
+
+### Conclusion
+
+**HARDWARE CONFIRMED:** XGO accepts a newly generated method-0/STORE WQW `.zsf` wrapper created outside the OEM toolchain.
+
+This closes the packaging proof independently of the OEM Windows application. A valid stock-style game can be created from an RGB565 thumbnail plus raw ROM using the recovered WQW record format, then stable-appended to the stock catalog.
+
+Test03 is eligible for promotion to `golden/` as the first hardware-confirmed generated-wrapper/import baseline.
