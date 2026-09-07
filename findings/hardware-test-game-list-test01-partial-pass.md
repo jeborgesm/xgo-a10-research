@@ -67,3 +67,29 @@ Game-list architecture milestone: **hardware-confirmed partial pass**.
 Do not promote Test01 to golden because the selected game does not reach playable output.
 
 Next step: choose a better control that isolates list expansion from ROM compatibility, while preserving the new `Mega Man` Favorite as an index-stability sentinel.
+## Test02 follow-up control — HARDWARE PASS
+
+Artifact: `xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+
+ZIP SHA-256: `40f6dce8380f61942f2f4f472b0c137fed8a6042cb00b0b3b669c99090d15a73`
+
+Test02 appended a second catalog reference to the already-stock-listed physical `FC/Mega Man 1.zfc` as new final FC entry 746, while preserving all existing indices.
+
+Hardware-confirmed observations:
+
+- entry 746 displayed as Mega Man at the end of the FC list;
+- launching from the new appended index loaded the existing Mega Man game normally;
+- previous Mega Man save data was visible from the appended entry;
+- button remapping worked normally from the appended entry;
+- Audio OSD/volume adjustment worked normally in the launched game;
+- gameplay was normal.
+
+### Conclusion
+
+**HARDWARE CONFIRMED:** a stable-appended built-in catalog entry is treated as a normal first-class game entry by the XGO runtime.
+
+The launch/save/remap/audio behavior proves the catalog index is only a frontend reference into the same physical ROM identity/runtime state; adding a new catalog index does not create a separate save/remap identity.
+
+This cleanly isolates the Test01 Bomber Man 2 black screen as a compatibility/payload issue for that wrapper, not a failure of the catalog append architecture.
+
+The user also created a Mega Man Favorite before Test02 for future index-stability tests. Explicit Favorite-launch verification remains to be recorded separately if needed.
