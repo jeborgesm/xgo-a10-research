@@ -977,3 +977,30 @@ Changes relative to Test05:
 - rows 0..2 remain stock destinations; row 3 remains a no-write stub.
 
 Hardware gate: verify layout/label clearance, NTSC/PAL placement, exactly one active selector overlay while navigating repeatedly, unchanged stock functions, and no game-count/catalog mutation when Refresh is selected. Do not promote to golden until hardware-confirmed.
+
+
+### Test05c hardware result — functional/geometry PASS; label-style refinement requested (2026-09-07)
+
+Hardware-confirmed behavior:
+- four-item 2x2 layout works;
+- footer icons restored;
+- selector behavior correct;
+- NTSC/PAL positioning correct after the dual-path coordinate fix;
+- rows 0..2 retain stock behavior;
+- Refresh remains a no-op as designed.
+
+Remaining issue is cosmetic only: the bold synthetic Refresh label does not visually match the OEM labels. Test05c is therefore not promoted to golden as the final explicit-menu milestone.
+
+### Test05d hardware candidate — OEM-style regular Refresh label
+
+Test05d freezes all Test05c runtime/geometry fixes and changes only the Refresh label raster. The new label is an antialiased regular sans raster, 84x17 pixels, baseline-aligned with the stock bottom labels. No catalog-write path is attached.
+
+```text
+xgo-game-list-test05d-oem-refresh-label.zip
+size 4,918,184 bytes
+SHA-256 c8ca3bf010f1d658e0c7ceb249473b05ca65541220fa81650adfe762084f9be6
+firmware SHA-256 03d1e5278eb7a8a8b525776ffa8cf7cdc8c10c35e41166bf500cd0f410240845
+stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
+```
+
+Hardware gate for Test05d: visual confirmation that Refresh now matches the regular OEM label style closely enough. No other behavior should differ from Test05c. Do not promote until hardware-confirmed.
