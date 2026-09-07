@@ -632,3 +632,46 @@ New findings:
 
 - `findings/exact-xgo-zxx-wrapper-and-wqw-contract.md`
 - `findings/on-device-import-feasibility-stock-zip-and-image-stack.md`
+### Test02 golden promotion and Test03 import candidate
+
+Hardware-confirmed Test02 has been promoted in private `jeborgesm/xgo-a10-artifacts` by reusing the exact existing blob, no rebuild:
+
+`golden/xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+
+Artifact-repo promotion commit:
+
+`1818e81cbea17eee982899880ec1fea17247f4fb`
+
+Git blob is identical to the root candidate: `fb09093f6e85771aad5facd3dd4a56bfb13378ba`.
+
+Test03 candidate:
+
+`xgo-game-list-test03-sfc-import-store-wrapper.zip`
+
+ZIP SHA-256:
+
+`bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320`
+
+New wrapper:
+
+`SFC/XGO Import Test.zsf`
+
+wrapper size 191,112 bytes; SHA-256 `f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1`.
+
+It is generated from scratch using the XGO's own controller-test SNES ROM and thumbnail, but deliberately uses ZIP method 0 / STORE inside WQW rather than DEFLATE.
+
+SFC triplet 929->930:
+
+- `urefs.tax` `f2cbc51c08689229216fab1024d7acd7c62480d96812d97c2efe984f1fe63916`
+- `adsnt.nec` `c010fca8f276bd73f34b7c01357979d94680961d4238fbb55521d589228ba2cb`
+- `xvb6c.bvs` `ccc7339310b785dce8537014af408b7e0aa09e9025dc2584ebac49bd159c032b`
+
+Expected new SFC tail entry: `930 XGO Import Test`.
+
+If hardware accepts STORE, future on-device wrapper creation can avoid compression entirely: thumbnail + tiny ZIP/WQW writer + raw ROM bytes + stable catalog append.
+
+Candidate documentation:
+
+`findings/hardware-test-game-list-test03-import-store-wrapper-candidate.md`
+
+Do not promote Test03 to golden until hardware passes.
