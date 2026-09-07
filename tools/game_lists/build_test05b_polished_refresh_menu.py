@@ -11,7 +11,9 @@ Test05b changes only the User Menu UI/navigation/dispatch surface:
   - selector wraps 0..3 instead of 0..2;
   - row 3 is visible as Refresh and is a harmless no-op stub;
   - rows 0..2 retain their stock destinations;
-  - NTSC/PAL is relocated into the moved TV tile;\n  - setup background refresh is expanded to the full 640x480 screen so old selector overlays are erased;\n  - NO catalog/resource mutation path is installed.
+  - NTSC/PAL is relocated into the moved TV tile;
+  - setup background refresh is expanded to the full 640x480 screen so old selector overlays are erased;
+  - NO catalog/resource mutation path is installed.
 
 This isolates the UI integration before binding row 3 to the hardware-proven
 Test04 writer/scanner work.
@@ -215,8 +217,16 @@ def main():
         andi('ra','a1',2), sll('t4','ra',7), sll('ra','ra',4), subu('ra','t4','ra'), addiu('ra','ra',0),
     ]
     for i,w in enumerate(render): put(RENDER_START+i*4,w)
-    put(0x80359B4C, iop(43,'sp','a3',20))\n    # Full-screen refresh: stock copied only the region needed by its one-row menu.\n    # Repaint all 640x480 RGB565 pixels before drawing the active selector.\n    put(0x80359AFC, iop(15,'zero','a2',0x0009))\n    put(0x80359B00, iop(13,'a2','a2',0x6000))\n    put(0x80359B04, rtype('t1','zero','a0',0,0x21))\n    put(0x80359B0C, rtype('t3','zero','a1',0,0x21))
-    put(0x80359B64, iop(43,'sp','a3',16))\n    put(NTSC_X, addiu('a1','zero',125))\n    put(NTSC_Y, addiu('a2','zero',297))
+    put(0x80359B4C, iop(43,'sp','a3',20))
+    # Full-screen refresh: stock copied only the region needed by its one-row menu.
+    # Repaint all 640x480 RGB565 pixels before drawing the active selector.
+    put(0x80359AFC, iop(15,'zero','a2',0x0009))
+    put(0x80359B00, iop(13,'a2','a2',0x6000))
+    put(0x80359B04, rtype('t1','zero','a0',0,0x21))
+    put(0x80359B0C, rtype('t3','zero','a1',0,0x21))
+    put(0x80359B64, iop(43,'sp','a3',16))
+    put(NTSC_X, addiu('a1','zero',125))
+    put(NTSC_Y, addiu('a2','zero',297))
 
     stub=build_stub(); caveoff=CAVE-BASE
     assert CAVE+len(stub)<CAVE_LIMIT
@@ -258,7 +268,8 @@ HARDWARE GATE
 4. Select User Games: stock User Games behavior must remain unchanged.
 5. Select Language: stock language UI/change behavior must remain unchanged.
 6. Select TV System only if safe for the current display setup; otherwise confirm navigation/selection only.
-7. Confirm NTSC/PAL now appears inside the relocated TV tile.\n8. Select Refresh several times: it must remain on User Menu and MUST NOT change any game count/catalog.
+7. Confirm NTSC/PAL now appears inside the relocated TV tile.
+8. Select Refresh several times: it must remain on User Menu and MUST NOT change any game count/catalog.
 8. Confirm SFC count remains whatever it was before Test05; no XGO list mutation is expected from REFRESH.
 9. Reboot and repeat navigation.
 
