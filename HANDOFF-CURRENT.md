@@ -2,12 +2,12 @@
 
 ## Active branch
 
-`research-game-list-scanning`
+`research-game-list-refresh-implementation`
 
-Created from merged `main` commit:
+Created from merged `main` checkpoint:
 
 ```text
-2a12bd0fdf0999f2cbffbe9802dc9e25485b2a21
+8bdb175b2e73d35e8f336d0039b771b15a8a0ede
 ```
 
 The previous `research-post-mapper-runtime` branch is closed and merged.
@@ -728,3 +728,95 @@ This proves XGO accepts a newly generated method-0/STORE WQW wrapper outside the
 Test03 has been promoted to `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` in the private artifact vault and added to `artifacts/golden-artifacts.json`.
 
 Next engineering/research target: combine the proven primitives into an on-device scanner/importer while preserving existing indices. First implementation should scan for already-packaged unindexed Zxx files. A later import mode can package raw ROM + preconverted RGB565 cover using the proven STORE WQW writer. PNG/JPEG decode remains optional future work unless a cheap stock decoder entry point is recovered.
+
+## Refresh Games implementation branch
+
+The completed game-list archaeology and 39-image evidence corpus were checkpointed into `main` by PR #13 at merge commit:
+
+```text
+8bdb175b2e73d35e8f336d0039b771b15a8a0ede
+```
+
+Fresh implementation branch:
+
+```text
+research-game-list-refresh-implementation
+```
+
+### Natural trigger
+
+Stock User Menu row 0 (`User Games`) is now the preferred Refresh trigger.
+
+Dispatcher anchor:
+
+```text
+0x80359e94  load selected User Menu row
+0x80359e98  row 0 -> stock User Games destination 0x80357468
+```
+
+The implementation can interpose Refresh here and then continue to the exact stock destination. No fourth menu row and no uncertain raw-button chord are required.
+
+Primary finding:
+
+`findings/refresh-games-implementation-hook-and-staged-proof.md`
+
+### Test04 staged runtime-writer design
+
+Test04 isolates device-side canonical catalog mutation before implementing the full directory scanner.
+
+Protected inputs:
+
+```text
+Audio OSD v8 golden ZIP
+ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+
+Audio OSD v8 firmware
+4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+
+Test03 generated-wrapper golden ZIP
+bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+```
+
+New safe runtime cave:
+
+```text
+0x807dab98..0x807dbb9f
+4104 usable bytes
+```
+
+The referenced table beginning at approximately `0x807dbba0` is intentionally excluded.
+
+Current deterministic writer blob:
+
+```text
+entry       0x807dab98
+size        688 bytes
+SHA-256     88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+headroom    3416 bytes
+```
+
+Test04 install state intentionally restores the original 929-entry SFC triplet while placing `SFC/XGO Import Test.zsf` on disk and staging the known-good 930-entry triplet in `Resources/refresh.bin`.
+
+Expected hardware sequence:
+
+```text
+boot -> SFC 929 / XGO Import Test absent
+User Menu -> User Games
+device rewrites SFC triplet
+SFC cache invalidated
+return to SFC -> 930 / XGO Import Test present
+```
+
+The routine uses stock `fopen/fread/fwrite/fclose` plus the stock filesystem sync wrapper.
+
+**Test04 is deliberately non-transactional and disposable-clone-only.** It is a runtime-write proof, not the final Refresh Games implementation.
+
+Public builder:
+
+`tools/game_lists/build_test04_runtime_refresh.py`
+
+Primary finding:
+
+`findings/game-list-test04-runtime-writer-candidate.md`
+
+Next action: compose Test04 inside the private artifact vault from the exact two golden inputs, archive the generated ZIP at vault root immediately, then hardware-test. Only a hardware pass is eligible for `golden/`.
