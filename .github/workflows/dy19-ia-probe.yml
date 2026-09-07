@@ -11,6 +11,7 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Fetch Internet Archive metadata
         shell: bash
         run: |
@@ -18,13 +19,21 @@ jobs:
           python3 - <<'PY'
           import json, urllib.request
           ident='dy-19-firmware-2024315'
-          url=f'https://archive.org/metadata/{ident}'
-          data=json.load(urllib.request.urlopen(url, timeout=60))
-          print('identifier:', data.get('metadata',{}).get('identifier'))
-          print('title:', data.get('metadata',{}).get('title'))
-          print('server:', data.get('d1'), data.get('d2'))
-          print('dir:', data.get('dir'))
-          print('FILES')
+          data=json.load(urllib.request.urlopen(f'https://archive.org/metadata/{ident}', timeout=60))
           for f in data.get('files',[]):
               print(json.dumps({k:f.get(k) for k in ('name','source','format','size','md5','sha1')}, ensure_ascii=False))
           PY
+      - name: Selectively extract FAT32 metadata and firmware with HTTP Range
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 tools/dy19/remote_fat32_extract.py             'https://archive.org/download/dy-19-firmware-2024315/DY19Firmware2024315.img'             --out dy19-extracted | tee dy19-extract.log
+          find dy19-extracted -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+          sha256sum dy19-extracted/* | tee dy19-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dy19-selective-extract
+          path: |
+            dy19-extracted/
+            dy19-extract.log
+            dy19-sha256.txt
