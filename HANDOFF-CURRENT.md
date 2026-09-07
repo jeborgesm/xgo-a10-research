@@ -2,7 +2,7 @@
 
 ## Active branch
 
-`research-audio-osd`
+`research-game-list-scanning`
 
 Created from merged `main` commit:
 
@@ -379,3 +379,352 @@ Archive status: promote exact v8 ZIP to `golden/` in the private artifact vault.
 Branch `research-audio-osd` is complete and ready to merge to `main`.
 
 Future UI idea, deliberately out of scope here: investigate replacing/customizing the device splash screen.
+
+
+## Game-list scanning branch — initial archaeology
+
+Branch created from merged Audio OSD main after PR #12.
+
+Protected baseline remains:
+
+```text
+audio-osd-v8-button-event-only
+ZIP SHA-256      ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+firmware SHA-256 4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954
+```
+
+Do not modify that artifact in place.
+
+Initial native result:
+
+- XGO contains an on-device directory scanner/list writer at stock runtime `0x80353ae0`;
+- it enumerates files through the stock filesystem layer, rejects directories, normalizes/validates ROM extensions, alphabetically sorts accepted filenames, and writes the stock `count + offsets + strings` list format;
+- list ID 0 maps `ROMS` to `tsmfk.tax` in all three resource slots;
+- the scanner has a one-shot runtime flag, strongly matching the SF2000/GB300 behavior of rebuilding the User-ROM index during startup/initial frontend entry;
+- built-in FC/SFC/MD/GB/GBC/GBA/curated-Arcade pages remain different: they use synchronized filename/title/search-key triplets, so blindly applying the User-ROM scanner to them would leave metadata misaligned.
+
+Primary finding:
+
+`findings/on-device-user-rom-list-scanner-and-writer.md`
+
+Immediate next targets:
+
+1. close the exact caller-state gate for the list-0 startup scan;
+2. trace fixed-list loading and list ID 11 special handling;
+3. recover the minimum metadata regeneration rules needed to safely expose added ROMs in stock built-in pages;
+4. only then design an explicit on-device rebuild command.
+
+No firmware has been modified and no hardware-test ZIP has been generated on this branch yet.
+
+
+### Deeper list-architecture results
+
+The scanner caller gate is now closed:
+
+- current-list state: `gp-0xdf4`;
+- selected-list state: `gp-0xda4`;
+- one-shot scan flag: `gp-0x5f64`;
+- the scan flag has exactly one read and one write in the firmware and no reset path;
+- all three globals are zero-initialized BSS, so first stable frontend state is list 0 / `ROMS` with scan flag clear;
+- after `tsmfk.tax` generation the flag is latched and later built-in pages cannot invoke the scanner in that session.
+
+The earlier label for `0x803536ec` has been corrected: that routine handles 16-bit-record persistence resources such as `Hisas.boa`, not the main 32-bit-offset game-string catalogs.
+
+The real built-in browser random-accesses catalog strings by reading a 32-bit offset and then seeking to `4 + count*4 + offset`.
+
+Language selection is now proven:
+
+```text
+English/Arabic/Hebrew/Spanish/Russian -> filename/English slot 0
+Chinese                                -> display-title slot 1
+slot 2                                 -> search-oriented path
+```
+
+List ID 11 remains `None / None / None`. No direct list-ID-11 special branch was found in the main browser; combined with the one-shot scanner already being consumed by ID 0, this now strongly favors an empty/dormant fifth Arcade placeholder over a dynamic raw-ZIP list.
+
+Safe built-in regeneration strategy is now **stable merge**, not full alphabetical rebuild:
+
+- keep every existing entry/index in place;
+- append only newly discovered physical ROMs;
+- append aligned fallback records to all three metadata catalogs;
+- do not delete or reorder in the first implementation;
+- this preserves existing Favorites/History indices automatically.
+
+The browser's per-list count array begins at `0x80d2894c`. Built-in counts are lazy-loaded from catalog offset 0 when a cached count is zero. Therefore after a successful rebuild the runtime can invalidate just `count[list_id]` and let stock code reload the new count; a full frontend restart is not required.
+
+New findings:
+
+- `findings/game-list-loader-caller-gate-and-metadata-semantics.md`
+- `findings/safe-built-in-library-regeneration-strategy.md`
+
+### Search semantics and byte-exact append proof
+
+Further archaeology closed the Search path and reduced the first built-in update to a minimal transform:
+
+- normal display language-slot map is `0,1,0,0,0,0`: Chinese uses slot 1, the other five languages use slot 0;
+- Search uses a separate map `0,2,0,0,0,0`: Chinese Search uses slot 2; other languages search slot 0;
+- Chinese Search starts at list ID 1 and deliberately skips User Games/list 0;
+- Search candidate matching normalizes characters and matches ASCII A-Z / 0-9 while ignoring punctuation/spacing;
+- Search results are stored as `{ uint16 list_id, uint16 game_index }`, capacity 200;
+- only English state 0 explicitly strips the filename extension in the observed display path;
+- therefore a safe new-entry fallback is exact filename / basename / basename rather than manufacturing a separate compact search key.
+
+Stable append byte audit:
+
+- all 31 recovered XGO list resources end exactly at the final NUL; no padding/footer exists;
+- existing offsets are relative to the string blob, so adding one entry does not require changing any old offset;
+- exact append transform is: increment count, copy all old offsets unchanged, add one offset equal to old blob length, copy old blob byte-for-byte, append new UTF-8 string + NUL;
+- this preserves every original OEM string byte and every existing game index.
+
+Offline FC proof candidate:
+
+`Bomber Man 2.zfc` is physically present but absent from the 744-entry FC catalog.
+
+Prototype output:
+
+`rdbui.tax` 744->745, SHA-256 `18e96c0543f98e513af4a2cf4e7679d922e1d26bad7d242d1eb59492890556ab`
+`fhcfg.nec` 744->745, SHA-256 `c958891b891093ba1a3b23838798a89925f2419f10322e4059c5ad4f9b51e8de`
+`nethn.bvs` 744->745, SHA-256 `4d76f100fd672ff7557517e9fd671238c0002e5fac955856d0f831a5b9d7e62e`
+
+Assertions prove all 744 old offsets and all old string-blob bytes are unchanged.
+
+Repository tool:
+
+`tools/game_lists/prototype_append_existing_fc_rom.py`
+
+Filesystem recovery result:
+
+- `0x802abf50` is a live directory-removal operation;
+- no stock `rename` string, mapped wrapper, or frontend atomic-replace use has been found;
+- first on-device catalog update should therefore use backups plus a persistent transaction-phase marker and recovery on next boot, not depend on atomic rename.
+
+New findings:
+
+- `findings/search-semantics-browser-state-and-transaction-recovery.md`
+- `findings/byte-exact-stable-append-proof.md`
+
+No firmware or hardware-test ZIP has been generated.
+### Special frontend state closure and Game-List Test01
+
+Special frontend state map is now:
+
+```text
+0..11  normal game categories
+12     Favorites
+13     History
+14     User Menu / Setup
+15     Search
+```
+
+The User Menu has exactly three selectable rows with wrap range `0..2`:
+
+```text
+0 User Games
+1 Language
+2 TV System
+```
+
+Search is entered through a separate input path into state 15; it is not a fourth selectable row. Therefore a polished Refresh Games action cannot simply be appended as row 3 without modifying renderer/navigation bounds.
+
+The earliest safe future transaction-recovery hook is immediately before the stock once-per-session `ROMS -> tsmfk.tax` scan at `0x80359404`, after SD/Resources are available and before normal built-in list browsing.
+
+Static catalog semantics are now isolated from runtime mutation with Hardware Test01:
+
+```text
+xgo-game-list-test01-bomberman2-static-triplet.zip
+ZIP SHA-256 45182596fd1f0598f356901b06ffc3cca94dcfcb445ac8e3b272702c6f9a3350
+```
+
+Private artifact vault status: archived at repository root, intentionally non-golden pending hardware.
+
+Test01 changes only the synchronized FC catalog triplet from 744 to 745 entries and appends the already-present physical ROM `Bomber Man 2.zfc`. No firmware and no ROM payload are included. All 744 prior indices remain unchanged.
+
+Primary finding:
+
+`findings/hardware-test-game-list-test01-static-triplet-candidate.md`
+
+Hardware PASS criteria: final FC entry appears, launches, Search remains valid, Chinese mode does not mis-index/crash, and existing Favorite/History references remain stable.
+
+Do not begin the on-device writer/transaction implementation until this static catalog contract passes hardware.
+### Game List Test01 hardware result and Test02 control
+
+Test01 artifact:
+
+`xgo-game-list-test01-bomberman2-static-triplet.zip`
+`ZIP SHA-256 45182596fd1f0598f356901b06ffc3cca94dcfcb445ac8e3b272702c6f9a3350`
+
+Hardware result:
+
+- FC entry count increased to 745;
+- entry 745 displayed as `Bomber Man 2`;
+- selecting it reached the game runtime;
+- screen flashed and then remained black;
+- stock pause menu still worked and quit returned normally.
+
+Interpretation: catalog append/display/index/dispatch PASS; `Bomber Man 2.zfc` gameplay FAIL/black screen. Do not treat the black screen as a catalog-format failure.
+
+The user had no Favorite before Test01. A `Mega Man` Favorite has now been created specifically as an index-stability sentinel for later tests.
+
+Test02 is a stricter control that appends a duplicate catalog reference to the already-stock-listed physical wrapper `FC/Mega Man 1.zfc` while preserving its original index.
+
+Expected FC tail:
+
+`745 Bomber Man 2`
+`746 Mega Man 1`
+
+Test02 artifact:
+
+`xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+`ZIP SHA-256 40f6dce8380f61942f2f4f472b0c137fed8a6042cb00b0b3b669c99090d15a73`
+
+Test02 outputs:
+
+`rdbui.tax` SHA-256 `263926964e4c5aa5508c7f44490f1e6ff397947c83f52c2c3c28069be71c1335`
+`fhcfg.nec` SHA-256 `b9af569cb185187f506d51a2622caf9d41a5f9d9914effbd56451a0a3d8d2153`
+`nethn.bvs` SHA-256 `0d0001520b645d795128d915a665c7e8c251ee29a57abc2f425043d824ed7ef1`
+
+Test02 hardware gate: launch entry 746 and verify normal Mega Man gameplay; then open the pre-existing Mega Man Favorite and verify it still resolves to the same original game.
+
+Findings:
+
+- `findings/hardware-test-game-list-test01-partial-pass.md`
+- `findings/game-list-test02-known-good-duplicate-candidate.md`
+### Hardware milestone — Test02 stable append PASS
+
+`xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+
+ZIP SHA-256 `40f6dce8380f61942f2f4f472b0c137fed8a6042cb00b0b3b669c99090d15a73`
+
+Hardware confirmed that appended FC entry 746 (`Mega Man 1.zfc`) displays at the end of the list and launches normally. The appended reference sees the existing Mega Man saves, supports normal button remapping, Audio OSD/volume changes, and normal gameplay.
+
+This proves the stable-append built-in catalog contract independently of ROM compatibility. Test01 Bomber Man 2 black output is therefore isolated to that physical wrapper/payload compatibility rather than catalog indexing.
+
+Important identity finding: save/remap/runtime state follows the physical ROM identity/path, not the catalog index. A duplicate catalog reference reaches the same existing saves and runtime configuration.
+
+Next priority: promote the hardware-confirmed Test02 metadata milestone appropriately in the private artifact vault, then move from static catalog proof to the on-device stable-merge scanner/writer design. Preserve existing indices; use the Mega Man Favorite as an index-stability sentinel during future mutation tests.
+### Exact wrapper/import archaeology
+
+Captured `Resources/Test.zsf` fully closes the XGO ZXX wrapper format:
+
+- file size 93,867 bytes;
+- SHA-256 `8e661f5a9246091228dd2eedae65c109d2add7aa3c22cc0231c39dd67b3600f4`;
+- first 59,904 bytes are the 144x208 little-endian RGB565 thumbnail;
+- offset `0xEA00` begins a WQW-obfuscated standard ZIP;
+- WQW transform = ZIP signatures changed to `WQW\x03` / `WQW\x02` / `WQW\x01` and local/central filename bytes XOR `0xE5`; compressed data unchanged;
+- de-obfuscation opens as a normal DEFLATE ZIP containing `手柄测试.sfc`;
+- de-obfuscating then re-obfuscating and concatenating the untouched thumbnail reproduces the original Test.zsf byte-for-byte with the exact same SHA-256.
+
+The stock launcher computes preview size dynamically as `thumbnail_width * thumbnail_height * 2` before calling `run_game`, rather than hard-coding 59,904.
+
+New finding: XGO also contains the exact Lucian Wischik XZip/XUnzip error-string family plus `deflate 1.2.5`, strongly proving ZIP-creation code is linked into the firmware. The corresponding open-source implementation exposes `CreateZip`, `ZipAdd`, and `CloseZip`; exact XGO addresses remain to be mapped.
+
+The first 59,904 bytes of Test.zsf decode correctly as 144x208 little-endian RGB565 and visibly produce the expected Super Famicom controller-test image.
+
+PNG/JPEG-related code exists (`image/png`, `image/jpeg`, JPEG decoder diagnostics), but a compact reusable still-image API is not yet proven.
+
+Recommended staged feature path:
+
+1. Refresh Games: scan existing `.zxx` wrappers and stable-append catalogs.
+2. Import Prepared Game: raw ROM + preconverted 144x208 RGB565 cover -> stock ZIP creator -> WQW -> `.zxx` -> catalog append.
+3. Import Game: PNG/JPEG artwork once a reusable stock decoder or small decoder port is proven.
+
+New findings:
+
+- `findings/exact-xgo-zxx-wrapper-and-wqw-contract.md`
+- `findings/on-device-import-feasibility-stock-zip-and-image-stack.md`
+### Test02 golden promotion and Test03 import candidate
+
+Hardware-confirmed Test02 has been promoted in private `jeborgesm/xgo-a10-artifacts` by reusing the exact existing blob, no rebuild:
+
+`golden/xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+
+Artifact-repo promotion commit:
+
+`1818e81cbea17eee982899880ec1fea17247f4fb`
+
+Git blob is identical to the root candidate: `fb09093f6e85771aad5facd3dd4a56bfb13378ba`.
+
+Test03 candidate:
+
+`xgo-game-list-test03-sfc-import-store-wrapper.zip`
+
+ZIP SHA-256:
+
+`bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320`
+
+New wrapper:
+
+`SFC/XGO Import Test.zsf`
+
+wrapper size 191,112 bytes; SHA-256 `f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1`.
+
+It is generated from scratch using the XGO's own controller-test SNES ROM and thumbnail, but deliberately uses ZIP method 0 / STORE inside WQW rather than DEFLATE.
+
+SFC triplet 929->930:
+
+- `urefs.tax` `f2cbc51c08689229216fab1024d7acd7c62480d96812d97c2efe984f1fe63916`
+- `adsnt.nec` `c010fca8f276bd73f34b7c01357979d94680961d4238fbb55521d589228ba2cb`
+- `xvb6c.bvs` `ccc7339310b785dce8537014af408b7e0aa09e9025dc2584ebac49bd159c032b`
+
+Expected new SFC tail entry: `930 XGO Import Test`.
+
+If hardware accepts STORE, future on-device wrapper creation can avoid compression entirely: thumbnail + tiny ZIP/WQW writer + raw ROM bytes + stable catalog append.
+
+Candidate documentation:
+
+`findings/hardware-test-game-list-test03-import-store-wrapper-candidate.md`
+
+Do not promote Test03 to golden until hardware passes.
+### Wrapper/import packaging archaeology
+
+XGO Zxx packaging is now directly recovered from captured hardware files.
+
+- `Resources/Test.zsf` SHA-256 `8e661f5a9246091228dd2eedae65c109d2add7aa3c22cc0231c39dd67b3600f4`;
+- exact wrapper boundary at `0xEA00` / 59,904 bytes;
+- prefix is 144x208 RGB565 thumbnail data;
+- payload begins `WQW\x03` and is a lightly obfuscated standard ZIP;
+- WQW local/central/end signatures are `WQW\x03`, `WQW\x02`, `WQW\x01`;
+- stored filenames are XORed with `0xE5`;
+- restoring normal ZIP signatures and XOR-decoding filenames makes the captured XGO payload open and CRC-verify with a standard ZIP reader;
+- captured package contains `手柄测试.sfc` using ordinary DEFLATE.
+
+Preview size is not an unrelated magic constant. Both stock game-launch call sites compute:
+
+`preview_size = thumbnail_width * thumbnail_height * 2`
+
+before passing it to `run_game()`. Shipped `Foldername.ini` supplies 144x208, yielding 59,904 exactly.
+
+New generic builder:
+
+`tools/game_lists/build_wqw_store_wrapper.py`
+
+It intentionally creates method-0/STORE WQW packages from a preconverted RGB565 thumbnail plus raw ROM, avoiding any need for an on-device DEFLATE compressor.
+
+Recovered scratch hardware candidate Test03 has been re-audited cleanly:
+
+`xgo-game-list-test03-sfc-import-store-wrapper.zip`
+
+ZIP SHA-256 `bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320`
+
+It creates `SFC/XGO Import Test.zsf`, SHA-256 `f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1`, using the XGO's own 131,072-byte controller-test SNES ROM and thumbnail. SFC catalogs are stable-appended 929->930 with all prior offsets/blob bytes preserved.
+
+Test03 exact ZIP bytes are preserved in private vault staging `staging/game-list-test03/part00.b64`..`part05.b64`, with a hash-verifying archive workflow and staging README. Not golden pending hardware.
+
+Image-decoder note: stock firmware contains genuine JPEG/PNG-capable multimedia code and JPEG hardware diagnostics, but no proven frontend API has yet been found that imports arbitrary SD PNG/JPEG into the game's RGB565 cover format. First importer should therefore use preconverted RGB565 covers until that surface is mapped.
+
+Primary finding:
+
+`findings/xgo-zxx-wrapper-and-import-packaging-contract.md`
+### Hardware milestone — Test03 generated WQW wrapper PASS
+
+`xgo-game-list-test03-sfc-import-store-wrapper.zip`
+
+ZIP SHA-256 `bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320`
+
+Hardware confirmed the newly generated `SFC/XGO Import Test.zsf` appears as final SFC entry with its embedded SNES controller-test thumbnail, launches successfully, accepts Start/Select, opens the normal pause menu, and behaves as a normal SFC game.
+
+This proves XGO accepts a newly generated method-0/STORE WQW wrapper outside the OEM Windows toolchain. Together with Test02, both halves of the static import contract are now hardware proven: stable catalog append and generated stock-style Zxx packaging.
+
+Test03 has been promoted to `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` in the private artifact vault and added to `artifacts/golden-artifacts.json`.
+
+Next engineering/research target: combine the proven primitives into an on-device scanner/importer while preserving existing indices. First implementation should scan for already-packaged unindexed Zxx files. A later import mode can package raw ROM + preconverted RGB565 cover using the proven STORE WQW writer. PNG/JPEG decode remains optional future work unless a cheap stock decoder entry point is recovered.

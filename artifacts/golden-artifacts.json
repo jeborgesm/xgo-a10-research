@@ -106,6 +106,23 @@
       "parent_artifact": "audio-osd-v2-fine-volume",
       "finding": "HANDOFF-CURRENT.md",
       "hardware_observation": "Final Audio OSD PASS: fine volume, gray border, button-event-only trigger, correct main-menu timeout, no boot false OSD, uninterrupted gameplay."
+    },
+    {
+      "id": "game-list-test03-generated-zsf-store",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-game-list-test03-sfc-import-store-wrapper.zip",
+      "vault_path": "golden/xgo-game-list-test03-sfc-import-store-wrapper.zip",
+      "zip_sha256": "bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320",
+      "finding": "findings/xgo-zxx-wrapper-and-import-packaging-contract.md",
+      "generated_wrapper": {
+        "path": "SFC/XGO Import Test.zsf",
+        "sha256": "f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1",
+        "payload_name": "XGO-Import-Test.sfc",
+        "payload_sha256": "76e60393139669b25c5a82247c3fbbc6f2a9715049532b2d14991adbec60ac9b",
+        "zip_method": "STORE"
+      },
+      "hardware_observation": "Generated SFC catalog item displayed with the embedded SNES controller-test thumbnail, launched the embedded controller-test ROM, accepted Start/Select input, opened the normal pause menu, and behaved as a normal stock SFC game."
     }
   ]
 }
