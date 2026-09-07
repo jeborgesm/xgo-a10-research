@@ -1041,3 +1041,29 @@ Hardware gate:
 7. visually verify status text placement under both NTSC and PAL setup states.
 
 The staged writer remains intentionally non-transactional. Do not treat Test06 as the final general Refresh Games scanner yet.
+
+
+### Test06 hardware result — explicit Refresh functional PASS; status persistence polish issue (2026-09-07)
+
+Hardware-confirmed:
+- visible Refresh command performs the staged on-device catalog update successfully;
+- SFC changes to the staged 930-entry catalog as expected;
+- repeated Refresh correctly reports `No New Games`;
+- stock menu behavior and explicit Refresh integration are working.
+
+Observed polish issue: the status message remains resident on the User Menu indefinitely, including after leaving to a game list and returning. Test06 is therefore not the final polished milestone.
+
+### Test06b candidate — timed stock-font Refresh status
+
+Test06b preserves the Test06 writer/status behavior and adds a monotonic 3-second expiry using the stock `os_get_tick_count()` service recovered at runtime address `0x8030fec8`. Each result stores its creation tick; the stock-font status renderer clears the in-RAM status once unsigned elapsed time reaches 3000 ms. Therefore returning to User Menu after the expiry should not resurrect the old message.
+
+```text
+xgo-game-list-test06b-timed-status.zip
+size 5,022,902 bytes
+SHA-256 2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042
+firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e
+writer/status blob bytes 1,370
+writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb873d830b591bc
+```
+
+Private CI run 34170092288 passed protected inputs, build, ZIP integrity, artifact upload, and vault-root archival. Pending hardware confirmation; not golden.
