@@ -253,3 +253,69 @@ tools/game_lists/build_test04_runtime_refresh.py
 The exact candidate ZIP must be generated in the private artifact vault from the two golden input ZIPs and archived there immediately.
 
 No hardware candidate has yet been promoted to golden.
+
+
+## Exact candidate built and archived
+
+After repairing the Test03 private-vault archival corruption, the Test04 builder ran against the exact protected inputs:
+
+```text
+Audio OSD v8 ZIP
+ba3dad99471c6144fd8f6e9f5891bc88d44b955c5de8a21df905d0d396cdb83a
+
+Test03 ZIP
+bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+```
+
+CI independently audited the Test03 members before build:
+
+```text
+Resources/urefs.tax
+f2cbc51c08689229216fab1024d7acd7c62480d96812d97c2efe984f1fe63916
+
+Resources/adsnt.nec
+c010fca8f276bd73f34b7c01357979d94680961d4238fbb55521d589228ba2cb
+
+Resources/xvb6c.bvs
+ccc7339310b785dce8537014af408b7e0aa09e9025dc2584ebac49bd159c032b
+
+SFC/XGO Import Test.zsf
+f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1
+```
+
+Exact generated Test04:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+```
+
+Candidate firmware:
+
+```text
+SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+LCFG CRC-32/MPEG-2 0xb266669f
+```
+
+Writer:
+
+```text
+688 bytes
+SHA-256 88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+```
+
+The exact Test04 candidate is archived at the private artifact-vault repository root and is **not golden** pending hardware confirmation.
+
+### Test03 vault repair provenance
+
+The previous `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` had been corrupted by an interrupted Base64 staging transfer. The exact hardware-tested local Test03 artifact was re-staged in independently valid chunks and the repair workflow required all of:
+
+- exact reconstructed size 76,285 bytes;
+- exact SHA-256 `bfef6f95...`;
+- successful `unzip -t`;
+- exact member integrity.
+
+Only after all checks passed was the golden Test03 file replaced.
+
+This was an archival defect only; no Test03 firmware/package archaeology changed.
