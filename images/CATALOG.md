@@ -128,3 +128,45 @@ The following 20 repository images were supplied directly in the archaeology cha
 - External-controller photographs document the setup, not successful controller enumeration by themselves.
 - The small yellow diagnostic screens are preserved as test-state evidence, but their exact executable/test identity remains unassigned pending correlation.
 - No chip or connector electrical identity is inferred from appearance alone.
+
+
+## Visually inspected batch 2 — remaining 19 images
+
+These remaining repository images were supplied directly in the archaeology chat on 2026-09-06, completing pixel-level inspection of the full 39-image corpus.
+
+| Evidence file | Observable evidence | Archaeological interpretation | Confidence |
+|---|---|---|---|
+| `fa982a99-c2c3-45e6-8efc-71e35a55dc6e.jpg` | Display is almost entirely pale/white with a faint diagonal region and no normal UI. | Display/rendering failure-state evidence. Cause is not inferable from the photograph alone. | confirmed visual / cause unknown |
+| `a1ae32c6-7cab-4508-86b0-1e3839ec66f5.jpg` | Bottom edge close-up clearly shows USB-C, microSD slot marked TF, and speaker grille. | High-quality physical-I/O reference corroborating the earlier bottom-edge photograph. | confirmed |
+| `a309dcc8-abfe-410a-881a-fd3685a718cd.jpg` | Pause menu is open for **Contra 1**, showing Resume/Quit/Load/Save/Mapper and a Contra title-screen preview. | Strong direct evidence that Mapper is integrated into the normal FC/NES pause runtime and that the pause UI associates the running title with a preview image/name. | confirmed |
+| `a368454a-33d5-48f0-b00f-928d43207f1c.jpg` | Black loader screen says `Loading......` and `Loading sf2_27.bin 512KB`. | Direct hardware evidence of Street Fighter II component-ROM loading by filename/size; especially valuable for prior CPS1/FBA archaeology. | confirmed |
+| `a4324888-0419-4f8f-97fe-346fba794f15.jpg` | Clean Button Mapper view with PHYSICAL/MAP TO columns and highlighted mapping cells. | Additional stock mapper-state reference. | confirmed |
+| `aa2bb14c-2297-431c-b974-34b0600ee0c5.jpg` | CAPCOM platform landing screen reads **26 GAMES** and **PLAY SYSTEM 1** with platform artwork and standard bottom navigation. | Strong visual evidence that the 26-entry CPS catalog is presented by the stock frontend as CAPCOM Play System 1. | confirmed |
+| `b97ee27d-c956-4771-b01a-93b0071c7b4e.jpg` | Pause menu Save page shows a large game preview and four save slots labeled `Nodata`. | Direct evidence of stock save-state slot presentation and empty-slot semantics. | confirmed |
+| `c3353bc9-4b97-456a-af4f-724a60c569b2.jpg` | Plain black loader screen with centered `Loading......`; no component filename is visible. | Generic launch/loading-state reference useful for distinguishing a normal loader stage from component-specific trace screens. | confirmed |
+| `d9d81055-ada8-42c1-96e8-98f8e573add5.jpg` | Full frontal photograph of powered-off XGO showing transparent enclosure, analog stick, Start/Select, six face buttons and screen. | Clean external-hardware baseline. | confirmed |
+| `d2334bba-f3fb-4c3f-8024-9d33e6250331.jpg` | Pause overlay shows Resume/Quit/Load/Save beside a graphic depicting a D-pad and six circular buttons; Mapper is not visible in this menu state. | Evidence that pause-menu composition varies by emulator/runtime context. The control graphic appears to be a generic control-layout panel, but its exact role requires code correlation. | strong |
+| `da9b3119-2e15-459c-a878-79ff02dd9250.jpg` | Loader says `Loading......`; a cyan/green rectangular artifact appears at the upper-right. | Loading/rendering anomaly reference. Cause remains unassigned. | confirmed visual / cause unknown |
+| `e5e953d3-22e0-4c13-80a1-642c714aeb20.jpg` | Pause menu for **Contra 1** again shows Resume/Quit/Load/Save/Mapper and Contra preview/name. | Duplicate/alternate clean reference strengthening the FC Mapper integration evidence. | confirmed |
+| `e6de6fdc-e951-4bd9-9885-13381fc25078.jpg` | Edge view shows speaker grille on one end of the handheld; enclosure thickness and screen/case layering are visible. | External enclosure/speaker-placement reference. | confirmed |
+| `e7dae1d2-7ef5-4f0f-9046-6a59bf2c7266.jpg` | Opposite long-edge view shows a small USB-style connector/port, a round 3.5-mm-style jack labeled AV, and enclosure layering. | Physical-I/O evidence for an AV-marked jack and adjacent connector on this XGO variant. Exact electrical/video behavior requires independent testing/code evidence. | confirmed visual |
+| `e9c5b25c-c723-4ab0-bd8d-a5b909511c02.jpg` | Side/edge close-up shows a small slider/opening and an oval physical button. | Additional physical-control reference corresponding to the earlier side-profile image. Functions should be assigned only from independent evidence. | confirmed visual |
+| `ec9c4c62-da17-4ebd-95f6-d111614b71e9.jpg` | NES/Famicom gameplay is visible, matching the same game/runtime scene family as the earlier gameplay photo. | Alternate emulator-runtime evidence; useful as a test chronology reference rather than a new architectural fact. | confirmed visual |
+| `eca5f94f-2639-4c46-b760-b1d3052f3512.jpg` | Pause Save page shows four thumbnail slots populated with different gameplay/text screens. | Direct evidence that stock save states retain/display per-slot screenshot thumbnails, not merely textual slot metadata. | confirmed |
+| `ee90c963-10d3-48bc-ae67-3ec2200013ba.jpg` | Button Mapper screen with highlighted PHYSICAL X and MAP TO L cells. | Particularly useful mapper evidence showing the UI actively represents a non-identity remap (physical X mapped to L in the photographed state). | confirmed |
+| `eec2675e-d63e-459a-818b-b88cfd08c64f.jpg` | XGO on test bench with external wiring/electronics and Super Famicom boot/menu image; appears to be an alternate view of the earlier bench setup. | Test-bench provenance/alternate angle. Exact wiring purpose is not inferred. | confirmed visual |
+
+### Batch-2 findings of particular archaeological value
+
+1. **Street Fighter II ROM-component loading is now photographically explicit.** `a368454a...` shows `sf2_27.bin 512KB`. Combined with batch-1 `m92_06.bin 512KB`, this demonstrates that the loader UI can surface individual archive/member ROM names and sizes across arcade test cases.
+2. **Mapper integration with FC/NES is unambiguous.** `a309dcc8...` and `e5e953d3...` show the normal Contra 1 pause menu with Mapper as the fifth option. `ee90c963...` additionally captures a concrete X→L remap state.
+3. **Save-state screenshots are a stock runtime feature.** `b97ee27d...` shows four empty `Nodata` slots while `eca5f94f...` shows the same slots populated with distinct screenshots. This is direct visual evidence that the frontend/runtime maintains per-slot preview imagery.
+4. **Pause UI is emulator/context dependent.** `d2334bba...` lacks Mapper and instead shows a controller-layout graphic, whereas the Contra pause screens expose Mapper. This is consistent with our broader finding that frontend/runtime behavior differs by emulator family rather than being one universal pause implementation.
+5. **The physical I/O corpus is now substantially complete at the enclosure level.** It records USB-C, TF/microSD, speaker grille, an AV-marked round jack, an adjacent small connector/port, side controls, and multiple enclosure angles. Electrical identities remain separate questions.
+6. **CAPCOM Play System 1 is visually tied to the 26-game stock catalog.** `aa2bb14c...` provides a clean platform landing screen, complementing the detailed 26-entry CPS list photograph from batch 1.
+
+## Corpus inspection status
+
+**39 / 39 repository photographs have now been visually inspected and cataloged.**
+
+The originals remain untouched under `images/inbox/`. This catalog is the descriptive/interpretive layer; repository findings should link to these originals when a photograph materially supports a claim.
