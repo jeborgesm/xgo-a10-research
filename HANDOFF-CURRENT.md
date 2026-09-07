@@ -1163,3 +1163,123 @@ writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb87
 Important scope boundary: Test06b proves the explicit native-style Refresh command and the staged 929->930 writer/status lifecycle. It is intentionally NOT yet the final general filesystem scanner/stable-merge engine. Preserve this exact milestone before beginning that next stage.
 
 Next-stage direction: start from this golden Test06b state and replace the staged `refresh.bin` proof mechanism with the real on-device discovery/stable-merge implementation while preserving the now-golden UI/feedback behavior. Do not reopen completed Test04/Test05/Test06 archaeology unless new hardware evidence requires it.
+
+
+# HANDOFF — hardware lineage deep search (2026-09-07 evening)
+
+## Resume here
+
+The user wants to continue **deep historical + hardware configuration archaeology** after establishing direct DY19 software ancestry and preserving Q19/DY14 teardown imagery.
+
+Active branch:
+
+`research-hardware-lineage-matrix`
+
+Do **not** restart broad family research. Read these first:
+
+1. `findings/hardware-firmware-lineage-matrix.md` — authoritative revision-aware evidence matrix.
+2. `findings/dy19-direct-stock-image-comparison.md` — direct recovered DY19 application/content comparison.
+3. `findings/dy19-hardware-lineage-marketplace-sweep.md` — DY revision graph + Q19 hardware comparator.
+4. `findings/q19-software-lineage-evidence.md` — newest Q19 firmware-side evidence.
+5. `findings/dy19-teardown-image-recovery-target.md` — missing DY19 PCB/4PDA attachment target.
+6. `findings/dy19-external-recovery-ecosystem.md` — Chinese/Russian recovery trails.
+
+## State at handoff
+
+### Already merged to main before this active branch
+
+- direct DY19 HTTP-range FAT32 extraction and comparison;
+- reusable `tools/dy19/remote_fat32_extract.py`;
+- DY19 preservation documentation;
+- DY19 Wayback/cache investigation;
+- Q19 Steward Fu **16-image original JPEG corpus** under:
+  `images/external/q19-steward-fu/`
+- DY14 Steward Fu corpus under:
+  `images/external/dy14-steward-fu/`
+
+Q19 images were copied byte-for-byte from Steward Fu's public GitHub source and verified by matching Git blob SHA-1. Do not revisit the earlier attachment/GitHub confusion.
+
+### Active branch work not yet merged
+
+New authoritative matrix:
+
+`findings/hardware-firmware-lineage-matrix.md`
+
+New Q19 software finding:
+
+`findings/q19-software-lineage-evidence.md`
+
+Key new Q19 result:
+
+- Q19 is not only a physical comparator.
+- Experienced owners identify it as close SF2000/GB300 family hardware.
+- Adapted SF2000 firmware has been reported usable.
+- Unadapted stock SF2000 firmware reportedly boots Q19 with **mirrored video + dead controls + menu music still running**.
+- GB300 multicore also mismatches.
+- Community analysis reports original-firmware copy protection using the onboard SPI flash **security register**, with the check in `bisrv.asd`.
+- This is a strong precedent for the same architectural split seen in XGO:
+  common HC15xx runtime + product-specific display/controller/power/SPI adaptation.
+
+Exact Q19 PCB identifier search:
+
+`XYC-Q20-A-V3.0`
+
+did not find another indexed board/factory/repair source. Steward Fu currently appears uniquely valuable for that exact board.
+
+## Current evidence model
+
+Do not treat model numbers as a linear genealogy.
+
+Use a **revision graph**:
+
+- SF2000 = reference runtime/platform.
+- Q19 = strong physical power-bank bridge + now software-interoperability evidence.
+- DY12 has multiple generations; reported `DY12 MY2024` works with DY19 multicore BIOS.
+- DY14 = H1512 hardware comparator with preserved teardown.
+- DY19 = closest direct software/content sibling; genuine application recovered.
+- XGO = DY19-family H1512 software/content fork + XGO-specific board adaptation.
+
+Rule:
+
+`PCB revision + firmware hash > retail model name`
+
+## Highest-value next searches
+
+1. **DY19 teardown image recovery** — still the critical missing hardware link.
+   - recover XENON 4PDA attachment IDs/URLs;
+   - query exact attachment objects in Wayback/caches;
+   - Chinese repair/parts/Bilibili/Xianyu trails.
+
+2. **Authentic Q19 stock card / bisrv.asd**.
+   Q19 is now unusually valuable because we possess its complete PCB teardown. Firmware would connect known physical hardware to board-support code.
+
+3. **DY12 MY2024** exact firmware + PCB.
+   Need to distinguish it from early DY12/SF2000-like revisions.
+
+4. **DY14 stock application**.
+   We have physical teardown/SPI evidence but need its stock `bisrv.asd` for a direct software bridge.
+
+5. **UART/test pads / manufacturing interfaces** across Q19, DY14, X60, DY19 and XGO.
+   Goal is to infer safe candidate debug access on XGO from sibling boards rather than probe blindly.
+
+6. Search component and PCB identifiers, not only product names.
+
+## Important preserved hashes
+
+DY19 recovered `BISRV.ASD`:
+
+`135ddf837f37570cedbd204036e02bdede876338ad94a9c33cac0db5ac8fe9e4`
+
+XGO preserved application:
+
+`869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf`
+
+DY19 selective extraction ZIP:
+
+`3d7ebfb44fd0c31a6b022b4d58018da9bb7518de1b4ed7493a0d0a6229dc19d6`
+
+## Immediate workflow instruction
+
+Continue the deep search from the six targets above, update the matrix as evidence arrives, preserve useful external images/binaries with provenance + hashes, and commit incrementally.
+
+When this active search reaches a clean checkpoint, merge `research-hardware-lineage-matrix` to main and create a fresh branch. Do not merge speculative claims as confirmed facts.
