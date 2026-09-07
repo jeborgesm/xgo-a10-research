@@ -25,6 +25,7 @@ V8_FW_SHA = "4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954"
 UI_SOURCE_SHAS = {
     "zip": "16d4ee25357d725ddc574c86b69f5b570c73deb83dab8f2b98056ed31ab37843",
     "tar.xz": "fac668aff96315caab6ee86d5a3e8d5b5c20dc1477a6fe41ecb7361a814b028e",
+    "mapper-v19-card": "c45925f965cf86b4e1efc622b02aabb5545122814743aaf7723d4dbf6ba4ec81",
 }
 UI_MEMBERS = {
     "qasf.bel":  (614400,"907a008fe8562ade903d8a1494546783636b5d705a84ca2e60b9e8d3cd45cce4"),
@@ -187,6 +188,9 @@ def main():
     if source_hash == UI_SOURCE_SHAS['zip']:
         with zipfile.ZipFile(args.ui_source) as z:
             ui={n:z.read(n) for n in UI_MEMBERS}
+    elif source_hash == UI_SOURCE_SHAS['mapper-v19-card']:
+        with zipfile.ZipFile(args.ui_source) as z:
+            ui={n:z.read('Resources/'+n) for n in UI_MEMBERS}
     else:
         with tarfile.open(args.ui_source, 'r:xz') as t:
             members={m.name.lstrip('./'):m for m in t.getmembers() if m.isfile()}
