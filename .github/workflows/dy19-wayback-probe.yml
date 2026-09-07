@@ -1,0 +1,54 @@
+name: DY19 Wayback recovery probe
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/dy19-wayback-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Wayback CDX and current 4PDA HTML
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request, re
+          targets=[
+            'https://4pda.to/forum/index.php?showtopic=1090810',
+            'https://4pda.to/forum/index.php?showtopic=1090810&st=0',
+            'https://4pda.ru/forum/index.php?showtopic=1090810',
+            'https://4pda.ru/forum/index.php?showtopic=1090810&st=0',
+          ]
+          for t in targets:
+            q='https://web.archive.org/cdx/search/cdx?'+urllib.parse.urlencode({
+              'url':t+'*','from':'2024','to':'2026','output':'json',
+              'fl':'timestamp,original,statuscode,mimetype,digest,length',
+              'filter':'statuscode:200','collapse':'digest'
+            })
+            print('\nCDX',t)
+            try:
+              data=urllib.request.urlopen(q,timeout=60).read().decode('utf-8','replace')
+              print(data[:200000])
+            except Exception as e:
+              print('CDX ERROR',repr(e))
+          # Current page; keep links around post 12 and any attachment/image URLs.
+          url='https://4pda.to/forum/index.php?showtopic=1090810&st=0'
+          print('\nCURRENT',url)
+          try:
+            html=urllib.request.urlopen(url,timeout=60).read().decode('utf-8','replace')
+            print('HTML length',len(html))
+            for pat in [r'href="([^"]+)"',r'src="([^"]+)"',r'data-src="([^"]+)"']:
+              for m in re.finditer(pat,html,re.I):
+                u=m.group(1)
+                if any(k in u.lower() for k in ['attach','forum/uploads','upload','img','image','photo','jpeg','jpg','png','1090810']):
+                  print('LINK',u)
+            idx=html.find('{{XENON}}')
+            if idx<0: idx=html.find('XENON')
+            print('XENON index',idx)
+            if idx>=0: print(html[max(0,idx-8000):idx+20000])
+          except Exception as e:
+            print('CURRENT ERROR',repr(e))
+          PY

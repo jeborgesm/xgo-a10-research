@@ -74,3 +74,71 @@ Do not infer the processor identity from the ground-off package alone; software 
 No additional authenticated DY19 PCB image source was recovered in this pass. The 4PDA post remains the primary image-recovery target.
 
 The absence of indexed attachment bytes is itself useful: future searches should focus on 4PDA attachment URLs/caches, reposts, image mirrors, and owner `{{XENON}}` rather than generic "DY19 PCB" image search.
+
+
+## 2026-09-07 archive/caching investigation
+
+A dedicated recovery probe was run against the Internet Archive Wayback CDX service for all obvious DY19 topic URL forms:
+
+```text
+https://4pda.to/forum/index.php?showtopic=1090810
+https://4pda.to/forum/index.php?showtopic=1090810&st=0
+https://4pda.ru/forum/index.php?showtopic=1090810
+https://4pda.ru/forum/index.php?showtopic=1090810&st=0
+```
+
+Results:
+
+- exact `4pda.to ... &st=0` query returned **no captures**;
+- both old `4pda.ru` forms returned no captures / timed out;
+- the broader no-`st` `4pda.to` query intermittently returned Wayback HTTP 503 and could not produce a usable snapshot list;
+- current direct HTML fetch from a clean GitHub Actions runner is blocked by 4PDA with HTTP 403.
+
+Therefore the Wayback Machine is **not currently yielding the teardown attachments by topic URL**.
+
+This does **not** exclude archived attachment objects. If the original 4PDA attachment URLs can be recovered from a browser cache, search-engine cache, repost, or authenticated page source, those exact attachment URLs should be queried separately in Wayback. Image attachments are often archived independently even when the parent forum page is not.
+
+### Search-engine/repost sweep
+
+Exact Russian phrases from XENON's teardown post were searched across the indexed web:
+
+- `Предлагаю вашему вниманию фото внутренностей данного девайса`
+- `Внутри оказалась АКБ габаритам всего 4000mah`
+- `Проц естественно китайские братья решили замаскировать`
+
+Current result: only the original 4PDA thread is indexed for those phrases; no authenticated repost or mirror of the images was found.
+
+### Bilibili DY19 recovery ecosystem
+
+A separate Chinese DY19 firmware-recovery video exists:
+
+`DY-19充电宝掌机救砖固件及软件分享`
+
+Published 2024-07-19 by Bilibili user `Sesn`.
+
+It links a Tianyi Cloud firmware/software package and references another DY19 firmware contributor. This is not currently evidence of teardown photos, but it establishes an independent Chinese DY19 owner/modding ecosystem that may contain board images or repair footage outside the Russian 4PDA thread.
+
+Source:
+https://www.bilibili.com/video/BV1Td8ceJEA8/
+
+Future searches should include the uploader names and Chinese terms:
+
+```text
+DY-19 拆机
+DY-19 拆解
+DY-19 主板
+DY-19 充电宝掌机 拆机
+DY19 主板
+DY19 维修
+```
+
+### Current recovery strategy
+
+Highest-probability paths now are:
+
+1. recover the **original 4PDA attachment URLs**;
+2. query those attachment URLs individually in Wayback;
+3. search Bilibili/Xianyu/Taobao repair/resale posts for DY19 board images;
+4. search screenshots/reposts by XENON's exact post date, 2024-09-19;
+5. search cached forum snapshots from non-Wayback services;
+6. inspect any surviving 4PDA mobile/API rendering that exposes attachment IDs even when normal HTML is blocked.
