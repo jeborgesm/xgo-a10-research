@@ -162,5 +162,48 @@ Do not duplicate those photographs under new filenames unless a materially highe
 
 Create `images/external/` for retail/reference images rather than mixing them into `images/inbox/`.
 
-During this pass the research environment could inspect and cite remote product images but could not obtain their binary bytes for a GitHub image commit. The direct source URLs above are preserved so the images can be archived byte-for-byte once retrieved or supplied locally.
+The original automated retrieval could not obtain the AliExpress image bytes. The owner subsequently supplied the exact listing images directly in the research session; see the update below.
 
+
+
+## 2026-09-07 image-corpus and teardown-search update
+
+### Exact A10 AliExpress image corpus captured in the research session
+
+The owner manually captured and supplied **21 images from the exact AliExpress A10 listing** (item 3256811871013165). The source image files are present in the research session and were SHA-256 hashed before archival work.
+
+The set includes: clean front/product views; the A10 141 x 67 x 20 mm specification card; 10000mAh/22.5W marketing art; advertised emulator matrix; exposed rear wireless coil/power-board render; wireless-charging examples; joystick/button details; USB-C/TF/speaker close-up; complete function-key/port diagram; alternate 14.2 x 6.6 x 2.5 cm dimension art; package contents; and a near-orthographic multi-side plus rear-internal view.
+
+Marketing labels and composited internal renders remain retail claims until corroborated against the physical specimen.
+
+### Advertised emulator matrix
+
+The exact-A10 artwork explicitly labels SFC, FC, MD, GB, GBC, GBA, CPS1, CPS2, NEO and MORE+. This corroborates the firmware/game-list archaeology but is not authoritative proof of implementation or compatibility.
+
+### Exact A10 controls and ports
+
+The listing diagram identifies/depicts the directional joystick, Select, Start, simultaneous Start+Select return behavior, six face/function buttons, volume +/-, on/off, mobile-power switch, USB Type-C, TF card, loudspeaker, AV connection and a separately labeled handle/controller interface. This closely matches the physical specimen.
+
+### Packaging evidence
+
+The listing depicts console x1, user manual x1, TF card x1 (illustrated as 32 GB), charging cable x1 and retail box x1. Treat card capacity as bundle-specific until independently verified.
+
+## DY09 teardown: corrected classification
+
+A ChargerLAB / 充电头网 teardown at https://www.chongdiantou.com/archives/160933.html was investigated. It is **NOT an A10 teardown**. It documents a visibly different Xinguo/芯果 **DY09 5000mAh** magnetic wireless-charging game/power-bank. Three teardown photographs were captured for comparative manufacturer-family evidence.
+
+No DY09 component identification may be projected onto the A10 without independent A10 evidence. Findings involving IP5356, IP6829, XB7608, S29GL128N, the 21.47727-MHz crystal, COB/bonded game processor or DY09 board architecture are **DY09-only facts**.
+
+## Search for a public teardown of the exact A10
+
+Targeted English and Chinese searches used XGO A10 / 芯果 A10, 拆解 / 拆机, PCB/mainboard/motherboard, 10000mAh, Games Power and exact-enclosure imagery.
+
+**Current result: no verified public teardown of the exact XGO A10 was located.** ChargerLAB material found for Xinguo is the DY09 rather than A10. Exact-A10 material located elsewhere is retail/reference imagery, manuals/listing mirrors and videos rather than a documented PCB-level disassembly.
+
+This negative result is important: do not cite the DY09 teardown as documentation of A10 internals.
+
+## Future controlled A10 hardware archaeology
+
+If deeper inspection is eventually undertaken on the working development specimen: photograph every stage before moving parts; record screw/cable/ribbon orientation; photograph both PCB sides; capture silkscreens/revisions and readable IC/crystal markings; capture battery/LCD markings; avoid destructive adhesive/bonded-assembly removal unless justified; then reassemble and verify the golden runtime.
+
+Until then, software archaeology and the owner's physical A10 photographs remain authoritative for A10 internals.
