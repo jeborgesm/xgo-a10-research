@@ -12,48 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Read FAT32 boot sector and root directory
+      - name: Selectively extract DY19 firmware and metadata
         shell: bash
         run: |
           set -euxo pipefail
-          python3 - <<'PY'
-          import requests,struct,json
-          url='https://ia800102.us.archive.org/20/items/dy-19-firmware-2024315/DY19Firmware2024315.img'
-          s=requests.Session()
-          def rd(o,n):
-              r=s.get(url,headers={'Range':f'bytes={o}-{o+n-1}'},timeout=30)
-              print('GET',o,n,r.status_code,r.headers.get('content-range'),len(r.content))
-              r.raise_for_status()
-              return r.content
-          m=rd(0,512)
-          e=m[446:462]
-          ptype=e[4]; start=struct.unpack_from('<I',e,8)[0]; sectors=struct.unpack_from('<I',e,12)[0]
-          base=start*512
-          b=rd(base,512)
-          print('boot sig',b[510:512].hex(),'oem',b[3:11])
-          bps=struct.unpack_from('<H',b,11)[0]; spc=b[13]; res=struct.unpack_from('<H',b,14)[0]
-          nf=b[16]; fatsz=struct.unpack_from('<I',b,36)[0]; root=struct.unpack_from('<I',b,44)[0]
-          print(json.dumps(dict(ptype=hex(ptype),start_sector=start,sectors=sectors,bps=bps,spc=spc,res=res,nf=nf,fatsz=fatsz,root=root),indent=2))
-          fat=base+res*bps
-          data=base+(res+nf*fatsz)*bps
-          csz=bps*spc
-          root_off=data+(root-2)*csz
-          d=rd(root_off,csz)
-          print('root_off',root_off,'cluster_size',csz)
-          lfn=[]
-          for off in range(0,len(d),32):
-              x=d[off:off+32]
-              if x[0]==0: break
-              if x[0]==0xe5: lfn=[]; continue
-              attr=x[11]
-              if attr==0x0f:
-                  raw=x[1:11]+x[14:26]+x[28:32]
-                  piece=raw.decode('utf-16le','ignore').rstrip('\x00\uffff')
-                  lfn.append((x[0]&0x1f,piece)); continue
-              short=(x[0:8].decode('ascii','replace').rstrip()+'.'+x[8:11].decode('ascii','replace').rstrip()).rstrip('.')
-              name=''.join(p for _,p in sorted(lfn, reverse=True)) if lfn else short
-              lfn=[]
-              hi=struct.unpack_from('<H',x,20)[0]; lo=struct.unpack_from('<H',x,26)[0]
-              cl=(hi<<16)|lo; size=struct.unpack_from('<I',x,28)[0]
-              print(json.dumps(dict(name=name,short=short,attr=hex(attr),cluster=cl,size=size,dir=bool(attr&0x10)),ensure_ascii=False))
-          PY
+          python3 tools/dy19/remote_fat32_extract.py             'https://ia800102.us.archive.org/20/items/dy-19-firmware-2024315/DY19Firmware2024315.img'             --out dy19-extracted | tee dy19-extract.log
+          find dy19-extracted -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+          sha256sum dy19-extracted/* | tee dy19-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dy19-selective-extract
+          path: |
+            dy19-extracted/
+            dy19-extract.log
+            dy19-sha256.txt
