@@ -1004,3 +1004,40 @@ stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
 ```
 
 Hardware gate for Test05d: visual confirmation that Refresh now matches the regular OEM label style closely enough. No other behavior should differ from Test05c. Do not promote until hardware-confirmed.
+
+
+### Test06 hardware candidate — explicit staged Refresh + stock-font status feedback (2026-09-07)
+
+Test06 combines the two previously hardware-proven pieces: the Test05c/d explicit fourth User Menu command and the Test04 on-device staged SFC catalog writer. Refresh now performs the staged 929->930 rewrite directly from the visible menu item.
+
+User feedback was added before hardware testing by reusing the stock setup-screen text renderer (the same firmware path used for dynamic NTSC/PAL text). A persistent in-RAM status value is rendered after all NTSC/PAL setup draw paths:
+
+- `Games Updated` after a successful staged rewrite;
+- `No New Games` when the canonical SFC catalog already reports 930 entries, in which case all writes are skipped;
+- `Refresh Failed` for unexpected catalog count or read/open/write failures.
+
+The Refresh label itself carries the slightly heavier Test05d raster requested for the next step. All known-good Test05c geometry/footer/selector/TV-text fixes remain frozen.
+
+Exact candidate:
+
+```text
+xgo-game-list-test06-explicit-staged-refresh.zip
+size 5,022,831 bytes
+SHA-256 44e8632b2f71572d9d7e98a75c0dbea00cafa9dd6cfb98eadb149b7c83086fed
+firmware SHA-256 c69627edbc5c8112a5b0ec890ea6ddde1180de952e36944d0da8a1070f0df907
+writer/status blob bytes 1,238
+writer/status blob SHA-256 85d1f32722d8dbf426c9d7c0ecde962b286505f25b6c02ae591a78226be11745
+```
+
+Private CI run 34169680118 passed protected-input verification, builder execution, ZIP integrity, artifact upload, and vault-root archival. This candidate is NOT golden pending hardware confirmation.
+
+Hardware gate:
+1. install on the disposable clone; initial SFC catalog must be 929 and XGO Import Test absent;
+2. open User Menu and select Refresh;
+3. expect return to User Menu plus stock-font `Games Updated` status;
+4. SFC must become 930 with XGO Import Test last and launch normally;
+5. select Refresh again; expect `No New Games` and no rewrite;
+6. reboot and confirm 930 persists, Mega Man Favorite/save remains intact, and User Games/Language/TV System remain normal;
+7. visually verify status text placement under both NTSC and PAL setup states.
+
+The staged writer remains intentionally non-transactional. Do not treat Test06 as the final general Refresh Games scanner yet.
