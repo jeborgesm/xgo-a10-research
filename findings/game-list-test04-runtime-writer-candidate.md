@@ -319,3 +319,33 @@ The previous `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` had been
 Only after all checks passed was the golden Test03 file replaced.
 
 This was an archival defect only; no Test03 firmware/package archaeology changed.
+
+
+### Hardware milestone — Test04 on-device runtime catalog rewrite PASS
+
+Hardware result: **PASS** on 2026-09-07.
+
+Exact hardware-tested artifact:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+firmware SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+```
+
+Every planned hardware gate passed:
+
+- before the trigger, SFC remained at 929 entries and XGO Import Test was absent;
+- `User Menu -> User Games` executed the injected device-side writer and continued through the normal stock path;
+- afterward SFC reloaded as 930 entries with XGO Import Test as the final entry;
+- XGO Import Test launched and retained the controller-test behavior proven in Test03;
+- after reboot, the 930-entry catalog persisted;
+- the pre-existing Mega Man Favorite/save behavior remained intact;
+- User Menu Language and TV System behavior remained intact.
+
+This closes the architectural question Test04 was designed to answer: **XGO can rewrite the synchronized built-in catalog triplet on-device, invalidate the cached count, and have the unmodified stock browser consume the rewritten persistent catalog.**
+
+Test04 remains a staged/non-transactional proof, not the final Refresh Games implementation. The next implementation step is to replace `Resources/refresh.bin` with the general on-device scan + stable-merge engine and add backup/transaction-marker recovery before canonical catalog replacement.
+
+Archive rule: promote this exact hardware-tested ZIP to private-vault `golden/`; do not rebuild it for promotion.
