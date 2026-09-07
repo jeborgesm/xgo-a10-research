@@ -25,6 +25,7 @@ V8_FW_SHA = "4b8f7af994d16371a2664a3d46c983e52ffd1aefbebc5b5a4a9ae63dc6cbe954"
 UI_SOURCE_SHAS = {
     "zip": "16d4ee25357d725ddc574c86b69f5b570c73deb83dab8f2b98056ed31ab37843",
     "tar.xz": "fac668aff96315caab6ee86d5a3e8d5b5c20dc1477a6fe41ecb7361a814b028e",
+    "tar.xz-verified": "6a1264b9ebf49f4bb28f2185168ca400fbc883a9bacfde6874796baaf813701c",
     "mapper-v19-card": "c45925f965cf86b4e1efc622b02aabb5545122814743aaf7723d4dbf6ba4ec81",
 }
 UI_MEMBERS = {
