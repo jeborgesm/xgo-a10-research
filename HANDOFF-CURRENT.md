@@ -1163,3 +1163,31 @@ writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb87
 Important scope boundary: Test06b proves the explicit native-style Refresh command and the staged 929->930 writer/status lifecycle. It is intentionally NOT yet the final general filesystem scanner/stable-merge engine. Preserve this exact milestone before beginning that next stage.
 
 Next-stage direction: start from this golden Test06b state and replace the staged `refresh.bin` proof mechanism with the real on-device discovery/stable-merge implementation while preserving the now-golden UI/feedback behavior. Do not reopen completed Test04/Test05/Test06 archaeology unless new hardware evidence requires it.
+
+
+## Next-stage branch opened after Test06b milestone merge
+
+The explicit Refresh Games milestone was merged to `main` by PR #39 at merge commit:
+
+```text
+5ac3036c16639d659c75bef554ab77b229c0d440
+```
+
+Fresh next-stage branch:
+
+```text
+research-game-list-general-scanner
+```
+
+Start the next chat by reading this file and `artifacts/golden-artifacts.json` from this branch. Repository evidence is authoritative.
+
+Protected starting milestone is the exact hardware-confirmed private-vault golden artifact:
+
+```text
+xgo-game-list-test06b-timed-status.zip
+size 5,022,902 bytes
+SHA-256 2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042
+firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e
+```
+
+Next engineering target: replace the staged `refresh.bin` 929->930 proof with the real on-device discovery + stable-merge scanner while preserving the now-golden explicit Refresh UI, status messages, three-second expiry, selector/footer behavior, PAL/NTSC placement, Favorites/save stability, and all prior golden emulator/audio behavior. Do not redo Test04-Test06b archaeology.
