@@ -820,3 +820,57 @@ Primary finding:
 `findings/game-list-test04-runtime-writer-candidate.md`
 
 Next action: compose Test04 inside the private artifact vault from the exact two golden inputs, archive the generated ZIP at vault root immediately, then hardware-test. Only a hardware pass is eligible for `golden/`.
+
+
+### Test03 vault repair COMPLETE / Test04 candidate READY
+
+The private-vault Test03 golden artifact had an archival corruption caused by an interrupted Base64 transfer. The authoritative hardware-tested Test03 ZIP remained intact locally and was used to repair the vault.
+
+Repair gate passed:
+
+```text
+xgo-game-list-test03-sfc-import-store-wrapper.zip
+size 76,285 bytes
+SHA-256 bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320
+unzip integrity PASS
+```
+
+The repaired golden Test03 then passed the Test04 CI input audit together with exact Audio OSD v8.
+
+Exact Test04 candidate:
+
+```text
+xgo-game-list-test04-runtime-sfc-refresh.zip
+size 4,740,864 bytes
+SHA-256 342ce43bcdc7af6f847741385deb148fb93c3bea2e678b3eff6f5c6ec6e031af
+```
+
+Candidate firmware:
+
+```text
+SHA-256 ceda0e903a29e652d4c9c72394f798002a3de5b618399c4c5ed1c81690159486
+LCFG CRC-32/MPEG-2 0xb266669f
+```
+
+Writer blob:
+
+```text
+688 bytes
+SHA-256 88bd4d39cbfe94ef8fbb47861d86c2d8eb3746533afa27a33f57724b0e417cd4
+```
+
+The exact Test04 candidate is archived at the private artifact-vault root and is **not golden** pending hardware.
+
+Hardware procedure:
+
+1. disposable SD clone only;
+2. install Test04;
+3. before invoking User Games, SFC should show 929 games and XGO Import Test must be absent;
+4. invoke `User Menu -> User Games` once;
+5. return to SFC: expected 930 games, final entry XGO Import Test;
+6. launch XGO Import Test and verify controller-test behavior;
+7. reboot and verify 930 persists;
+8. verify the existing Mega Man Favorite still resolves normally;
+9. briefly verify Language and TV System rows still behave normally.
+
+Test04 is intentionally non-transactional. Avoid power loss during the User Games trigger/write sequence.
