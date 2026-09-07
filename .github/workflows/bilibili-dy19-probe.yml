@@ -1,0 +1,50 @@
+name: Bilibili power-bank handheld artifact probe
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bilibili-dy19-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Bilibili search and video APIs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request, time
+          ua={'User-Agent':'Mozilla/5.0'}
+          titles=[
+            '充电宝游戏机 自定义添加游戏工具',
+            '充电宝游戏机新系统包介绍',
+            'DY-12变色翻转问题成功修复',
+            '充电宝游戏机刷机sf2000（时趣DY-19）2：汉化游戏导入',
+          ]
+          def get(url):
+            req=urllib.request.Request(url,headers=ua)
+            return json.load(urllib.request.urlopen(req,timeout=30))
+          for title in titles:
+            print('\n### SEARCH',title)
+            url='https://api.bilibili.com/x/web-interface/wbi/search/type?'+urllib.parse.urlencode({
+              'search_type':'video','keyword':title,'page':1
+            })
+            try:
+              data=get(url)
+              print('code',data.get('code'),'message',data.get('message'))
+              results=((data.get('data') or {}).get('result') or [])
+              for x in results[:10]:
+                rec={k:x.get(k) for k in ['bvid','aid','title','author','mid','description','pubdate','duration','arcurl']}
+                print(json.dumps(rec,ensure_ascii=False))
+                bvid=x.get('bvid')
+                if bvid:
+                  try:
+                    v=get('https://api.bilibili.com/x/web-interface/view?'+urllib.parse.urlencode({'bvid':bvid}))
+                    d=v.get('data') or {}
+                    print('VIEW',json.dumps({k:d.get(k) for k in ['bvid','aid','title','desc','pubdate','owner','dynamic']},ensure_ascii=False))
+                  except Exception as e: print('VIEW ERROR',repr(e))
+                time.sleep(.5)
+            except Exception as e: print('SEARCH ERROR',repr(e))
+          PY
