@@ -71,3 +71,79 @@ A matching routine would materially strengthen the case for a reusable H1512 acc
 **STRONG RELEVANCE:** DY14 is worth examining for external-controller implementation because it combines the same SoC family with marketed external handle support.
 
 **UNKNOWN:** protocol/electrical compatibility with the XGO Handle Interface.
+
+
+## 2026-09-07 deeper teardown recovery
+
+The public Steward Fu repository was inspected directly rather than relying only on indexed search snippets. This produced a materially stronger DY14 comparator.
+
+### Exact published platform specification
+
+Steward Fu's DY14 specification page identifies:
+
+```text
+CPU      Hichip H1512 800MHz
+MEMORY   RAM 128MB
+         Flash 512KB
+DISPLAY  3.5" 320x240
+INPUT    GamePad
+SLOT     MicroSD
+PORT     MicroUSB x2
+         USB-C
+         3.5mm jack
+BATTERY  3.7V 8000mA
+```
+
+This is direct evidence of an H1512 implementation with **128 MiB RAM and the same 512-KB SPI-boot-flash capacity class used by SF2000-family systems**.
+
+### Teardown component identities
+
+The published teardown explicitly identifies:
+
+- two `8002A` audio amplifiers;
+- Nanya `NT5TU64M16DG-AD`;
+- `UC25HD40`;
+- `IP5306`;
+- `XB4908`;
+- several ICs whose markings have been removed/obscured.
+
+The Nanya part is a **1-Gbit DDR2 SDRAM organized 64M x16**, therefore 128 MiB, independently agreeing with the published DY14 RAM specification.
+
+The UC25HD40 is a **4-Mbit SPI NOR**, i.e. 512 KiB, independently agreeing with the published flash specification.
+
+### SPI boot evidence
+
+Steward Fu provides an actual physical SPI-dump wiring/setup and reports these strings from `spi.bin`:
+
+```text
+H1512--0.1.0
+h1512_gpio_pinmux_sel
+```
+
+This is stronger than a retail similarity. DY14 demonstrably boots through the same H1512 platform/SDK vocabulary found in XGO.
+
+### Complete image corpus archived
+
+The complete public DY14 teardown image sequence plus the two SPI-dump setup photographs has now been preserved byte-for-byte under:
+
+`images/external/dy14-steward-fu/`
+
+19 images total.
+
+The copied images retain the exact upstream Git blob SHA values, proving byte-for-byte identity with their public source.
+
+### New priority
+
+DY14 is now one of the **highest-value hardware comparators in the entire project**.
+
+A future A10 PCB photograph should explicitly test for:
+
+1. H1512 package/board location;
+2. DDR2 part and organization;
+3. 4-Mbit SPI NOR identity;
+4. IP5306 or another power-bank SoC;
+5. 8002A-family audio amplifiers;
+6. common PCB layout motifs or FPC/display wiring;
+7. external-controller connector routing.
+
+A match in the compute-side RAM/SPI topology would materially narrow the A10 board ancestry. A match only in power components would instead indicate commodity power-bank reuse.

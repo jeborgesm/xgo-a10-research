@@ -215,3 +215,21 @@ The XGO image independently preserves those same deep landmarks at shifted offse
 2. Compare DY19 controller/second-player accessory wiring with XGO's reconstructed B15/L0/B7 serial scanner.
 3. Compare DY19 teardown PCB photos against the XGO PCB photographs.
 4. Determine whether the DY19 controller connector exposes the same unusual serial load/clock/data behavior as XGO.
+
+
+## 2026-09-07 target #1 completed: real DY19 bisrv recovered
+
+The Internet Archive DY19 image has now been selectively read over HTTP Range without downloading the 31GB ROM payload.
+
+Recovered DY19 `BIOS/BISRV.ASD`:
+
+- size: 12,477,596 bytes
+- SHA-256: `135ddf837f37570cedbd204036e02bdede876338ad94a9c33cac0db5ac8fe9e4`
+
+It is **not byte-identical** to XGO's 12,768,452-byte application, but it shares the same LCFG/H1512/SDK/compiler/update-path lineage and large low-level binary regions.
+
+The exact XGO B15/L0/B7 scanner prefixes do not occur in DY19, confirming board-specific input divergence.
+
+More strongly, original DY19 list backups recovered from the image show that for FC, SFC, MD, GB, GBC, GBA, CPS1, CPS2 and IGS, every XGO game filename is contained in the DY19 catalog; the IGS triplet is byte-identical.
+
+See `dy19-direct-stock-image-comparison.md`.
