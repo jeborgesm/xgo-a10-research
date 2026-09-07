@@ -675,3 +675,43 @@ Candidate documentation:
 `findings/hardware-test-game-list-test03-import-store-wrapper-candidate.md`
 
 Do not promote Test03 to golden until hardware passes.
+### Wrapper/import packaging archaeology
+
+XGO Zxx packaging is now directly recovered from captured hardware files.
+
+- `Resources/Test.zsf` SHA-256 `8e661f5a9246091228dd2eedae65c109d2add7aa3c22cc0231c39dd67b3600f4`;
+- exact wrapper boundary at `0xEA00` / 59,904 bytes;
+- prefix is 144x208 RGB565 thumbnail data;
+- payload begins `WQW\x03` and is a lightly obfuscated standard ZIP;
+- WQW local/central/end signatures are `WQW\x03`, `WQW\x02`, `WQW\x01`;
+- stored filenames are XORed with `0xE5`;
+- restoring normal ZIP signatures and XOR-decoding filenames makes the captured XGO payload open and CRC-verify with a standard ZIP reader;
+- captured package contains `手柄测试.sfc` using ordinary DEFLATE.
+
+Preview size is not an unrelated magic constant. Both stock game-launch call sites compute:
+
+`preview_size = thumbnail_width * thumbnail_height * 2`
+
+before passing it to `run_game()`. Shipped `Foldername.ini` supplies 144x208, yielding 59,904 exactly.
+
+New generic builder:
+
+`tools/game_lists/build_wqw_store_wrapper.py`
+
+It intentionally creates method-0/STORE WQW packages from a preconverted RGB565 thumbnail plus raw ROM, avoiding any need for an on-device DEFLATE compressor.
+
+Recovered scratch hardware candidate Test03 has been re-audited cleanly:
+
+`xgo-game-list-test03-sfc-import-store-wrapper.zip`
+
+ZIP SHA-256 `bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320`
+
+It creates `SFC/XGO Import Test.zsf`, SHA-256 `f600c45d37a77d9af80ecb1ad136e1dbcfbb7e22fd9afc91531f82cfd2fb03b1`, using the XGO's own 131,072-byte controller-test SNES ROM and thumbnail. SFC catalogs are stable-appended 929->930 with all prior offsets/blob bytes preserved.
+
+Test03 exact ZIP bytes are preserved in private vault staging `staging/game-list-test03/part00.b64`..`part05.b64`, with a hash-verifying archive workflow and staging README. Not golden pending hardware.
+
+Image-decoder note: stock firmware contains genuine JPEG/PNG-capable multimedia code and JPEG hardware diagnostics, but no proven frontend API has yet been found that imports arbitrary SD PNG/JPEG into the game's RGB565 cover format. First importer should therefore use preconverted RGB565 covers until that surface is mapped.
+
+Primary finding:
+
+`findings/xgo-zxx-wrapper-and-import-packaging-contract.md`
