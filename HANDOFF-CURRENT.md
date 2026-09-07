@@ -589,3 +589,16 @@ Findings:
 
 - `findings/hardware-test-game-list-test01-partial-pass.md`
 - `findings/game-list-test02-known-good-duplicate-candidate.md`
+### Hardware milestone — Test02 stable append PASS
+
+`xgo-game-list-test02-megaman1-known-good-duplicate.zip`
+
+ZIP SHA-256 `40f6dce8380f61942f2f4f472b0c137fed8a6042cb00b0b3b669c99090d15a73`
+
+Hardware confirmed that appended FC entry 746 (`Mega Man 1.zfc`) displays at the end of the list and launches normally. The appended reference sees the existing Mega Man saves, supports normal button remapping, Audio OSD/volume changes, and normal gameplay.
+
+This proves the stable-append built-in catalog contract independently of ROM compatibility. Test01 Bomber Man 2 black output is therefore isolated to that physical wrapper/payload compatibility rather than catalog indexing.
+
+Important identity finding: save/remap/runtime state follows the physical ROM identity/path, not the catalog index. A duplicate catalog reference reaches the same existing saves and runtime configuration.
+
+Next priority: promote the hardware-confirmed Test02 metadata milestone appropriately in the private artifact vault, then move from static catalog proof to the on-device stable-merge scanner/writer design. Preserve existing indices; use the Mega Man Favorite as an index-stability sentinel during future mutation tests.
