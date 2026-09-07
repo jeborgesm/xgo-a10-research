@@ -955,3 +955,25 @@ Observed on hardware:
 Classification: **Test05 is NOT golden.** The fourth-command mechanics are promising, but visual selection semantics must be corrected before binding Refresh to Test04. Do not attach catalog writes yet.
 
 Next candidate: Test05b/05.1 UI-only correction. Preserve the no-write REFRESH stub while correcting TV mode coordinates and selection overlay behavior.
+
+
+### Test05b hardware candidate — polished explicit Refresh UI (2026-09-07)
+
+Built from protected Audio OSD V8 plus the verified stock setup-UI source bundle. No catalog-write path is attached; Refresh remains a no-op stub.
+
+```text
+xgo-game-list-test05b-polished-refresh-menu.zip
+size 4,914,256 bytes
+SHA-256 cae6acf4e5cd1016d1cb380df79355a2142aefd87653059f3baa119371e1d37f
+firmware SHA-256 8638ba5aed222b60052020a9fe2caa12109e7656d5e3eebb29431887066589f1
+stub SHA-256 23d57760e7b249802d2e1b97069a820d92a4494c6b87570160d3f45377b0fd2d
+```
+
+Changes relative to Test05:
+- label is title-case `Refresh`;
+- all four tiles and labels are shifted upward 20 pixels to clear the footer controls;
+- dynamic NTSC/PAL draw point is transplanted from the stock TV tile offset to the relocated TV tile;
+- the setup redraw is expanded to a full 640x480 RGB565 copy before the active selector is drawn, intended to prevent stale selector border/A-badge accumulation;
+- rows 0..2 remain stock destinations; row 3 remains a no-write stub.
+
+Hardware gate: verify layout/label clearance, NTSC/PAL placement, exactly one active selector overlay while navigating repeatedly, unchanged stock functions, and no game-count/catalog mutation when Refresh is selected. Do not promote to golden until hardware-confirmed.
