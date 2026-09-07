@@ -23,17 +23,12 @@ jobs:
           for f in data.get('files',[]):
               print(json.dumps({k:f.get(k) for k in ('name','source','format','size','md5','sha1')}, ensure_ascii=False))
           PY
-      - name: Selectively extract FAT32 metadata and firmware with HTTP Range
+      - name: Test HTTP Range support
         shell: bash
         run: |
           set -euxo pipefail
-          python3 tools/dy19/remote_fat32_extract.py             'https://ia800102.us.archive.org/20/items/dy-19-firmware-2024315/DY19Firmware2024315.img'             --out dy19-extracted | tee dy19-extract.log
-          find dy19-extracted -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
-          sha256sum dy19-extracted/* | tee dy19-sha256.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dy19-selective-extract
-          path: |
-            dy19-extracted/
-            dy19-extract.log
-            dy19-sha256.txt
+          URL='https://ia800102.us.archive.org/20/items/dy-19-firmware-2024315/DY19Firmware2024315.img'
+          curl -L --max-time 30 -sS -D range-headers.txt -H 'Range: bytes=0-511' -o range.bin "$URL"
+          cat range-headers.txt
+          wc -c range.bin
+          xxd -l 64 range.bin
