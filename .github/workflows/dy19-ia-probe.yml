@@ -12,23 +12,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch Internet Archive metadata
-        shell: bash
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          import json, urllib.request
-          ident='dy-19-firmware-2024315'
-          data=json.load(urllib.request.urlopen(f'https://archive.org/metadata/{ident}', timeout=60))
-          for f in data.get('files',[]):
-              print(json.dumps({k:f.get(k) for k in ('name','source','format','size','md5','sha1')}, ensure_ascii=False))
-          PY
-      - name: Test HTTP Range support
+      - name: Probe first MiB and locate filesystem structures
         shell: bash
         run: |
           set -euxo pipefail
           URL='https://ia800102.us.archive.org/20/items/dy-19-firmware-2024315/DY19Firmware2024315.img'
-          curl -L --max-time 30 -sS -D range-headers.txt -H 'Range: bytes=0-511' -o range.bin "$URL"
-          cat range-headers.txt
-          wc -c range.bin
-          xxd -l 64 range.bin
+          curl -L --max-time 30 -sS -H 'Range: bytes=0-1048575' -o first-mib.bin "$URL"
+          python3 - <<'PY'
+          import struct
+          d=open('first-mib.bin','rb').read()
+          print('size',len(d))
+          for off in range(0,len(d)-512,512):
+              sec=d[off:off+512]
+              sig=sec[510:512]
+              oem=sec[3:11]
+              fs32=sec[82:90]
+              fs16=sec[54:62]
+              if sig==b'\x55\xaa' or b'FAT' in fs32 or b'FAT' in fs16:
+                  print(hex(off), 'sig',sig.hex(),'oem',oem,'fat16',fs16,'fat32',fs32)
+                  print('bpb',sec[11:64].hex())
+          # MBR partition-table candidates with nonzero entries
+          for off in range(0,len(d)-512,512):
+              sec=d[off:off+512]
+              ents=[]
+              for i in range(4):
+                  e=sec[446+i*16:462+i*16]
+                  ptype=e[4]; start=struct.unpack_from('<I',e,8)[0]; size=struct.unpack_from('<I',e,12)[0]
+                  if ptype and size: ents.append((i,hex(ptype),start,size))
+              if ents: print('ptable candidate',hex(off),ents,'sig',sec[510:512].hex())
+          PY
