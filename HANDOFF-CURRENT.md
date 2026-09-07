@@ -715,3 +715,16 @@ Image-decoder note: stock firmware contains genuine JPEG/PNG-capable multimedia 
 Primary finding:
 
 `findings/xgo-zxx-wrapper-and-import-packaging-contract.md`
+### Hardware milestone — Test03 generated WQW wrapper PASS
+
+`xgo-game-list-test03-sfc-import-store-wrapper.zip`
+
+ZIP SHA-256 `bfef6f95adaf7cd986061154d20e500580135930426994b5ed3b44c822987320`
+
+Hardware confirmed the newly generated `SFC/XGO Import Test.zsf` appears as final SFC entry with its embedded SNES controller-test thumbnail, launches successfully, accepts Start/Select, opens the normal pause menu, and behaves as a normal SFC game.
+
+This proves XGO accepts a newly generated method-0/STORE WQW wrapper outside the OEM Windows toolchain. Together with Test02, both halves of the static import contract are now hardware proven: stable catalog append and generated stock-style Zxx packaging.
+
+Test03 has been promoted to `golden/xgo-game-list-test03-sfc-import-store-wrapper.zip` in the private artifact vault and added to `artifacts/golden-artifacts.json`.
+
+Next engineering/research target: combine the proven primitives into an on-device scanner/importer while preserving existing indices. First implementation should scan for already-packaged unindexed Zxx files. A later import mode can package raw ROM + preconverted RGB565 cover using the proven STORE WQW writer. PNG/JPEG decode remains optional future work unless a cheap stock decoder entry point is recovered.
