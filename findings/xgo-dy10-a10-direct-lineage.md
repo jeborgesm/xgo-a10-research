@@ -9,7 +9,7 @@ The **XGO DY10** is much more important to A10 archaeology than the DY09.
 Unlike DY09, DY10 is:
 - a 10,000mAh XGO gaming power bank;
 - transparent/cyberpunk horizontal enclosure;
-- Linux-class according to Handhelds Wiki;
+- cataloged as Linux by Handhelds Wiki, but that OS label is not trusted for H1512-family devices;
 - marketed with the same 15W magnetic wireless / 22.5W wired charging combination;
 - visually and functionally in the same product generation as the A10.
 
@@ -87,7 +87,7 @@ The crowdfunding-era feature set maps unusually well onto our A10:
 | TV output | same |
 | external/controller support | same product claim and physical interface |
 | 10 emulator families | same retail family; firmware confirms multi-system architecture |
-| Linux | independently consistent with A10 |
+| Catalogs label it Linux | **not evidence**; A10 firmware is H1512/ALi TDS2 rather than Linux |
 | 6000+ games | later A10 retail bundles advertise up to 10000 |
 
 The changing game-count claims (1000+, 6000+, 10000) are likely bundle/TF-content differences and should not be treated as hardware revisions by themselves.
@@ -146,3 +146,8 @@ Until a firmware/PCB match is found:
 - do treat DY10 as the strongest current direct-lineage candidate;
 - distinguish bundle/game-count changes from hardware changes;
 - retain DY09 as manufacturer-family evidence only.
+
+
+## OS-label correction
+
+The earlier "Linux" wording came from secondary handheld catalogs. It should not be used to connect DY10 to A10. The preserved A10 firmware belongs to the H1512/ALi TDS2 environment. DY10 remains a strong direct-lineage candidate because of its enclosure, power subsystem, TF storage, emulator mix, TV/controller support and chronology—not because of a Linux label.
