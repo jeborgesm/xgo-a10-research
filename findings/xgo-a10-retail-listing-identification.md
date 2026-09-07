@@ -71,7 +71,7 @@ Published A10 specification material reports:
 | Dimensions | 141 x 67 x 20 mm | published A10 spec |
 | Advertised game count | up to 10,000 | retail/package-dependent |
 | Advertised emulator families | ARCADE, FC, GB, GBA, GBC, MD, SFC, others | corroborates firmware/card archaeology, but retail list is not authoritative |
-| OS | Linux | Handhelds Wiki family entry; consistent with our firmware archaeology |
+| OS | Retail/community listings often label it Linux | **incorrect as an implementation description**: firmware archaeology identifies the H1512/ALi TDS2 stack, not Linux |
 
 ## Physical-layout match to our specimen
 
@@ -207,3 +207,12 @@ This negative result is important: do not cite the DY09 teardown as documentatio
 If deeper inspection is eventually undertaken on the working development specimen: photograph every stage before moving parts; record screw/cable/ribbon orientation; photograph both PCB sides; capture silkscreens/revisions and readable IC/crystal markings; capture battery/LCD markings; avoid destructive adhesive/bonded-assembly removal unless justified; then reassemble and verify the golden runtime.
 
 Until then, software archaeology and the owner's physical A10 photographs remain authoritative for A10 internals.
+
+
+## OS classification correction — 2026-09-07
+
+Earlier retail/reference material was recorded as calling A10 "Linux." That label is now explicitly rejected as a technical description of the preserved specimen.
+
+The A10 application binary and the wider H1512/SF2000 reverse-engineering record identify the platform as an **ALi TDS2 / H1512 MIPS embedded stack**. Repository symbol work includes TDS scheduler/OSAL functions, and the application image carries the same H1512 SDK/compiler lineage as SF2000. Community SF2000 documentation likewise identifies official firmware as ALi TDS2 and states that Linux is not the stock operating environment on this processor family.
+
+Treat "Linux" on Handhelds Wiki/retail pages as catalog metadata, not firmware evidence.

@@ -36,11 +36,11 @@ DY09:
 - 16-MiB parallel NOR;
 - bonded game/display processor;
 - 21.47727-MHz NTSC Famicom-class clock;
-- no evidence found of Linux, filesystem-based ROM discovery, removable multi-system ROM storage, or software emulator cores.
+- no evidence found of the A10-style H1512/TDS2 filesystem-based multi-emulator runtime, removable multi-system ROM storage, or software emulator cores.
 
 A10:
 - removable TF storage;
-- Linux/software-emulator architecture established by our firmware archaeology;
+- H1512/ALi-TDS2 software-emulator architecture established by our firmware archaeology;
 - multiple emulator families;
 - thousands of filesystem ROMs;
 - substantially richer UI/runtime, mapping and external-core behavior.
