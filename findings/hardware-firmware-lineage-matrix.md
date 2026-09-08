@@ -564,3 +564,39 @@ Highest-value Chinese targets:
 3. broken/parts A10 listings exposing PCB/FPC;
 4. Chinese owner videos/comments showing TF-card contents;
 5. original 1688/Taobao listing ancestry and seller identity.
+
+
+### Mainland China A10 merchandising / provisioning structure — STRONG
+
+Current and cached JD indexing for the exact 芯果/XGO 10000mAh family shows that the hardware was merchandised through multiple seller/factory bundle configurations rather than as one immutable package.
+
+Indexed exact-family variants include:
+- `A10黑〖10000mAh+万款游戏+磁吸充电宝〗`;
+- `至尊版透明黑〖1万毫安+万款游戏+磁吸充电宝〗`;
+- Marvel 10000mAh `五百游戏`;
+- Marvel 10000mAh `双人对战手柄+五百游戏`;
+- Marvel / 尊享 `万款游戏+可玩街机`;
+- `旗舰尊享版 无线磁吸 10000mAh`;
+- `旗舰尊享版 双人对战 10000mAh`;
+- a seller-controlled promotional option `收藏加购-下单送游戏机收纳袋`.
+
+This matters because it demonstrates a distinct **commercial provisioning layer** around the same XGO 10000mAh hardware family:
+- content tier;
+- controller bundle;
+- accessory bundle;
+- potentially TF-card provisioning.
+
+Newer 芯果 handheld listings on the same JD brand catalog make the storage/content mapping explicit, e.g.:
+- 8G -> 千款游戏;
+- 64G -> 万款游戏;
+- 128G -> 3万款游戏.
+
+For the older A10/Marvel generation, JD indexing generally exposes the **game-count tier instead of TF-card capacity**.
+
+Interpretation:
+- **STRONG:** seller/factory bundle composition varied independently of the base hardware.
+- **STRONG:** game count alone is not a hardware revision identifier.
+- **PARTIAL:** this supports, but does not by itself prove, that old A10 500/1000/6000/10000-game variants correspond to different TF-card images/capacities.
+- **NOT PROVEN:** that all 10,000-game A10 units used 32GB, despite exact external evidence for at least one 32GB bundle.
+
+This increases the value of recovering a card tied to a specific Chinese SKU/seller rather than an anonymous `A10 firmware` archive.
