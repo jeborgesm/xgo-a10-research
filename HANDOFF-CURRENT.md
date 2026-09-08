@@ -1847,3 +1847,47 @@ New primary direction:
 
 Finding:
 `findings/family-proven-mame2000-sf2000-gb300-lift-target.md`
+
+
+### Test23 family-style MAME2000 candidate ready (2026-09-08)
+
+The family/API-table port now builds and packages cleanly.
+
+Architecture:
+- golden Test08 remains baseline;
+- lists 7-10 remain stock XGO FBA;
+- list 11 routes to external MAME2000;
+- external image exposes family-style `retro_core_t` API ownership;
+- golden XGO callbacks and `gfn_retro_*` slots are installed;
+- golden `run_emulator()` owns the runtime loop.
+
+Preserved golden functionality:
+- Volume OSD v8;
+- gray border and timeout behavior;
+- CPS1 sibling scheduler;
+- mapper v19;
+- native SNES;
+- Refresh Games / multi-system scanner;
+- stock pause/menu behavior.
+
+The candidate retains the XGO MAME admin/service-key patch and Test12 isolated-state patch.
+
+Exact candidate:
+```text
+xgo-arcade-test23-family-api-mame2000.zip
+size              7,378,684 bytes
+ZIP SHA-256        99c591ac0f9c61096997503adb328b3634ca080e79124d338b4ff3aeeb114b8a
+firmware SHA-256   98f044cc661ebd63f2b332638c72109bcc4a04a527d8ca4cc3ee3b71c2bb59ed
+core SHA-256       62114aeb11035a72111e67fa86c58f47937d4d7e78af220989097d00a914495d
+```
+
+Private CI run `34271682744` passed; artifact ID `10074162355`; archive commit `7130e05`.
+
+Finding:
+`findings/arcade-test23-family-api-mame2000-candidate.md`
+
+Hardware test order:
+1. verify Volume OSD in menu;
+2. verify one stock Arcade game from lists 7-10, including audio/pause/OSD;
+3. test Pac-Man on list 11;
+4. if Pac-Man works, test Ms. Pac-Man.
