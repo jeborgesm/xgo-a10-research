@@ -1674,3 +1674,111 @@ This is **not accepted as XGO A10 manufacturer evidence** because:
 
 Record as rejected/noise, not lineage evidence.
 
+
+
+
+## 2026-09-07 continuation update — exact A10 5000-game export tier and partial 32GB-card evidence
+
+The exact-device search has now identified a distinct **5000-game A10 export tier**, adding another software/content bundle between the previously documented 500/1000+/10000-game variants.
+
+### Independent retail confirmation: SMARTBERRY A10 with 5000 games
+
+Indonesian retailer Blibli currently lists:
+
+```text
+SMARTBERRY A10 Game Powerbank
+10.000 mAh
+Magsafe Fast Charging
+With 5000 Retro Game
+```
+
+The listing states:
+
+- A10 game-power-bank identity;
+- 10000mAh battery;
+- 15W magnetic wireless charging;
+- 22.5W Type-C charging;
+- 5000 preloaded retro games;
+- polymer battery.
+
+This is independent evidence that a 5000-game A10 bundle exists under another export rebrand.
+
+Evidence:
+- https://www.blibli.com/p/smartberry-a10-game-powerbank-10-000-mah-magsafe-fast-charging-with-5000-retro-game-game-console-classic/ps--SMI-70024-00019
+
+Caution:
+- the retailer text says 3.5-inch display, which conflicts with other exact-A10 material describing ~2.8-inch display. Treat that line as reseller metadata noise unless verified visually.
+- do not infer firmware equality from the Smartberry name alone.
+
+### AliExpress-derived A10 listings add two more rebrand names
+
+Manuals+ pages generated from AliExpress listing IDs expose:
+
+```text
+Royaldraid A10
+AliExpress item 1005009088128245
+
+Pogopirate A10
+AliExpress item 1005009088117333
+```
+
+Both describe the same A10 game-power-bank architecture:
+
+- 10000mAh;
+- magnetic 15W charging;
+- ~14.2 x 6.6 x 2.5 cm enclosure;
+- joystick / Select / Start / six-button control layout;
+- TF card;
+- AV;
+- handle/controller interface;
+- 10 emulator families;
+- 5000+ games.
+
+The Royaldraid-derived page further states:
+
+```text
+TF Card: 32GB
+Games: 5000+
+```
+
+Evidence:
+- https://manuals.plus/ae/1005009088128245
+- https://manuals.plus/ae/1005009088117333
+
+### Confidence discipline
+
+Current classification:
+
+```text
+5000-game A10 hardware/content tier      STRONG
+Smartberry A10 rebrand                   STRONG/PARTIAL exact-hardware candidate
+Royaldraid A10 rebrand                   PARTIAL
+Pogopirate A10 rebrand                   PARTIAL
+32GB TF card on 5000-game A10 tier       PARTIAL
+```
+
+The 32GB claim is not yet promoted to STRONG because it currently depends on one AliExpress-derived/manual aggregation rather than a second independent storefront or package photograph.
+
+### Updated A10/DY10 content-tier map
+
+Current externally observed tiers for the transparent 10000mAh A10/DY10-family product line:
+
+```text
+no-card / no-games       CONFIRMED wholesale SKU
+500 games                CONFIRMED on 10000mAh XGO Marvel SKU
+1000+ games              STRONG on Chinese DY10 coverage
+5000 games               STRONG on Smartberry/export A10
+10000 games / arcade     CONFIRMED on XGO A10/Marvel/wholesale variants
+```
+
+This does **not** currently form a chronological sequence. Current Chinese retail simultaneously sells the 500-game and 10000-game 10000mAh XGO variants.
+
+Likewise, no reliable A10/DY10 source currently maps the 500/1000+/10000 tiers to explicit 8G/16G/32G card sizes. XGO's newer R350 listings do advertise storage tiers explicitly, but A10/DY10 listings generally advertise **content tier** instead.
+
+Therefore:
+
+> Do not infer TF capacity from advertised game count for A10/DY10.
+
+### Artifact priority
+
+A verified physical/card image from any 5000-game A10—especially Smartberry, Royaldraid or Pogopirate—would be valuable because it could independently confirm the tentative 32GB tier and provide another exact `bisrv.asd` / Resources bundle for comparison.
