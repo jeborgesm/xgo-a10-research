@@ -1507,3 +1507,25 @@ Hardware finding:
 `findings/arcade-test11-hardware-audio-ab-pass.md`
 
 Next test should compare other dormant classic drivers using different sound hardware to determine whether silence is Namco-specific or general to hidden drivers.
+
+
+### Arcade Test14 — Ms. Pac-Man stock FBA FAIL; pivot fifth Arcade to MAME2000 (2026-09-07)
+
+Hardware result:
+- Pac-Man remains playable/video-correct but silent under stock XGO FBA.
+- Ms. Pac-Man launches but has severely corrupted/glitched video and no audio.
+- User supplied photographic evidence of the corrupted Ms. Pac-Man runtime.
+
+Conclusion: stranded classic drivers inside stock XGO FBA are useful archaeology but are not reliable enough to build the requested Classic Arcade library.
+
+Architectural pivot:
+- keep stock FBA untouched for CPS1/CPS2/NeoGeo/IGS;
+- keep the proven fifth Arcade/list-ID-11 frontend as the Classic Arcade category;
+- route list ID 11 to a dedicated external MAME2000 core.
+
+Important prior-context correction: MAME2000 was previously rejected as a **CPS1/SFII performance replacement**, not as a general classic-arcade core. The XGO external MAME2000 integration already reached playable SFII with repaired input and frontend integration, but portable CPS1 emulation was too slow. That does not predict performance for much lighter Pac-Man/Galaga/Frogger/Donkey Kong/Asteroids-era hardware.
+
+Next engineering target: reuse the proven XGO MAME2000 external-core infrastructure, gate it on list ID 11 only, and build a Pac-Man/Ms. Pac-Man 0.37b5 proof while preserving stock arcade lists 7-10.
+
+Finding:
+`findings/arcade-test14-mspacman-fail-mame2000-pivot.md`
