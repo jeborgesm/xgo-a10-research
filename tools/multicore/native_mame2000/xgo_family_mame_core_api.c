@@ -104,12 +104,16 @@ static struct xgo_family_core_api api = {
 };
 
 #include <reent.h>
+extern unsigned char __bss_start[];
+extern unsigned char __image_end[];
 extern void __libc_init_array(void);
 extern void __sinit(struct _reent*);
 
 void *__core_entry_c(const char *unused,int unused2)
 {
+    unsigned char *p;
     (void)unused; (void)unused2;
+    for(p=__bss_start;p<__image_end;++p) *p=0;
     _REENT_INIT_PTR(_REENT);
     __sinit(_REENT);
     __libc_init_array();
