@@ -491,3 +491,34 @@ Therefore this export branch is **not merged into the exact XGO A10 lineage**. I
 Promotion requires exact enclosure imagery plus one of: matching rear label, exact 141×67×20 dimensions/22.5W ratings, card/binary comparison, or PCB evidence.
 
 This is also a warning that `A10 + 32GB` alone is not a sufficient exact-device search key.
+
+
+### 2023 crowdfunding card capacity converges with exact A10 retail bundle — STRONG continuity clue
+
+The exact A10 32GB retail-card evidence now converges with an **independent earlier XGO launch-generation source** already preserved in `findings/xgo-dy10-a10-direct-lineage.md`:
+
+The 2023 XGO crowdfunding campaign advertised:
+- 10000mAh;
+- 15W magnetic wireless charging;
+- 22.5W wired charging;
+- TV output;
+- 10 emulator families;
+- **32GB TF card**;
+- 6000+ games.
+
+The later exact A10 marketplace image set independently shows:
+- the same XGO PLUS+ physical enclosure;
+- 10000mAh / 22.5W / 15W;
+- 10 emulator families / 10,000 games;
+- **32GB TF card**.
+
+This is stronger than either source alone. It supports continuity of a **32GB removable-card provisioning model from the 2023 XGO/DY10 launch generation into the later A10-branded exact enclosure**.
+
+It still does not prove identical `bisrv.asd` or Resources. The game-count change (6000+ -> 10000) is consistent with card/catalog-content evolution and must be tested by binary/card comparison.
+
+High-value target is now specifically:
+```text
+XGO DY10 32GB original TF image
+XGO crowdfunding 32GB card backup
+A10 32GB original TF image
+```
