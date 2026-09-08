@@ -945,3 +945,99 @@ Highest-value artifacts now include:
 5. broken/parts-only DY10/A10 units on Xianyu exposing board photographs;
 6. any named `方案商` / solution provider attached to the product family.
 
+
+
+
+## 2026-09-07 continuation update — XGO game-power-bank product evolution and DY10/A10 bundle separation
+
+The XGO-first Chinese pass recovered a longer internal product history and stronger evidence that retail software bundles must be separated from hardware identity.
+
+### XGO marketed numbered generations of game-console power banks by 2020
+
+A 2020 Chinese article describes **four generations** of 芯果 game-console power banks:
+
+- first generation: classic handheld form, 10000mAh, 299 games;
+- second generation: controller-like form, 10000mAh, optional wireless charging, ~300 games;
+- third generation: smaller rounded controller-like form, 5000mAh, 108 games;
+- fourth generation: folding/mirror form, 5000mAh, ~400 games.
+
+This predates DY09 and the transparent DY10/A10 generation and demonstrates that "游戏机充电宝" was an evolving XGO/Jncota product line rather than a one-off design.
+
+Evidence:
+- https://k.sina.cn/article_6404153475_17db7a08302000mc7w.html
+
+### XGO used model families outside the DY numbering scheme
+
+Lenovo/Lecoo historical catalog pages preserve:
+
+```text
+芯果-G16 GAMEMAX游戏机充电宝
+```
+
+in multiple colors.
+
+This proves that domestic/internal retail naming was not consistently `DYxx`. Future searches must therefore not assume the transparent specimen has only A10/DY10 aliases.
+
+Evidence:
+- https://item.lenovo.com.cn/product/1007926.html
+- https://item.lenovo.com.cn/product/1007923.html
+- https://item.lenovo.com.cn/product/1007925.html
+
+### Exact 10000mAh XGO family is sold with materially different software/card bundles
+
+Current Chinese JD indexing shows the 10000mAh game-power-bank family in multiple content configurations, including:
+
+- standard transparent-black / premium 10000-game bundle;
+- Marvel co-branded 10000mAh version with **500 games**;
+- Marvel co-branded 10000mAh version with **10000 games / arcade support**;
+- controller-bundled variants of the same retail family.
+
+This reinforces a critical evidence rule:
+
+> enclosure/model identity, firmware identity, and TF-card/Resources content identity must be recorded separately.
+
+A visually matching A10/DY10 is **not** sufficient to assume the same `bisrv.asd`, Resources set or game catalogs.
+
+Evidence:
+- https://www.jd.com/brand/1320a9c3f4a8c43f30ca.html
+- https://www.jd.com/sptopic/670411b79248cf309c2.html
+
+### Highest-value exact-device artifact now: alternate domestic stock TF card
+
+A domestic **500-game 10000mAh XGO card** is potentially more valuable for software-lineage comparison than another generic sibling firmware.
+
+Comparing it with the preserved XGO 10000-game specimen can determine whether XGO shipped:
+
+1. identical `bisrv.asd` with different Resources/ROM content;
+2. variant-specific frontend applications;
+3. different catalog mappings or emulator subsets;
+4. different card capacities/layouts;
+5. model/revision-specific board-support binaries.
+
+Priority acquisition/search strings:
+
+```text
+芯果 DY10 游戏卡
+芯果 DY10 TF卡
+DY10 500款游戏 TF卡
+DY10 1000款游戏 TF卡
+A10黑 游戏卡
+芯果 XGO 万款游戏 内存卡
+芯果 漫威联名 500游戏 TF卡
+芯果 游戏机充电宝 原装卡
+```
+
+### Chinese review/owner evidence status
+
+Current JD pages confirm a live owner base with hundreds of reviews on the exact XGO 10000mAh family, but public search indexing does not expose useful review bodies for card failures, repairs or game-import questions.
+
+Therefore owner archaeology should move toward:
+
+- direct marketplace review pages where accessible;
+- Bilibili/Douyin exact-product comments;
+- Xianyu broken-unit/parts listings;
+- seller support screenshots;
+- replacement-card listings;
+- Chinese image search for bare boards and LCD assemblies.
+
+Do not infer failure modes from review counts alone.
