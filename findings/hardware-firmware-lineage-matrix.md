@@ -231,3 +231,101 @@ The search order is now:
 5. **DY14 stock application** remains necessary to connect its known H1512 board to software.
 6. **PGP AIO Union X35 card dump** is now a useful secondary binary comparator, but only if accompanied by specimen/revision provenance.
 
+
+
+
+## 2026-09-07 continuation update — UART is a platform bring-up/recovery interface, not merely logging
+
+Further X60/SF2000 evidence materially increases the engineering value of the serial-debug trail.
+
+### Same researcher physically cross-compared SF2000, X60 and Q19
+
+In the same 4PDA hardware discussion, `bnister` explicitly states that his own **SF2000, X60 and Q19** all survived full-card imaging operations, and that he had even repurposed the weak original X60 card for Q19.
+
+That matters because the earlier X60 statements are therefore not based on visual similarity alone; they come from a researcher who physically possessed and modified all three relevant sibling devices.
+
+The same discussion records:
+
+- X60 has many test pads;
+- a UART was physically wired out for development;
+- the **stock bootloader prints the contents of the `bios` directory over UART** while booting;
+- SF2000 and X60 share the same bootloader bug;
+- X60 can run the SF2000 shell/emulators after replacing `bios/bisrv.asd` with an X60-specific adaptation;
+- stock SF2000 bootloader code can remain usable on X60 even after accidental replacement, further separating boot ROM/SPI behavior from application-level board adaptation.
+
+Evidence:
+- https://4pda.to/forum/index.php?showtopic=1067862&st=380
+- https://4pda.to/forum/index.php?showtopic=1067862&st=400
+
+### HCSEMI B210 documentation confirms serial boot capability
+
+The recovered HCSEMI B210 brief datasheet lists:
+
+- UART interfaces;
+- multiple boot modes;
+- **boot program download and execution over a serial port**.
+
+This changes the risk/reward model for XGO test-pad work.
+
+The serial pads on a close sibling may expose one or both of:
+
+1. a normal boot/debug console used by the stock loader/application;
+2. a lower-level ROM/boot-program download interface capable of executing a recovery payload.
+
+Do **not** assume that the first discovered XGO UART automatically exposes the B210 serial-download mode. Pinmux, strap state, SPI boot state and board routing may differ. But it is now a documented SoC capability rather than speculation.
+
+Evidence:
+- HCSEMI B210 Brief Datasheet, section 2.12:
+  https://manuals.plus/m/dc4b1fc0287fee839b3a965d9a5fdd8f0383539748b6e10e04ab5c755a9046da
+
+### Open-source HC15xx work identifies the likely debug UART instance
+
+Current HC15xx/SF2000 emulation and board-configuration work independently identifies two UART blocks and describes **UART1 as the boot/debug console**.
+
+Recovered addresses from the open-source HC15xx model:
+
+```text
+UART0  physical 0x18818300
+UART1  physical 0x18818600  <- boot/debug console
+```
+
+The SF2000 hcRTOS board configuration further maps the enabled UART1 to HC15xx pinmux entries:
+
+```text
+PINPAD_R05
+PINPAD_R08
+```
+
+This is software-side evidence only; it does not identify physical XGO pads yet. It does, however, give a concrete register/pinmux target for correlating XGO binary initialization with eventual board probing.
+
+Evidence:
+- https://github.com/axgdev/frogqemu/blob/main/docs/SF2000.md
+- https://deepwiki.com/bnister/sf2000_hcrtos/3-hardware-configuration
+
+## Updated debug-interface hypothesis
+
+The current best-supported chain is now:
+
+```text
+HCSEMI B210 / HC15xx SoC
+  -> documented UART + serial boot/download capability
+  -> SF2000 bootloader emits boot diagnostics over UART
+  -> X60 physically exposes usable UART through board test pads
+  -> X60 and SF2000 share loader/platform behavior despite LCD/GPIO differences
+  -> XGO uses the same HC15xx/H1512 runtime family
+```
+
+Therefore:
+
+> A UART/debug interface on XGO is now **STRONG**, not merely a generic possibility. Its physical pad location remains UNKNOWN.
+
+The next controlled XGO hardware investigation should identify likely GND/TX/RX pads with a high-impedance instrument first, then compare observed boot traffic against the known HC15xx UART initialization. No voltage should be injected until pad function and I/O level are established.
+
+## Matrix confidence adjustment — UART/test-pad evidence
+
+- **SF2000:** raise to **CONFIRMED externally** for boot UART behavior.
+- **X60:** **CONFIRMED externally** for physically broken-out UART and abundant test pads.
+- **Q19:** remains physically inspectable but exact UART pads unresolved.
+- **DY19:** still UNKNOWN.
+- **XGO A10:** raise conceptual likelihood to **STRONG**, while physical pad identity remains UNKNOWN.
+
