@@ -849,3 +849,28 @@ cn1094161006qgoae
 because it appears directly on the Chinese A10 specifications, TV-output art, joystick detail, and especially the 32G-vs-1G `选购指南`.
 
 The legal seller/company identity behind `cn1094161006qgoae` remains UNKNOWN.
+
+
+### Exact JD Marvel 500-game SKU ID recovered — STRONG retail anchor
+
+The surviving JD category index exposes the exact 10000mAh Marvel 500-game product as:
+
+```text
+JD item ID: 10090031452804
+```
+
+Indexed variants on that same product family include:
+- `〖漫威联名款〗怀旧经典五百游戏+1W毫安快充`;
+- `〖漫威联名款〗双人对战手柄+五百游戏-1W毫安快充`;
+- `〖尊享版本〗万款游戏+可玩街机+1W毫安快充`;
+- `〖尊享双人〗双人对战手柄+万款游戏+1W毫安快充`.
+
+The JD item page and review aliases currently redirect into JD anti-bot/risk handling, and exact searches for `10090031452804` outside JD return no indexed mirrors.
+
+Interpretation:
+- **STRONG:** `10090031452804` is a concrete current Chinese retail anchor for the exact 10000mAh Marvel 500-game SKU.
+- **VERY STRONG when combined with independent seller artwork:** this SKU class corresponds to the separately recovered `500款游戏 / 赠送1G TF卡` provisioning tier.
+- **NOT PROVEN:** that every physical unit sold under this JD ID used the same 1GB card image.
+- **UNKNOWN:** seller identity and customer-photo/card evidence from the blocked JD detail page.
+
+Use `10090031452804` as a future cache/review/image-mirror key rather than repeating generic Marvel searches.
