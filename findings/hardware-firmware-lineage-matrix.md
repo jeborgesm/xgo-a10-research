@@ -1245,3 +1245,107 @@ That independently supports the stable-merge scanner work and shows that OEM cat
 4. **Preserve/download the published A10 game-list document if provenance permits and compare every system list programmatically.**
 5. **Search the alternate A10 catalog for all entries absent from the preserved XGO catalogs and check whether those ROMs physically exist on the user's card.**
 6. **Use those differences as historical evidence for OEM catalog-generation behavior.**
+
+
+
+## 2026-09-07 continuation update — alternate A10 catalog counts validated against the preserved physical card
+
+The independently published 221-page A10 game-list document can now be counted reliably after accounting for its inconsistent Scribd rendering.
+
+Important correction:
+
+- FC and SFC are rendered as English filename + Chinese title on the same line.
+- MD, GB, GBC and GBA are rendered as an English filename block followed by a separate Chinese-title block marked `&H2`..`&H5`.
+
+Therefore raw section-line counts would double-count several systems. The corrected alternate-A10 catalog counts are:
+
+| System | Published alternate A10 list | Preserved XGO filename catalog | Difference |
+|---|---:|---:|---:|
+| FC | **868** | 744 | **+124** |
+| SFC | **1167** | 929 | **+238** |
+| MD | **912** | 788 | **+124** |
+| GB | **1142** | 885 | **+257** |
+| GBC | **1112** | 958 | **+154** |
+| GBA | **762** | 626 | **+136** |
+| **Total** | **5963** | **4930** | **+1033** |
+
+These counts come directly from the document's block boundaries:
+
+```text
+FC   lines 436..1303
+SFC  lines 1305..2471
+MD   English 2473..3384; Chinese mirror begins &H2 at 3385
+GB   English 4299..5440; Chinese mirror begins &H3 at 5441
+GBC  English 6585..7696; Chinese mirror begins &H4 at 7697
+GBA  English 8811..9572; Chinese mirror begins &H5 at 9573
+```
+
+Source:
+- https://www.scribd.com/document/881855797/A10-Gam-st
+
+### Comparison with the preserved XGO card's physical ROM payload
+
+The archived original-card file inventory independently contains:
+
+| Folder | Physical files on preserved card | Visible XGO catalog | Physical minus visible |
+|---|---:|---:|---:|
+| FC | 773 | 744 | **29** |
+| SFC | 1080 | 929 | **151** |
+| MD | 834 | 788 | **46** |
+| GB | 976 | 885 | **91** |
+| GBC | 974 | 958 | **16** |
+| GBA | 1149 | 626 | **523** |
+
+This is an important three-layer result:
+
+```text
+retail A10/DY10 hardware identity
+        !=
+physical ROM payload on TF card
+        !=
+visible synchronized game catalogs
+```
+
+The alternate published A10 list is also **not** simply "our physical ROM directories fully indexed":
+
+- for FC/SFC/MD/GB/GBC, the alternate list is larger than both our visible catalog and, in several cases, our physical folder payload;
+- for GBA, our preserved card physically contains far more files (1149) than either our visible catalog (626) or the alternate A10 list (762).
+
+Therefore at least two materially different A10/DY10 content assemblies existed, and neither can be modeled as merely "same ROM set, different menu count."
+
+### Strong concrete example remains Bomber Man 2
+
+The alternate A10 FC list exposes `Bomber Man 2`.
+
+The preserved XGO card physically contains:
+
+```text
+D:\FC\Bomber Man 2.zfc
+```
+
+but the stock 744-entry XGO FC filename catalog omits it.
+
+This is now a proven instance where:
+
+```text
+alternate A10 catalog = visible
+preserved XGO physical card = present
+preserved XGO catalog = hidden
+```
+
+That gives the alternate A10 list direct engineering value for the on-device refresh/stable-merge project.
+
+### New high-value comparison task
+
+Recover the source spreadsheet/text behind the 221-page public document and classify each alternate-A10 entry into:
+
+```text
+A. visible in preserved XGO catalog
+B. absent from catalog but physically present on preserved XGO card
+C. absent from both catalog and preserved physical card
+D. present on preserved card/catalog but absent from alternate A10 list
+```
+
+Class B is especially valuable: it can reveal OEM-intended entries that our particular factory catalog revision accidentally or deliberately hid.
+
+Do not interpret the retail "10000 games" claim as a literal catalog count from this document. The validated six-system portion totals 5963 before its curated Arcade sections, and marketing totals may count bundle variants or other content differently.
