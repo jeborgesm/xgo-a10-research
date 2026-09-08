@@ -15,7 +15,7 @@ Legend:
 
 | Evidence | SF2000 | Q19 | DY12 early | DY12 MY2024 | DY14 | DY19 | XGO A10 |
 |---|---|---|---|---|---|---|---|
-| Product class | handheld | handheld + power bank | game/power-bank family | game/power-bank family | handheld + power bank | handheld + power bank | handheld + magnetic power bank |
+| Product class | handheld | handheld + power bank | game/power-bank family | game/power-bank family | handheld + power bank | handheld + power bank | handheld + magnetic power bank; physical specimen label **CONFIRMS model A10** |
 | CPU/platform | **CONFIRMED** HCSEMI B210 / HC15xx family | **STRONG** close B210/SF2000 family per experienced hardware owners; CPU marking removed in teardown | **PARTIAL** SF2000-like behavior on some revisions | **STRONG** owner reports DY19 multicore BIOS works | **CONFIRMED** Hichip H1512 800 MHz | **CONFIRMED** H1512-family from recovered firmware | **CONFIRMED** H1512/HC15xx family from binary archaeology |
 | OS/runtime | **CONFIRMED** ALi TDS2 stock | **STRONG** SF2000-adapted firmware family | **PARTIAL** SF2000-family | **STRONG** DY19-family | **CONFIRMED** H1512/TDS2 family evidence | **CONFIRMED** H1512/TDS2 family | **CONFIRMED** H1512/TDS2 family |
 | RAM | known SF2000-family DDR2 | **CONFIRMED** Hynix HY5PS1G1631C 1-Gbit DDR2 = 128 MiB | UNKNOWN | UNKNOWN | **CONFIRMED** Nanya NT5TU64M16DG-AD 1-Gbit DDR2 = 128 MiB | software implies same memory class; physical chip UNKNOWN | physical chip identity UNKNOWN |
@@ -406,3 +406,61 @@ Why retain the lead:
 - the 1688 shop handle is a concrete source to inspect for historical listings, archived media, replacement cards, and after-sales material.
 
 Promote confidence only if an exact A10/DY10 enclosure, card package, offer ID, image-owner ID, PCB, or firmware artifact is tied directly to this shop/company.
+
+
+### Physical specimen rear label confirms A10 — CONFIRMED
+
+Reinspection of the preserved exact-device photographs resolves the rear regulatory/specification label sufficiently to read:
+
+```text
+Model number: A10
+Rated capacity: 5800mAh
+Battery capacity: 10000mAh
+Wireless charge max: 15W
+Battery: Polymer lithium-ion battery
+MADE IN CHINA
+```
+
+The label also carries the expected multi-voltage Type-C input/output ratings.
+
+This is **direct physical-specimen evidence**. A10 is therefore no longer merely a retail/OEM/rebrand inference for this unit: the exact XGO specimen itself is labeled A10.
+
+The transparent rear window additionally exposes a distinct power/wireless-board topology:
+- large copper Qi coil;
+- segmented circular magnetic ring;
+- two square controller ICs;
+- large shielded inductor;
+- visible `ESD` silkscreen/test marking.
+
+These physical features are useful future image-search/teardown fingerprints. Component identities are not inferred from the photograph alone.
+
+### Exact A10 32GB / 10,000-game TF-card configuration — STRONG
+
+A surviving 2024 Shopee Malaysia listing for the exact physical XGO PLUS+ A10 enclosure preserves a nine-image Chinese marketing set.
+
+Within the same coherent exact-device image set:
+- the hero calls it `10000mAh 移动游戏电源` and advertises `无线磁吸 / 万款游戏 / 22.5W`;
+- another image says `内置10000款经典游戏，10大游戏模拟器于一身`;
+- a bundle image shows the exact XGO PLUS+ device next to a TF card explicitly marked `32GB` with `Free Games`;
+- the retail box is labeled `GAME POWER BANK`, `22.5W`, and `10000mAh`.
+
+Evidence level: **STRONG exact retail/card-bundle evidence**.
+
+What this establishes:
+- an exact A10 10,000-game configuration was sold with a 32GB TF card;
+- `32G / 32GB` is now a high-value exact-device search term for stock-card recovery.
+
+What it does **not** establish:
+- that every A10/DY10/XGO 10,000-game unit used 32GB;
+- that the preserved user's card has the same capacity;
+- that the 32GB card's `bisrv.asd`, Resources, catalogs, ROM set, or emulator selection match the preserved specimen.
+
+New high-value search keys:
+```text
+A10 32G 游戏卡
+A10 32GB 原装卡
+A10 32G TF卡
+A10 游戏磁吸充电宝 32G
+10000mAh 移动游戏电源 32G
+GAME POWER BANK A10 32GB
+```
