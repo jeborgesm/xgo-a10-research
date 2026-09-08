@@ -1410,3 +1410,20 @@ Interpretation:
 - fifth page + successful launch => native general/classic Arcade page and stock Pac-Man path proven;
 - fifth page + launch failure => page path proven, isolate ROM-set/driver launch;
 - fifth page absent => additional ID-11 gate exists and frontend patching is required.
+
+
+### Correction — only four visible Arcade pages (2026-09-07)
+
+Direct hardware observation confirms the XGO frontend exposes only four Arcade pages.
+
+The fifth inherited `ARCADE` definition in `Foldername.ini` and list ID 11 = `None / None / None` do **not** correspond to a currently visible fifth Arcade page. Treat ID 11 as a dormant inherited placeholder unless/until frontend navigation is explicitly extended.
+
+Therefore Arcade Test09 (`Resources/None` + Pac-Man probe) is **superseded before hardware test** and should not be used as-is.
+
+Next research target:
+- trace the visible Arcade page navigation/selector;
+- identify the exact four-page bound and associated resource/list-ID mapping;
+- deliberately extend it to a real fifth Classic Arcade page backed by list ID 11 or another safe slot;
+- then use Pac-Man/Ms. Pac-Man as the first stock-driver launch proof.
+
+Do not overload CPS1/CPS2/NeoGeo/IGS long-term merely to avoid creating the proper Classic Arcade page.
