@@ -816,3 +816,36 @@ cn1094161006
 "500款游戏" "赠送1G TF卡"
 "10000款游戏" "赠送32G TF卡"
 ```
+
+
+### WhatsApp +86 19897109233 classified as downstream export-reseller contact — PARTIAL/REJECT AS OEM
+
+The exact A10 image corpus bearing `cn1104548433` also prints:
+
+```text
+WhatsApp: +86 19897109233
+```
+
+Independent indexed product pages using the same number expose generic seller boilerplate:
+
+```text
+My name is Diana, we are from China, there are a variety of products for you to choose from in the store...
+```
+
+and attach the number to unrelated product categories including self-balancing hovershoes and thermal-imaging electronics.
+
+Interpretation:
+- **CONFIRMED:** the phone is a real export-sales contact reused across many unrelated goods.
+- **STRONG:** imagery carrying this phone belongs to a downstream broad-catalog reseller/export layer, not an XGO-specialist source.
+- **REJECT:** do not identify `+86 19897109233` or “Diana” as the A10 OEM, firmware house, or board manufacturer.
+- **UNKNOWN:** whether watermark `cn1104548433` is a marketplace store/account ID belonging to that reseller; direct marketplace store URLs are blocked and indexed searches do not resolve it.
+
+This increases the relative archaeological value of the other native-Chinese watermark:
+
+```text
+cn1094161006qgoae
+```
+
+because it appears directly on the Chinese A10 specifications, TV-output art, joystick detail, and especially the 32G-vs-1G `选购指南`.
+
+The legal seller/company identity behind `cn1094161006qgoae` remains UNKNOWN.
