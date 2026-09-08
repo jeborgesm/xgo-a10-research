@@ -1413,3 +1413,24 @@ D. present on preserved XGO card but absent from alternate A10 list
 Source:
 - alternate A10 catalog: https://www.scribd.com/document/881855797/A10-Gam-st
 - preserved physical-card inventory and stock catalog files: repository/local archived XGO evidence
+
+
+
+## 2026-09-07 continuation note — external export catalog lead requires hardware attribution
+
+An export-retail game-list PDF surfaced during the exact-A10 content search with the same unusual wrapped-ROM filename conventions used by the XGO/A10 family, including `.zfc` names and `Bomber Man 2.zfc`.
+
+This is a useful **content-lineage lead**, but it is **not yet hardware-lineage evidence**.
+
+Before promoting it, the associated retailer/product must be tied to one of:
+
+- the exact transparent XGO/DY10/A10 enclosure;
+- MechZone A10;
+- the 1688 A10 offer family;
+- or another independently verified HC15xx/H1512 sibling.
+
+Reason for caution:
+
+> the proprietary wrapped-ROM/content set may have been copied between otherwise different handhelds, so filename overlap alone cannot identify the PCB.
+
+This lead remains pending exact product-page/enclosure attribution.
