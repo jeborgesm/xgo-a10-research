@@ -1939,3 +1939,47 @@ CI run `34276092808` passed; artifact ID `10075859223`; artifact archive commit 
 
 Finding:
 `findings/arcade-test23-postmortem-test25-true-family-candidate.md`
+
+
+### Test25 hardware FAIL; Test26 recovered-Test12 compatibility candidate ready (2026-09-08)
+
+Test25 true-family MAME2000 hardware result:
+
+```text
+Pac-Man -> Loading..... -> black screen
+```
+
+The recent family API-table direction is closed for the immediate Classic Arcade implementation.
+
+Repository archaeology re-established the older authoritative XGO result: MAME2000 Test12 was a physical-hardware PLAYABILITY PASS. SFII and Cadillacs reached real MAME gameplay; input was repaired; Test12 isolated poisoned MAME state. The remaining Test12 defect was CPS1-wide slow-motion/choppy-audio performance, not failure to boot.
+
+Test26 therefore stops reimplementing MAME ownership and wraps the exact historical Test12 path:
+
+- base = exact golden Test08;
+- exact archived Test12 MAME2000 core, SHA-256 `abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461`;
+- historical Test12-era CPS1 loader source from commit `3470f0e320f47fb7deef5f64f7c0346b21adb4e8`;
+- original core path retained: `/mnt/sda1/cores/fbalpha2012_cps1/core.xgc`;
+- list 11 enters through an 88-byte compatibility shim at `0x80001900`;
+- shim temporarily changes ACTIVE_LIST_ID 11 -> 7 and calls the relocated historical loader at `0x80001980`;
+- after MAME returns, shim restores list 11 and returns into untouched stock arcade cleanup;
+- lists 7-10 tail-jump directly to untouched stock `run_fba`;
+- no family `retro_core_t` API-table frontend and no new MAME core build.
+
+Exact Test26:
+
+```text
+xgo-arcade-test26-test12-compat-shim.zip
+size              7,400,813 bytes
+ZIP SHA-256        15bb71a267181fa2260a6be03de3252d09ef9211d4bdf151f18d8740ca569a24
+firmware SHA-256   3cd4b957fe558475a5a5519281b4bbcc96a7e5c06ac8fc607b2ee0e871b55934
+shim SHA-256       99eb1a504a09c995c97d6cb4c7f080ab8857aea224cd18a12d21dfb89b7cbc67
+loader SHA-256     0231bd3f132bc79a885bd5090592f54984393dc08ca5b57cb4f7d38e5ecb0921
+core SHA-256       abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+Private CI run `34283009246` passed; artifact ID `10078376651`; candidate archived in the private vault.
+
+Finding:
+`findings/arcade-test25-fail-test26-test12-compatibility.md`
+
+Hardware order: verify golden stock behavior, then Pac-Man on fifth Arcade. If Pac-Man reaches gameplay, test audio/controls/pause/quit/OSD/speed and then Ms. Pac-Man. Do not create another speculative loader ladder if Test26 fails; first close any relocation-specific difference against the exact historical Test12 loader binary.
