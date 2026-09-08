@@ -1218,3 +1218,53 @@ Primary finding:
 `findings/game-list-test07-real-sfc-discovery-stable-merge-candidate.md`
 
 The private-vault CI reproduction workflow is committed at `.github/workflows/xgo-game-list-test07-general-sfc-scanner.yml` in `jeborgesm/xgo-a10-artifacts`, but API-originated commits did not emit its configured push trigger in this session. Do not claim private-vault archival until an actual run or direct archive commit is confirmed.
+
+
+### Test08 candidate — full FC/SFC/MD/GB/GBC/GBA scanner (2026-09-07)
+
+**Test07 SFC-only is superseded before hardware testing. Do not test or promote Test07.**
+
+Test08 is the active pending hardware candidate for the real built-in game-list scanner.
+
+One Refresh pass now iterates all six ordinary built-in console directories:
+
+```text
+FC -> SFC -> MD -> GB -> GBC -> GBA
+```
+
+For each system the firmware resolves the synchronized triplet from stock table `0x80a3c32c`, scans the physical directory through the confirmed stock directory wrappers, filters by that system's wrapper/native extension classifier returns, stable-appends every filename absent from slot 0, appends basename fallbacks to slots 1/2, writes the complete synchronized triplet, fs-syncs, and invalidates only `count[list_id]` in the array at `0x80d2894c`.
+
+No ROM filename, expected catalog count, or expected append count is hardcoded.
+
+Candidate capacity is 512 additions per system. The preserved card inventory audit predicts 347 total discoveries on the captured stock state: FC 20, SFC 149, MD 45, GB 88, GBC 15, GBA 30. All projected final resource sizes stay well below the 64 KiB per-slot guard.
+
+The install ZIP deliberately contains **no game-list catalogs and no test ROM payloads**. It contains only the patched firmware, the six protected Test06b User Menu UI resources, and the hardware-test README. Therefore installing Test08 does not itself reset/prepopulate any game list; mutations begin only when Refresh is invoked.
+
+```text
+xgo-game-list-test08-all-console-scanner.zip
+size              4,921,057 bytes
+ZIP SHA-256        9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e
+firmware SHA-256   45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444
+scanner/status     3,601 bytes
+scanner SHA-256    a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d
+cave remaining     495 bytes
+```
+
+Exact reproducer:
+
+`tools/game_lists/build_test08_all_console_scanner_candidate.py`
+
+Primary finding:
+
+`findings/game-list-test08-full-console-scanner-candidate.md`
+
+Test08 is **NOT golden** pending hardware confirmation and remains deliberately non-transactional. Hardware test only on the disposable clone; do not interrupt power during Refresh.
+
+Hardware gate:
+- record FC/SFC/MD/GB/GBC/GBA counts before first Refresh;
+- first Refresh should report `Games Updated` and append all accepted unindexed physical ROMs across all six systems;
+- second Refresh should report `No New Games`;
+- verify representative old Favorites/History/save references, Search, Chinese list/search alignment, and launches of newly discovered games from multiple console pages;
+- confirm User Games/Language/TV System, timed status, Audio OSD, SNES and CPS1 protected behavior remain intact.
+
+Arcade is intentionally out of Test08 scope because the shared `ARCADE` directory still requires safe per-wrapper family classification into CPS1/CPS2/NeoGeo/IGS curated pages.
