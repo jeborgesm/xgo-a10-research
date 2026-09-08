@@ -1373,3 +1373,40 @@ Prefer investigating inherited fifth `ARCADE` / list-ID-11 behavior as a possibl
 
 Scope document:
 `findings/arcade-expansion-scope-and-priority-targets.md`
+
+
+### Arcade Test09 candidate — dormant list-ID 11 Pac-Man probe (2026-09-07)
+
+Direct stock-binary inspection found a compiled Pac-Man/Ms. Pac-Man driver family in XGO's shipped FBA payload, including `pacman`, `mspacman`, `pacplus`, `puckman`, and associated ROM descriptors such as `pacman.6e`, `pacman.6f`, `pacman.6h`, `pacman.6j`, and `mspacatk.*`.
+
+Canonical identifiers for Galaga, Frogger, Donkey Kong, Mario Bros., and Asteroids were not found in the same XGO binary scan. Do not assume upstream FBA 0.2.97.42 coverage means those modules were compiled into this device.
+
+The fifth repeated ARCADE entry remains list ID 11 with `None / None / None` as its resource triplet. Test09 probes whether supplying a valid `Resources/None` activates that native page without any firmware patch.
+
+Exact Test09 package:
+
+```text
+xgo-arcade-test09-id11-pacman-probe.zip
+size       4,922,444 bytes
+SHA-256    f2b6b2c127effc554f882190648f84ab7cba4a1f026a74a1ccbaf042d0768ba6
+```
+
+Golden Test08 firmware is unchanged.
+
+Added:
+- `Resources/None`: one-entry stock catalog containing `Pac-Man.zfb`;
+- `ARCADE/Pac-Man.zfb`: blank-thumbnail XGO arcade reference record pointing to `pacman.zip`;
+- hardware-test README.
+
+No ROM image is included. Hardware testing requires the user to place their own compatible `ARCADE/bin/pacman.zip`.
+
+Builder:
+`tools/game_lists/build_arcade_test09_id11_pacman_probe.py`
+
+Finding:
+`findings/arcade-test09-id11-pacman-probe.md`
+
+Interpretation:
+- fifth page + successful launch => native general/classic Arcade page and stock Pac-Man path proven;
+- fifth page + launch failure => page path proven, isolate ROM-set/driver launch;
+- fifth page absent => additional ID-11 gate exists and frontend patching is required.
