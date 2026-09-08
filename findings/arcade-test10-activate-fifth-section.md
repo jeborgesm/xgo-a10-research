@@ -79,3 +79,23 @@ If its list shows Pac-Man, list ID 11 and `Resources/None` are both proven.
 If Pac-Man then launches with a compatible user-supplied `pacman.zip`, the stock XGO FBA classic Pac-Man driver and a native Classic Arcade presentation path are proven simultaneously.
 
 If the fifth section causes a frontend failure, restore golden Test08. No firmware bytes or existing catalogs are changed by this probe.
+
+
+## Exact candidate
+
+```text
+xgo-arcade-test10-fifth-section-pacman.zip
+size       4,921,962 bytes
+SHA-256    1a55e95702c225788cc1ed3e14a6dca294f2d30c75c3b6e3681dbc4e24e9f759
+Foldername.ini SHA-256
+           28ea468c2321f49b115be41e36ecab49b017a838f18502f7308ec52039faa2df
+Resources/None SHA-256
+           27387fdfb31fc2d3d14070578782484e85ded64b0f85c49dff9f5dab2d932159
+Pac-Man.zfb SHA-256
+           5fd31a661e852c07e526d0b762a1154400184fd31723af6ebc279156e1db1aa1
+```
+
+The package was built from the exact golden Test08 ZIP and its firmware remains unchanged.
+
+Exact builder:
+`tools/game_lists/build_arcade_test10_fifth_section_pacman.py`
