@@ -1605,3 +1605,48 @@ Private CI run `34238269652` passed and archived the candidate; artifact ID `100
 Findings:
 - `findings/arcade-test15-hardware-fail-black-screen.md`
 - `findings/arcade-test16-mame2000-runtime-list-spoof-candidate.md`
+
+
+### Arcade Test16 FAIL; Test17 persistent core trace ready (2026-09-08)
+
+Test16 hardware result is identical to Test15 for both Pac-Man and Ms. Pac-Man:
+
+```text
+select game -> Loading..... -> black screen -> frozen device
+```
+
+No pause menu, no volume OSD, no recovery path. Runtime list-ID spoofing is therefore ruled out.
+
+Test17 stops changing emulator behavior and instruments the external MAME2000 core with persistent SD-card checkpoints.
+
+The loader remains the proven-size Test16 loader because loader-side file tracing exceeded the verified firmware cave. The traced core creates fs-synced files at SD root:
+
+```text
+MAME17-11.txt  entered core C entry
+MAME17-12.txt  C/newlib runtime init complete
+MAME17-13.txt  ROM path constructed
+MAME17-14.txt  before retro_init
+MAME17-15.txt  retro_init returned
+MAME17-16.txt  immediately before stock run_emulator
+MAME17-17.txt  stock run_emulator returned
+```
+
+No `MAME17-11.txt` after the freeze means the failure occurs before core C entry and the next work belongs at the loader/control-transfer/cache boundary.
+
+Exact diagnostic:
+
+```text
+xgo-arcade-test17-mame2000-stage-trace.zip
+size              7,400,929 bytes
+ZIP SHA-256        6e15e251c10193ca0a09aba278d467ed00f191d5b7f322bb27e7185e894c3e24
+firmware SHA-256   9e9268226ed7315acf838180d68c9de138fce9dd4f80233cb65a55a2bb4585be
+loader SHA-256     3e4207b31d608275f5fad0592c73e4072f9f8431967864e623a980f3fce05179
+traced core SHA-256 20519be70fe6ca8a35a58e7eb0ade2195fd1fdc04095cc641bd06ab249be100f
+```
+
+Private CI run `34242919132` passed and archived the candidate; workflow artifact ID `10062878283`.
+
+Finding:
+`findings/arcade-test17-mame2000-persistent-stage-trace.md`
+
+Hardware procedure: test Pac-Man only, hard-power after freeze, inspect SD root, and report the highest numbered `MAME17-xx.txt` file present. If none exists, explicitly report that no MAME17 checkpoint file was created.
