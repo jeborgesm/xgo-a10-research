@@ -1569,3 +1569,39 @@ Hardware priorities:
 1. verify lists 7-10 still run stock;
 2. test Pac-Man and Ms. Pac-Man in fifth Arcade for speed/video/audio/controls/pause/quit;
 3. if successful, expand Classic Arcade to Galaga/Frogger/Donkey Kong/Mario Bros./Asteroids.
+
+
+### Arcade Test15 hardware FAIL; Test16 runtime-list diagnostic ready (2026-09-08)
+
+Test15 hardware result:
+- Pac-Man -> black screen, device unresponsive;
+- Ms. Pac-Man -> black screen, device unresponsive;
+- no usable pause/quit recovery.
+
+This is classified as external-core integration/runtime failure, not evidence that MAME2000 cannot emulate the games.
+
+Repository evidence re-confirms the stock Arcade path globals are already resolved before the runtime hook, so the leading Test15 mismatch is now the active frontend list identity. Old proven MAME2000 Test12 ran as list ID 7; new Classic Arcade runs as dormant list ID 11.
+
+Test16 changes only the loader runtime identity:
+- frontend remains fifth Arcade/list 11;
+- loader gates on list 11;
+- immediately before external MAME entry, ACTIVE_LIST_ID is temporarily set to 7;
+- after core return it is restored to 11;
+- lists 7-10 remain stock FBA.
+
+Exact Test16 candidate:
+
+```text
+xgo-arcade-test16-mame2000-classic.zip
+size              7,400,685 bytes
+ZIP SHA-256        2c7ee9ad37c916d01d7b2425c99140c31f35b37ec3affea2cfca71acd9418ce7
+loader SHA-256     be020660480cc22da4a29ae820577721d47596aa1c5f566b5d2260078f57a37d
+MAME2000 SHA-256   abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+firmware SHA-256   09eb51ed55a620439bd42e1f701a4bb9a1e4e77778a14c2d623c1570cf082e1d
+```
+
+Private CI run `34238269652` passed and archived the candidate; artifact ID `10060835366`.
+
+Findings:
+- `findings/arcade-test15-hardware-fail-black-screen.md`
+- `findings/arcade-test16-mame2000-runtime-list-spoof-candidate.md`
