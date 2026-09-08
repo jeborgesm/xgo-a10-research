@@ -1287,14 +1287,14 @@ Source:
 
 The archived original-card file inventory independently contains:
 
-| Folder | Physical files on preserved card | Visible XGO catalog | Physical minus visible |
+| Folder | Physical ROM files on preserved card | Visible XGO catalog | ROMs minus visible |
 |---|---:|---:|---:|
-| FC | 773 | 744 | **29** |
-| SFC | 1080 | 929 | **151** |
-| MD | 834 | 788 | **46** |
-| GB | 976 | 885 | **91** |
-| GBC | 974 | 958 | **16** |
-| GBA | 1149 | 626 | **523** |
+| FC | **764** (757 .zfc + 7 .nes) | 744 | **20** |
+| SFC | **1078** (1065 .zsf + 13 .smc) | 929 | **149** |
+| MD | **833** (.zmd) | 788 | **45** |
+| GB | **973** (967 .zgb + 6 .gb) | 885 | **88** |
+| GBC | **973** (.zgb) | 958 | **15** |
+| GBA | **656** (.zgb; excludes 490 .sav files) | 626 | **30** |
 
 This is an important three-layer result:
 
@@ -1309,7 +1309,7 @@ visible synchronized game catalogs
 The alternate published A10 list is also **not** simply "our physical ROM directories fully indexed":
 
 - for FC/SFC/MD/GB/GBC, the alternate list is larger than both our visible catalog and, in several cases, our physical folder payload;
-- for GBA, our preserved card physically contains far more files (1149) than either our visible catalog (626) or the alternate A10 list (762).
+- for GBA, the preserved card contains 656 ROM files versus 626 visible catalog entries, while the alternate A10 list contains 762 entries; the earlier raw folder count of 1149 was inflated by 490 .sav files and is explicitly rejected.
 
 Therefore at least two materially different A10/DY10 content assemblies existed, and neither can be modeled as merely "same ROM set, different menu count."
 
