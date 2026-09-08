@@ -1950,3 +1950,119 @@ A future public XGO recovery package could be valuable if it cleanly separates:
 4. exact firmware hashes and board/revision compatibility warnings.
 
 This is a future documentation/release consideration, not a current firmware-change task.
+
+
+
+## 2026-09-07 continuation update — exact A10 two-player accessory and real-world no-card recovery failure
+
+Two independent exact-family leads now connect the preserved A10 hardware to its external-controller packaging and to a real recovery failure caused by missing SD software.
+
+### Exact joystick/six-button A10 was sold as a two-player package
+
+Factory-origin/export product artwork explicitly labels:
+
+```text
+A10 (doubles)
+Game handle
+Ten thousand games
+10000mAh
+```
+
+and visibly shows:
+
+- the exact transparent `XGO PLUS+ 10000MAH` joystick/six-button A10;
+- a separate beige game controller;
+- the same product family marketed for two-player use.
+
+This is stronger than generic text claiming controller support because the accessory is pictured with the exact A10 gaming front end.
+
+Current classification:
+
+```text
+exact A10 external-controller bundle   CONFIRMED externally
+controller electrical protocol         UNKNOWN
+connector pinout/type                  UNKNOWN
+controller internal electronics        UNKNOWN
+```
+
+Engineering significance:
+
+> The physical accessory independently corroborates the dedicated `Handle Interface` already observed on the A10 enclosure and reconstructed in XGO software. The controller itself is now a first-class artifact target because its plug/wiring may expose the physical side of the serial/controller protocol.
+
+Do not infer connector type or signaling voltage from the product render alone.
+
+### Used XGO Plus+ 10000mAh unit sold specifically as a software-recovery object
+
+A Tradera listing for:
+
+```text
+XGO Plus+ Handhållen Spelkonsol + powerbank
+```
+
+describes a 10000mAh XGO Plus+ unit that **does not start**.
+
+The seller states that:
+
+- the included microSD card is 128GB;
+- the card is empty / lacks the program software;
+- the console therefore does not boot;
+- the seller does not know where to obtain the missing software;
+- the unit is being sold as a repair/renovation object.
+
+Evidence:
+- Tradera item 690599915
+- an earlier near-identical listing, item 679788287, appears to be the same unsold/relisted unit rather than an independent second failure.
+
+### Confidence discipline
+
+The Tradera evidence is **STRONG owner/recovery evidence for the XGO Plus+ 10000mAh family**, but several details must remain unresolved:
+
+- the publicly indexed listing text does not expose enough photographs to verify every exact enclosure detail against the preserved specimen;
+- the 128GB card must **not** be treated as original stock capacity;
+- it may be a replacement card inserted after the original contents were lost;
+- the seller's diagnosis that missing SD software alone causes the failure is plausible and consistent with the architecture, but has not been reproduced on that specific unit.
+
+Therefore:
+
+```text
+XGO Plus+ 10000mAh no-boot unit          STRONG owner evidence
+missing/empty SD associated with failure STRONG report
+128GB as factory stock capacity          UNKNOWN / do not infer
+exact firmware revision                  UNKNOWN
+```
+
+### Convergence with the factory bare-A10 SKU
+
+This owner failure now complements two independent facts already in the matrix:
+
+```text
+1688 exact A10:
+  A10（无卡无游戏）
+  factory bare/no-card SKU
+
+Reddit owner:
+  XGO A10 purchased without stock SD
+  unable to recover using unrelated firmware
+  PARTIAL exact-device attribution
+
+Tradera owner:
+  XGO Plus+ 10000mAh
+  empty/missing-software SD
+  unit does not boot
+  sold as repair object
+```
+
+Together they strongly support a practical recovery problem:
+
+> A10-family hardware can circulate without the product-specific TF software bundle, while public recovery images/documentation are difficult to locate.
+
+This strengthens the future value of a revision-aware XGO recovery guide built from preserved, hashed artifacts.
+
+### Immediate accessory/recovery search targets
+
+1. standalone A10 / DY10 / XGO PLUS `手柄` listings;
+2. close-up photographs of the game-handle plug;
+3. controller PCB or cable repair listings;
+4. exact no-card / empty-card A10 owner reports;
+5. replacement/original TF-card listings;
+6. seller support packages for restoring `无程序`, `卡丢失`, `不开机` units.
