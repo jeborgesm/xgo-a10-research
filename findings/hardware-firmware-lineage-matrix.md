@@ -316,3 +316,61 @@ Do not interpret a mixed Douyin topic page titled `芯果游戏机充电宝怎�
 ### Rejected synthesized A10 manual mismatch
 
 A current third-party generated “ZUIDID A10” manual/listing was rejected as an exact-XGO source because its dimensions/display/platform claims conflict materially with the authenticated XGO/A10 physical fingerprint. It is retained as naming noise only.
+
+
+### MechZone A10 original Banggood SKU recovered — STRONG provenance key
+
+A surviving coupon/price-tracker outbound link preserves the now-dead original Banggood product URL for the exact MechZone A10:
+
+```text
+MechZone-A10-Fast-Handheld-Charging-Game-Machine-Power-Bank-22_5W-37Wh-10000mAh-Built-in-10000+-Games-External-Battery-Power-Supply-Gaming-Console-p-2017036.html
+?ID=6287830
+&cur_warehouse=CN
+```
+
+Recovered identifiers:
+
+```text
+Banggood product ID: 2017036
+Banggood option/variant ID: 6287830
+warehouse: CN
+```
+
+Contemporary product mirrors reproduce the exact physical/spec fingerprint:
+- model A10;
+- 67 × 141 × 20 mm;
+- 10000mAh nominal;
+- 5800mAh / 37Wh rated;
+- 22.5W wired;
+- 15W wireless;
+- 10000+ games.
+
+The preserved package-description mirror lists the A10, Type-C cable, and user manual but does not separately enumerate a TF card. This is **not sufficient** to conclude that no TF card was supplied because a preinstalled card may have been treated as part of the device.
+
+The numerical Banggood IDs are retained as high-value archival/search keys for:
+- Wayback/cache recovery;
+- old buyer reviews/questions;
+- CDN/image mirrors;
+- reseller databases;
+- surviving stock.
+
+No authenticated MechZone TF-card image or `bisrv.asd` has yet been recovered.
+
+### Exact JD transparent-black seller/item pair recovered — STRONG retail provenance
+
+The exact transparent-black 10000mAh/10000-game XGO SKU is directly exposed at:
+
+```text
+JD item: 10101813502820
+seller: 鲸零数码专营店
+variant wording: 至尊版透明黑〖1万毫安+万款游戏+磁吸充电宝〗
+```
+
+The item is categorized by JD as a 芯果 游戏机充电宝 product and currently has a substantial review corpus indexed at the category level.
+
+Why this matters:
+- it provides a concrete Chinese seller attached to an exact physical/content SKU;
+- seller after-sales is a plausible location for replacement-card/recovery material;
+- the product/item ID is an exact search key for archived reviews, owner complaints, and mirrors.
+
+Current indexed searches did **not** expose a public TF-card replacement package or seller support download from 鲸零数码专营店. Keep the seller as an after-sales lead; do not infer card contents without direct evidence.
