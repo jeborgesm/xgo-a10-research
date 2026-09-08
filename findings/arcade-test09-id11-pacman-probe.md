@@ -3,7 +3,7 @@
 Date: 2026-09-07
 Branch: `research-game-list-arcade-expansion`
 
-Status: **hardware candidate; NOT golden**
+Status: **SUPERSEDED BEFORE HARDWARE TEST — XGO hardware exposes only four Arcade pages**
 
 ## Goal
 
@@ -129,3 +129,12 @@ Test09 does not alter:
 - native SNES/CPS1 scheduler work.
 
 Artwork is intentionally a blank thumbnail and is outside this probe.
+
+
+## Correction after direct hardware observation
+
+The XGO UI exposes only four Arcade pages. Although `Foldername.ini` contains five inherited `ARCADE` definitions and resource-table ID 11 is `None / None / None`, that fifth inherited slot is not reachable in the shipped frontend navigation.
+
+Therefore Test09 must **not** be used as a hardware test expecting a fifth visible page. It remains useful only as evidence for the dormant ID-11 resource hypothesis.
+
+The next branch target is to trace and deliberately extend the visible Arcade page selector/navigation from four pages to five while preserving the existing CPS1/CPS2/NeoGeo/IGS mappings.
