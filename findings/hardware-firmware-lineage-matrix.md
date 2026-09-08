@@ -1539,3 +1539,138 @@ Future exact-device hardware discovery should therefore continue emphasizing:
 - image-based PCB matching;
 - seller after-sales/support material.
 
+
+
+
+## 2026-09-07 continuation update — original Alibaba A10 product-art corpus recovered
+
+The Ruten mirror of the no-card A10 offer exposes the original Alibaba/1688 product-detail images directly from `cbu01.alicdn.com`.
+
+These images are stronger than reseller text because they are the wholesale listing's source artwork.
+
+### Exact factory-origin A10 identity
+
+The image set visibly shows the same transparent XGO enclosure and carries:
+
+```text
+XGO PLUS+ 10000MAH
+```
+
+One source image states:
+
+```text
+10000mAh
+移动游戏电源
+无线磁吸
+万款游戏
+22.5W
+```
+
+Another explicitly says:
+
+```text
+这就是A10游戏磁吸充电宝的魅力
+```
+
+("this is the charm of the A10 gaming magnetic power bank").
+
+A dedicated specification card gives:
+
+```text
+产品型号：A10
+无线充电：MAX 15W
+电池容量：10000mAh
+游戏数量：10000
+额定容量：5800mAh 37Wh
+尺寸：67x141x20mm
+输入：Type-C 5V=3.1A | 9V=2.22A | 12V=1.67A
+输出：Type-C 5V=2A | 9V=2.22A | 12V=1.67A
+电池类型：聚合物
+```
+
+The same source-art set also shows:
+- exact joystick + Select/Start geometry;
+- six-button face cluster;
+- AV/TF/USB-C/speaker edge arrangement;
+- 141 x 67 x 20 mm dimensions;
+- rear magnetic charging coil artwork;
+- TV/external-display use;
+- aviation-carry marketing;
+- transparent "mechanical/cyberpunk" shell styling.
+
+Source image URLs are under Alibaba image owner namespace:
+
+```text
+...2213313290698-0-cib.jpg
+```
+
+Evidence:
+- Ruten mirror:
+  https://www.ruten.com.tw/item/22631283549308/
+- Alibaba CDN source images exposed through the mirror.
+
+### Source-art timestamp clue
+
+The image URLs include cache/query timestamps around:
+
+```text
+1733455713264 / 1733455713265
+```
+
+which correspond to early December 2024.
+
+Treat this only as a **source-art publication/cache timestamp clue**, not a product launch date. The A10/DY10 product itself is documented earlier.
+
+### Wholesale offer family may extend beyond offer 754381935521
+
+A separate 1688-indexed offer:
+
+```text
+863734007834
+```
+
+uses near-identical factory boilerplate:
+
+```text
+游戏机生产工厂
+掌上游戏机充电宝
+无线充电功能
+工厂直销8/16/32位游戏机
+游戏机充电宝
+OEM定制
+大量出货
+主要出口东南亚
+```
+
+This may represent:
+- the same supplier with a newer product;
+- the same OEM cluster copying shared boilerplate;
+- or a separate reseller.
+
+Do **not** join it to the A10 supplier yet. Exact seller-account/image-owner overlap has not been proven.
+
+### Supplier identity status
+
+The Alibaba image namespace number `2213313290698` did not resolve through public indexing to a named 1688 storefront.
+
+Therefore:
+
+```text
+offer 754381935521          CONFIRMED exact A10 wholesale offer
+Alibaba source-art corpus   CONFIRMED exact A10
+seller/company identity     UNKNOWN
+offer 863734007834 relation PARTIAL / pending
+```
+
+### Rejected OEM lead: HOGUDA
+
+A Russian conformity aggregation lists `a10` among hundreds of handheld-console model strings under HOGUDA TECHNOLOGY (SHENZHEN) CO., LTD.
+
+This is **not accepted as XGO A10 manufacturer evidence** because:
+
+- the declaration lumps together unrelated Anbernic, Powkiddy, SF2000 and generic model names;
+- HOGUDA's own indexed company history/products center on e-cigarettes, car-key electronics and unrelated consumer electronics;
+- no exact 10000mAh/37Wh/XGO PLUS enclosure match was found.
+
+Record as rejected/noise, not lineage evidence.
+
