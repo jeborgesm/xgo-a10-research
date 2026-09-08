@@ -151,3 +151,20 @@ Until a firmware/PCB match is found:
 ## OS-label correction
 
 The earlier "Linux" wording came from secondary handheld catalogs. It should not be used to connect DY10 to A10. The preserved A10 firmware belongs to the H1512/ALi TDS2 environment. DY10 remains a strong direct-lineage candidate because of its enclosure, power subsystem, TF storage, emulator mix, TV/controller support and chronology—not because of a Linux label.
+
+
+## 2026-09-07 exact-specimen convergence update
+
+The later physical specimen has now closed one major identity gap: its rear label directly reads **`Model number: A10`** while retaining the exact XGO transparent 10000mAh / 5800mAh-rated / 15W-wireless physical fingerprint.
+
+Separately, a surviving exact A10 marketplace image set shows the XGO PLUS+ enclosure bundled with a **32GB TF card** and 10,000-game/10-emulator marketing.
+
+This independently converges with the 2023 XGO crowdfunding campaign's **32GB TF card** specification.
+
+Updated interpretation:
+- **CONFIRMED:** exact preserved specimen is physically labeled A10.
+- **STRONG:** 32GB removable-card provisioning spans the 2023 XGO launch generation and a later exact A10 retail configuration.
+- **STILL UNPROVEN:** DY10 and A10 firmware/card images are binary-identical.
+- **STILL REQUIRED:** authenticated DY10/A10 stock-card image, PCB photo, or firmware hash comparison.
+
+This makes the original 32GB card a substantially higher-value direct-lineage artifact than generic A10/DY10 firmware search results.
