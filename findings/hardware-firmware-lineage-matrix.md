@@ -1041,3 +1041,207 @@ Therefore owner archaeology should move toward:
 - Chinese image search for bare boards and LCD assemblies.
 
 Do not infer failure modes from review counts alone.
+
+
+
+## 2026-09-07 continuation update — exact A10 OEM/rebrand and independent catalog evidence
+
+The XGO-first Chinese/OEM search has now produced three unusually strong exact-device anchors.
+
+### MechZone A10 is a STRONG exact-hardware rebrand candidate
+
+Multiple export-market sources sell a `MechZone A10` with the same unusually specific hardware fingerprint as the preserved XGO A10 specimen:
+
+```text
+model                 A10
+dimensions            141 x 67 x 20 mm
+nominal battery       10000mAh
+rated capacity        5800mAh / 37Wh
+wired output          22.5W
+wireless charging     15W
+controls              joystick + six face buttons
+content claim         10 emulators / 10000+ games
+video output          supported
+```
+
+Published product photography is visually consistent with the same transparent landscape enclosure.
+
+This should be treated as a **rebrand/OEM identity**, not proof of firmware equality.
+
+Evidence:
+- https://www.notebookcheck.com/Mechzone-A10-Gaming-Handheld-ist-gleichzeitig-eine-Powerbank-und-unterstuetzt-drahtlose-Ladung.881770.0.html
+- https://www.tvboxaustralia.com.au/product/mechzone-a10-fast-handheld-charging-game-machine-power-bank-22-5w-37wh-10000mah-built-in-10000-games-external-battery-power-supply-gaming-console/
+- https://couponsfromchina.com/mechzone-a10-charging-game-console-power-bank-22-5w-37wh-10000mah/
+
+Engineering value:
+
+> A MechZone A10 stock TF card or `bisrv.asd` is now a high-value exact-board comparison artifact. If hashes differ, it may expose another factory bundle or board-support revision of the same enclosure.
+
+### Original mainland wholesale offer recovered: 1688 offer 754381935521
+
+A Taiwanese Ruten mirror of the product contains Alibaba-hosted `cbu01.alicdn.com` images and a factory-style description. Searching an exact sentence from that listing recovers the originating 1688 product ID through a public 1688 mirror:
+
+```text
+1688 offer ID: 754381935521
+canonical form:
+https://detail.1688.com/offer/754381935521.html
+```
+
+The copied supplier text states:
+
+- factory-direct 8/16/32-bit game consoles;
+- OEM customization;
+- bulk shipment;
+- main export markets in Southeast Asia;
+- exact A10 platform specifications;
+- selectable configuration `A10（无卡无游戏）` — **A10 with no card / no games**.
+
+The product-detail imagery is definitive for the exact enclosure. It visibly carries:
+
+```text
+XGO PLUS+ 10000MAH
+```
+
+and gives:
+
+```text
+model             A10
+battery           10000mAh
+rated             5800mAh 37Wh
+wireless          MAX 15W
+games             10000
+size              67 x 141 x 20 mm
+Type-C input      5V=3.1A | 9V=2.22A | 12V=1.67A
+Type-C output     5V=2A   | 9V=2.22A | 12V=1.67A
+battery type      polymer
+```
+
+Evidence:
+- 1688 mirror index:
+  https://1688.ru/product/754381935521
+- live copied retail page with Alibaba image assets:
+  https://www.ruten.com.tw/item/22631283549308/
+- original image CDN objects are under `cbu01.alicdn.com` and encode Alibaba seller/image object ID `2213313290698`.
+
+### Significance of `A10（无卡无游戏）`
+
+This is the strongest external evidence yet that the **A10 hardware is sold independently of its TF-card/game bundle**.
+
+That independently corroborates the architecture recovered from the preserved specimen:
+
+```text
+A10 hardware
+  + boot/platform firmware
+  + removable TF card
+      + bisrv.asd / Resources
+      + catalogs
+      + ROM payload
+```
+
+Do not infer that a no-card unit is usable without provisioning. The listing only proves a bare hardware SKU exists.
+
+### Independently published A10 game list maps directly onto XGO stock resources
+
+A 221-page Scribd document titled `A10 Gam..st` publishes categorized English filenames and Chinese titles for an A10 game set.
+
+The document is not merely generically similar. Distinctive sequences match the preserved XGO catalogs directly.
+
+#### GBC byte/order-level sequence match
+
+The public A10 document begins its GBC section with the same ordering found in XGO `Resources/pnpui.tax`, including distinctive filenames such as:
+
+```text
+10-Pin Bowling.zgb
+4x4 World Trophy.zgb
+720 Degrees.zgb
+A Bug's Life.zgb
+Action Man - Search for Base X.zgb
+...
+ARK OF THE WOLVES Colour 2003 (Cn).zgb
+...
+Atelier Elie- Salberg no Renkinjutsushi (Cn).zgb
+...
+Austin Powers - Oh, Behave!.zgb
+Azure Dreams (Cn).zgb
+...
+Bakuhashi Senki Metal Walker - Kkoute No Yuujyou (Cn).zgb
+...
+Billy Bob's Huntin' 'n' Fishin'.zgb
+BioHazard 3 - last escape (Cn).zgb
+```
+
+The preserved XGO GBC filename catalog:
+
+```text
+pnpui.tax = 958 entries
+```
+
+contains these unusual strings in the same sequence.
+
+#### Other system starts also map directly
+
+Public A10 sections align with the preserved XGO catalog organization:
+
+```text
+FC   -> rdbui.tax
+SFC  -> urefs.tax
+MD   -> scksp.tax
+GB   -> vdsdc.tax
+GBC  -> pnpui.tax
+GBA  -> vfnet.tax
+```
+
+The A10 Arcade sections also reproduce the same curated CPS1/CPS2/NeoGeo-family title organization seen in the XGO resources.
+
+Evidence:
+- https://www.scribd.com/document/881855797/A10-Gam-st
+
+### Important divergence: the public A10 catalog exposes entries missing from our preserved FC list
+
+The public A10 FC section begins exactly like the preserved XGO list through the Contra, Adventure Island, Double Dragon, HotBlood and Mega Man groups, but then includes:
+
+```text
+Donkey Kong
+Donkey Kong JR
+Donkey Kong 3
+Bomber Man 1
+Bomber Man 2
+```
+
+before continuing into Ninja Turtles / Ninja Gaiden / 1942 / 1943 / 1945.
+
+Our preserved XGO `rdbui.tax` has 744 entries and at that point contains:
+
+```text
+Mega Man 6
+Bomber Man 1
+Ninja Turtles 1
+...
+```
+
+The three Donkey Kong entries and `Bomber Man 2` are absent from that catalog.
+
+Crucially, earlier independent game-list archaeology already proved that the user's stock card physically contains:
+
+```text
+D:\FC\Bomber Man 2.zfc
+```
+
+even though it is omitted from `rdbui.tax`.
+
+Therefore the public A10 list is likely evidence of a **different factory catalog/content revision**, not merely a transcription of our exact card.
+
+This is highly significant:
+
+> At least one A10 content bundle appears to expose a game that physically exists but is hidden by the preserved specimen's catalog.
+
+That independently supports the stable-merge scanner work and shows that OEM catalog variants can differ even within the exact A10 product line.
+
+### Updated exact-device artifact priority
+
+1. **Recover 1688 offer 754381935521 supplier identity and original shop page.**
+2. **Locate a stock card from the no-card/500-game/alternate A10 bundle family.**
+3. **Locate a MechZone A10 TF card or firmware.**
+4. **Preserve/download the published A10 game-list document if provenance permits and compare every system list programmatically.**
+5. **Search the alternate A10 catalog for all entries absent from the preserved XGO catalogs and check whether those ROMs physically exist on the user's card.**
+6. **Use those differences as historical evidence for OEM catalog-generation behavior.**
