@@ -464,3 +464,30 @@ A10 游戏磁吸充电宝 32G
 10000mAh 移动游戏电源 32G
 GAME POWER BANK A10 32GB
 ```
+
+
+### Alternate A10 / Smartberry-Royaldraid-Pogopirate branch — HOLD SEPARATE
+
+A Southeast-Asian/export search seam exposes several products sold under `A10` and brands including Smartberry, Royaldraid, and Pogopirate. Indexed descriptions commonly cluster around:
+- 32GB TF card;
+- ~5000 games;
+- 20W wired charging;
+- dimensions around 14.2 × 6.6 × 2.5 cm.
+
+These values materially differ from the **confirmed physical XGO specimen**:
+- 141 × 67 × 20 mm;
+- 22.5W wired;
+- 15W wireless;
+- 10000mAh / 5800mAh rated;
+- exact XGO PLUS+ enclosure;
+- physical rear label `Model number: A10`.
+
+Therefore this export branch is **not merged into the exact XGO A10 lineage**. It may represent:
+1. a related A10 shell/revision;
+2. seller-generated inaccurate specifications;
+3. a repack/rebrand with a different card/content tier;
+4. unrelated A10 naming collision.
+
+Promotion requires exact enclosure imagery plus one of: matching rear label, exact 141×67×20 dimensions/22.5W ratings, card/binary comparison, or PCB evidence.
+
+This is also a warning that `A10 + 32GB` alone is not a sufficient exact-device search key.
