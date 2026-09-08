@@ -205,3 +205,50 @@ Do not equate Royaldraid/Pogopirate/MechZone/XGO firmware without card-image or 
 ### Rejected noise reinforced
 
 Generic searches on `10000mAh / 37Wh / 5800mAh / 15W / 22.5W` return many ordinary power banks. Those specifications alone are not identifying evidence. Exact-enclosure/control geometry, card layout, PCB, source artwork, or binary evidence is required.
+
+
+### Exact 10000mAh XGO content-tier split expanded — STRONG retail evidence
+
+A preserved JD category page exposes multiple selectable SKUs within the same exact XGO 10000mAh product family:
+
+```text
+巴萨蓝 [1万毫安 + 1000款游戏 + 无线…]
+漫威联名款 [1万毫安 + 500款游戏 + …]
+至尊版透明黑 [1万毫安 + 万款游戏 …]
+A10黑 [10000mAh + 万款游戏 + 磁吸充电宝]
+```
+
+The same page separately lists the Marvel:
+- 500-game base version;
+- dual-controller + 10,000-game premium version;
+- 10,000-game premium version.
+
+This expands the already-confirmed factory bundle split. The exact 10000mAh enclosure family was sold with at least **500-, 1000-, and 10,000-game content configurations** in Chinese retail indexing.
+
+Implication: an authenticated 500- or 1000-game card is not expected to be content-identical to the preserved 10,000-game specimen, even if the enclosure and base hardware match. Comparison should be performed at:
+- `bisrv.asd` hash/size;
+- `Resources` hashes;
+- catalog files;
+- emulator/system selection;
+- physical ROM set.
+
+Evidence class: **STRONG retail/catalog evidence**, not yet firmware-hash equivalence.
+
+### Exact-owner/video leads — PARTIAL
+
+Bilibili indexing contains exact-product short videos, including:
+- `芯果 XGO 磁吸充电宝游戏机！1万毫安 + 万款街机游戏…`
+- `芯果XGO游戏机充电宝MagSafe无线磁吸…22.5W快充掌机…`
+
+These are useful account-level/search-graph leads for owner questions, TF-card replacement, and after-sales material. No exact teardown, firmware package, or card image has yet been recovered from these indexed clips.
+
+### Exact specialist-reseller lead — PARTIAL
+
+Vietnamese retro-handheld specialist Game Tâm An indexes an `XGO A10` with the exact unusual emulator set:
+```text
+FC / SFC / GBA / GBC / GB / Megadrive
+IGS / CPS1 / CPS2 / NEOGEO
+```
+and the 10000mAh / 22.5W product identity.
+
+This is not OEM evidence and does not prove firmware equivalence. It is retained as a potentially useful surviving-stock / replacement-card lead because the seller specializes in retro handhelds rather than generic electronics.
