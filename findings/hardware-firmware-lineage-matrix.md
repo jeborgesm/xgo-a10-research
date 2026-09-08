@@ -600,3 +600,73 @@ Interpretation:
 - **NOT PROVEN:** that all 10,000-game A10 units used 32GB, despite exact external evidence for at least one 32GB bundle.
 
 This increases the value of recovering a card tied to a specific Chinese SKU/seller rather than an anonymous `A10 firmware` archive.
+
+
+### Mainland A10 practical-mod/repair search status — indexed web boundary
+
+A renewed mainland-China search using the **confirmed physical A10 identity** has now covered exact/product-class combinations with:
+
+```text
+TF卡 / 原装卡 / 游戏卡 / 32G / 32GB
+补卡 / 换卡 / 扩容 / 卡丢失 / 卡坏
+游戏列表 / 游戏清单 / 卡包 / 镜像
+百度网盘 / 夸克网盘
+系统包 / 固件 / 刷机
+拆机 / 主板 / 维修
+坏机 / 尸体机 / 配件机 / 仅主机 / 屏坏
+闲鱼 / 二手
+```
+
+and exact domestic identifiers including:
+- `A10黑`;
+- `至尊版透明黑`;
+- `芯果 A10`;
+- `XGO A10`;
+- `10000mAh 移动游戏电源`;
+- `A10（无卡无游戏）`.
+
+Result as of 2026-09-07:
+- **NO authenticated indexed exact-A10 TF-card image/download recovered**;
+- **NO indexed exact-A10 teardown/PCB photograph recovered**;
+- **NO indexed exact-A10 broken/parts-only listing with PCB exposure recovered**;
+- **NO indexed exact-A10 recovery/flash package recovered**.
+
+This is a useful search-boundary result rather than proof of absence.
+
+Most likely remaining locations:
+1. seller after-sales/cloud links;
+2. 1688/Taobao product attachments or chat-only support;
+3. Douyin/Bilibili descriptions/comments;
+4. Xianyu listings not exposed to ordinary search indexing;
+5. surviving physical stock cards from Chinese sellers/owners.
+
+Do not repeat broad indexed searches for the above terms unless a new identifier appears.
+
+### Jncota current manufacturing profile — CONFIRMED organizational capability
+
+A 2024 Chinese factory profile for `深圳市晶科泰科技有限公司` identifies it as a manufacturer of:
+- home game consoles;
+- handheld game consoles;
+- game-console accessories;
+
+and states that its licensed business scope includes **production** of game consoles and accessories. The profile also reproduces the historical landline:
+
+```text
+0755-27929877
+```
+
+This confirms that Jncota remains a real game-hardware manufacturing organization, not merely a historical brand name.
+
+Evidence discipline:
+- this strengthens the organizational plausibility of XGO/Jncota manufacturing/OEM involvement;
+- it does **not** identify Jncota as the physical assembler or board designer of the exact A10 without direct A10 factory/PCB/card evidence.
+
+### Patent/design-record search — useful but exact A10 still missing
+
+Chinese patent indexing confirms:
+- Jncota filed a utility model for a multifunction game-console/power-bank;
+- 深圳市前海芯果智能科技有限公司 continues to file game-console industrial designs.
+
+A targeted 2022–2024 assignee/title search did **not** recover an exact A10/transparent-10000mAh design patent.
+
+Retain patent databases as a secondary path if a new assignee, design name, or application number appears.
