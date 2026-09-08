@@ -1487,3 +1487,23 @@ Finding:
 The temporary CPS1 Pac-Man entry is diagnostic only, not the intended final organization.
 
 Stock-binary inventory also confirms compiled classic-era driver data beyond the four exposed stock families, including Pac-Man/Ms. Pac-Man, Phoenix, 1942/1943, Arkanoid, Pooyan, Route 16 and Mr. Do! families. Continue inventory after the audio A/B result.
+
+
+### Arcade Test11 hardware PASS — silence follows Pac-Man driver, not list ID (2026-09-07)
+
+Test11 A/B is complete.
+
+The exact same Pac-Man content was launched from:
+- fifth Arcade / list ID 11;
+- first Arcade / CPS1 list ID 7.
+
+Both paths produce normal playable Pac-Man with working controls and pause menu, but **no audio**.
+
+A second Pac-Man ROM-set variant (~27.7 KB vs ~13.8 KB original) also produces the same playable-but-silent behavior.
+
+Therefore list ID 11 is ruled out as the primary audio cause. The leading defect is inside the compiled Pac-Man/Namco sound path or its interaction with the XGO vendor FBA wrapper.
+
+Hardware finding:
+`findings/arcade-test11-hardware-audio-ab-pass.md`
+
+Next test should compare other dormant classic drivers using different sound hardware to determine whether silence is Namco-specific or general to hidden drivers.
