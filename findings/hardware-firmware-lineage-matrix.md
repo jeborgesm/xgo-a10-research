@@ -133,3 +133,101 @@ retail model
 ```
 
 This is now necessary because DY12 and DY19 both have evidence of revision-dependent software behavior, and Q19 demonstrates that even a platform-compatible application can boot with unusable display/input adaptation.
+
+
+
+## 2026-09-07 continuation update — X60 debug comparator and revision signals
+
+The post-Q19 search produced a new engineering-relevant comparator rather than another retail-name match.
+
+### X60 is now a strong debug-interface comparator
+
+4PDA contributor `bnister`, who owned and modified X60 hardware, reports:
+
+- X60 uses the **same underlying platform** as SF2000;
+- X60 omits the SF2000 `XN297` wireless-controller IC;
+- X60 uses a **different LCD**;
+- X60 scans buttons through a **different GPIO/pin**;
+- the board exposes **many test pads**;
+- he physically brought out a **UART / serial debug port** for development;
+- at least **two X60 hardware revisions** exist, including display-init differences between units.
+
+This materially strengthens the working rule that HC15xx-family products share the runtime/platform while moving display, controller and radio adaptation into product-specific board-support code.
+
+Engineering consequence for XGO:
+
+> X60 is now the best documented sibling precedent for a factory/debug UART on a close HC15xx-family board. XGO test-pad identification should prioritize clusters geometrically/electrically analogous to X60 UART/test pads before attempting blind probing.
+
+Evidence:
+- https://4pda.to/forum/index.php?showtopic=1067862&st=380
+- https://4pda.to/forum/index.php?showtopic=1067862&st=640
+- https://4pda.to/forum/index.php?showtopic=1067862
+
+### DY19 display specification disagreement is preserved as a revision clue
+
+Two maintained/community records disagree:
+
+- 4PDA DY19 header: **3.25 inch, 640x480**;
+- Handhelds Wiki: **3.2 inch, 320x240**.
+
+Do **not** collapse this to one value yet. DY19 already has revision-dependent firmware evidence, and X60 independently demonstrates multiple display revisions on the same retail model family. The disagreement is therefore retained as a possible DY19 panel/board-revision signal.
+
+Evidence:
+- https://4pda.to/forum/index.php?showtopic=1090810
+- https://handhelds.wiki/DY19_Power_Bank_and_Game_Console
+
+### PGP AIO Union X35 / X60 naming needs revision-aware handling
+
+The X35/X60 trail is useful but must remain **PARTIAL** because retail naming is inconsistent.
+
+Evidence recovered:
+
+- a 2023 SF2000 thread initially identified Russian-market PGP AIO Union X35 with X60;
+- `bnister` first corrected a C35/X35 mix-up, then concluded that the actual X35 appears to be X60 on the same chip/platform;
+- a later owner with PGP AIO Union X35 reported firmware similar but not identical to the Q19-class unit;
+- stock SF2000 firmware booted on both that Q19-class unit and PGP X35 with the **same mirrored-image + dead-controls** failure mode.
+
+This is useful as board-support-layer evidence, but **PGP AIO Union X35 must not be treated as a single immutable hardware identity** until PCB silkscreen + firmware hash are recovered.
+
+Evidence:
+- https://4pda.to/forum/index.php?showtopic=1067862&st=640
+- https://4pda.to/forum/index.php?showtopic=1090810&st=20
+- https://4pda.to/forum/index.php?showtopic=1060903&st=160
+
+### DY19 teardown recovery status
+
+The authenticated 4PDA teardown post by `{{XENON}}` is still indexed and confirms:
+
+- the unit was opened and photographed internally;
+- the processor marking had been deliberately removed;
+- the installed cell was physically judged to be about **4000 mAh**, despite 6000 mAh retail claims.
+
+However, direct attachment-object URLs/IDs were **not recovered** in this pass. Search-engine image retrieval did not surface the actual 4PDA PCB photographs. The DY19 PCB therefore remains the critical missing physical link.
+
+Evidence:
+- https://4pda.to/forum/index.php?showtopic=1090810&st=0
+
+## Supplemental comparator matrix — X60 / PGP X35
+
+| Evidence | X60 | PGP AIO Union X35 |
+|---|---|---|
+| HC15xx/SF2000-family platform | **CONFIRMED externally** by hardware owner | **STRONG/PARTIAL**; naming/revision ambiguity remains |
+| LCD adaptation | **CONFIRMED** different from SF2000; multiple display revisions reported | **STRONG** SF2000 boot can produce mirrored output |
+| Controller GPIO adaptation | **CONFIRMED** different button-scan pin from SF2000 | **STRONG** stock SF2000 can boot with dead controls |
+| XN297 wireless-controller IC | **CONFIRMED absent** on X60 comparator board | UNKNOWN |
+| UART/debug | **CONFIRMED externally** UART physically broken out for development; many test pads | UNKNOWN |
+| Firmware/card preservation | community BIOS/Resources and conversion packages exist | **CONFIRMED externally** full 7.5-GB card dump posted in 2026 |
+| Revision risk | **CONFIRMED** at least two hardware/display revisions | **HIGH**; retail naming overlaps X60/X35/C35 discussions |
+| Value to XGO archaeology | **HIGH — debug-pad and board-support comparator** | **MEDIUM — additional firmware/display/input comparator** |
+
+## Priority adjustment after this pass
+
+The search order is now:
+
+1. **DY19 teardown attachment recovery** remains the highest-value missing physical bridge.
+2. **X60 UART/test-pad geometry recovery** is promoted: recover the exact teardown frames or board photos showing the pads used by `bnister`.
+3. **Authentic Q19 stock card / bisrv.asd** remains the best way to bind the complete Q19 PCB corpus to software.
+4. **DY12 MY2024 exact PCB + firmware** remains necessary to separate it from early DY12.
+5. **DY14 stock application** remains necessary to connect its known H1512 board to software.
+6. **PGP AIO Union X35 card dump** is now a useful secondary binary comparator, but only if accompanied by specimen/revision provenance.
+
