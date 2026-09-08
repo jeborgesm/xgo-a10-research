@@ -1876,3 +1876,77 @@ Interpretation:
 > absence from ChargerLAB is now stronger than a failed keyword search; their own 700+ teardown index does not list an A10/DY10 teardown as of June 2026.
 
 Therefore repeated ChargerLAB searching for the exact A10 should be deprioritized unless new material is published.
+
+
+
+## 2026-09-07 continuation update — owner-reported no-card XGO A10 recovery failure
+
+A 2025 r/SBCGaming post provides a useful owner-side recovery case:
+
+```text
+title:
+Help! Need stock firmware dump for XGO A10
+
+owner report:
+bought XGO A10 without SD card
+attempted unrelated RK3566 custom firmwares
+all failed to boot
+requested original stock image
+```
+
+A later respondent corrected the owner's chipset assumption and described the device as an SF2000-family clone that still requires model-specific files. The respondent specifically identifies:
+
+```text
+key mapping
+screen orientation
+ROM list
+```
+
+as integrated into custom/model-specific files.
+
+Evidence:
+- https://www.reddit.com/r/SBCGaming/comments/1orgp5r/help_need_stock_firmware_dump_for_xgo_a10_rk3566/
+
+### Confidence
+
+Classify this as **PARTIAL owner evidence**, not direct exact-specimen proof.
+
+Reasons:
+- the post contains no visible enclosure/PCB photograph in the indexed page;
+- the owner's initial RK3566/RK817 identification is inconsistent with our direct H1512/HC15xx binary evidence and was challenged in the thread;
+- therefore the owner's hardware identification cannot be accepted literally.
+
+However, the recovery problem and the respondent's architectural description independently align with our confirmed XGO model:
+
+```text
+SF2000/HC15xx-family base
++ product-specific display adaptation
++ product-specific input/key mapping
++ product-specific game-list/resources
+```
+
+### Convergence with the mainland bare-A10 SKU
+
+Independent wholesale evidence already proves an exact transparent A10 SKU:
+
+```text
+A10（无卡无游戏）
+A10 — no card / no games
+```
+
+Therefore the Reddit report is operationally plausible: bare/no-card A10 units existed in the supply chain and could reach owners without the model-specific TF content required for normal operation.
+
+Do **not** claim that the Reddit unit is definitely the exact preserved XGO PLUS specimen until visual evidence is recovered.
+
+### Project implication
+
+There is a real documentation/recovery gap around no-card A10 units.
+
+A future public XGO recovery package could be valuable if it cleanly separates:
+
+1. legally redistributable recovery tooling/documentation;
+2. stock configuration/catalog metadata that can be reconstructed;
+3. user-supplied ROM content;
+4. exact firmware hashes and board/revision compatibility warnings.
+
+This is a future documentation/release consideration, not a current firmware-change task.
