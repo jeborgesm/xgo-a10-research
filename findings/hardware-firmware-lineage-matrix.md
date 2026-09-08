@@ -252,3 +252,67 @@ IGS / CPS1 / CPS2 / NEOGEO
 and the 10000mAh / 22.5W product identity.
 
 This is not OEM evidence and does not prove firmware equivalence. It is retained as a potentially useful surviving-stock / replacement-card lead because the seller specializes in retro handhelds rather than generic electronics.
+
+
+### Second exact Alibaba asset-owner namespace recovered — STRONG
+
+Visual-fingerprint tracing of the exact XGO PLUS+ 10000MAH enclosure recovered a coherent nine-image upstream Alibaba-style artwork set mirrored by Wekome India.
+
+All nine images carry the same Alibaba/Taobao asset-owner namespace:
+
+```text
+2209861332013
+```
+
+Example original-style filename:
+
+```text
+O1CN01q7ezfT1Qk0AL2P3zU__2209861332013-0-cib
+```
+
+The artwork set is exact-product evidence rather than specification-only similarity. It includes:
+- the exact transparent landscape XGO PLUS+ 10000MAH enclosure;
+- 141 × 67 × 20 mm dimensional artwork;
+- 10000mAh / 22.5W / 15W marketing artwork;
+- joystick/control closeups;
+- wireless-charge imagery;
+- AV/external-display usage imagery.
+
+This namespace is distinct from the previously recovered exact-source namespace:
+
+```text
+2213313290698
+```
+
+Interpretation:
+- **STRONG:** a second Alibaba source/seller account distributed the exact XGO artwork/product family.
+- **UNKNOWN:** the legal company/supplier identity behind `2209861332013`.
+- **NOT PROVEN:** that `2209861332013` and `2213313290698` are the same supplier, factory, or organization.
+- Wekome is retained only as an exact retail mirror that preserved the upstream filenames; it is not treated as the OEM.
+
+This provides a new supplier-tracing key independent of model-name search.
+
+### Live official XGO Douyin enterprise-shop path — CONFIRMED corporate path / exact A10 PARTIAL
+
+A current Douyin related-video graph identifies an uploader/account as:
+
+```text
+深圳市前海芯果智能科技有限公司企业店
+```
+
+This matches the independently established XGO brand-operation organization.
+
+The account is therefore a high-value current Chinese-platform path for:
+- seller after-sales material;
+- replacement TF-card support;
+- archived product clips;
+- owner questions/comments;
+- repair or recovery instructions.
+
+Current indexed results around the account include 芯果 游戏机充电宝 material and 10000mAh product-family content, but an exact A10/DY10 firmware/card/teardown post has **not yet** been authenticated.
+
+Do not interpret a mixed Douyin topic page titled `芯果游戏机充电宝怎么刷机` as proof that exact A10 flashing firmware is publicly available; visible indexed results include other XGO models.
+
+### Rejected synthesized A10 manual mismatch
+
+A current third-party generated “ZUIDID A10” manual/listing was rejected as an exact-XGO source because its dimensions/display/platform claims conflict materially with the authenticated XGO/A10 physical fingerprint. It is retained as naming noise only.
