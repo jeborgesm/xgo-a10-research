@@ -12,6 +12,8 @@ typedef int bool;
 #define ARCADE_FAMILY 0x40u
 #define FAMILY_MASK 0xffu
 #define MAXPATH 256
+#define XGO_STOCK_SYSTEM_DIR ((const char*)0x810a0eb0u)
+#define XGO_STOCK_GAME_NAME  ((const char*)0x8109fce8u)
 
 struct retro_game_info { const char *path; const void *data; size_t size; const char *meta; };
 struct retro_system_av_info;
@@ -60,16 +62,32 @@ extern volatile u32 XGO_ACTIVE_SYSTEM_FAMILY;
 static char rom_path[MAXPATH];
 static int state_stub(const char *p){(void)p;return 1;}
 
-static int build_rom_path(const char *filename)
+static int build_rom_path(void)
 {
-    const char *p,*base=filename,*dot=0; unsigned n=0,i;
-    static const char pre[]="/mnt/sda1/ARCADE/";
-    if(!filename) return 0;
-    for(p=filename;*p;p++){ if(*p=='/'||*p=='\\') base=p+1; if(*p=='.') dot=p; }
-    if(dot && dot>base) p=dot; else for(p=base;*p;p++);
-    for(i=0;pre[i];i++) rom_path[n++]=pre[i];
-    while(base<p && n+5<MAXPATH) rom_path[n++]=*base++;
-    rom_path[n++]='.';rom_path[n++]='z';rom_path[n++]='i';rom_path[n++]='p';rom_path[n]=0;
+    const char *dir=XGO_STOCK_SYSTEM_DIR;
+    const char *game=XGO_STOCK_GAME_NAME;
+    unsigned i=0,j=0;
+
+    if(!dir || !*dir || !game || !*game) return 0;
+
+    while(dir[i] && i<160 && j+1<MAXPATH)
+        rom_path[j++]=dir[i++];
+    if(i==0 || i>=160 || j+6>=MAXPATH) return 0;
+
+    rom_path[j++]='/';
+    rom_path[j++]='b';
+    rom_path[j++]='i';
+    rom_path[j++]='n';
+    rom_path[j++]='/';
+
+    i=0;
+    while(game[i] && i<80 && j+1<MAXPATH) {
+        unsigned char ch=(unsigned char)game[i++];
+        if(ch=='/' || ch=='\\') return 0;
+        rom_path[j++]=(char)ch;
+    }
+    if(i==0 || i>=80) return 0;
+    rom_path[j]=0;
     return 1;
 }
 
@@ -86,7 +104,8 @@ void __start(const char *filename,int load_state)
     void (*old_run)(void)=gfn_retro_run;
     void (*old_fs)(int)=gfn_frameskip;
 
-    if(!build_rom_path(filename)) return;
+    (void)filename;
+    if(!build_rom_path()) return;
     api=__core_entry_c();
     if(!api) return;
 
