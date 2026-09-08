@@ -1299,3 +1299,40 @@ Next engineering priorities after preservation/golden promotion:
 1. transaction marker + backup/recovery for interruption-safe triplet updates;
 2. box-art association for newly discovered games;
 3. Arcade wrapper-family classification and safe shared-`ARCADE` scanning.
+
+
+### Test08 GOLDEN promotion and branch closeout (2026-09-07)
+
+Test08 full console scanner is now promoted to golden after hardware PASS.
+
+Private vault:
+- repository: `jeborgesm/xgo-a10-artifacts`
+- golden path: `golden/xgo-game-list-test08-all-console-scanner.zip`
+- vault promotion commit: `68600639c93c9c33acbae6afcd9c67c5f8410053`
+
+Exact golden artifact:
+
+```text
+xgo-game-list-test08-all-console-scanner.zip
+size              4,921,057 bytes
+ZIP SHA-256        9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e
+firmware SHA-256   45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444
+scanner SHA-256    a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d
+```
+
+Golden registry ID:
+`game-list-test08-full-console-scanner`
+
+The `research-game-list-general-scanner` branch is ready to merge into `main`.
+
+Next branch objective:
+`research-game-list-arcade-expansion`
+
+Priority for that branch is arcade discovery and expansion, ahead of box-art work:
+1. safely classify and refresh the existing CPS1/CPS2/NeoGeo/IGS curated pages from the shared `ARCADE` directory;
+2. investigate adding arcade families not currently represented in the stock four curated groups;
+3. target user-requested classics as concrete compatibility goals: Asteroids, Pac-Man, Ms. Pac-Man, Donkey Kong, Mario Bros., Frogger, and Galaga;
+4. determine whether an existing stock arcade core can run any of those families or whether a new lightweight external arcade core/frontend is required;
+5. preserve the golden Test08 six-console Refresh behavior while extending arcade support.
+
+Box-art association remains deferred behind arcade expansion.
