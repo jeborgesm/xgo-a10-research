@@ -35,17 +35,18 @@ static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
 static volatile u32 *const SND_TASK_FLAGS = (void *)0x80c2e80c;
 static volatile unsigned char *const ACTIVE_LIST_ID = (void *)0x80c33980u;
 
+static char trace_path[]="/mnt/sda1/MAME17-00.txt";
+static const char trace_ok[]="ok\n";
+
 static void trace_stage(unsigned stage)
 {
-    char path[]="/mnt/sda1/MAME17-00.txt";
-    static const char ok[]="ok\n";
     FILE *f;
     if(stage>99u) return;
-    path[17]=(char)('0'+((stage/10u)%10u));
-    path[18]=(char)('0'+(stage%10u));
-    f=fw_fopen(path,"wb");
+    trace_path[17]=(char)('0'+((stage/10u)%10u));
+    trace_path[18]=(char)('0'+(stage%10u));
+    f=fw_fopen(trace_path,"wb");
     if(!f) return;
-    fw_fwrite(ok,1,3,f);
+    fw_fwrite(trace_ok,1,3,f);
     fw_fclose(f);
     fs_sync_wrap();
 }
