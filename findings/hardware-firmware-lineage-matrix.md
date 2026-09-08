@@ -665,3 +665,126 @@ H1512/HC15xx evidence if available
 
 Only after this physical match should sibling firmware similarities be used to strengthen lineage.
 
+
+
+
+## 2026-09-07 continuation update — DY10 emerges as the strongest Chinese domestic identity for the exact XGO enclosure
+
+The XGO-first Chinese search has now produced the strongest domestic identity match yet.
+
+### Exact-enclosure Chinese retail listing explicitly calls the device DY10
+
+A Chinese Youzan/VBEINGS retail page is titled:
+
+```text
+XGO/芯果 充电宝游戏机 10000mAh 500款游戏 DY10
+游戏机充电宝 22.5W 无线磁吸 ...
+```
+
+The product photographs show the **same long transparent enclosure geometry** as the preserved XGO A10 specimen family: centered landscape screen, left joystick + Select/Start cluster, six face buttons, transparent circuit-pattern shell and the same overall proportions.
+
+This is substantially stronger than a generic family association.
+
+Evidence:
+- https://detail.youzan.com/show/goods?alias=2xe3gpow94qpagp&from_source=gbox_seo
+
+### Independent Chinese article also names the transparent XGO as DY10
+
+A 什么值得买 / SMZDM article describes:
+
+```text
+芯果XGO透明游戏机充电宝
+10000mAh
+15W无线充
+22.5W有线充
+1000+款游戏
+全透明外壳 / 机械朋克设计
+```
+
+and explicitly calls it:
+
+```text
+DY10游戏磁吸充电宝
+```
+
+This independently links `DY10` to the same transparent 10,000mAh XGO gaming-power-bank design.
+
+Evidence:
+- https://post.smzdm.com/p/akkv85dk/
+
+### JD variant naming independently connects A10 and the same product family
+
+JD currently indexes the Xinguo gaming-power-bank listing with selectable variants including:
+
+```text
+DY09绿 [5000mAh + 500 games]
+A10黑  [10000mAh + ten-thousand games + magnetic power bank]
+```
+
+JD also lists a transparent-black premium XGO 10,000mAh / ten-thousand-game variant and a Marvel co-branded 10,000mAh variant.
+
+This gives the current naming model:
+
+```text
+DY10 = strong Chinese domestic/product-family identity for the transparent 10,000mAh XGO design
+A10   = strong black/premium retail variant identity for the same enclosure family
+```
+
+Do **not** yet assume every DY10 and A10 package is firmware-identical. Chinese listings show at least 500-game, 1000+-game and 10,000-game bundles in visually matching hardware, so card content and possibly firmware revision remain package-dependent.
+
+Evidence:
+- JD 芯果 product listings indexed under `A10黑`, transparent-black premium and Marvel variants
+- Youzan DY10 listing
+- SMZDM DY10 article
+
+### Additional domestic-market evidence: the product was a named new Xinguo release
+
+Bilibili's `国产游戏掌机周报 NO.64` (2023-10-15) explicitly lists:
+
+```text
+芯果发售新款游戏充电宝
+"Xinguo releases a new game power bank"
+```
+
+This timestamp is consistent with the appearance of the transparent 10,000mAh generation in Chinese retail channels.
+
+Evidence:
+- https://www.bilibili.com/video/BV1Wu411T7md/
+
+### Why this changes the Chinese search strategy
+
+Future exact-device Chinese searches should now prioritize:
+
+```text
+芯果 DY10
+XGO DY10
+DY10 游戏机充电宝
+DY10 磁吸游戏充电宝
+DY10 透明游戏机
+DY10 赛博黄
+DY10 透明黑
+DY10 维修 / 拆机 / 固件 / 救砖 / 刷机
+DY10 添加游戏 / 导入游戏 / TF卡
+DY10 主板 / 屏幕 / 摇杆 / 按键
+DY10 H1512 / 串口 / 测试点 / SPI
+```
+
+while retaining `A10黑` and `芯果 A10` as parallel aliases.
+
+### Current identity confidence
+
+```text
+Exact physical specimen:
+  Xinguo / 芯果 XGO transparent 10000mAh gaming power bank
+
+Retail/export identity:
+  A10 — STRONG
+
+Chinese domestic/product-family identity:
+  DY10 — now STRONG
+
+Firmware equivalence across all A10/DY10 bundles:
+  UNKNOWN / revision-dependent until hashes are compared
+```
+
+This is the most useful Chinese identity advance from the current search pass.
