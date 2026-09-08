@@ -139,6 +139,20 @@
       "finding": "HANDOFF-CURRENT.md",
       "hardware_observation": "Final explicit Refresh Games UI milestone PASS: visible fourth User Menu item invokes the hardware-proven staged on-device SFC catalog writer; No New Games feedback works; stock-font status expires after about three seconds and does not persist after leaving/returning; footer, selector, NTSC/PAL placement, and stock menu functions remain correct.",
       "implementation_scope": "Staged 929-to-930 proof writer only; not yet the final general filesystem scanner/stable-merge engine."
+    },
+    {
+      "id": "game-list-test08-full-console-scanner",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-game-list-test08-all-console-scanner.zip",
+      "vault_path": "golden/xgo-game-list-test08-all-console-scanner.zip",
+      "zip_sha256": "9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e",
+      "firmware_sha256": "45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444",
+      "scanner_sha256": "a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d",
+      "parent_artifact": "game-list-test06b-explicit-refresh-timed-status",
+      "finding": "findings/game-list-test08-hardware-pass.md",
+      "hardware_observation": "One Refresh pass discovered and stable-appended previously unindexed games across multiple built-in console systems. Forgotten raw .gb files were independently discovered; Super Mario Land appeared in the normal GB list, launched, played correctly, and retained button remapping. Home Alone on FC also launched correctly. Missing box art remains a separate metadata problem.",
+      "implementation_scope": "General on-device stable-merge scanner for FC/SFC/MD/GB/GBC/GBA. Arcade intentionally excluded pending family classification. Canonical triplet writes remain non-transactional pending recovery-layer work."
     }
   ]
 }
