@@ -1163,3 +1163,176 @@ writer/status blob SHA-256 31590cfb05e4b02536ae288218108b066f9bf0b3d836117f2fb87
 Important scope boundary: Test06b proves the explicit native-style Refresh command and the staged 929->930 writer/status lifecycle. It is intentionally NOT yet the final general filesystem scanner/stable-merge engine. Preserve this exact milestone before beginning that next stage.
 
 Next-stage direction: start from this golden Test06b state and replace the staged `refresh.bin` proof mechanism with the real on-device discovery/stable-merge implementation while preserving the now-golden UI/feedback behavior. Do not reopen completed Test04/Test05/Test06 archaeology unless new hardware evidence requires it.
+
+
+## Next-stage branch opened after Test06b milestone merge
+
+The explicit Refresh Games milestone was merged to `main` by PR #39 at merge commit:
+
+```text
+5ac3036c16639d659c75bef554ab77b229c0d440
+```
+
+Fresh next-stage branch:
+
+```text
+research-game-list-general-scanner
+```
+
+Start the next chat by reading this file and `artifacts/golden-artifacts.json` from this branch. Repository evidence is authoritative.
+
+Protected starting milestone is the exact hardware-confirmed private-vault golden artifact:
+
+```text
+xgo-game-list-test06b-timed-status.zip
+size 5,022,902 bytes
+SHA-256 2d859b3ca3f0644a461c197fcfe0b58f2650c26bc6a7c8d28a189da196aa1042
+firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4e
+```
+
+Next engineering target: replace the staged `refresh.bin` 929->930 proof with the real on-device discovery + stable-merge scanner while preserving the now-golden explicit Refresh UI, status messages, three-second expiry, selector/footer behavior, PAL/NTSC placement, Favorites/save stability, and all prior golden emulator/audio behavior. Do not redo Test04-Test06b archaeology.
+
+
+### Test07 candidate — real SFC discovery + stable merge (2026-09-07)
+
+The first post-Test06b real scanner candidate is composed and offline-audited.
+
+```text
+xgo-game-list-test07-general-sfc-scanner.zip
+size              4,995,560 bytes
+ZIP SHA-256        0b07d1b4cd83b4a54b80740d646f85e72e3994598c19c089941b76ad56268719
+firmware SHA-256   238331cf5cf56f9fb31891e197c12bfaa86a280a65dbeacc83e1b34d99c858c1
+scanner/status     3,009 bytes
+scanner SHA-256    9ef681888972c01bca94b50c0ea1a51df0f4246d9889ac007aa9907c3b1fe0c8
+builder commit     d2ca23b21e3b909af48646c9bc7242f74f212b7c
+```
+
+Test07 starts directly from the exact golden Test06b ZIP and preserves the proven User Menu/UI/status resources. It replaces the staged writer with a real `/SFC` directory scan using the stock directory wrappers and stock extension classifier. It performs stable merge: existing entries/indices remain unchanged, only physical filenames absent from slot 0 are appended, with basename fallbacks appended to slots 1 and 2. All three outputs are constructed in RAM before canonical writes. The classifier global side effect is saved/restored.
+
+Critical proof boundary: `Resources/refresh.bin` is absent from Test07. The expected 929->930 transition must therefore come from discovery of the physically present `SFC/XGO Import Test.zsf`.
+
+Test07 is still deliberately non-transactional and is **NOT golden**. Hardware test only on the disposable clone; do not interrupt power during Refresh. First Refresh should report `Games Updated`, yield 930 entries, and expose/launch XGO Import Test. Second Refresh should report `No New Games`. Reboot/Favorite/save/Search/Chinese/UI/audio/SNES/CPS1 regressions remain part of the gate.
+
+Primary finding:
+
+`findings/game-list-test07-real-sfc-discovery-stable-merge-candidate.md`
+
+The private-vault CI reproduction workflow is committed at `.github/workflows/xgo-game-list-test07-general-sfc-scanner.yml` in `jeborgesm/xgo-a10-artifacts`, but API-originated commits did not emit its configured push trigger in this session. Do not claim private-vault archival until an actual run or direct archive commit is confirmed.
+
+
+### Test08 candidate — full FC/SFC/MD/GB/GBC/GBA scanner (2026-09-07)
+
+**Test07 SFC-only is superseded before hardware testing. Do not test or promote Test07.**
+
+Test08 is the active pending hardware candidate for the real built-in game-list scanner.
+
+One Refresh pass now iterates all six ordinary built-in console directories:
+
+```text
+FC -> SFC -> MD -> GB -> GBC -> GBA
+```
+
+For each system the firmware resolves the synchronized triplet from stock table `0x80a3c32c`, scans the physical directory through the confirmed stock directory wrappers, filters by that system's wrapper/native extension classifier returns, stable-appends every filename absent from slot 0, appends basename fallbacks to slots 1/2, writes the complete synchronized triplet, fs-syncs, and invalidates only `count[list_id]` in the array at `0x80d2894c`.
+
+No ROM filename, expected catalog count, or expected append count is hardcoded.
+
+Candidate capacity is 512 additions per system. The preserved card inventory audit predicts 347 total discoveries on the captured stock state: FC 20, SFC 149, MD 45, GB 88, GBC 15, GBA 30. All projected final resource sizes stay well below the 64 KiB per-slot guard.
+
+The install ZIP deliberately contains **no game-list catalogs and no test ROM payloads**. It contains only the patched firmware, the six protected Test06b User Menu UI resources, and the hardware-test README. Therefore installing Test08 does not itself reset/prepopulate any game list; mutations begin only when Refresh is invoked.
+
+```text
+xgo-game-list-test08-all-console-scanner.zip
+size              4,921,057 bytes
+ZIP SHA-256        9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e
+firmware SHA-256   45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444
+scanner/status     3,601 bytes
+scanner SHA-256    a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d
+cave remaining     495 bytes
+```
+
+Exact reproducer:
+
+`tools/game_lists/build_test08_all_console_scanner_candidate.py`
+
+Primary finding:
+
+`findings/game-list-test08-full-console-scanner-candidate.md`
+
+Test08 is **NOT golden** pending hardware confirmation and remains deliberately non-transactional. Hardware test only on the disposable clone; do not interrupt power during Refresh.
+
+Hardware gate:
+- record FC/SFC/MD/GB/GBC/GBA counts before first Refresh;
+- first Refresh should report `Games Updated` and append all accepted unindexed physical ROMs across all six systems;
+- second Refresh should report `No New Games`;
+- verify representative old Favorites/History/save references, Search, Chinese list/search alignment, and launches of newly discovered games from multiple console pages;
+- confirm User Games/Language/TV System, timed status, Audio OSD, SNES and CPS1 protected behavior remain intact.
+
+Arcade is intentionally out of Test08 scope because the shared `ARCADE` directory still requires safe per-wrapper family classification into CPS1/CPS2/NeoGeo/IGS curated pages.
+
+
+### Test08 hardware PASS — real multi-system discovery confirmed (2026-09-07)
+
+**Test08 passed hardware.**
+
+The disposable-card test confirmed that one Refresh operation discovered and exposed previously unindexed games in multiple built-in console systems. This is the hardware proof of the real FC/SFC/MD/GB/GBC/GBA filesystem-discovery + stable-merge architecture.
+
+Observed FC additions included `Bomberman 2` and `Home Alone`. Home Alone launches/plays correctly. Bomberman 2 remains non-working after being successfully indexed, so that title remains an emulator/game compatibility issue rather than a scanner failure.
+
+The strongest accidental blind proof came from `/GB`: ordinary raw `.gb` files manually copied to the card long before this scanner work, and previously invisible to the stock main list, were rediscovered by Test08. `Super Mario Land (W) (V1.1) [!].gb` appeared in the normal GB list, launched successfully, played normally, and accepted the existing button-remapping mechanism. This validates native-extension discovery and stock launching without a scanner-specific test filename.
+
+Newly discovered raw games currently have no automatic box art. Treat artwork association as a separate follow-up; it does not invalidate discovery/catalog/launch success.
+
+Hardware result:
+`findings/game-list-test08-hardware-pass.md`
+
+Exact tested candidate remains:
+
+```text
+xgo-game-list-test08-all-console-scanner.zip
+size              4,921,057 bytes
+ZIP SHA-256        9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e
+firmware SHA-256   45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444
+scanner SHA-256    a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d
+```
+
+Next engineering priorities after preservation/golden promotion:
+1. transaction marker + backup/recovery for interruption-safe triplet updates;
+2. box-art association for newly discovered games;
+3. Arcade wrapper-family classification and safe shared-`ARCADE` scanning.
+
+
+### Test08 GOLDEN promotion and branch closeout (2026-09-07)
+
+Test08 full console scanner is now promoted to golden after hardware PASS.
+
+Private vault:
+- repository: `jeborgesm/xgo-a10-artifacts`
+- golden path: `golden/xgo-game-list-test08-all-console-scanner.zip`
+- vault promotion commit: `68600639c93c9c33acbae6afcd9c67c5f8410053`
+
+Exact golden artifact:
+
+```text
+xgo-game-list-test08-all-console-scanner.zip
+size              4,921,057 bytes
+ZIP SHA-256        9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e
+firmware SHA-256   45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444
+scanner SHA-256    a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d
+```
+
+Golden registry ID:
+`game-list-test08-full-console-scanner`
+
+The `research-game-list-general-scanner` branch is ready to merge into `main`.
+
+Next branch objective:
+`research-game-list-arcade-expansion`
+
+Priority for that branch is arcade discovery and expansion, ahead of box-art work:
+1. safely classify and refresh the existing CPS1/CPS2/NeoGeo/IGS curated pages from the shared `ARCADE` directory;
+2. investigate adding arcade families not currently represented in the stock four curated groups;
+3. target user-requested classics as concrete compatibility goals: Asteroids, Pac-Man, Ms. Pac-Man, Donkey Kong, Mario Bros., Frogger, and Galaga;
+4. determine whether an existing stock arcade core can run any of those families or whether a new lightweight external arcade core/frontend is required;
+5. preserve the golden Test08 six-console Refresh behavior while extending arcade support.
+
+Box-art association remains deferred behind arcade expansion.
