@@ -2156,3 +2156,46 @@ P2 compatibility per emulator/core
 A loose original beige `A10 Game handle`, preferably sold separately or from a damaged doubles bundle, is now the decisive accessory target.
 
 A passive teardown/continuity measurement of that controller could solve the physical Handle Interface much faster than further firmware archaeology.
+
+
+
+## 2026-09-07 rejected OEM lead — Jiexunda is a later reseller, not the original A10/DY10 solution partner
+
+Alibaba currently indexes an XGO-branded game/power-bank listing under:
+
+```text
+JXD PLUS+ DESIGN XGO
+...
+supplier: Jiexunda Industrial Hongkong Limited
+```
+
+This initially looked like a possible OEM/solution-company clue.
+
+A chronology check rejects that interpretation.
+
+Hong Kong Companies Registry data shows:
+
+```text
+Jiexunda Industrial Hongkong Limited
+傑訊達實業香港有限公司
+BRN 78819382
+incorporated: 2025-09-18
+```
+
+The XGO DY09/DY10/A10 game-power-bank family predates that company by multiple years.
+
+Therefore:
+
+```text
+Jiexunda as current Alibaba reseller        CONFIRMED
+Jiexunda as original XGO/A10 OEM             REJECTED
+"JXD PLUS+ DESIGN XGO" as factory authorship UNRELIABLE marketing/SEO wording
+```
+
+The company may be reselling old/new XGO stock and other handhelds, but it cannot explain the original 2022–2023 product development under its current corporate identity.
+
+Evidence:
+- Alibaba current power-bank-game-console wholesale index
+- Hong Kong Companies Registry incorporation record for Jiexunda Industrial Hongkong Limited
+
+This lead should not be used to identify the unnamed `方案技术企业` mentioned in historical XGO company material.
