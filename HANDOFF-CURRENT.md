@@ -1650,3 +1650,39 @@ Finding:
 `findings/arcade-test17-mame2000-persistent-stage-trace.md`
 
 Hardware procedure: test Pac-Man only, hard-power after freeze, inspect SD root, and report the highest numbered `MAME17-xx.txt` file present. If none exists, explicitly report that no MAME17 checkpoint file was created.
+
+
+### Arcade Test17 hardware FAIL — pre-core-entry; Test18 loader-only trace queued (2026-09-08)
+
+Hardware result:
+- Pac-Man and Ms. Pac-Man freeze on the stock `Loading.....` screen under Test17;
+- no `MAME17-11.txt` through `MAME17-17.txt` core-entry checkpoint files are created.
+
+Conclusion: the external MAME2000 C frontend is never reached. The active failure domain is now the pre-entry loader/handoff sequence, not ROM driver execution, retro_init, or the stock run_emulator loop.
+
+Test18 removes core-side tracing entirely and restores the exact original hardware-proven Test12 MAME2000 core. Only the list-ID-11 loader is instrumented.
+
+The loader writes a single byte to:
+`/mnt/sda1/MAME17-L.txt`
+
+Stage byte meanings:
+- A = loader entered
+- B = XGOC header read
+- C = immediately before stock sound-task shutdown
+- D = sound-task shutdown returned
+- E = RAMSIZE ceiling moved
+- F = core payload copied
+- G = payload CRC passed
+- H = IRQ-GP repair completed
+- I = cache flush completed
+- J = immediately before external core entry jump
+
+This single-byte trace is intentionally much less invasive than Test17's core-side filesystem checkpoints.
+
+Private artifact workflow:
+`.github/workflows/xgo-classic-arcade-mame2000-test18-loadertrace.yml`
+
+Workflow run:
+`34247530169`
+
+As of this handoff update the Test18 workflow is queued; do not invent or claim a candidate hash until the run completes.
