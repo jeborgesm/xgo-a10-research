@@ -133,3 +133,75 @@ retail model
 ```
 
 This is now necessary because DY12 and DY19 both have evidence of revision-dependent software behavior, and Q19 demonstrates that even a platform-compatible application can boot with unusable display/input adaptation.
+
+
+## 2026-09-07 XGO-first Chinese archaeology continuation
+
+Research priority is now explicitly **exact physical XGO specimen first**. DY19, DY12, Q19, X60, and SF2000 remain comparators and are not primary search keys.
+
+### Exact domestic A10 identity strengthened — STRONG
+
+Current JD indexing exposes the exact 芯果 product family with a selectable variant:
+
+```text
+A10黑〖10000mAh+万款游戏+磁吸充电宝〗
+```
+
+The same indexed family also exposes the 10000mAh XGO Marvel 500-game, dual-controller + 500-game, and 10,000-game variants. This strengthens **A10 as a Chinese domestic sales identity for the exact XGO 10000mAh family**, not merely an export/rebrand label.
+
+Evidence class: retail/catalog identity. This is **not** yet PCB, firmware-hash, or TF-card equivalence proof.
+
+Sources:
+- JD indexed product-family pages, retrieved 2026-09-07.
+- Existing exact 1688 source-art evidence for offer `754381935521`.
+
+### TF-card modularity / seller-support search model — PARTIAL but useful
+
+Current 芯果 retail indexing for other handheld SKUs explicitly includes a no-card variant described as:
+
+```text
+无内存卡 ... 需自备卡下载游戏
+```
+
+Combined with the exact A10 1688 variant:
+
+```text
+A10（无卡无游戏）
+```
+
+this supports a practical search hypothesis: seller-side **replacement game cards, copied cards, card-download bundles, and after-sales recovery packages** may circulate independently from the hardware.
+
+This does **not** prove that an exact A10/DY10 stock image has been recovered. It changes search priority toward:
+- 原装游戏卡 / 原装TF卡
+- 补卡 / 配卡 / 换卡
+- 卡丢失 / 卡坏
+- 游戏卡下载 / 卡包
+- 售后发卡 / 售后资料
+- A10 无卡无游戏 paired with seller support material
+
+### Manuals+ / AliExpress-derived A10 pages — CORROBORATIVE ONLY
+
+A current Manuals+ page generated from an AliExpress item labels an exact-fingerprint device:
+
+```text
+Xinguo XGO A10
+141 × 67 × 20 mm
+10000mAh
+5800mAh / 37Wh
+22.5W wired
+15W wireless
+TF card package-dependent
+```
+
+A separate derived A10 page uses the Royaldraid brand and explicitly describes a 32GB TF card with 5000+ games; another uses Pogopirate.
+
+These pages are **not accepted as OEM manuals or firmware evidence** because they appear to be synthesized retail/manual mirrors. They are useful only as:
+- rebrand-name leads;
+- evidence that card/no-card packaging was represented in export listings;
+- image/title fingerprints to trace back to original sellers.
+
+Do not equate Royaldraid/Pogopirate/MechZone/XGO firmware without card-image or binary comparison.
+
+### Rejected noise reinforced
+
+Generic searches on `10000mAh / 37Wh / 5800mAh / 15W / 22.5W` return many ordinary power banks. Those specifications alone are not identifying evidence. Exact-enclosure/control geometry, card layout, PCB, source artwork, or binary evidence is required.
