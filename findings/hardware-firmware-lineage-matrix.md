@@ -1782,3 +1782,123 @@ Therefore:
 ### Artifact priority
 
 A verified physical/card image from any 5000-game A10—especially Smartberry, Royaldraid or Pogopirate—would be valuable because it could independently confirm the tentative 32GB tier and provide another exact `bisrv.asd` / Resources bundle for comparison.
+
+
+
+## 2026-09-07 continuation update — GAMESPOWER bridges Jncota directly into the game-power-bank product line
+
+The Chinese trademark/product trail now supplies a strong dated bridge from Jncota into the later XGO game-power-bank family.
+
+### Jncota filed GAMESPOWER specifically for charging/power products in 2018
+
+Alibaba Cloud's Chinese trademark index records:
+
+```text
+mark: GAMESPOWER
+application: 31736979
+applicant: 深圳市晶科泰科技有限公司
+filing date: 2018-06-21
+class: 09
+```
+
+The goods/services list explicitly includes:
+
+```text
+无线充电器
+电池充电器
+移动电源（可充电电池）
+```
+
+("wireless charger", "battery charger", "mobile power supply / rechargeable battery").
+
+The application was later rejected, but the filing itself is evidence of Jncota's intended product/brand concept.
+
+Evidence:
+- https://tm.aliyun.com/detail/8042_31736979_9
+
+### Physical XGO product evidence shows GAMESPOWER was actually used
+
+The 2022 XGO DY09 teardown and independent review show:
+
+- `Games Power` printed directly on the front of the game/power-bank product;
+- `Games Power` printed on the retail-box sides;
+- XGO branding on the same hardware;
+- model DY09;
+- magnetic wireless charging + wired fast charging + game-console functionality.
+
+Evidence:
+- https://www.chongdiantou.com/archives/160933.html
+- https://post.smzdm.com/p/a3038oxn/
+- https://www.sohu.com/a/569211124_296845
+
+### Dated product-family chain
+
+Current evidence now supports:
+
+```text
+2018
+Jncota files GAMESPOWER
+for wireless charger / battery charger / power-bank goods
+        |
+2019
+Jncota trade-show description:
+"游戏机充电宝" (game-console power bank)
+        |
+2022
+XGO DY09 ships physically marked:
+XGO + Games Power
+500 games + magnetic wireless power bank
+        |
+2023-era+
+transparent DY10
+10000mAh / magnetic charging / 1000+ games
+        |
+later A10 / Marvel / export bundles
+same transparent 10000mAh family
+500 / 5000 / 10000-game content tiers
+```
+
+This is a **product/brand lineage**, not proof that DY09 and A10 share a PCB.
+
+### Historical Jncota hardware-engineering evidence
+
+A Chinese utility patent record identifies:
+
+```text
+CN203253150U
+title: 一种游戏掌机 / Handheld game console
+priority: 2013-04-07
+publication: 2013-10-30
+assignee: 深圳市晶科泰科技有限公司
+```
+
+This establishes direct Jncota handheld-game hardware engineering well before the XGO magnetic-power-bank products.
+
+It does **not** justify projecting the 2013 circuit or mechanical design onto A10.
+
+Evidence:
+- Google Patents citation/index record for CN203253150U
+- Chinese company/factory records describing Jncota as a manufacturer of game consoles and handhelds.
+
+### ChargerLAB exact-A10 teardown search can now be deprioritized
+
+ChargerLAB / 充电头网 published a master index in June 2026 covering more than 700 power-bank teardowns.
+
+Under 芯果/CGO/XGO, the index still contains only:
+
+```text
+芯果5000mAh磁吸无线充移动电源游戏机
+```
+
+—the DY09 teardown already archived.
+
+No A10/DY10 teardown appears in that master index.
+
+Evidence:
+- https://www.chongdiantou.com/archives/1781489417986.html
+
+Interpretation:
+
+> absence from ChargerLAB is now stronger than a failed keyword search; their own 700+ teardown index does not list an A10/DY10 teardown as of June 2026.
+
+Therefore repeated ChargerLAB searching for the exact A10 should be deprioritized unless new material is published.
