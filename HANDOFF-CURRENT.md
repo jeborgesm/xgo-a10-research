@@ -1741,3 +1741,66 @@ Hardware procedure:
 - do not press Volume while the game is running because Test20 temporarily removes the newer Audio-OSD game-session hooks from run_emulator;
 - if Pac-Man reaches gameplay, later run_emulator changes are confirmed as the regression surface;
 - if black-screen/freeze remains, the runner differential is ruled out and focus returns to loader/core transfer.
+
+
+### Test20 hardware FAIL; Test21 loader round-trip probe ready (2026-09-08)
+
+Test20 restored the exact hardware-working Test12 `run_emulator()` body while keeping golden Test08, list 11, the clean Classic Arcade loader, and the exact Test12 MAME2000 core.
+
+Hardware result:
+```text
+Pac-Man
+ -> Loading.....
+ -> black screen
+ -> frozen/unresponsive device
+```
+
+Therefore the later Audio OSD/session hooks and sibling scheduler transplant inside `run_emulator()` are ruled out as the Classic Arcade MAME regression source.
+
+A source-level differential between the hardware-working Test12 CPS1 loader and the current Classic Arcade loader shows the pre-entry machinery is otherwise effectively identical:
+- XGOC validation;
+- sound-task shutdown;
+- RAMSIZE ceiling move;
+- payload copy;
+- payload CRC;
+- BSS zero;
+- IRQ-GP repair;
+- cache flush;
+- entry call.
+
+Meaningful differences are only list gate, core pathname, and the old continuity-return handshake.
+
+Test21 therefore removes MAME entirely and reuses the hardware-proven 16-byte XGO1 continuity payload:
+
+```asm
+lui v0,0x5847
+ori v0,v0,0x4f31
+jr ra
+nop
+```
+
+The Test21 loader is derived directly from the proven CPS1 loader, gates list ID 11, reads `/cores/mame2000/core.xgc`, and restores the old handshake:
+
+```text
+loader -> 0x87000000 probe -> returns XGO1
+ -> restore RAMSIZE
+ -> launch same Pac-Man through stock run_fba
+```
+
+Hardware PASS shape:
+`Loading -> ordinary stock Pac-Man` (mute is acceptable/expected from prior hidden-stock-Pac-Man tests).
+
+Hardware FAIL shape:
+freeze before stock Pac-Man appears.
+
+Exact candidate:
+```text
+xgo-arcade-test21-loader-roundtrip-probe.zip
+size              4,922,310 bytes
+ZIP SHA-256        19dcb2d562e7e087bb6a2f61d6a7819464bc435c6f48d4fa94c4284d144a6a67
+firmware SHA-256   f10c0258fac38bd0e05514934b3c863275971c5cea34ce612b7f467e1b5c9b54
+loader SHA-256     3b54123155b22e8e739a0a85a8ecf88e689eed50e29956501641afd138236eae
+probe XGOC SHA-256 aac9310c13d6330270e17b8fd417cfbfaefebfbdc197a2a46a7567c384ac7802
+```
+
+Private CI run `34260753277` passed; artifact ID `10069783018`.
