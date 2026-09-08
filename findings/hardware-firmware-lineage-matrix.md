@@ -670,3 +670,63 @@ Chinese patent indexing confirms:
 A targeted 2022–2024 assignee/title search did **not** recover an exact A10/transparent-10000mAh design patent.
 
 Retain patent databases as a secondary path if a new assignee, design name, or application number appears.
+
+
+### Exact Chinese A10 32GB bundle artwork exposes account watermark — STRONG
+
+A surviving marketplace-derived image set for the **exact XGO PLUS+ 10000MAH / A10 enclosure** contains a Chinese bundle-selection image with the following wording:
+
+```text
+尊享单人版
+10000款游戏
+摇杆模式
+赠送32G TF卡
+畅玩街机游戏
+```
+
+The physical device shown is the exact transparent XGO PLUS+ enclosure, not a specification-only A10 naming collision.
+
+The same image is repeatedly watermarked:
+
+```text
+cn1073857976oitae
+```
+
+and survives under marketplace/CDN-style asset filename:
+
+```text
+S577bc3260ef443858f1d20a64b6f6c77R.jpg
+```
+
+The mirror path also preserves a likely original marketplace item key:
+
+```text
+1005008996768853
+```
+
+Evidence interpretation:
+- **STRONG:** an exact A10/XGO Chinese-language seller bundle explicitly included a **32G TF card** with the 10,000-game `尊享单人版`.
+- **STRONG:** `尊享单人版`, the asset filename, the watermark string, and item key are new exact-device archival/search identifiers.
+- **UNKNOWN:** the company/store/person represented by `cn1073857976oitae`.
+- **NOT PROVEN:** that numeric fragment `1073857976` is an AliExpress seller/store ID.
+- **NOT PROVEN:** that the mirrored item key resolves to the original Chinese/OEM supplier rather than an export reseller.
+
+The larger coherent image set also preserves:
+- exact A10 product/spec artwork;
+- `产品型号：A10`;
+- 10000mAh nominal;
+- 5800mAh / 37Wh rated capacity;
+- max 15W wireless;
+- 22.5W wired charging;
+- 67 × 141 × 20 mm;
+- TF slot / TV-output / joystick illustrations;
+- 10,000-game / 10-emulator marketing.
+
+Priority search keys now include:
+```text
+"cn1073857976oitae"
+"cn1073857976" XGO
+"尊享单人版" "赠送32G TF卡"
+"S577bc3260ef443858f1d20a64b6f6c77R.jpg"
+"1005008996768853" A10
+```
