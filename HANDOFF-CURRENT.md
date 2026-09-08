@@ -1336,3 +1336,40 @@ Priority for that branch is arcade discovery and expansion, ahead of box-art wor
 5. preserve the golden Test08 six-console Refresh behavior while extending arcade support.
 
 Box-art association remains deferred behind arcade expansion.
+
+
+### Active branch — Arcade expansion (2026-09-07)
+
+Current branch:
+
+`research-game-list-arcade-expansion`
+
+Branch base:
+
+`a1bf54e96fc28b721a38d6920f0d4557dbd99730` — merged golden Test08 full console scanner.
+
+The prior `research-game-list-general-scanner` milestone is closed, merged, archived, and golden. Do not reopen Test04-Test08 console scanner archaeology unless a regression is discovered.
+
+Immediate priority is Arcade expansion, ahead of box-art work.
+
+Existing curated pages to preserve/classify:
+- list 7 CPS1
+- list 8 CPS2
+- list 9 NeoGeo
+- list 10 IGS
+
+Primary new compatibility targets:
+- Asteroids
+- Pac-Man
+- Ms. Pac-Man
+- Donkey Kong
+- Mario Bros.
+- Frogger
+- Galaga
+
+Research must first recover exact shared-`ARCADE` wrapper/family classification so existing CPS1/CPS2/NeoGeo/IGS additions can be refreshed safely. Then determine whether the stock arcade emulator already contains drivers for the requested classic families. If not, evaluate a lightweight external arcade core.
+
+Prefer investigating inherited fifth `ARCADE` / list-ID-11 behavior as a possible native presentation surface for general/classic arcade games before inventing an entirely new screen.
+
+Scope document:
+`findings/arcade-expansion-scope-and-priority-targets.md`
