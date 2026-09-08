@@ -788,3 +788,160 @@ Firmware equivalence across all A10/DY10 bundles:
 ```
 
 This is the most useful Chinese identity advance from the current search pass.
+
+
+
+## 2026-09-07 continuation update — XGO / 芯果 organizational lineage through 晶科泰 / Jncota
+
+The XGO-first Chinese search has now recovered a manufacturer/brand-development chain that helps explain the firmware architecture already observed independently.
+
+### Official archived XGO company material ties 芯果 directly to 晶科泰集团
+
+An archived official XGO / 芯果 company page states that:
+
+- **深圳市前海芯果智能科技有限公司** was established as the **brand-operation division of 晶科泰集团**;
+- it was responsible for operating the 芯果 / XGO brand;
+- XGO maintained product-development capability while also working in **deep cooperation with domestic and overseas solution-technology companies**;
+- company marketing claimed a new-product development cycle of roughly **45–60 days**.
+
+This is organizational evidence, not PCB authorship evidence. It does **not** prove that Jncota/XGO designed every logic board in-house.
+
+However, it is unusually consistent with the software archaeology:
+
+```text
+common HC15xx / H1512 solution platform
++ reusable TDS2/frontend/runtime base
++ fast product-specific LCD/input/power adaptation
++ retail/model-specific Resources/card bundles
+```
+
+Evidence:
+- archived official XGO page:
+  https://web.archive.org/web/20180821165434/http://www.szxgo.com/zjxg/zjxgs.html
+
+### Jncota was already a game-hardware manufacturer long before DY10/A10
+
+An archived 晶科泰 / Jncota site from 2010 advertises game-console manufacturing, including:
+
+- game consoles;
+- 8-bit and 16-bit TV-game products;
+- cartridges;
+- controllers;
+- game accessories;
+- handheld products.
+
+This materially changes the interpretation of the XGO product line:
+
+> XGO is not best modeled as a generic power-bank vendor that later added an emulator. It sits inside a Shenzhen game-hardware manufacturing lineage that subsequently combined game hardware with charging/power-bank products.
+
+Evidence:
+- https://web.archive.org/web/20100323034309/http://www.jncota.com/
+
+### The hybrid “game-console power bank” product category is documented at Jncota by 2019
+
+A 2019 Beijing gifts/trade-show electronic catalog lists:
+
+```text
+深圳市晶科泰科技有限公司
+booth 3F09
+website: www.jncom.cn
+product description: 游戏机充电宝
+```
+
+`游戏机充电宝` translates directly to **game-console power bank**.
+
+This provides a dated manufacturer-level anchor for the product category several years before the transparent DY10/A10 generation surfaced in 2023-era Chinese retail material.
+
+Evidence:
+- 2019 Beijing Gifts electronic catalogue:
+  https://www.giftsbeijing.com/content/dam/sitebuilder/rxch/bjgifits/download/2019Electronic-catalogue.pdf
+
+### 2015 Chinese company history independently supports the XGO-brand timeline
+
+Chinese business/marketing material from 2015 describes:
+
+- 晶科泰 as an established game-console/tablet R&D and manufacturing company;
+- registration/development of the 芯果 / XGO brand;
+- creation of the Qianhai XGO company as the brand-promotion/operation vehicle.
+
+Evidence:
+- https://www.nsw88.com/Article/zhinengshoubiaoxinpi_1.html
+
+### Current best organizational/product model
+
+```text
+晶科泰 / Jncota
+long-running Shenzhen game-hardware manufacturer
+             |
+             +-- controllers / Famicom-derived and other game hardware
+             |
+             +-- "游戏机充电宝" product category documented by 2019
+             |
+             +-- 芯果 / XGO brand-operation organization
+                       |
+                       +-- external solution-company collaboration
+                       |
+                       +-- DY-series game/power-bank products
+                              |
+                         DY05 / DY09 / DY10-era evolution
+                                      |
+                            transparent 10000mAh DY10/A10 family
+                                      |
+                         exact XGO A10 research specimen
+```
+
+The model above is a **product/organizational lineage**, not a literal PCB genealogy.
+
+### Engineering significance
+
+The official description of outside `方案技术企业` ("solution technology companies") is especially important.
+
+Chinese electronics manufacturing commonly uses `方案` to describe a reusable technical solution/reference platform that an OEM adapts into multiple retail products. Without identifying the specific solution vendor, the wording already provides a plausible organizational mechanism for the exact pattern observed across SF2000/Q19/DY19/X60/XGO:
+
+```text
+shared SoC/SDK/runtime architecture
++ differing LCD init
++ differing controller GPIO/scanner
++ differing RF/power hardware
++ product-specific bisrv.asd
++ heavily reused Resources/content structures
+```
+
+This does **not** prove that the HC15xx solution vendor was the unnamed partner in the archived XGO page. That remains an open identification target.
+
+### New Chinese/OEM search priority
+
+Search the manufacturer and its historical commerce footprint directly:
+
+```text
+晶科泰 DY10
+晶科泰 游戏机充电宝
+晶科泰 10000mAh 游戏机
+晶科泰 磁吸 游戏机充电宝
+晶科泰 XGO
+晶科泰 H1512
+晶科泰 主板 游戏机
+晶科泰 固件
+Jncota game power bank
+Games Power DY10
+前海芯果 DY10
+```
+
+Historical domains / commerce identities:
+
+```text
+jncota.com
+jncom.cn
+szxgo.com
+shop1e98r80786960.1688.com
+```
+
+Highest-value artifacts now include:
+
+1. historical Jncota/XGO product catalogs that identify DY10/A10 internal or OEM aliases;
+2. factory/1688 product pages with PCB, replacement-card or component photographs;
+3. support/download files linked from archived Jncota/XGO sites;
+4. replacement TF cards for 500/1000/10000-game DY10/A10 variants;
+5. broken/parts-only DY10/A10 units on Xianyu exposing board photographs;
+6. any named `方案商` / solution provider attached to the product family.
+
