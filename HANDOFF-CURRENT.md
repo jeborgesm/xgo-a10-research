@@ -1458,3 +1458,32 @@ Next priorities:
 3. inventory all non-CPS/NeoGeo/IGS drivers compiled into stock XGO;
 4. test Ms. Pac-Man next because it belongs to the now-proven compiled Pac-Man family;
 5. continue Galaga/Frogger/Donkey Kong/Mario Bros./Asteroids coverage analysis; use external/lifted core only where stock driver modules are genuinely absent.
+
+
+### Arcade Test11 candidate — Pac-Man audio A/B by list ID (2026-09-07)
+
+Test10 proves Pac-Man gameplay works from list ID 11 but is silent.
+
+Static comparison shows Pac-Man's frame routine reaches the shared stock FBA sound-output helper, so Test11 isolates frontend/list setup from driver-level sound.
+
+Test11 keeps the Test10 fifth Arcade Pac-Man entry and temporarily appends the exact same `Pac-Man.zfb` to list ID 7 / CPS1.
+
+Both entries resolve to the same `ARCADE/bin/pacman.zip`.
+
+```text
+xgo-arcade-test11-pacman-audio-ab.zip
+size       4,923,915 bytes
+SHA-256    a1a77ae81427b4623023419d0d55b74a08ff13224528ba736a02a23d6de42976
+```
+
+Hardware interpretation:
+- sound on list 7 but not list 11 => dormant fifth page lacks/gets wrong audio initialization;
+- silent on both => compiled Pac-Man/Namco sound path itself is incomplete/broken in stock XGO;
+- list-7 launch failure => active Arcade subtype affects deeper runtime setup.
+
+Finding:
+`findings/arcade-test11-pacman-audio-ab.md`
+
+The temporary CPS1 Pac-Man entry is diagnostic only, not the intended final organization.
+
+Stock-binary inventory also confirms compiled classic-era driver data beyond the four exposed stock families, including Pac-Man/Ms. Pac-Man, Phoenix, 1942/1943, Arkanoid, Pooyan, Route 16 and Mr. Do! families. Continue inventory after the audio A/B result.
