@@ -124,7 +124,20 @@ void load_and_run_classic_mame(const char *filename,int load_state)
     full_cache_flush();
 
     entry=(void *)entry_addr;
+
+    /*
+     * The fifth Arcade page is a newly activated frontend section.  Its
+     * presentation/resource tables are intentionally incomplete.  The old
+     * hardware-proven MAME2000 frontend ultimately calls the lower-level stock
+     * run_emulator() path, where the active list ID can still select per-list
+     * runtime policy.  Give that lower-level runtime a known-good Arcade
+     * identity (CPS1/list 7) while the external core owns emulation, then
+     * restore list 11 before returning to the frontend.
+     */
+    *ACTIVE_LIST_ID=7u;
     entry(filename,load_state);
+    *ACTIVE_LIST_ID=XGO_LIST_CLASSIC;
+
     *RAMSIZE=old_limit;
     return;
 
