@@ -1268,3 +1268,34 @@ Hardware gate:
 - confirm User Games/Language/TV System, timed status, Audio OSD, SNES and CPS1 protected behavior remain intact.
 
 Arcade is intentionally out of Test08 scope because the shared `ARCADE` directory still requires safe per-wrapper family classification into CPS1/CPS2/NeoGeo/IGS curated pages.
+
+
+### Test08 hardware PASS — real multi-system discovery confirmed (2026-09-07)
+
+**Test08 passed hardware.**
+
+The disposable-card test confirmed that one Refresh operation discovered and exposed previously unindexed games in multiple built-in console systems. This is the hardware proof of the real FC/SFC/MD/GB/GBC/GBA filesystem-discovery + stable-merge architecture.
+
+Observed FC additions included `Bomberman 2` and `Home Alone`. Home Alone launches/plays correctly. Bomberman 2 remains non-working after being successfully indexed, so that title remains an emulator/game compatibility issue rather than a scanner failure.
+
+The strongest accidental blind proof came from `/GB`: ordinary raw `.gb` files manually copied to the card long before this scanner work, and previously invisible to the stock main list, were rediscovered by Test08. `Super Mario Land (W) (V1.1) [!].gb` appeared in the normal GB list, launched successfully, played normally, and accepted the existing button-remapping mechanism. This validates native-extension discovery and stock launching without a scanner-specific test filename.
+
+Newly discovered raw games currently have no automatic box art. Treat artwork association as a separate follow-up; it does not invalidate discovery/catalog/launch success.
+
+Hardware result:
+`findings/game-list-test08-hardware-pass.md`
+
+Exact tested candidate remains:
+
+```text
+xgo-game-list-test08-all-console-scanner.zip
+size              4,921,057 bytes
+ZIP SHA-256        9c66fd727a2f894ad692b4868ba8bcee3daf2ff81b4d7eced539f80f2fd2e61e
+firmware SHA-256   45831b0ea3c9ae336d82b240e6afe27167e5e83b88037152af237ab758ca1444
+scanner SHA-256    a3f965d0ccabc2238da240a4b05b5f8027c968e40ede1831b51c42cff374c01d
+```
+
+Next engineering priorities after preservation/golden promotion:
+1. transaction marker + backup/recovery for interruption-safe triplet updates;
+2. box-art association for newly discovered games;
+3. Arcade wrapper-family classification and safe shared-`ARCADE` scanning.
