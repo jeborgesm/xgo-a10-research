@@ -522,3 +522,45 @@ XGO DY10 32GB original TF image
 XGO crowdfunding 32GB card backup
 A10 32GB original TF image
 ```
+
+
+### Search-direction refinement: return to mainland China using confirmed A10 — 2026-09-07
+
+The physical specimen now directly confirms `Model number: A10`. Search priority is therefore tightened again around **A10 as the primary Chinese/OEM identifier**, with DY10/XGO used as supporting aliases rather than the starting point.
+
+Primary mainland search strings:
+```text
+A10 游戏机充电宝
+A10 游戏磁吸充电宝
+A10 移动游戏电源
+A10 10000毫安 游戏机
+A10 10000mAh 移动游戏电源
+A10 32G 游戏卡
+A10 32GB 原装卡
+A10 原装TF卡
+A10 游戏卡 备份
+A10 游戏卡 镜像
+A10 补卡
+A10 换卡
+A10 扩容
+A10 卡坏
+A10 无卡无游戏
+A10 系统包
+A10 固件
+A10 刷机
+A10 拆机
+A10 主板
+A10 维修
+A10 花屏
+A10 白屏
+A10 H1512
+```
+
+Disambiguation rule: reject generic A10 products and the mismatched 20W/~142×66×25 mm/5000-game export branch unless exact XGO PLUS+ enclosure, 141×67×20 dimensions, 22.5W/15W ratings, card/binary evidence, or PCB evidence establishes a relationship.
+
+Highest-value Chinese targets:
+1. original 32GB A10 game card / copied-card image;
+2. `A10（无卡无游戏）` seller after-sales provisioning;
+3. broken/parts A10 listings exposing PCB/FPC;
+4. Chinese owner videos/comments showing TF-card contents;
+5. original 1688/Taobao listing ancestry and seller identity.
