@@ -1891,3 +1891,51 @@ Hardware test order:
 2. verify one stock Arcade game from lists 7-10, including audio/pause/OSD;
 3. test Pac-Man on list 11;
 4. if Pac-Man works, test Ms. Pac-Man.
+
+
+### Test23 hardware bounce-back explained; Test25 true family candidate ready (2026-09-08)
+
+Test23 hardware:
+- Cadillac & Dinosaurs remains normal on stock Arcade path.
+- Pac-Man and Ms. Pac-Man on fifth Arcade show `Loading.....` then cleanly return to list 11.
+- no black-screen freeze.
+
+Postmortem:
+Test23's family frontend was dead-stripped by linker GC. The upper-RAM entry returned a `retro_core_t *` API table, but the low loader still used the old `entry(filename,load_state)` ABI and ignored the return value. Therefore the clean bounce-back is explained by an incomplete family transplant, not MAME rejecting the ROM.
+
+Test24 rebuilt the same dead architecture and should not be hardware-tested.
+
+Test25 implements the actual family contract:
+- low list-11 loader captures `retro_core_t *`;
+- builds stock-resolved `<system>/bin/<archive>` using 0x810a0eb0 + 0x8109fce8;
+- installs XGO stock callbacks through the API table;
+- calls `retro_init`;
+- populates golden `g_retro_game_info` / `gfn_retro_*`;
+- golden `run_emulator()` owns runtime;
+- deinit + full callback/global restoration afterward;
+- lists 7-10 remain stock FBA.
+
+Upper MAME wrapper retains:
+- XGO admin/service-key patch;
+- Test12 isolated-state patch;
+- joypad-only filtering;
+- family L+R fold-down into internal first channel while retaining second channel.
+
+Golden Test08 remains the base; Volume OSD, scheduler, mapper, SNES, scanner, pause/menu are not reverted.
+
+Exact candidate:
+```text
+xgo-arcade-test25-true-family-mame2000.zip
+size              7,400,397 bytes
+ZIP SHA-256        927d6a33a42d8ddc239e64575ab19e07341d99a101051e3ddb202e9d0b5c5e8a
+firmware SHA-256   9faddef2648868b856a2be084376cb7e3204505ae113fcefe1f884ae8957f316
+loader size        2,009 bytes
+loader SHA-256     bac994cd65c8da55fdc49b5cc92ad0aff7a4b2abf98086fab51f5b7d5e3277c1
+core size          9,124,304 bytes
+core SHA-256       14a5303decb74df31d9c05c1c6336f57447d7f0cc6bb29e4501d621fe4e3eb5c
+```
+
+CI run `34276092808` passed; artifact ID `10075859223`; artifact archive commit `13f0869`.
+
+Finding:
+`findings/arcade-test23-postmortem-test25-true-family-candidate.md`
