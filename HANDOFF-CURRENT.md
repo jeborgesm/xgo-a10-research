@@ -1427,3 +1427,34 @@ Next research target:
 - then use Pac-Man/Ms. Pac-Man as the first stock-driver launch proof.
 
 Do not overload CPS1/CPS2/NeoGeo/IGS long-term merely to avoid creating the proper Classic Arcade page.
+
+
+### Arcade Test10 hardware PASS — fifth Arcade and stock Pac-Man execution (2026-09-07)
+
+Test10 passed hardware.
+
+Changing `Foldername.ini` active-section count `11 7 0 -> 12 7 0` exposes a real fifth Arcade section. The fifth page is therefore an inherited but disabled native category, not a hypothetical frontend slot.
+
+Observed presentation:
+- fifth category is visible but inherits CPS2 artwork;
+- `Resources/None` loads successfully as list ID 11 and shows Pac-Man;
+- Pac-Man has no thumbnail because Test10 intentionally supplied a blank `.zfb` thumbnail;
+- lower system/banner artwork is scrambled/invalid, confirming list ID 11 lacks a complete valid presentation-resource mapping.
+
+Observed execution:
+- Pac-Man launches from `ARCADE/bin/pacman.zip`;
+- gameplay and controls work;
+- pause menu works normally;
+- **audio is silent**.
+
+This proves the stock XGO FBA Pac-Man driver is executable. Silent audio is now a focused classic-driver/audio-path problem, separate from category/list/wrapper/launch correctness.
+
+Hardware finding:
+`findings/arcade-test10-hardware-pass.md`
+
+Next priorities:
+1. fix fifth-category Classic Arcade presentation resources;
+2. trace/fix Pac-Man audio;
+3. inventory all non-CPS/NeoGeo/IGS drivers compiled into stock XGO;
+4. test Ms. Pac-Man next because it belongs to the now-proven compiled Pac-Man family;
+5. continue Galaga/Frogger/Donkey Kong/Mario Bros./Asteroids coverage analysis; use external/lifted core only where stock driver modules are genuinely absent.
