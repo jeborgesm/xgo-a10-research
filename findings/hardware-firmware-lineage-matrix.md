@@ -1349,3 +1349,67 @@ D. present on preserved card/catalog but absent from alternate A10 list
 Class B is especially valuable: it can reveal OEM-intended entries that our particular factory catalog revision accidentally or deliberately hid.
 
 Do not interpret the retail "10000 games" claim as a literal catalog count from this document. The validated six-system portion totals 5963 before its curated Arcade sections, and marketing totals may count bundle variants or other content differently.
+
+
+
+## 2026-09-07 continuation update — sampled hidden-ROM cross-check against alternate A10 catalog
+
+A targeted cross-check now confirms that several ROMs which are physically present on the preserved XGO card but absent from its visible stock catalogs appear as normal entries in the independently published alternate-A10 game list.
+
+This is sampled evidence, not yet a complete machine-classified diff.
+
+### Confirmed sampled overlaps
+
+| System | Physical ROM on preserved XGO card but hidden from its visible catalog | Present in alternate A10 public catalog |
+|---|---|---|
+| FC | `Bomber Man 2.zfc` | **YES** |
+| FC | `Hokuto No Ken.zfc` | **YES** |
+| FC | `Majou Densetsu 2.zfc` | **YES** |
+| SFC | `90 Minutes - European Prime Goal.zsf` | **YES** |
+| SFC | `Biker Mice From Mars.zsf` | **YES** |
+| MD | `AWS Pro Moves Soccer.zmd` | **YES** |
+| GBC | `Beach'n Ball.zgb` | **YES** |
+| GBA | `A Sound of Thunder.zgb` | **YES** |
+| GBA | `Atari Anniversary Advance.zgb` | **YES** |
+| GBA | `International Superstar Soccer.zgb` | **YES** |
+| GBA | `Max Payne Advance.zgb` | **YES** |
+
+Several other hidden ROMs sampled from the preserved card do **not** appear by exact English filename in the alternate list, demonstrating that the alternate catalog is not merely "all hidden XGO files exposed." The content bundles genuinely differ.
+
+### Engineering interpretation
+
+This creates an independently corroborated three-state example:
+
+```text
+same A10/DY10 hardware family
+  |
+  +-- preserved XGO card
+  |      ROM physically present
+  |      but catalog entry omitted
+  |
+  +-- alternate A10 content revision
+         same title exposed in menu catalog
+```
+
+Therefore at least some "hidden" ROMs on the preserved XGO card are best interpreted as **factory-content/catalog divergence**, not stray user-added files.
+
+This directly supports the on-device stable-merge scanner work:
+
+> discovering a physical ROM absent from the visible catalog can legitimately restore an OEM-intended title rather than necessarily introducing foreign content.
+
+### Limits
+
+Do not generalize the sampled overlaps to every hidden ROM.
+
+A complete classification still requires recovery of the public A10 list in machine-readable form, after which every entry should be categorized as:
+
+```text
+A. visible in preserved XGO catalog
+B. physically present but hidden on preserved XGO card
+C. absent from preserved XGO card
+D. present on preserved XGO card but absent from alternate A10 list
+```
+
+Source:
+- alternate A10 catalog: https://www.scribd.com/document/881855797/A10-Gam-st
+- preserved physical-card inventory and stock catalog files: repository/local archived XGO evidence
