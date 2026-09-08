@@ -1804,3 +1804,46 @@ probe XGOC SHA-256 aac9310c13d6330270e17b8fd417cfbfaefebfbdc197a2a46a7567c384ac7
 ```
 
 Private CI run `34260753277` passed; artifact ID `10069783018`.
+
+
+### Major pivot — lift family-proven SF2000/GB300 MAME2000 path (2026-09-08)
+
+Family research confirms a working MAME2000 implementation already exists on closely related HC15xx devices.
+
+Sources:
+- madcock/sf2000_multicore
+- madcock/sf2000_multicore_cores
+- tzubertowski/gb300_multicore
+
+SF2000 Multicore ships MAME2000 as `m2k`; GB300 Multicore also ships `m2k` and inherits the same architecture. Family documentation uses MAME 0.37b5 sets and reports broad classic-arcade coverage, though performance is worse than stock FBA for larger games.
+
+Critical architecture difference from our current XGO bridge:
+
+Family proven path:
+```text
+loader
+ -> raw core_87000000 loaded directly at 0x87000000
+ -> core entry clears BSS + initializes libc/ctors
+ -> returns struct retro_core_t API table
+ -> loader installs stock callbacks
+ -> retro_init
+ -> populate stock game-info/globals
+ -> stock run_emulator
+```
+
+The family does NOT use our XGOC + custom MAME frontend model.
+
+Most important runtime difference:
+SF2000 Multicore patches the IRQ path with a live `restore_stock_gp` JAL so every interrupt re-establishes the firmware GP. Our current XGO bridge only copies the stock GP-init instructions into the IRQ path once. The tiny Test21 XGO1 probe can succeed without stressing this, while a full MAME runtime can freeze under interrupt activity.
+
+New primary direction:
+- stop the custom MAME staged-return ladder;
+- port the family multicore loader/core_api contract to XGO list ID 11;
+- use raw family-format `m2k/core_87000000`;
+- adapt stock firmware addresses to known XGO equivalents;
+- implement family-style IRQ GP restoration;
+- keep lists 7-10 stock FBA;
+- test Pac-Man/Ms. Pac-Man with MAME 0.37b5 sets.
+
+Finding:
+`findings/family-proven-mame2000-sf2000-gb300-lift-target.md`
