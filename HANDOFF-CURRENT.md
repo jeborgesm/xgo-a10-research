@@ -1191,3 +1191,30 @@ firmware SHA-256 5d15cbe1cef380b3517cbd64727526e1b837df5160ba5275ccde6fec01324f4
 ```
 
 Next engineering target: replace the staged `refresh.bin` 929->930 proof with the real on-device discovery + stable-merge scanner while preserving the now-golden explicit Refresh UI, status messages, three-second expiry, selector/footer behavior, PAL/NTSC placement, Favorites/save stability, and all prior golden emulator/audio behavior. Do not redo Test04-Test06b archaeology.
+
+
+### Test07 candidate — real SFC discovery + stable merge (2026-09-07)
+
+The first post-Test06b real scanner candidate is composed and offline-audited.
+
+```text
+xgo-game-list-test07-general-sfc-scanner.zip
+size              4,995,560 bytes
+ZIP SHA-256        0b07d1b4cd83b4a54b80740d646f85e72e3994598c19c089941b76ad56268719
+firmware SHA-256   238331cf5cf56f9fb31891e197c12bfaa86a280a65dbeacc83e1b34d99c858c1
+scanner/status     3,009 bytes
+scanner SHA-256    9ef681888972c01bca94b50c0ea1a51df0f4246d9889ac007aa9907c3b1fe0c8
+builder commit     d2ca23b21e3b909af48646c9bc7242f74f212b7c
+```
+
+Test07 starts directly from the exact golden Test06b ZIP and preserves the proven User Menu/UI/status resources. It replaces the staged writer with a real `/SFC` directory scan using the stock directory wrappers and stock extension classifier. It performs stable merge: existing entries/indices remain unchanged, only physical filenames absent from slot 0 are appended, with basename fallbacks appended to slots 1 and 2. All three outputs are constructed in RAM before canonical writes. The classifier global side effect is saved/restored.
+
+Critical proof boundary: `Resources/refresh.bin` is absent from Test07. The expected 929->930 transition must therefore come from discovery of the physically present `SFC/XGO Import Test.zsf`.
+
+Test07 is still deliberately non-transactional and is **NOT golden**. Hardware test only on the disposable clone; do not interrupt power during Refresh. First Refresh should report `Games Updated`, yield 930 entries, and expose/launch XGO Import Test. Second Refresh should report `No New Games`. Reboot/Favorite/save/Search/Chinese/UI/audio/SNES/CPS1 regressions remain part of the gate.
+
+Primary finding:
+
+`findings/game-list-test07-real-sfc-discovery-stable-merge-candidate.md`
+
+The private-vault CI reproduction workflow is committed at `.github/workflows/xgo-game-list-test07-general-sfc-scanner.yml` in `jeborgesm/xgo-a10-artifacts`, but API-originated commits did not emit its configured push trigger in this session. Do not claim private-vault archival until an actual run or direct archive commit is confirmed.
