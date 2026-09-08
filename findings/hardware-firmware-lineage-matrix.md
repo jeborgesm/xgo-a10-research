@@ -374,3 +374,35 @@ Why this matters:
 - the product/item ID is an exact search key for archived reviews, owner complaints, and mirrors.
 
 Current indexed searches did **not** expose a public TF-card replacement package or seller support download from 鲸零数码专营店. Keep the seller as an after-sales lead; do not infer card contents without direct evidence.
+
+
+### Shenzhen Moka / 墨咔 1688 supply-chain lead — PARTIAL, exact A10 bridge not yet proven
+
+A corporate/contact pivot produced a potentially important current wholesale lead:
+
+```text
+深圳市墨咔科技有限公司
+1688 shop: szmkkj.1688.com
+landline: 0755-27929877
+```
+
+Two independent indexed wholesale mirrors associate 深圳市墨咔科技有限公司 with that landline and game-hardware sales. One current indexed snapshot also exposes a product title for a `DY09私模游戏机充电宝磁吸无线快充便携移动电源`.
+
+The landline is notable because `0755-27929877` is also independently documented for:
+- 深圳市前海芯果智能科技有限公司 historical corporate profiles;
+- 深圳市晶科泰科技有限公司 / Jncota factory/contact profiles.
+
+This creates a **PARTIAL organizational/supply-chain relationship clue** around the same unusual game-console/power-bank category.
+
+Evidence discipline:
+- **NOT PROVEN:** 深圳市墨咔科技有限公司 manufactured or sold the exact A10/DY10 specimen.
+- **NOT PROVEN:** `szmkkj.1688.com` is the seller behind exact 1688 offer `754381935521`.
+- **NOT PROVEN:** either Alibaba media-owner namespace `2213313290698` or `2209861332013` belongs to 墨咔.
+- Exact searches combining 墨咔 / `szmkkj` with A10, DY10, offer `754381935521`, and both image-owner IDs did not produce an indexed exact-enclosure bridge.
+
+Why retain the lead:
+- the shared landline is independently reproduced across XGO/Jncota and the current game-hardware wholesale identity;
+- 墨咔 currently occupies the same specialized game-hardware / game-power-bank sales channel;
+- the 1688 shop handle is a concrete source to inspect for historical listings, archived media, replacement cards, and after-sales material.
+
+Promote confidence only if an exact A10/DY10 enclosure, card package, offer ID, image-owner ID, PCB, or firmware artifact is tied directly to this shop/company.
