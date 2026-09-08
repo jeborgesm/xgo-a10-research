@@ -1529,3 +1529,43 @@ Next engineering target: reuse the proven XGO MAME2000 external-core infrastruct
 
 Finding:
 `findings/arcade-test14-mspacman-fail-mame2000-pivot.md`
+
+
+### Arcade Test15 candidate — list-ID 11 external MAME2000 (2026-09-08)
+
+Test15 is the first Classic Arcade candidate that stops relying on the broken stranded Pac-Man-family stock FBA drivers.
+
+Architecture:
+- list IDs 7-10 remain untouched stock XGO FBA;
+- list ID 11 / fifth Arcade routes to external MAME2000 only;
+- golden Test08 console Refresh remains the firmware baseline.
+
+The loader is injected into the currently verified zero cave `0x80001900..0x8000217f` and intercepts the real stock arcade runtime call at `0x80360df8`.
+
+```text
+loader size       1,325 bytes
+loader SHA-256    74046302713cd575a3b3db8abebb00e656c9dd7fb7c33a6bc1b66094c71ebd0e
+MAME2000 core     9,127,952 bytes
+core SHA-256      abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+candidate ZIP     7,400,598 bytes
+candidate SHA-256 20cba65613463f68fb6d9ee7bf4ef2b7dc1ac2f86423dda4a50620e339fd0097
+firmware SHA-256  7ade9be3609ce74add4ffd217e4f48ff077e3ce50420670854315941dc7bff50
+```
+
+The external core is the already hardware-proven MAME2000 Test12 XGOC, with repaired XGO input filtering and isolated MAME state namespace.
+
+Fifth-page entries:
+- `Pac-Man.zfb -> ARCADE/bin/pacman.zip`
+- `Ms Pac-Man.zfb -> ARCADE/bin/mspacman.zip`
+
+No ROMs are included. Prefer MAME2000 / MAME 0.37b5-compatible sets.
+
+Private CI run `34188223200` passed all build/audit/ZIP checks and archived the candidate; workflow artifact ID `10041265802`.
+
+Finding:
+`findings/arcade-test15-mame2000-classic-candidate.md`
+
+Hardware priorities:
+1. verify lists 7-10 still run stock;
+2. test Pac-Man and Ms. Pac-Man in fifth Arcade for speed/video/audio/controls/pause/quit;
+3. if successful, expand Classic Arcade to Galaga/Frogger/Donkey Kong/Mario Bros./Asteroids.
