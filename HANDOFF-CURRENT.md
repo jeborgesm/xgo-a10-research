@@ -1686,3 +1686,58 @@ Workflow run:
 `34247530169`
 
 As of this handoff update the Test18 workflow is queued; do not invent or claim a candidate hash until the run completes.
+
+
+### Exact Test12-vs-Test08 MAME differential; Test20 ready (2026-09-08)
+
+A private-vault byte comparison between the hardware-working MAME2000 Test12 firmware and golden Test08 closed several hypotheses.
+
+Byte-identical stock-service windows:
+- fopen/fread/fclose;
+- dly_tsk;
+- retro video/audio/input/environment callbacks;
+- run_fba @ 0x80360848;
+- arcade cleanup @ 0x80360e00;
+- osd_region_write.
+
+Low-memory map:
+- mapper 0x800014a0..0x800018ff identical;
+- 0x80001900..0x8000217f zero in both images;
+- SNES loader 0x80002230..0x8000277f identical.
+
+Therefore the relocated Classic Arcade loader cave is not overlapping protected mapper/SNES code.
+
+Critical divergence:
+- `run_emulator @ 0x8035ed48` differs between Test12 and golden Test08.
+- first changed instruction is `0x8035ed6c`: Test12 original setup instruction vs golden Audio-OSD game-enter hook.
+- golden firmware also includes the later hardware-confirmed sibling wall-time scheduler transplant inside run_emulator.
+- MAME2000 Test12 was never validated under those later runner changes.
+
+Primary finding:
+`findings/arcade-mame-test12-vs-test08-runtime-differential.md`
+
+Test20 is a narrow diagnostic:
+- base = exact golden Test08;
+- fifth Arcade/list 11 retained;
+- clean list-11 loader retained;
+- exact hardware-proven Test12 MAME2000 core retained;
+- only `run_emulator 0x8035ed48..0x8035f2b3` is restored byte-for-byte from working Test12.
+
+```text
+xgo-arcade-test20-mame2000-test12-runner.zip
+size              7,400,664 bytes
+ZIP SHA-256        65de1d19d5aa2781515d4022930c722fc2265a7d42fb1fb1ed462afa7e6c1476
+firmware SHA-256   9464c50fc3f3af4ea21072c85af6958d3b77dfb1d4390ef66401742dcd4f53b4
+loader SHA-256     74046302713cd575a3b3db8abebb00e656c9dd7fb7c33a6bc1b66094c71ebd0e
+MAME2000 SHA-256   abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+restored runner    1,388 bytes
+runner SHA-256     a7c398141c1b7c706f653a847fab09480917ef84c469160a50560fb825b54078
+```
+
+No trace writes and no visual tracing.
+
+Hardware procedure:
+- test Pac-Man first;
+- do not press Volume while the game is running because Test20 temporarily removes the newer Audio-OSD game-session hooks from run_emulator;
+- if Pac-Man reaches gameplay, later run_emulator changes are confirmed as the regression surface;
+- if black-screen/freeze remains, the runner differential is ruled out and focus returns to loader/core transfer.
