@@ -24,7 +24,6 @@ static FILE *(*const fw_fopen)(const char *, const char *) = (void *)0x802b3524;
 static size_t (*const fw_fread)(void *, size_t, size_t, FILE *) = (void *)0x802b3698;
 static int (*const fw_fclose)(FILE *) = (void *)0x802b2f40;
 static size_t (*const fw_fwrite)(const void *, size_t, size_t, FILE *) = (void *)0x802b42ac;
-static int (*const fs_sync_wrap)(void) = (void *)0x807d40a8;
 static int (*const dly_tsk)(unsigned) = (void *)0x8030f480;
 static void (*const stock_run_fba)(const char *, int) = (void *)0x80360848;
 static void (*const os_disable_interrupt)(void) = (void *)0x802e0750;
@@ -41,13 +40,14 @@ static void trace_stage(unsigned stage)
 {
     FILE *f;
     char code;
-    if(stage<1u || stage>10u) return;
-    code=(char)('A'+stage-1u);
+    if(stage==3u) code='C';
+    else if(stage==4u) code='D';
+    else if(stage==10u) code='J';
+    else return;
     f=fw_fopen(trace_path,"wb");
     if(!f) return;
     fw_fwrite(&code,1,1,f);
     fw_fclose(f);
-    fs_sync_wrap();
 }
 
 static u32 crc32_ieee(const unsigned char *p, u32 n)
@@ -99,7 +99,6 @@ void load_and_run_classic_mame(const char *filename,int load_state)
     u32 old_limit,end_addr,entry_addr;
     int (*entry)(const char *,int);
 
-    trace_stage(1);
     if(*ACTIVE_LIST_ID!=XGO_LIST_CLASSIC){
         stock_run_fba(filename,load_state);
         return;
@@ -112,7 +111,6 @@ void load_and_run_classic_mame(const char *filename,int load_state)
     f=fw_fopen("/mnt/sda1/cores/mame2000/core.xgc","rb");
     if(!f) goto stock_undisturbed;
     if(fw_fread(&h,1,sizeof(h),f)!=sizeof(h)) goto close_undisturbed;
-    trace_stage(2);
     if(h.magic!=XGOC_MAGIC ||
        (h.version_header&0xffffu)!=XGOC_VERSION ||
        (h.version_header>>16)!=XGOC_HEADER_SIZE ||
@@ -133,21 +131,16 @@ void load_and_run_classic_mame(const char *filename,int load_state)
     if(*HEAP_BREAK>=CORE_BASE) goto close_sound_stopped;
     old_limit=*RAMSIZE;
     *RAMSIZE=CORE_BASE;
-    trace_stage(5);
 
     if(fw_fread((void *)CORE_BASE,1,h.payload_size,f)!=h.payload_size)
         goto close_restore;
     fw_fclose(f); f=0;
-    trace_stage(6);
 
     if(crc32_ieee((const unsigned char *)CORE_BASE,h.payload_size)!=h.payload_crc32)
         goto restore;
-    trace_stage(7);
     zero_range((unsigned char *)(CORE_BASE+h.payload_size),h.memory_size-h.payload_size);
     repair_irq_gp();
-    trace_stage(8);
     full_cache_flush();
-    trace_stage(9);
 
     entry=(void *)entry_addr;
 
