@@ -730,7 +730,7 @@ DY10 = strong Chinese domestic/product-family identity for the transparent 10,00
 A10   = strong black/premium retail variant identity for the same enclosure family
 ```
 
-Do **not** yet assume every DY10 and A10 package is firmware-identical. Chinese listings show at least 500-game, 1000+-game and 10,000-game bundles in visually matching hardware, so card content and possibly firmware revision remain package-dependent.
+Do **not** assume every DY10/A10-family package is firmware- or board-identical. Later visual audit proves at least one 10000mAh Marvel 500-game variant uses a D-pad/four-button gaming front end rather than the joystick/six-button A10 front end. Content count alone is therefore not an exact-hardware identifier.
 
 Evidence:
 - JD 芯果 product listings indexed under `A10黑`, transparent-black premium and Marvel variants
@@ -1004,7 +1004,7 @@ Evidence:
 
 ### Highest-value exact-device artifact now: alternate domestic stock TF card
 
-A domestic **500-game 10000mAh XGO card** is potentially more valuable for software-lineage comparison than another generic sibling firmware.
+A domestic **500-game 10000mAh XGO card** remains useful as product-family comparison evidence, but is no longer an exact-A10 priority: visual audit shows the Marvel 500-game unit can use a different D-pad/four-button gaming front end.
 
 Comparing it with the preserved XGO 10000-game specimen can determine whether XGO shipped:
 
@@ -1240,7 +1240,7 @@ That independently supports the stable-merge scanner work and shows that OEM cat
 ### Updated exact-device artifact priority
 
 1. **Recover 1688 offer 754381935521 supplier identity and original shop page.**
-2. **Locate a stock card from the no-card/500-game/alternate A10 bundle family.**
+2. **Locate a stock card from an exact joystick/six-button A10/DY10/MechZone/Smartberry-class bundle; do not substitute the visually different Marvel 500-game front end.**
 3. **Locate a MechZone A10 TF card or firmware.**
 4. **Preserve/download the published A10 game-list document if provenance permits and compare every system list programmatically.**
 5. **Search the alternate A10 catalog for all entries absent from the preserved XGO catalogs and check whether those ROMs physically exist on the user's card.**
@@ -1437,110 +1437,84 @@ This lead remains pending exact product-page/enclosure attribution.
 
 
 
-## 2026-09-07 continuation update — exact 10000mAh XGO Marvel 500-game SKU confirmed
+## 2026-09-07 correction — 10000mAh Marvel 500-game SKU is a product-family sibling, not proven exact-A10 hardware
 
-Chinese JD indexing now confirms a materially smaller software bundle on the same 10000mAh XGO Marvel game-power-bank family.
+Chinese JD indexing confirms a 10000mAh XGO Marvel 500-game SKU, but a later visual audit changes its engineering classification.
 
-Explicit variants include:
+The VBEINGS/Youzan DY10 listing places two visibly different XGO gaming fronts together:
 
 ```text
-漫威联名款
-怀旧经典五百游戏 + 1W毫安快充
+premium transparent unit:
+  joystick
+  Select / Start
+  six face buttons
+  XGO PLUS+ 10000MAH
+  exact A10-style enclosure/control geometry
 
-漫威联名款
-双人对战手柄 + 五百游戏 - 1W毫安快充
-
-尊享版本
-万款游戏 + 可玩街机 + 1W毫安快充
+Marvel-branded unit:
+  D-pad
+  four face buttons
+  different front-panel construction
+  Games Power / Marvel styling
 ```
 
-All are sold under the same product title:
+The same listing's detailed product art then switches back to the **exact joystick/six-button A10** and advertises:
 
 ```text
-芯果XGO漫威联名游戏机充电宝
-22.5W无线磁吸
-10000毫安
+10000mAh
+万款游戏
+22.5W
+A10游戏磁吸充电宝
 ```
 
 Evidence:
-- https://www.jd.com/jiage/6702035eebcdcf053c9.html?brand=%E8%8A%AF%E6%9E%9C
-- https://www.jd.com/jiage/670e01ef211cfd807ab.html?brand=%E8%8A%AF%E6%9E%9C
-- https://www.jd.com/jiage/9987a8e3bc0332b35119.html
+- https://detail.youzan.com/show/goods?alias=2xe3gpow94qpagp&from_source=gbox_seo
+- JD XGO Marvel 500-game and 10000-game variants
 
-### Significance
+### Corrected interpretation
 
-This is now **CONFIRMED external evidence** that the 10000mAh XGO hardware family shipped with at least two sharply different content tiers:
-
-```text
-500-game bundle
-10000-game / arcade bundle
-```
-
-and that the 500-game version was not merely the 5000mAh DY09 product.
-
-This strengthens the architecture model:
+The 500-game Marvel evidence proves:
 
 ```text
-same or near-identical 10000mAh enclosure/power platform
-        |
-        +-- smaller 500-game software/card SKU
-        |
-        +-- larger 10000-game/arcade software/card SKU
+XGO/Jncota sold a 10000mAh game-power-bank sibling with a 500-game gaming front end
 ```
 
-Exact `bisrv.asd` equality between those variants remains UNKNOWN until a stock card is recovered.
-
-### Artifact priority increase
-
-A stock TF card from the 10000mAh Marvel **500-game** variant is now one of the highest-value exact-device artifacts because it can answer whether:
-
-1. the application binary is identical and only Resources/ROMs differ;
-2. the 500-game version uses a smaller/older frontend;
-3. the same hidden-ROM/catalog behavior exists;
-4. model-specific controller/display support is identical;
-5. the 500-game build is closer to an earlier XGO/DY10 factory revision.
-
-Search aliases:
+It does **not** prove:
 
 ```text
-芯果XGO 漫威联名 五百游戏
-芯果XGO 漫威 500游戏 TF卡
-芯果XGO 漫威 500游戏 内存卡
-芯果XGO 漫威 原装卡
-芯果XGO 10000mAh 五百游戏
+the exact joystick/six-button A10 PCB
++ a smaller 500-game TF/Resources bundle
 ```
 
-### Repair-scene search result remains negative for exact A10/DY10
+The Marvel 500-game unit may have a different game PCB, firmware architecture, storage arrangement, or even a fixed built-in ROM set.
 
-A new symptom-oriented Chinese pass searched combinations of:
+Therefore:
+
+> A Marvel 500-game stock card/firmware is useful **product-family comparator evidence**, but it is no longer a highest-value exact-A10 artifact target.
+
+Exact-A10 stock-card priorities should instead focus on visually verified joystick/six-button units such as:
+- XGO A10 / transparent-black 10000-game unit;
+- DY10 listings that physically show the joystick/six-button front;
+- MechZone A10;
+- Smartberry A10 5000-game candidate;
+- Royaldraid/Pogopirate A10 candidates after visual verification.
+
+### Broader identity lesson
+
+The same or similar 10000mAh magnetic power-bank enclosure family can carry materially different gaming-control fronts.
+
+For this product line, archive identity as separate layers:
 
 ```text
-花屏
-白屏
-开不了机
-卡坏
-换屏
-维修
+power-bank enclosure / battery platform
+gaming control/front-panel layout
+game PCB / SoC
+firmware / bisrv.asd
+TF/Resources/ROM bundle
+retail game-count SKU
 ```
 
-against `芯果 XGO`, `DY10`, `A10 游戏机充电宝`.
-
-No indexed exact-A10/DY10 repair guide or teardown surfaced. Results continue to collapse toward the older DY09 teardown or generic sales pages.
-
-This is useful negative evidence:
-
-> The exact A10/DY10 repair/mod scene is weakly indexed under model-name + symptom terms.
-
-Future exact-device hardware discovery should therefore continue emphasizing:
-- Bilibili/Douyin owner graph;
-- Xianyu/parts-only listings;
-- original/alternate TF cards;
-- 1688 supplier pages;
-- image-based PCB matching;
-- seller after-sales/support material.
-
-
-
+Do not use battery capacity or advertised game count as a proxy for game-PCB identity.
 
 ## 2026-09-07 continuation update — original Alibaba A10 product-art corpus recovered
 
@@ -1765,13 +1739,13 @@ Current externally observed tiers for the transparent 10000mAh A10/DY10-family p
 
 ```text
 no-card / no-games       CONFIRMED wholesale SKU
-500 games                CONFIRMED on 10000mAh XGO Marvel SKU
+500 games                CONFIRMED on 10000mAh XGO Marvel **product-family sibling; not proven exact A10 game PCB**
 1000+ games              STRONG on Chinese DY10 coverage
 5000 games               STRONG on Smartberry/export A10
 10000 games / arcade     CONFIRMED on XGO A10/Marvel/wholesale variants
 ```
 
-This does **not** currently form a chronological sequence. Current Chinese retail simultaneously sells the 500-game and 10000-game 10000mAh XGO variants.
+This does **not** currently form a chronological sequence. Current Chinese retail simultaneously sells 500-game and 10000-game 10000mAh XGO-family variants, and visual evidence shows those variants can use different gaming front ends.
 
 Likewise, no reliable A10/DY10 source currently maps the 500/1000+/10000 tiers to explicit 8G/16G/32G card sizes. XGO's newer R350 listings do advertise storage tiers explicitly, but A10/DY10 listings generally advertise **content tier** instead.
 
