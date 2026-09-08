@@ -525,3 +525,25 @@ Immediate artifact targets:
 4. recover the DY12 display-fix package and identify exactly which LCD init/config bytes changed;
 5. search `时趣 DY-19` as a separate OEM alias for PCB photos, repair listings and factory firmware;
 6. follow the people, not only the product names: creators who modify multiple HC15xx power-bank handhelds are now first-class evidence sources.
+
+
+### DY19 `时趣` / Shiqu alias strengthened by retail evidence
+
+The `时趣 DY-19` naming used by the Chinese SF2000-flashing videos is not an isolated uploader nickname.
+
+Current Chinese-market-indexed accessory listings independently describe:
+
+```text
+DY19钢化膜
+时趣掌上游戏机充电宝二合一
+```
+
+("DY19 tempered glass / Shiqu handheld game-console + power-bank 2-in-1").
+
+This raises `时趣 / Shiqu` to a **STRONG retail/OEM search alias** for DY19. Future Chinese searches should include it even when `DY19` is omitted from the title.
+
+Evidence:
+- Chinese-market product results indexed through Shopee for `时趣 DY19`;
+- Bilibili creator `叶落听风者` explicitly labels the flashed specimen `时趣 DY-19`.
+
+Chinese retail search also continues to index Q19-class power-bank game consoles, indicating that this hardware category remains sufficiently active for recent repair/modification content to still surface rather than being purely historical.
