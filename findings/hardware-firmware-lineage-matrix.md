@@ -329,3 +329,199 @@ The next controlled XGO hardware investigation should identify likely GND/TX/RX 
 - **DY19:** still UNKNOWN.
 - **XGO A10:** raise conceptual likelihood to **STRONG**, while physical pad identity remains UNKNOWN.
 
+
+
+
+## 2026-09-07 continuation update — Chinese-language modding and recovery ecosystem
+
+A dedicated Chinese-language search track has now produced a coherent modification/recovery cluster around the same power-bank handheld family.
+
+This materially changes the research strategy: Chinese Bilibili/forum sources are not merely product reviews. They contain firmware recovery, cross-model flashing, display adaptation, system-package replacement and game-library tooling that independently overlap several XGO archaeology results.
+
+### DY19 recovery firmware and unbrick workflow — CONFIRMED externally
+
+Bilibili creator `Sesn` published:
+
+```text
+DY-19充电宝掌机救砖固件及软件分享
+"DY-19 power-bank handheld unbrick firmware and software sharing"
+```
+
+The post explicitly says:
+
+- no ready-made DY19 unbrick tutorial was available to the author;
+- the recovery method was worked out with guidance from a more experienced expert;
+- the video provides the required **software and firmware package**;
+- the package was shared through Tianyi Cloud;
+- another Bilibili creator, `炒鸡大帅比9961`, had produced an **optimized firmware package** for the same device family.
+
+The same recovery post was independently mirrored/discussed on the Chinese emulator forum `bbs.xqemu.cn`, preserving the cloud package link and Bilibili video ID.
+
+Evidence:
+- https://www.bilibili.com/video/BV1Td8ceJEA8/
+- https://bbs.xqemu.cn/thread-2184-1-1.html
+
+Preserved package locator from the public post:
+
+```text
+https://cloud.189.cn/t/7V3mu2MJnUBf
+access code: 9fma
+```
+
+Package contents have **not yet been recovered or hashed** in this repository. Treat the existence/provenance as confirmed external evidence; treat internal binary identity as pending.
+
+### Independent Chinese SF2000 -> DY19 adaptation — STRONG
+
+A separate Bilibili creator, `叶落听风者`, published:
+
+```text
+充电宝游戏机刷机sf2000（时趣DY-19）
+"Flash SF2000 on a power-bank game console (Shiqu DY-19)"
+```
+
+and a follow-up:
+
+```text
+充电宝游戏机刷机sf2000（时趣DY-19）2：汉化游戏导入
+"... part 2: Chinese localization / game import"
+```
+
+This is independent Chinese-side confirmation of the same architectural split already recovered from 4PDA and our binaries:
+
+```text
+common SF2000/HC15xx software base
++ DY19-specific display/input adaptation
+```
+
+The use of `时趣` (Shiqu) with DY19 is also a useful OEM/retail alias for future Chinese searches.
+
+Evidence:
+- https://www.bilibili.com/video/BV15GX7YVENt/
+- Bilibili SF2000 search currently indexes the follow-up title above.
+
+### One Chinese creator spans DY19, DY12 and generic power-bank-console customization
+
+The creator `炒鸡大帅比9961`, already named by the DY19 recovery author as the source of an optimized DY19 firmware package, now appears repeatedly in power-bank-console modification searches.
+
+Indexed titles include:
+
+```text
+充电宝游戏机新系统包介绍
+"Power-bank game console new system package introduction"
+
+DY-12变色翻转问题成功修复
+"DY-12 color-change / flipped-display problem successfully fixed"
+
+充电宝游戏机 自定义添加游戏工具
+"Power-bank game console custom add-games tool"
+
+什么？充电宝游戏机可以玩伏魔记？
+"What? A power-bank game console can play Fumo Ji?"
+
+充电宝游戏机怎么播放视频？
+"How can the power-bank game console play video?"
+```
+
+This is important because it identifies a **cross-device modifier**, not a one-off repair post.
+
+Current evidence supports:
+
+- DY19 firmware optimization activity;
+- DY12 display-orientation/color adaptation work;
+- replacement system packaging;
+- user-facing game-library modification tooling;
+- expansion of software/content capabilities.
+
+Evidence:
+- https://www.bilibili.com/video/BV1jxt4ztEyy/
+- Bilibili search indices for the DY12 display-fix and custom-add-games titles.
+
+### Direct comparison with XGO archaeology
+
+| Chinese community result | Independent XGO archaeology result | Relationship |
+|---|---|---|
+| DY19 unbrick firmware/software package | XGO/DY19 `bisrv.asd` recovery and boot-chain analysis | **Strong corroboration that firmware recovery/replacement is practical in-family** |
+| SF2000 flashed onto Shiqu DY19 with DY19-specific follow-up | SF2000 common runtime + model-specific display/controller adaptation | **Direct independent corroboration** |
+| DY12 flipped/color display fix | revision-dependent LCD init/display adaptation already inferred from DY12/X60/DY19 evidence | **Strong corroboration of panel/board-revision sensitivity** |
+| new power-bank-console system package | XGO monolithic application + Resources architecture | **Potential sibling distribution package; binary recovery needed** |
+| custom add-games tool | XGO stable-merge/catalog regeneration archaeology and SF2000 FROGTOOL lineage | **Potential independent validation of exact list formats; tool binary/source needed** |
+| game import/localization follow-up for DY19 | XGO three-catalog filename/title/search metadata model | **Potential exact metadata-format match; not yet proven** |
+
+### Important caution on the custom add-games tool
+
+The title alone is **not proof** that the Chinese tool uses the exact XGO/SF2000 triplet transform we recovered.
+
+However, the wider family already uses the known catalog files:
+
+```text
+rdbui.tax
+fhcfg.nec
+nethn.bvs
+...
+```
+
+and SF2000/GB300 community tools such as FROGTOOL rebuild those synchronized lists.
+
+Therefore the Chinese custom-add-games utility is now a high-value artifact target. Recovering it could answer:
+
+1. Does it modify the same `count + offsets + NUL strings` catalogs?
+2. Does it preserve existing indices or perform a full rebuild?
+3. Does it generate Chinese/pinyin/search metadata or duplicate filename text?
+4. Does it support DY12/DY19-specific folder mappings?
+5. Does it patch `bisrv.asd` or only Resource files?
+6. Does its supported-device list expose additional OEM aliases useful for XGO lineage?
+
+### Chinese ecosystem search vocabulary now retained
+
+Future searches should combine retail/OEM/model identifiers with activity terms:
+
+```text
+拆机 / 拆解       teardown
+主板              PCB / motherboard
+刷机              flash firmware
+固件 / 原厂固件   firmware / factory firmware
+救砖              unbrick / recovery
+改机 / 改装       modification
+串口 / UART       serial
+调试口            debug port
+测试点            test point
+烧录              programming/flashing
+固件提取          firmware extraction
+主控              main SoC/controller
+芯片型号          chip marking/model
+屏幕翻转          flipped display
+变色              color corruption/change
+导入游戏          game import
+添加游戏          add games
+系统包            system package
+```
+
+High-value aliases currently include:
+
+```text
+DY-19 / DY19
+时趣 DY-19
+DY-12 / DY12
+Q19
+X60
+X35
+H1512
+HC15xx
+B210
+充电宝游戏机
+```
+
+### Research priority adjustment
+
+Add a permanent high-priority track:
+
+> **Chinese ecosystem archaeology — firmware packages, modding tools, repair workflows, cross-model modifiers, Bilibili creators, emulator forums, Xianyu/Taobao parts trails, Baidu-image/cache trails and Chinese PCB/component identifiers.**
+
+Immediate artifact targets:
+
+1. recover and hash the DY19 Tianyi unbrick package;
+2. recover `炒鸡大帅比9961` optimized DY19/system package;
+3. recover the custom add-games tool and compare its transforms byte-for-byte with our catalog model;
+4. recover the DY12 display-fix package and identify exactly which LCD init/config bytes changed;
+5. search `时趣 DY-19` as a separate OEM alias for PCB photos, repair listings and factory firmware;
+6. follow the people, not only the product names: creators who modify multiple HC15xx power-bank handhelds are now first-class evidence sources.
