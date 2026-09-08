@@ -547,3 +547,121 @@ Evidence:
 - Bilibili creator `叶落听风者` explicitly labels the flashed specimen `时趣 DY-19`.
 
 Chinese retail search also continues to index Q19-class power-bank game consoles, indicating that this hardware category remains sufficiently active for recent repair/modification content to still surface rather than being purely historical.
+
+
+
+## 2026-09-07 correction — China search must be XGO-first, not sibling-first
+
+The Chinese-language search track is now explicitly re-centered on the physical specimen under investigation.
+
+The target identity tuple is:
+
+```text
+brand: 芯果 / Xinguo / XGO
+manufacturer: 深圳市前海芯果智能科技有限公司
+model: A10
+front marking: XGO PLUS+ 10000MAH
+product class: 10000mAh magnetic wireless-charging game-console power bank
+dimensions: approx. 141 x 67 x 20 mm
+controls: analog-style digital joystick + Select/Start + six face buttons
+ports/features: TF, USB-C, AV, external handle/controller interface
+software: H1512 / HC15xx / ALi TDS2 family
+related retail-family alias: DY10 (do not equate without PCB/package evidence)
+```
+
+Chinese searches must therefore begin with the **manufacturer, brand, exact enclosure and product characteristics**, then use DY19/DY12/Q19/X60 only as comparators.
+
+### Chinese target vocabulary for the actual specimen
+
+Primary identity searches:
+
+```text
+芯果 A10
+芯果 A10 游戏充电宝
+芯果 A10 10000毫安
+芯果 A10 磁吸充电宝
+芯果 游戏机 10000mAh
+芯果 PLUS+ 10000MAH
+XGO A10 充电宝游戏机
+XGO PLUS 充电宝游戏机
+前海芯果 游戏机
+深圳市前海芯果智能科技 游戏机
+```
+
+Repair/modification combinations:
+
+```text
+芯果 A10 拆机 / 拆解
+芯果 A10 维修
+芯果 A10 刷机
+芯果 A10 固件
+芯果 A10 救砖
+芯果 A10 改机 / 改装
+芯果 A10 主板
+芯果 A10 屏幕
+芯果 A10 电池
+芯果 A10 摇杆
+芯果 A10 按键
+芯果 A10 TF卡
+芯果 A10 添加游戏 / 导入游戏
+芯果 A10 系统包
+芯果 A10 串口 / UART
+芯果 A10 测试点 / 调试口
+芯果 A10 SPI / 烧录
+芯果 A10 H1512
+芯果 A10 主控
+```
+
+Characteristic-first searches for listings/posts that omit A10:
+
+```text
+芯果 10000毫安 磁吸 无线充 游戏机
+芯果 22.5W 15W 游戏充电宝
+10000毫安 磁吸 游戏机 充电宝 六按键
+充电宝 游戏机 磁吸无线充 TF AV 手柄接口
+H1512 磁吸充电宝 游戏机
+```
+
+### Why this matters
+
+Chinese repair/modding posts may never mention the export label `XGO A10`. They may instead use:
+
+- the domestic brand `芯果`;
+- manufacturer name `前海芯果`;
+- a distributor/OEM model such as `DY10`;
+- generic category `充电宝游戏机`;
+- battery/power characteristics;
+- a PCB silkscreen;
+- the SoC family;
+- or simply a photograph of the enclosure.
+
+Therefore an exact-model search that depends on the English string `XGO A10` has poor recall.
+
+### Existing exact-XGO Chinese anchor
+
+The earlier ChargerLAB / 充电头网 teardown of **芯果 DY09** remains manufacturer-family evidence only. It proves that Chinese teardown media has covered Xinguo game/power-bank hardware at PCB/component level, but the photographed DY09 is visibly not the A10 and no DY09 component may be projected onto A10.
+
+This makes ChargerLAB, the 芯果 manufacturer trail, Chinese repair posts and image-based enclosure matching especially valuable targets for the A10 search.
+
+### Search discipline
+
+For every newly found Chinese candidate, compare against the archived A10 specimen using:
+
+```text
+front control geometry
+six-button layout
+joystick position
+XGO PLUS+ 10000MAH marking
+transparent PCB-pattern enclosure
+141 x 67 x 20 mm class
+rear magnetic wireless coil
+USB-C / TF / speaker edge
+AV jack
+external handle interface
+battery/power claims
+PCB silkscreen if visible
+H1512/HC15xx evidence if available
+```
+
+Only after this physical match should sibling firmware similarities be used to strengthen lineage.
+
