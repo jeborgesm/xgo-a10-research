@@ -38,7 +38,31 @@ STOCK_BRIDGE xgo_stock_fs_mkdir,0x802abeb4
 STOCK_BRIDGE xgo_stock_fs_fstat,0x802ac080
 STOCK_BRIDGE xgo_stock_fs_stat,0x802ac0a4
 STOCK_BRIDGE xgo_stock_fs_read,0x802ac150
+.macro STOCK_BRIDGE5 name,target
+    .pushsection .text.\name,"ax",@progbits
+    .align 2
+    .globl \name
+    .type \name,@function
+\name:
+    addiu $sp,$sp,-32
+    sw $ra,28($sp)
+    sw $gp,24($sp)
+    lw $t0,48($sp)
+    sw $t0,16($sp)
+    lui $gp,0x80c3
+    addiu $gp,$gp,0x4774
+    jal \target
+    nop
+    lw $gp,24($sp)
+    lw $ra,28($sp)
+    addiu $sp,$sp,32
+    jr $ra
+    nop
+    .size \name,.-\name
+    .popsection
+.endm
 STOCK_BRIDGE xgo_stock_fs_write,0x802ac274
+STOCK_BRIDGE5 xgo_stock_fs_lseek,0x802ac394
 STOCK_BRIDGE xgo_stock_fs_readdir,0x802ac438
 STOCK_BRIDGE xgo_stock_fs_close,0x802ac4d4
 STOCK_BRIDGE xgo_stock_fs_closedir,0x802ac4f0
