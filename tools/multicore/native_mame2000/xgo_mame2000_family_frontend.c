@@ -82,7 +82,8 @@ void __start(const char *filename,int load_state)
     unsigned (*old_gr)(void)=gfn_retro_get_region;
     void (*old_av)(struct retro_system_av_info*)=gfn_get_system_av_info;
     bool (*old_lg)(const struct retro_game_info*)=gfn_retro_load_game;
-    void (*old_ug)(void)=gfn_retro_unload_game,*old_run(void)=gfn_retro_run;
+    void (*old_ug)(void)=gfn_retro_unload_game;
+    void (*old_run)(void)=gfn_retro_run;
     void (*old_fs)(int)=gfn_frameskip;
 
     if(!build_rom_path(filename)) return;
