@@ -32,7 +32,7 @@ Legend:
 | Binary application recovered | yes | no | no | no | SPI dump only / no stock application recovered | **YES** 12,477,596-byte BISRV.ASD | **YES** 12,768,452-byte BISRV.ASD |
 | Direct XGO software relationship | ancestor/reference | hardware/power-bank comparator | likely early family branch | stronger DY19 branch clue | H1512 hardware comparator | **VERY STRONG — direct software/content fork evidence** | target device |
 | Game-list/content ancestry | stock reference | UNKNOWN | UNKNOWN | UNKNOWN | retail emulator-family overlap | **CONFIRMED** XGO catalogs are overwhelmingly subsets of original DY19 lists | derived target |
-| UART/test-pad evidence | community documented | PCB should be inspected for candidate pads | UNKNOWN | UNKNOWN | teardown/SPI test access documented | UNKNOWN | high-value future hardware target |
+| UART/test-pad evidence | **CONFIRMED externally** bootloader emits diagnostics over UART; HC15xx UART1 is the documented boot/debug console | PCB should be inspected for candidate pads | UNKNOWN | UNKNOWN | teardown/SPI test access documented | UNKNOWN | **STRONG platform likelihood; physical XGO pad identity UNKNOWN** |
 
 ## Current best-supported architecture model
 
