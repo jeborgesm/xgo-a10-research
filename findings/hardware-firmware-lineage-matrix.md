@@ -730,3 +730,89 @@ Priority search keys now include:
 "S577bc3260ef443858f1d20a64b6f6c77R.jpg"
 "1005008996768853" A10
 ```
+
+
+### Exact Chinese XGO buying guide proves 32G A10 vs 1G Marvel 500-game provisioning — VERY STRONG
+
+A second marketplace-derived exact-XGO artwork corpus, associated with archival item key:
+
+```text
+1005008975396605
+```
+
+contains a Chinese `选购指南` (buying guide) that directly compares two physical variants from the same XGO 10000mAh enclosure/product family.
+
+#### Transparent XGO PLUS+ / joystick configuration
+
+The left side shows the exact transparent XGO PLUS+ enclosure and states:
+
+```text
+10000款游戏
+摇杆模式
+赠送32G TF卡
+畅玩街机游戏
+```
+
+#### Marvel/red directional-pad configuration
+
+The right side shows the Marvel-themed enclosure and states:
+
+```text
+500款游戏
+方向模式
+赠送1G TF卡
+畅玩经典游戏
+```
+
+This is the strongest external bundle-provisioning evidence recovered so far because **both card capacities and both game tiers are presented in one coherent seller comparison graphic**.
+
+Interpretation:
+- **VERY STRONG:** the 10,000-game transparent joystick/XGO A10 bundle was provisioned with a **32GB TF card**.
+- **VERY STRONG:** the 500-game Marvel/directional-pad bundle was provisioned with a **1GB TF card** in this exact seller/factory artwork.
+- **VERY STRONG:** game-count divergence is directly tied to TF-card provisioning, not merely generic marketing wording.
+- **STRONG:** this supports the hypothesis that the same core 10000mAh product family was sold with substantially different removable-card content tiers.
+- **NOT YET PROVEN:** whether the 1GB Marvel card's `bisrv.asd` is binary-identical to the 32GB A10 card.
+- **NOT YET PROVEN:** whether every 500-game Marvel unit used 1GB or every 10,000-game A10 used 32GB.
+
+This makes an authenticated **Marvel 1GB TF-card image** an exceptionally high-value exact-device artifact.
+
+### Second exact artwork corpus exposes direct seller/contact identifiers — HIGH-VALUE LEADS
+
+The same exact A10 artwork corpus exposes multiple seller/account traces.
+
+Several exact XGO PLUS+ product images carry:
+
+```text
+WhatsApp: +86 19897109233
+watermark: cn1104548433
+```
+
+Other images in the same archival item set carry:
+
+```text
+cn1094161006qgoae
+```
+
+The latter watermark appears on:
+- exact A10 specification art;
+- exact XGO TV-output art;
+- the 32G-vs-1G `选购指南`;
+- joystick closeup art.
+
+Evidence discipline:
+- these are **direct image-level seller/account/contact identifiers** tied to exact XGO/A10 artwork;
+- the legal company/store identities behind the watermarks and phone number are currently **UNKNOWN**;
+- do not assume both watermark namespaces belong to one seller merely because they appear in one later mirror; the mirror may aggregate imagery from multiple upstream sellers;
+- do not equate these identifiers with the previously recovered `cn1073857976oitae` without a direct account relationship.
+
+New highest-priority tracing keys:
+```text
++86 19897109233
+19897109233 XGO
+cn1104548433
+cn1094161006qgoae
+cn1094161006
+"赠送1G TF卡" XGO
+"500款游戏" "赠送1G TF卡"
+"10000款游戏" "赠送32G TF卡"
+```
