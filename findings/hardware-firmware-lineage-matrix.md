@@ -1434,3 +1434,108 @@ Reason for caution:
 > the proprietary wrapped-ROM/content set may have been copied between otherwise different handhelds, so filename overlap alone cannot identify the PCB.
 
 This lead remains pending exact product-page/enclosure attribution.
+
+
+
+## 2026-09-07 continuation update — exact 10000mAh XGO Marvel 500-game SKU confirmed
+
+Chinese JD indexing now confirms a materially smaller software bundle on the same 10000mAh XGO Marvel game-power-bank family.
+
+Explicit variants include:
+
+```text
+漫威联名款
+怀旧经典五百游戏 + 1W毫安快充
+
+漫威联名款
+双人对战手柄 + 五百游戏 - 1W毫安快充
+
+尊享版本
+万款游戏 + 可玩街机 + 1W毫安快充
+```
+
+All are sold under the same product title:
+
+```text
+芯果XGO漫威联名游戏机充电宝
+22.5W无线磁吸
+10000毫安
+```
+
+Evidence:
+- https://www.jd.com/jiage/6702035eebcdcf053c9.html?brand=%E8%8A%AF%E6%9E%9C
+- https://www.jd.com/jiage/670e01ef211cfd807ab.html?brand=%E8%8A%AF%E6%9E%9C
+- https://www.jd.com/jiage/9987a8e3bc0332b35119.html
+
+### Significance
+
+This is now **CONFIRMED external evidence** that the 10000mAh XGO hardware family shipped with at least two sharply different content tiers:
+
+```text
+500-game bundle
+10000-game / arcade bundle
+```
+
+and that the 500-game version was not merely the 5000mAh DY09 product.
+
+This strengthens the architecture model:
+
+```text
+same or near-identical 10000mAh enclosure/power platform
+        |
+        +-- smaller 500-game software/card SKU
+        |
+        +-- larger 10000-game/arcade software/card SKU
+```
+
+Exact `bisrv.asd` equality between those variants remains UNKNOWN until a stock card is recovered.
+
+### Artifact priority increase
+
+A stock TF card from the 10000mAh Marvel **500-game** variant is now one of the highest-value exact-device artifacts because it can answer whether:
+
+1. the application binary is identical and only Resources/ROMs differ;
+2. the 500-game version uses a smaller/older frontend;
+3. the same hidden-ROM/catalog behavior exists;
+4. model-specific controller/display support is identical;
+5. the 500-game build is closer to an earlier XGO/DY10 factory revision.
+
+Search aliases:
+
+```text
+芯果XGO 漫威联名 五百游戏
+芯果XGO 漫威 500游戏 TF卡
+芯果XGO 漫威 500游戏 内存卡
+芯果XGO 漫威 原装卡
+芯果XGO 10000mAh 五百游戏
+```
+
+### Repair-scene search result remains negative for exact A10/DY10
+
+A new symptom-oriented Chinese pass searched combinations of:
+
+```text
+花屏
+白屏
+开不了机
+卡坏
+换屏
+维修
+```
+
+against `芯果 XGO`, `DY10`, `A10 游戏机充电宝`.
+
+No indexed exact-A10/DY10 repair guide or teardown surfaced. Results continue to collapse toward the older DY09 teardown or generic sales pages.
+
+This is useful negative evidence:
+
+> The exact A10/DY10 repair/mod scene is weakly indexed under model-name + symptom terms.
+
+Future exact-device hardware discovery should therefore continue emphasizing:
+- Bilibili/Douyin owner graph;
+- Xianyu/parts-only listings;
+- original/alternate TF cards;
+- 1688 supplier pages;
+- image-based PCB matching;
+- seller after-sales/support material.
+
