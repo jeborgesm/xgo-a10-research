@@ -1983,3 +1983,57 @@ Finding:
 `findings/arcade-test25-fail-test26-test12-compatibility.md`
 
 Hardware order: verify golden stock behavior, then Pac-Man on fifth Arcade. If Pac-Man reaches gameplay, test audio/controls/pause/quit/OSD/speed and then Ms. Pac-Man. Do not create another speculative loader ladder if Test26 fails; first close any relocation-specific difference against the exact historical Test12 loader binary.
+
+
+### Test27 — first-class CLASSIC list11 candidate ready (2026-09-08)
+
+After Test26 repeated the same `Loading..... -> black` failure even with a different ROM renamed to Pac-Man, list11 itself became the primary suspect.
+
+Repository archaeology confirmed list11 was a dormant placeholder: its fixed metadata triplet was literally `None / None / None`, unlike real lists 7-10.
+
+Test27 converts list11 into a genuine stock-style category:
+
+- fifth visible page renamed from repeated `ARCADE` to `CLASSIC`;
+- dedicated directory tree:
+  - `CLASSIC/Pac-Man.zfb`
+  - `CLASSIC/Ms Pac-Man.zfb`
+  - `CLASSIC/bin/pacman.zip`
+  - `CLASSIC/bin/mspacman.zip`
+- firmware list11 metadata pointers rewired to three real synchronized resource names:
+  - `clm.tax`
+  - `clm.nec`
+  - `clm.bvs`
+- list11 launch aliases to list7 **before stock `run_game()`**, so the full proven CPS1 preprocessing/state lifecycle executes;
+- a private launch flag makes the final arcade runtime dispatcher route only the aliased list11 session to the historical Test12 MAME loader/core;
+- true list7 stays golden stock CPS1/FBA;
+- lists 8-10 stay golden stock;
+- exact archived Test12 MAME2000 core is reused.
+
+Exact candidate:
+
+```text
+xgo-arcade-test27-first-class-classic.zip
+size              7,401,357 bytes
+ZIP SHA-256        36e34502d9c3e038ca949630334864775ab7f605cad2a18c319a8efc147e1a2c
+firmware SHA-256   2319f1f1bce604da3ee8d25eef40a629af49932fb8f9499f518d5d2eec6cbec8
+core SHA-256       abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+Private CI run `34298562078` passed; artifact ID `10084069779`.
+
+Important install difference from Tests15-26:
+
+```text
+ROMs must be placed in /CLASSIC/bin/
+not /ARCADE/bin/
+```
+
+Finding:
+`findings/arcade-first-class-list11-classic-design.md`
+
+Hardware gate:
+1. verify fifth page now visibly says CLASSIC;
+2. verify Pac-Man and Ms Pac-Man rows appear;
+3. verify golden Cadillacs/CPS1 still launches normally from stock Arcade;
+4. place pacman.zip in CLASSIC/bin and launch Pac-Man;
+5. if gameplay starts, test controls/audio/pause/quit/OSD and then Ms Pac-Man.
