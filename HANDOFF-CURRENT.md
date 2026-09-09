@@ -2335,3 +2335,76 @@ Hardware gate:
 
 Finding:
 `findings/classic-deep-test12-contract-audit-test33.md`.
+
+
+### Deep Test12 contract recovery -> Test33 exact machine-loader candidate (2026-09-09)
+
+After Test32 restored golden behavior but CLASSIC still launched no games, a bit-level comparison was performed against the actual hardware-working MAME2000 Test12 path.
+
+Major findings:
+
+1. Test32 intercepted at the browser call to `run_game()`, so it bypassed the stock wrapper-preload path.
+2. The exact Test12 MAME core links `xgo_preloaded_rom_sbrk.c`, which depends on stock `gp_buf_64m` and `g_run_file_size` already being initialized.
+3. Exact `run_game()` machine code confirms it opens/sizes/preloads the selected wrapper into `gp_buf_64m`, sets `g_run_file_size`, then dispatches by family.
+4. Test12 entered MAME only at the final FBA seam:
+   `0x80360df8`, with original wrapper path in `a0` and `a1=0`.
+5. Recompiling the historical loader source did not reproduce the actual Test12 loader: 918 bytes differed. The hardware-tested machine bytes are authoritative.
+6. Corrected collision diagnosis: Mapper v19 ends at `0x800018fd`; `0x800018fe..0x8000217f` is genuinely zero/free in golden Test08. Earlier Mapper corruption came from CLASSIC strings/flag placed at `0x800018d0..0x800018f0`, not from code at `0x80001900`.
+
+The exact Test12 loader was extracted from:
+
+```text
+0x80002780..0x80002d03
+size 1412
+source SHA-256 42f7638f9d0d9d89272eb06e880c777c65ce183900a8eee037cc561dccea4cb1
+```
+
+and relocated into the verified golden free region:
+
+```text
+0x80001900..0x80001e83
+relocated SHA-256 e38af97eabb454dbcc8dd8b1823b6f82b8878d7993c0eb7a120d26c6da767d4e
+```
+
+Only:
+- list gate 7 -> 11;
+- 8 internal J/JAL targets;
+- 2 internal data-pointer low halves
+
+were changed.
+
+Test33 architecture:
+
+```text
+CLASSIC browser
+ -> untouched stock run_game()
+ -> stock preload / gp_buf_64m / g_run_file_size
+ -> final FBA seam 0x80360df8
+ -> relocated actual Test12 machine loader
+ -> exact Test12 MAME2000 core
+ -> golden run_emulator()
+```
+
+Real Arcade remains stock because loader gate is list 11 only.
+
+Exact full hardware package:
+
+```text
+xgo-classic-test33-exact-test12-loader-full.zip
+size              7,549,340 bytes
+ZIP SHA-256        94d269201d59e42554dd80f547faa89262103b84c9fe80332666d258733867c4
+firmware SHA-256   80c851925990a04c35c9f7cc568f410f93c82d671f50b471ebd4f2c85f3c9a55
+core SHA-256       abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+Finding:
+`findings/classic-deep-test12-contract-test33.md`
+
+Remaining uncertainty: golden `run_emulator()` differs from historical Test12 by 150 bytes (later Audio OSD/scheduler). Do not change that until the corrected preload/loader contract is hardware-tested.
+
+Hardware order:
+1. Boot.
+2. Contra pause/Mapper.
+3. stock Arcade Cadillac.
+4. CLASSIC Cadillac (`dino.zip`) first.
+5. only if CLASSIC Cadillac reaches gameplay, test Pac-Man/Ms Pac-Man.
