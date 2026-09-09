@@ -2110,3 +2110,46 @@ Finding:
 `findings/classic-test29-path-dispatch-custom-art.md`
 
 Hardware gate: confirm custom CLASSIC art, confirm stock CPS2 art unchanged, confirm stock CPS1/Cadillacs golden, then launch Pac-Man from CLASSIC.
+
+
+### Test30 — Cadillac baseline + launch trace + artwork fit (2026-09-08)
+
+Test29 hardware kept CLASSIC visible and dedicated artwork working, but Pac-Man still failed to launch.
+
+Test30 adds the hardware-proven MAME2000 baseline Cadillacs and Dinosaurs:
+- wrapper: `CLASSIC/Cadillacs and Dinosaurs.zfb`
+- archive basename: `dino.zip`
+- user must place `/CLASSIC/bin/dino.zip`
+
+CLASSIC catalog now has Pac-Man, Ms Pac-Man, and Cadillacs and Dinosaurs.
+
+Test30 also writes `/CLASSIC/launch.stg` as a one-byte launch-stage marker:
+- A = CLASSIC launcher entered
+- B = wrapper parsed / ZIP basename extracted
+- E = core loaded + CRC verified + IRQ/cache handoff complete, immediately before Test12 entry
+- F = Test12 core returned
+
+This turns a failed hardware launch into actionable evidence instead of another blind result.
+
+Artwork is also revised: the user-selected 385x465 Pac-Man crop is vertically cropped to 385x360, scaled to about 513x480, and centered in the native 640x480 RGB565 canvas. This reduces top/bottom content and makes the artwork visibly wider. Only CLASSIC artwork changes.
+
+Exact local candidate:
+
+```text
+xgo-classic-test30-cadillac-trace-art.zip
+size              7,547,515 bytes
+ZIP SHA-256        25ee41ac0ced58496fa1746e11473e0ff86b8903bc4d399ca26a2c6d2030b13e
+firmware SHA-256   f4168fc129b18b454fb3fda3391e3423a3106bbee2e100e424a94b73839f6d66
+launcher SHA-256   af9d984fa9827fd9840d4715359ce268702e72b49ad2ebcf6bfa773cdeda6ddc
+trace SHA-256      e65fe8eef6fafe8f99ef3f2e5cf28dcb629cb990105342f10e808f61ba31050b
+art SHA-256        62c7636d8f2285aba1c2a05803e43b39c5483b9739ed85fdca56cee27adf501a
+```
+
+Finding:
+`findings/classic-test30-cadillac-baseline-launch-trace.md`
+
+Hardware order:
+1. copy `dino.zip` to `/CLASSIC/bin/`;
+2. launch Cadillac from CLASSIC first;
+3. if it fails, inspect `/CLASSIC/launch.stg` and report the one-byte stage;
+4. if Cadillac runs, retry Pac-Man/Ms Pac-Man.
