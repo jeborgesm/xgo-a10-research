@@ -124,3 +124,63 @@ The intended invariants are:
 - Audio OSD unchanged.
 
 No new hardware candidate should be accepted unless offline assertions verify the list-11 metadata pointers, both run-game call hooks, runtime dispatcher, cave boundaries, exact Test12 core hash and ZIP integrity.
+
+
+## Test27 offline result
+
+Private CI run `34298562078` completed successfully.
+
+Exact candidate:
+
+```text
+xgo-arcade-test27-first-class-classic.zip
+size              7,401,357 bytes
+ZIP SHA-256        36e34502d9c3e038ca949630334864775ab7f605cad2a18c319a8efc147e1a2c
+firmware SHA-256   2319f1f1bce604da3ee8d25eef40a629af49932fb8f9499f518d5d2eec6cbec8
+```
+
+Plumbing identities:
+
+```text
+page bridge
+size        100 bytes
+SHA-256     a001419c9b037f6a9cf96ccef27fe9202aa411afe17ff0ecd1e912172087a8da
+
+runtime dispatcher
+size        32 bytes
+SHA-256     d64f5ab556fc30d74b94a0aadaea92b0d4b43ba685ab57a55c3049c822174c66
+
+relocated historical loader
+size        1,373 bytes
+SHA-256     36afdc39bbfa56a6342b721548a68f05c356d12b7bf5f804476bacdcd1419155
+
+exact Test12 MAME2000 core
+size        9,127,952 bytes
+SHA-256     abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+Artifact ID: `10084069779`.
+
+Offline checks passed:
+
+- exact golden Test08 baseline hash;
+- exact Test12 core hash;
+- real list11 metadata pointer rewiring;
+- synchronized `clm.tax / clm.nec / clm.bvs` count/order;
+- independent `CLASSIC` directory in `Foldername.ini`;
+- both stock run-game call sites route through the list-aware page bridge;
+- final arcade runtime call routes through the private-flag dispatcher;
+- bridge/dispatcher/historical loader fit the verified low-memory cave;
+- no `$gp` references in the new low-memory plumbing;
+- ZIP integrity.
+
+Hardware install note:
+
+ROM ZIPs now belong in:
+
+```text
+/CLASSIC/bin/pacman.zip
+/CLASSIC/bin/mspacman.zip
+```
+
+not `/ARCADE/bin`.
