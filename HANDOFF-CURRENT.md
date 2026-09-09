@@ -2037,3 +2037,42 @@ Hardware gate:
 3. verify golden Cadillacs/CPS1 still launches normally from stock Arcade;
 4. place pacman.zip in CLASSIC/bin and launch Pac-Man;
 5. if gameplay starts, test controls/audio/pause/quit/OSD and then Ms Pac-Man.
+
+
+### Test28 — native first-class CLASSIC system ready (2026-09-08)
+
+Test28 abandons all CLASSIC->Arcade/list7 compatibility plumbing.
+
+CLASSIC is list ID 11 only because the frontend already has that menu slot. It now owns:
+
+- fixed triplet `clm.tax / clm.nec / clm.bvs`;
+- `/CLASSIC/` wrapper directory;
+- `/CLASSIC/bin/` ROM directory;
+- dedicated native launcher;
+- exact archived Test12 MAME2000 core.
+
+Generic browser launch calls route through the native launcher. If `ACTIVE_LIST_ID != 11`, it immediately calls untouched stock `run_game @ 0x80360b88`.
+
+For list11, it bypasses stock Arcade entirely: opens the selected CLASSIC `.zfb`, reads the embedded ZIP basename at offset 59908, writes `/mnt/sda1/CLASSIC` and the ZIP name into the two globals expected by the proven Test12 MAME frontend, loads the exact Test12 core, performs the proven external-core memory/IRQ/cache handoff, and enters Test12. No stock Arcade preprocessing, no list7 alias, no Arcade runtime hook.
+
+Test27's disappearing-page regression was caused by changing the menu control line. Test28 restores the last-known-visible values exactly (`12 7 0 / 472 144 144 208 / 40 24`) and changes only the fifth label from ARCADE to CLASSIC.
+
+Exact candidate:
+
+```text
+xgo-classic-test28-native-system.zip
+size              7,401,889 bytes
+ZIP SHA-256        c60f8b4760db48a33db14f90d9211051be2915bb39c8474cddfb4d3bb0fd82d3
+firmware SHA-256   ca799f4fc727bb04368b2171075e799f2262d2475cd19df3ffa87cbe64337367
+launcher SHA-256   1a2c98bbd0ab126efaae8e6cfc1280183b545ef2013b22b4864fe7ba77d2df61
+core SHA-256       abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+CI run `34299726436` passed; artifact ID `10084477699`.
+
+ROM placement:
+`/CLASSIC/bin/pacman.zip`
+`/CLASSIC/bin/mspacman.zip`
+
+Finding:
+`findings/classic-test28-native-first-class-system.md`
