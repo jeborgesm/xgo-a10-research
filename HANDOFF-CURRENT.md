@@ -2408,3 +2408,65 @@ Hardware order:
 3. stock Arcade Cadillac.
 4. CLASSIC Cadillac (`dino.zip`) first.
 5. only if CLASSIC Cadillac reaches gameplay, test Pac-Man/Ms Pac-Man.
+
+
+### Test33/33A hardware breakthrough + Test34 closeout candidate (2026-09-09)
+
+Hardware result from Test33/33A:
+- CLASSIC Cadillacs and Dinosaurs using `/CLASSIC/bin/dino.zip` launches and runs;
+- known MAME2000 lag remains;
+- CLASSIC Pac-Man freezes;
+- CLASSIC Ms. Pac-Man freezes;
+- stock Arcade Cadillac remains functional;
+- Test33A stretched CLASSIC artwork accepted as much better.
+
+This proves the first-class CLASSIC launch plumbing is now working. Pac-Man/Ms. Pac-Man are no longer treated as a CLASSIC launch problem.
+
+Test34 adds only branch-closeout UI/Refresh work on top of hardware-working Test33A:
+
+1. bottom list label:
+   - stock draw seam `0x80359838 -> 0x803528a4`;
+   - list11-only wrapper substitutes `CLASSIC` at the existing stock text-pointer stack slot;
+   - all other lists tail-call stock unchanged.
+
+2. Refresh:
+   - existing scanner loop extended from indices `0..5` to `0,1,2,3,4,5,10`;
+   - scanner index 10 maps to list ID 11;
+   - index10 folder is `/CLASSIC`;
+   - index10 classifier rule accepts ZFB (ID 7) only;
+   - existing stable merge rewrites `clm.tax/clm.nec/clm.bvs` and invalidates list11 cached count;
+   - `/CLASSIC/bin` is skipped by existing directory handling;
+   - stock Arcade lists 7-10 remain outside Refresh.
+
+Exact Test34 candidate:
+
+```text
+xgo-classic-test34-label-refresh.zip
+size        7,537,711 bytes
+SHA-256     cbacb517f5dfbb092963750b88d4caf7da499a0ee508e394709013990ee3b352
+firmware    4e8faa2531b958988bac4497bf2e7e04f95349b3ba8debef77b95c5a943dca0f
+loader      e38af97eabb454dbcc8dd8b1823b6f82b8878d7993c0eb7a120d26c6da767d4e
+core        abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+art         4ff7b3e0bd88acb96e3a915264fdbaee14209175a5331e8a422764664e07a843
+```
+
+Finding:
+`findings/classic-test34-label-refresh.md`
+
+Hardware closeout gate before merge:
+- Contra pause/Mapper;
+- stock Arcade Cadillac;
+- CLASSIC Cadillac;
+- bottom label reads CLASSIC with garble gone;
+- Refresh behaves normally;
+- reboot and verify three CLASSIC entries persist.
+
+On PASS:
+- merge `research-game-list-arcade-expansion` to `main`;
+- promote Test34 checkpoint;
+- open `research-mame2000-pacman-compatibility`.
+
+Pac-Man branch baseline:
+- MAME2000 requires MAME 0.37b5 ROM definitions;
+- begin with full non-merged 0.37b5 `pacman.zip` and `mspacman.zip`;
+- compare exact filenames/CRCs/parent closure before changing runtime code.
