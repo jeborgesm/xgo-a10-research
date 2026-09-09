@@ -2153,3 +2153,43 @@ Hardware order:
 2. launch Cadillac from CLASSIC first;
 3. if it fails, inspect `/CLASSIC/launch.stg` and report the one-byte stage;
 4. if Cadillac runs, retry Pac-Man/Ms Pac-Man.
+
+
+### Test31 hardware FAIL; Test32 Test12-derived path fix ready (2026-09-08)
+
+Test31 hardware:
+- device boots;
+- CLASSIC page visible;
+- Pac-Man, Ms Pac-Man and Cadillacs and Dinosaurs visible;
+- all three show Loading and immediately return to the list;
+- known-good `dino.zip` also fails from CLASSIC.
+
+Therefore the problem is CLASSIC -> MAME plumbing, not Pac-Man compatibility.
+
+Concrete flaw found in Test29/31: the launcher required `/CLASSIC/` inside the browser-supplied wrapper path. That misses the valid relative stock-browser form `CLASSIC/<game>.zfb`, causing an immediate fallthrough into untouched stock `run_game()`.
+
+Test32 accepts both `CLASSIC/...` and `/.../CLASSIC/...`.
+
+For CLASSIC it uses the Test12-derived external-core load sequence and sets:
+- `0x810a0eb0 = /mnt/sda1/CLASSIC`;
+- `0x8109fce8 = embedded ZIP basename`.
+
+No stock Arcade preprocessing, no list7 alias, no new memory region.
+
+Artwork is intentionally stretched to 600x330 and centered at y=75 so the full title and bottom border remain inside the stock UI overlays.
+
+Exact local candidate:
+
+```text
+xgo-classic-test32-test12-loader-pathfix-artfit.zip
+size              7,535,429 bytes
+ZIP SHA-256        3e8d7b1dfafd029120556ea5d65e06130bb3e0e7dd9b69759b712b533c42b08a
+firmware SHA-256   235636d86ca86c915b2a78905392e9f2606a04392c51fc0114126154cbf65448
+loader SHA-256     5aa159b1dc6bd05fcb18c8f3310818acd6c25d82d783bcd84cd0bc1b6cc15fc3
+art SHA-256        f6ee3f75eafcdee6d5f61a64a7a8f709107eb8b1d93fefe694619e319937dd20
+```
+
+Finding:
+`findings/classic-test32-test12-loader-pathfix.md`
+
+Hardware order: boot -> CLASSIC art -> Cadillac first -> Pac-Man/Ms Pac-Man only if Cadillac reaches MAME.
