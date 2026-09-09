@@ -2193,3 +2193,50 @@ Finding:
 `findings/classic-test32-test12-loader-pathfix.md`
 
 Hardware order: boot -> CLASSIC art -> Cadillac first -> Pac-Man/Ms Pac-Man only if Cadillac reaches MAME.
+
+
+### Test31 regression root-caused; Test32 golden-safe recovery ready (2026-09-08)
+
+Test31 hardware exposed a protected-golden regression:
+- CLASSIC games all bounced immediately;
+- Contra pause menu showed movable Mapper yellow squares over Resume/Quit/Load/Save;
+- ordinary pause-menu options became unselectable.
+
+Root cause is now proven: Test28-31 injected CLASSIC code at `0x80001900..`, but Mapper v19 owns active bytes throughout `0x80001500..0x8000217f`. CLASSIC overwrote Mapper.
+
+This invalidates Tests28-31 as regression-safe MAME evidence.
+
+Test32 starts again from exact golden Test08 and uses no Mapper-era low-memory space.
+
+Architecture:
+- 352-byte bootstrap at `0x807db9b0`, inside the verified unused tail of the Test08 scanner cave;
+- non-CLASSIC -> untouched stock `run_game`;
+- CLASSIC -> bootstrap loads `/cores/classic/loader.bin` to RAM `0x86ff0000`;
+- 1,947-byte RAM second stage parses the CLASSIC wrapper and loads the exact Test12 MAME core at `0x87000000`;
+- list11 metadata/art resource-name strings also live only in the remaining verified scanner-cave tail;
+- Mapper v19, SNES loader and Audio OSD ranges are byte-asserted unchanged.
+
+Exact final hardware package:
+
+```text
+xgo-classic-test32-recovered-golden-safe.zip
+size              7,551,351 bytes
+ZIP SHA-256        4b4df70835ab90fbbb3e363ddb14cbf73f73379b1e926ab1879c7cb538d96d11
+firmware SHA-256   55dca4ec9b35cd7d8afd66087c04ea5a6893aebad91c96af48c2a8e672a49bb8
+bootstrap SHA      40fc040c26d3dcdb261f4f4050565c674174271deee6499047fa486bdf6e42bc
+second-stage SHA   1b413ad9048e166010bbf7f4bce9d406cb29b3c5d57900cc6763d13aa571b040
+Test12 core SHA    abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+Private CI run `34309041289`; artifact `10087703544`.
+
+Hardware order:
+1. boot;
+2. test Contra pause menu first;
+3. verify Mapper/pause behavior fully restored;
+4. verify stock Arcade Cadillac;
+5. test Cadillac from CLASSIC;
+6. then Pac-Man/Ms Pac-Man.
+
+Finding:
+`findings/classic-test32-golden-safe-recovery.md`
