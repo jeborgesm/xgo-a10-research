@@ -2240,3 +2240,98 @@ Hardware order:
 
 Finding:
 `findings/classic-test32-golden-safe-recovery.md`
+
+
+### Deep Test12 contract audit complete; Test33 exact-machine-loader candidate ready (2026-09-09)
+
+Test32 hardware established a clean boundary:
+- boot PASS;
+- Contra PASS;
+- pause Resume/Quit/Load/Save PASS;
+- Mapper regression fixed;
+- stock Arcade Cadillacs PASS;
+- every CLASSIC game still FAILS by immediate return.
+
+Deep binary audit findings:
+
+1. Correction to earlier Mapper diagnosis:
+   - exact golden Test08 has a zero run `0x800018fe..0x8000217f`;
+   - the launcher at `0x80001900` was not itself overwriting Mapper;
+   - the unsafe CLASSIC metadata/art strings had been placed at `0x800018d0`, before the proven-zero boundary;
+   - Test32 moving those strings out explains the physical Mapper recovery.
+
+2. Browser call contract:
+   - both normal browser launch sites pass the fully constructed selected wrapper path in `a0` to untouched `run_game @ 0x80360b88`.
+
+3. Exact Test08 and hardware-working Test12 are byte-identical through the entire stock `run_game()` pre-loader path and helpers.
+   Test12 therefore relied on stock preparation before the MAME loader.
+
+4. The exact Test12 core is linked with `xgo_preloaded_rom_sbrk.c`, whose private heap starts at:
+   `gp_buf_64m + align64(g_run_file_size)`.
+   Those globals are populated by stock `run_game()`.
+   Test32 bypassed this memory/preload contract.
+
+5. Full Test12 vs Test08 firmware diff:
+   - 4114 changed bytes in 837 runs;
+   - all differences are accounted for by CRC, Test12 loader, later golden run_emulator/OSD, final Arcade hook, later Refresh/scanner/menu geometry and Audio OSD hooks;
+   - no hidden MAME-support patch remains elsewhere.
+
+6. Major exactness correction:
+   recompiling the pinned historical loader source at its original Test12 address does NOT reproduce the hardware Test12 loader:
+   `1373 bytes; 918 bytes differ`.
+   Earlier wording that Test26 used the "exact historical loader" was therefore incorrect.
+
+7. The ACTUAL hardware-working Test12 loader machine image was extracted directly:
+```text
+0x80002780..0x80002d03
+size 1412
+SHA-256 42f7638f9d0d9d89272eb06e880c777c65ce183900a8eee037cc561dccea4cb1
+```
+
+Test33 mechanically relocates those actual machine bytes to:
+```text
+0x80001900..0x80001e83
+```
+inside the exact-golden zero region.
+
+Only relocation-required changes are made:
+- eight internal J/JAL targets;
+- two internal data-string address references;
+- historical list gate immediate 7 -> CLASSIC list 11.
+
+Relocated loader SHA:
+`e38af97eabb454dbcc8dd8b1823b6f82b8878d7993c0eb7a120d26c6da767d4e`.
+
+Test33 is the first candidate to combine:
+- real first-class CLASSIC list11 metadata/folder/art;
+- untouched stock browser calls;
+- complete untouched stock `run_game()` preload and package preparation;
+- actual relocated Test12 loader machine code;
+- exact archived Test12 MAME2000 core;
+- golden Test08 run_emulator/OSD/Mapper/SNES/scanner.
+
+No Test32 RAM second-stage is used.
+
+CI:
+`34312130930`, artifact `10088750278`.
+
+Firmware:
+`80c851925990a04c35c9f7cc568f410f93c82d671f50b471ebd4f2c85f3c9a55`.
+
+Final package:
+```text
+xgo-classic-test33-exact-test12-preload.zip
+size 7,528,733
+SHA-256 092c7af7f31efe5c408cf16f674ac106c3483d55f3540cecdaa79dda1289061e
+```
+
+The CLASSIC artwork is a content-only squashed version (590x300 inside the 640x480 resource) so title and bottom border remain above the UI icon row.
+
+Hardware gate:
+1. confirm Contra pause/Mapper remains golden;
+2. confirm stock Arcade Cadillac remains golden;
+3. test CLASSIC Cadillacs and Dinosaurs using `/CLASSIC/bin/dino.zip` FIRST;
+4. only if Cadillac reaches gameplay test Pac-Man/Ms Pac-Man.
+
+Finding:
+`findings/classic-deep-test12-contract-audit-test33.md`.
