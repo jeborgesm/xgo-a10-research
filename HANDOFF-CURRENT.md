@@ -2076,3 +2076,37 @@ ROM placement:
 
 Finding:
 `findings/classic-test28-native-first-class-system.md`
+
+
+### Test29 — CLASSIC path dispatch + dedicated artwork (2026-09-08)
+
+Test28 hardware:
+- CLASSIC page visible;
+- Pac-Man / Ms Pac-Man visible;
+- selecting either: Loading.... -> return to game list;
+- CLASSIC still showed CPS2 artwork.
+
+Static analysis found the stock platform-art pointer table at 0x80a3c428. List11 lands on a CPS2 fallback pointer at firmware offset 0x00a3c454. Test29 repoints only list11 to a new resource, Resources/clssic.r56. Real CPS2/list8 remains untouched.
+
+The custom resource is a native 640x480 RGB565 conversion of the user-selected CLASSIC/Pac-Man crop, aspect-preserved at 397x480 and centered with black sidebars.
+
+Test28 launch gating on ACTIVE_LIST_ID was also removed. Test29 uses the full wrapper path already passed by the browser:
+- path contains /CLASSIC/ -> native CLASSIC launcher;
+- otherwise -> untouched stock run_game.
+
+Exact candidate:
+
+```text
+xgo-classic-test29-path-launch-custom-art.zip
+size              7,477,721 bytes
+ZIP SHA-256        d96b4d7d06f46d56c6b7e06c45adcf32d09ae0b9681bfc17ce7b0910d66e7241
+firmware SHA-256   48a9bf4e5a3efdd2317028a1c5bbc4332d9b7dc006a0860f1c8b26848bf5f5f8
+launcher SHA-256   850fa1f1303d990bd141c8144bcd149d6764d808834c3372d803d57fb36fcac4
+art SHA-256        00ecf4913ee58b46f642f05ea150ffa1d67cd5a36d6674f44aedc5dedffd6cd0
+core SHA-256       abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461
+```
+
+Finding:
+`findings/classic-test29-path-dispatch-custom-art.md`
+
+Hardware gate: confirm custom CLASSIC art, confirm stock CPS2 art unchanged, confirm stock CPS1/Cadillacs golden, then launch Pac-Man from CLASSIC.
