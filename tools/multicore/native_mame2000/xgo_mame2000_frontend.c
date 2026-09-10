@@ -1,6 +1,8 @@
 /* Native CPS1 MAME2000 frontend for XGO Core #3 candidate. */
 #include <stddef.h>
 typedef int bool;
+typedef unsigned long xgo_size_t;
+typedef struct XGO_FILE_ XGO_FILE;
 #define true 1
 #define false 0
 #define XGO_SYSTEM_ARCADE 0x0040u
@@ -14,6 +16,26 @@ typedef void (*video_cb)(const void*,unsigned,unsigned,size_t);
 typedef size_t (*audio_batch_cb)(const short*,size_t);
 typedef void (*poll_cb)(void);
 typedef short (*input_cb)(unsigned,unsigned,unsigned,unsigned);
+
+static XGO_FILE *(*const xgo_fw_fopen)(const char *, const char *) = (void *)0x802b3524;
+static xgo_size_t (*const xgo_fw_fwrite)(const void *, xgo_size_t, xgo_size_t, XGO_FILE *) = (void *)0x802b42ac;
+static int (*const xgo_fw_fclose)(XGO_FILE *) = (void *)0x802b2f40;
+static int (*const xgo_fs_sync_wrap)(void) = (void *)0x807d40a8;
+
+static void xgo_trace_stage(unsigned stage)
+{
+    char path[]="/mnt/sda1/MAME17-00.txt";
+    static const char ok[]="ok\n";
+    XGO_FILE *f;
+    if(stage>99u) return;
+    path[17]=(char)('0'+((stage/10u)%10u));
+    path[18]=(char)('0'+(stage%10u));
+    f=xgo_fw_fopen(path,"wb");
+    if(!f) return;
+    xgo_fw_fwrite(ok,1,3,f);
+    xgo_fw_fclose(f);
+    xgo_fs_sync_wrap();
+}
 
 extern void retro_init(void);
 extern void retro_deinit(void);
@@ -99,6 +121,7 @@ static void init_core_runtime(void)
 int __core_entry_c(const char *filename,int load_state)
 {
     struct retro_game_info old_game_info;
+    xgo_trace_stage(11);
     unsigned old_run_file_size;
     const char *system_dir=XGO_STOCK_SYSTEM_DIR;
     const char *game_name=XGO_STOCK_GAME_NAME;
@@ -113,6 +136,7 @@ int __core_entry_c(const char *filename,int load_state)
     void (*old_frameskip)(int);
 
     init_core_runtime();
+    xgo_trace_stage(12);
 
     if(!filename || !*filename || !system_dir || !*system_dir ||
        !game_name || !*game_name)
@@ -133,6 +157,7 @@ int __core_entry_c(const char *filename,int load_state)
     }
     if(i==0 || i>=64) return -1;
     zip_path[j]=0;
+    xgo_trace_stage(13);
 
     old_game_info.path=GAME_INFO.path;
     old_game_info.data=GAME_INFO.data;
@@ -157,7 +182,9 @@ int __core_entry_c(const char *filename,int load_state)
     retro_set_input_poll(xgo_stock_input_poll);
     retro_set_input_state(xgo_mame2000_input_state);
     retro_set_environment(xgo_mame2000_environment);
+    xgo_trace_stage(14);
     retro_init();
+    xgo_trace_stage(15);
 
     GAME_INFO.path=zip_path;
     GAME_INFO.data=0;
@@ -176,7 +203,9 @@ int __core_entry_c(const char *filename,int load_state)
     GFN_RUN=xgo_core_run;
     GFN_FRAMESKIP=xgo_mame2000_set_frameskip;
 
+    xgo_trace_stage(16);
     xgo_stock_run_emulator(load_state);
+    xgo_trace_stage(17);
     retro_deinit();
     xgo_mame2000_skip_render=0;
 
