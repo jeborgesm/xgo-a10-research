@@ -34,3 +34,15 @@ Ship only `cores/fbalpha2012_cps1/core.xgc` plus instructions and rollback core.
 Initial test: Pac-Man -> play -> pause Save -> resume/change state -> pause Load -> verify rewind -> quit -> relaunch normally. Then Galaga. Also verify repeated Refresh/No New Games, stock console pause menu, stock Arcade and Volume OSD.
 
 Limitations: snapshot cap is 12 MiB INCLUDING mutable core data and heap, leaving roughly 7 MiB of heap snapshot capacity in the original build. Large games may run but exceed state capacity. Reserving scratch reduces the available MAME heap and needs launch regression checks. File descriptors and stock OS services are outside the snapshot; loading after quit/reboot remains a separate unproven gate. Do not claim persistent save compatibility until tested. No golden promotion or merge before hardware results.
+
+## Corrected candidate ready for hardware
+
+Research source: `3794014433b06f36369ba4ca748fb81227467dd6`.
+Private CI run: `34429991150`; artifact: `10134172985`; build and host tests PASS.
+Package: `xgo-classic-test48-snapshot-states.zip`, 2,458,087 bytes.
+Package SHA-256: `f7a52e177a68163e60cc3cf32879d04db22af9e7d3ab76c152c6c6595ea1899f`.
+Core SHA-256: `a28d51ecfe31a47b4e7522edd7c1c2f9c3385875ffdc42b91aa659c0b997c6fb`.
+Core image end: `0x87a06288`; mutable span: 5,128,328 bytes.
+Exact package and checksum committed at the private vault root by CI (non-golden).
+Separate rollback ZIP contains original Test47 core SHA-256 `abf8e4ec6eb7c6d4c2162076e8faa868954a3663b8210c820e1267857b345461`.
+Hardware result: PENDING. Next action belongs to the physical tester: Pac-Man save/change/load/quit/relaunch, then Galaga.
