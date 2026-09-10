@@ -1,5 +1,5 @@
 /*
- * Native CPS1 external-core loader for XGO.
+ * Native external-core loader lineage used by XGO CLASSIC/MAME2000.
  *
  * Intended patch site:
  *   run_game + Arcade/FBA runtime JAL at 0x80360df8
@@ -53,7 +53,9 @@ static void (*const os_enable_interrupt)(void) = (void *)0x802e0778;
 static volatile u32 *const RAMSIZE = (void *)0x80c2ce6c;
 static volatile u32 *const HEAP_BREAK = (void *)0x80c337b0;
 static volatile u32 *const SND_TASK_FLAGS = (void *)0x80c2e80c;
-/* Active frontend list/menu ID. Confirmed list mapping:
+/* Historical CPS1 source lineage. Active CLASSIC packaging now uses a truthful
+ * classic-mame2000 path; historical test records may still mention the old path.
+ * Confirmed list mapping:
  * 7=CPS1, 8=CPS2, 9=IGS/PGM, 10=Neo Geo.
  * The shared run_fba() family flag (0x40) has already collapsed this
  * distinction, so this byte is the discriminator for a CPS1-only override. */
@@ -150,7 +152,7 @@ void load_and_run_core(const char *filename, int load_state)
      * XGO's own run_fba() begins by stopping the sound task; do the same before
      * changing RAMSIZE or writing the large external image into upper RAM.
      */
-    f = fw_fopen("/mnt/sda1/cores/fbalpha2012_cps1/core.xgc", "rb");
+    f = fw_fopen("/mnt/sda1/cores/classic-mame2000/core.xgc", "rb");
     if (!f)
         goto stock_fallback_undisturbed;
 
