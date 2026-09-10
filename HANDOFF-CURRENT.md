@@ -2,11 +2,32 @@
 
 ## Current checkpoint — 2026-09-10 (supersedes historical sections below)
 
-Active branch: `research-game-list-arcade-expansion`. Test47 generalized CLASSIC importer is hardware PASS. Its ZIP SHA-256 is `d40a811e2ef05788688fe516e520b3f11b2e5b08ca77d926e77bf1c224f5db53`. Do not redo Tests23–46 or change the working importer. Remaining gate: CLASSIC Save/Load.
+Active branch: `research-game-list-arcade-expansion`. Test47 generalized CLASSIC importer is hardware PASS. Its ZIP SHA-256 is `d40a811e2ef05788688fe516e520b3f11b2e5b08ca77d926e77bf1c224f5db53`. Do not redo Tests23–46 or change the working importer.
 
-Original Test48 CI run `34427821147` passed compilation, but its fixed scratch addresses did not establish ownership by the stock ROM arena. The corrected candidate reserves 12 MiB raw + 12.125 MiB compressed inside `gp_buf_64m`, below both the allocation end and core base. State v2 rejects wrong core/game identities and malformed sizes before restoration. Host boundary/roundtrip tests pass; hardware verification remains pending.
+Test48 snapshot-state core is HARDWARE FAIL at the launch gate: after replacing the known-good CLASSIC MAME2000 core, no CLASSIC games launched. Save/Load was never reached. Treat Test48 as a core-launch regression, not an importer/catalog regression.
 
-Deliver as a core-only overlay at `cores/fbalpha2012_cps1/core.xgc` on installed Test47. That inherited directory deliberately contains MAME2000. Do not reinstall catalog triplets: that would overwrite user imports. Keep original core available for rollback. No merge or golden promotion until hardware PASS.
+Path cleanup is now an explicit prerequisite before further hardware testing. The active canonical runtime names are:
+
+```text
+/CLASSIC/
+/CLASSIC/bin/
+/cores/classic-mame2000/core.xgc
+/bios/classic-mame2000/
+```
+
+The legacy names `fbalpha2012_cps1` and `mame2000_xgo_t12` remain only in historical records/workflows that document old tests. Active source now uses `classic-mame2000`. A Test47-derived normalization build patches the hardware-proven loader path and core namespace with same-length byte substitutions and regenerates CRCs; it does NOT include Test48 snapshot code.
+
+Stale SD experiment folders targeted for removal after installing the normalized baseline:
+
+```text
+/cores/fbalpha2012_cps1/
+/cores/classic/
+/cores/mame2000/
+/bios/mame2000/
+/bios/mame2000_xgo_t12/
+```
+
+Do NOT delete `/CLASSIC`, `/CLASSIC/bin`, or the working CLASSIC catalogs. No save-state work resumes until the normalized Test47 baseline launches CLASSIC correctly.
 
 See `findings/classic-test48-snapshot-audit.md`.
 
