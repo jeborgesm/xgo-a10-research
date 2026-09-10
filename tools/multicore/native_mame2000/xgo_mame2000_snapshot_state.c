@@ -14,8 +14,9 @@ typedef int bool;
 #define false 0
 
 #define XGO_SNAPSHOT_MAGIC 0x31534d58u /* XMS1 */
-#define XGO_SNAPSHOT_VERSION 1u
+#define XGO_SNAPSHOT_VERSION 2u
 
+extern unsigned char __image_start[];
 extern unsigned char _fdata[];
 extern unsigned char __image_end[];
 
@@ -32,7 +33,30 @@ struct xgo_mame_snapshot_header {
     uint32_t heap_floor;
     uint32_t heap_size;
     uint32_t total_size;
+    uint32_t core_hash;
+    uint32_t game_hash;
 };
+
+/* Reject states from a different linked core or selected game before writes. */
+static uint32_t hash_bytes(uint32_t h,const unsigned char *p,size_t n)
+{
+    while(n--) {h^=*p++;h*=16777619u;}
+    return h;
+}
+static uint32_t core_identity(void)
+{
+    return hash_bytes(2166136261u,__image_start,(size_t)(_fdata-__image_start));
+}
+static uint32_t game_identity(void)
+{
+    const unsigned char *dir=(const unsigned char*)0x810a0eb0u;
+    const unsigned char *name=(const unsigned char*)0x8109fce8u;
+    size_t d=0,n=0;
+    while(d<128u && dir[d])++d;
+    while(n<64u && name[n])++n;
+    if(!d || d==128u || !n || n==64u)return 0;
+    return hash_bytes(hash_bytes(2166136261u,dir,d+1u),name,n+1u);
+}
 
 static size_t snapshot_size_now(void)
 {
@@ -68,6 +92,9 @@ bool xgo_snapshot_serialize(void *data,size_t size)
     if(size != sizeof(*h)+data_size+heap_size) return false;
     if(size > xgo_mame_state_raw_capacity()) return false;
 
+    if(!game_identity())return false;
+    h->core_hash=core_identity();
+    h->game_hash=game_identity();
     h->magic=XGO_SNAPSHOT_MAGIC;
     h->version=XGO_SNAPSHOT_VERSION;
     h->data_size=(uint32_t)data_size;
@@ -89,12 +116,14 @@ bool xgo_snapshot_unserialize(const void *data,size_t size)
     size_t expected_data=(size_t)(__image_end-_fdata);
     const unsigned char *p;
 
-    if(!data || size<sizeof(*h)) return false;
+    if(!data || !floor || size<sizeof(*h) || size>xgo_mame_state_raw_capacity()) return false;
     if(h->magic!=XGO_SNAPSHOT_MAGIC || h->version!=XGO_SNAPSHOT_VERSION) return false;
     if(h->data_size!=expected_data || h->heap_floor!=floor) return false;
     if(h->total_size!=size) return false;
-    if(sizeof(*h)+(size_t)h->data_size+(size_t)h->heap_size!=size) return false;
-    if((uintptr_t)h->heap_floor+(uintptr_t)h->heap_size>xgo_mame_heap_limit()) return false;
+    if(h->data_size>size-sizeof(*h)) return false;
+    if(h->heap_size!=size-sizeof(*h)-h->data_size) return false;
+    if(floor>xgo_mame_heap_limit() || h->heap_size>xgo_mame_heap_limit()-floor) return false;
+    if(h->core_hash!=core_identity() || !game_identity() || h->game_hash!=game_identity()) return false;
 
     p=(const unsigned char*)(h+1);
 

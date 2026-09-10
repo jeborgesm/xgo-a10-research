@@ -35,7 +35,7 @@ int xgo_state_save(const char *path)
     if(fflush(f)!=0)goto out;
     ok=1;
 out:
-    fclose(f);return ok;
+    if(fclose(f)!=0)ok=0;return ok;
 }
 
 int xgo_state_load(const char *path)
@@ -47,7 +47,7 @@ int xgo_state_load(const char *path)
     if(fread(&stored,sizeof(stored),1,f)!=1)goto out;
     if(!stored||stored>xgo_mame_state_comp_capacity())goto out;
     if(fread(comp,1,stored,f)!=stored)goto out;
-    fclose(f);f=0;
+    if(fclose(f)!=0)return 0;f=0;
     raw_len=(unsigned long)xgo_mame_state_raw_capacity();
     if(xgo_stock_state_uncompress(raw,&raw_len,comp,(unsigned long)stored)!=0)return 0;
     if(!raw_len||raw_len>xgo_mame_state_raw_capacity())return 0;

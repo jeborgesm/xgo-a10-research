@@ -1,5 +1,15 @@
 # HANDOFF-CURRENT
 
+## Current checkpoint — 2026-09-10 (supersedes historical sections below)
+
+Active branch: `research-game-list-arcade-expansion`. Test47 generalized CLASSIC importer is hardware PASS. Its ZIP SHA-256 is `d40a811e2ef05788688fe516e520b3f11b2e5b08ca77d926e77bf1c224f5db53`. Do not redo Tests23–46 or change the working importer. Remaining gate: CLASSIC Save/Load.
+
+Original Test48 CI run `34427821147` passed compilation, but its fixed scratch addresses did not establish ownership by the stock ROM arena. The corrected candidate reserves 12 MiB raw + 12.125 MiB compressed inside `gp_buf_64m`, below both the allocation end and core base. State v2 rejects wrong core/game identities and malformed sizes before restoration. Host boundary/roundtrip tests pass; hardware verification remains pending.
+
+Deliver as a core-only overlay at `cores/fbalpha2012_cps1/core.xgc` on installed Test47. That inherited directory deliberately contains MAME2000. Do not reinstall catalog triplets: that would overwrite user imports. Keep original core available for rollback. No merge or golden promotion until hardware PASS.
+
+See `findings/classic-test48-snapshot-audit.md`.
+
 ## Active branch
 
 `research-game-list-scanning`
