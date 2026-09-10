@@ -29,18 +29,32 @@ int main(void) {
         unsigned end=bases[i]+ARENA_SIZE;
         if(end>CORE_BASE)end=CORE_BASE;
         gp_buf_64m=(void*)(unsigned long)bases[i];g_run_file_size=59936;
-        heap_floor=heap_ptr=heap_end=0;
+        heap_floor=heap_ptr=heap_end=arena_limit=0;state_reserved=0;
         CHECK(heap_init());
+        CHECK(heap_end==end);
+        CHECK(!state_reserved);
+        CHECK(test_sbrk(64)!=(void*)-1);
+        CHECK(xgo_mame_state_raw_buffer()!=0);
+        CHECK(state_reserved);
         CHECK(state_raw_base>=bases[i]+g_run_file_size);
         CHECK(state_comp_base+STATE_COMP_CAP==end);
         CHECK(heap_end==state_raw_base);
-        CHECK(test_sbrk(64)!=(void*)-1);
         CHECK(xgo_mame_heap_restore(heap_end));
         CHECK(test_sbrk(1)==(void*)-1);
         CHECK(!xgo_mame_heap_restore(heap_end+1));
     }
+    gp_buf_64m=(void*)0x82000000u;g_run_file_size=64;
+    heap_floor=heap_ptr=heap_end=arena_limit=0;state_reserved=0;
+    CHECK(heap_init());
+    CHECK(test_sbrk((ptrdiff_t)(ARENA_SIZE-STATE_SCRATCH_TOTAL+1024))!=(void*)-1);
+    {
+        uintptr_t before_end=heap_end;
+        CHECK(!xgo_mame_state_raw_buffer());
+        CHECK(!state_reserved);
+        CHECK(heap_end==before_end);
+    }
     gp_buf_64m=(void*)0x86f00000u;g_run_file_size=64;
-    heap_floor=heap_ptr=heap_end=0;
+    heap_floor=heap_ptr=heap_end=arena_limit=0;state_reserved=0;
     CHECK(!heap_init());
     CHECK(!xgo_mame_state_raw_buffer());
     return 0;
