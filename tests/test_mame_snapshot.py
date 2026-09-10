@@ -55,8 +55,17 @@ int main(void) {
     }
     gp_buf_64m=(void*)0x86f00000u;g_run_file_size=64;
     heap_floor=heap_ptr=heap_end=arena_limit=0;state_reserved=0;
-    CHECK(!heap_init());
-    CHECK(!xgo_mame_state_raw_buffer());
+    /* Lazy policy: a small arena may still launch successfully even though
+     * it cannot reserve save-state scratch. Save/Load must fail gracefully. */
+    CHECK(heap_init());
+    CHECK(heap_end==CORE_BASE);
+    CHECK(test_sbrk(64)!=(void*)-1);
+    {
+        uintptr_t before_end=heap_end;
+        CHECK(!xgo_mame_state_raw_buffer());
+        CHECK(!state_reserved);
+        CHECK(heap_end==before_end);
+    }
     return 0;
 }
 ''')
