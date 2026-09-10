@@ -29,6 +29,14 @@ Stale SD experiment folders targeted for removal after installing the normalized
 
 Do NOT delete `/CLASSIC`, `/CLASSIC/bin`, or the working CLASSIC catalogs. No save-state work resumes until the normalized Test47 baseline launches CLASSIC correctly.
 
+Hardware result — normalized baseline: PASS.
+- SD cleanup completed.
+- Canonical core path /cores/classic-mame2000/core.xgc works.
+- 40+ CLASSIC games remain present and playable.
+- Refresh remains functional.
+- Repeated Refresh reaches the stable No New Games path without freezing.
+This normalized Test47-derived package is now the protected baseline for all further CLASSIC save-state work.
+
 See `findings/classic-test48-snapshot-audit.md`.
 
 ## Active branch
