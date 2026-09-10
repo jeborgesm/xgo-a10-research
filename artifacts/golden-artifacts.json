@@ -153,6 +153,30 @@
       "finding": "findings/game-list-test08-hardware-pass.md",
       "hardware_observation": "One Refresh pass discovered and stable-appended previously unindexed games across multiple built-in console systems. Forgotten raw .gb files were independently discovered; Super Mario Land appeared in the normal GB list, launched, played correctly, and retained button remapping. Home Alone on FC also launched correctly. Missing box art remains a separate metadata problem.",
       "implementation_scope": "General on-device stable-merge scanner for FC/SFC/MD/GB/GBC/GBA. Arcade intentionally excluded pending family classification. Canonical triplet writes remain non-transactional pending recovery-layer work."
+    },
+    {
+      "id": "classic-mame2000-normalized-test47-baseline",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-classic-mame2000-normalized-test47-baseline.zip",
+      "vault_path": "golden/xgo-classic-mame2000-normalized-test47-baseline.zip",
+      "zip_sha256": "59f23688770588b7ea0670d5ffa167097a5a7b7ca8be6d6c1d6674bba8b14d36",
+      "core_sha256": "60a62e463fd6faf92744a7be666602dd1621b9fd706f90d20e3b55ee3382bb1e",
+      "finding": "findings/classic-test52-save-load-hardware-pass.md",
+      "hardware_observation": "Normalized CLASSIC runtime layout hardware PASS: 40+ CLASSIC games remain present/playable; Refresh and stable No New Games behavior confirmed; canonical /cores/classic-mame2000/core.xgc path works."
+    },
+    {
+      "id": "classic-test52-firmware-streamed-save-load",
+      "status": "hardware-confirmed",
+      "archive_status": "present-private-vault-golden",
+      "canonical_filename": "xgo-classic-test52-save-dir-fix.zip",
+      "vault_path": "golden/xgo-classic-test52-save-dir-fix.zip",
+      "zip_sha256": "f7aa1ebb7509913d389bc5922011c80795d4e5ec056f312800fe6ba3a02b78d4",
+      "firmware_sha256": "8475cfdbec0e334d226d13e29c69bbd71dc99e5736b3ef185d4afdd360b91189",
+      "protected_core_sha256": "60a62e463fd6faf92744a7be666602dd1621b9fd706f90d20e3b55ee3382bb1e",
+      "parent_artifact": "classic-mame2000-normalized-test47-baseline",
+      "finding": "findings/classic-test52-save-load-hardware-pass.md",
+      "hardware_observation": "Firmware-side streamed CLASSIC Save/Load hardware PASS on Pac-Man and Galaga. State restoration is correct; Save/Load takes approximately 3 seconds. The protected MAME2000 core remains byte-for-byte unchanged."
     }
   ]
 }
