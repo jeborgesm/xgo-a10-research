@@ -49,12 +49,12 @@ static size_t snapshot_size_now(void)
     return sizeof(struct xgo_mame_snapshot_header)+data_size+heap_size;
 }
 
-size_t retro_serialize_size(void)
+size_t xgo_snapshot_serialize_size(void)
 {
     return snapshot_size_now();
 }
 
-bool retro_serialize(void *data,size_t size)
+bool xgo_snapshot_serialize(void *data,size_t size)
 {
     struct xgo_mame_snapshot_header *h=(struct xgo_mame_snapshot_header*)data;
     uintptr_t floor=xgo_mame_heap_floor();
@@ -82,7 +82,7 @@ bool retro_serialize(void *data,size_t size)
     return true;
 }
 
-bool retro_unserialize(const void *data,size_t size)
+bool xgo_snapshot_unserialize(const void *data,size_t size)
 {
     const struct xgo_mame_snapshot_header *h=(const struct xgo_mame_snapshot_header*)data;
     uintptr_t floor=xgo_mame_heap_floor();
