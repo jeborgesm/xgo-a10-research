@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "scope": "CLASSIC metadata/artwork enrichment",
+  "branch": "research-game-metadata-enrichment",
+  "closed": "2026-09-13",
+  "protected_core": {
+    "path": "/cores/classic-mame2000/core.xgc",
+    "sha256": "60a62e463fd6faf92744a7be666602dd1621b9fd706f90d20e3b55ee3382bb1e",
+    "changed_by_branch": false
+  },
+  "milestones": [
+    {
+      "test": 53,
+      "status": "hardware-pass",
+      "artifact": "xgo-classic-test53-metadata-enrichment.zip",
+      "zip_sha256": "5e64494ebf4339a0bb8e19924f363a891d6fcd5b719732d282d1692df7876d17",
+      "result": "Friendly-title TXT sidecars and exact 144x208 little-endian RGB565 artwork integrated into generated CLASSIC wrappers."
+    },
+    {
+      "test": 57,
+      "status": "hardware-pass",
+      "artifact": "xgo-classic-test57-complete-logo-atlas.zip",
+      "zip_sha256": "a9bd42cf42f5f8e9782b0f34093c50ad0a907725ec39ce1a847d4ec906930a8c",
+      "result": "CLASSIC list-logo corruption fixed by extending ihdsf.bke from 11 to 12 336x64 RGBA slots."
+    },
+    {
+      "test": 58,
+      "status": "hardware-pass",
+      "artifact": "xgo-classic-test58-refresh-reconcile-delete.zip",
+      "zip_sha256": "08dbf8bb5e6f9c36496572c95f8f938239a520769c95bf19eec2a3497148c7d0",
+      "result": "Refresh reconciles removed generated games without speculatively deleting unknown/manual wrappers."
+    },
+    {
+      "test": 60,
+      "status": "hardware-pass",
+      "artifact": "xgo-classic-test60-nochange-fix.zip",
+      "zip_sha256": "4d23e8a7225217bfbfa84e447f2458db60383971241ccf71cda9de61c51e799b",
+      "result": "External /CLASSIC/refresh.xgc architecture with stable final-byte comparison and correct No New Games semantics."
+    },
+    {
+      "test": 61,
+      "status": "hardware-pass",
+      "artifact": "xgo-classic-test61-rgb565-scaler.zip",
+      "zip_sha256": "82565429f0cbff5bec6d0279e92fd379aa235a10fc0bc0a55bb4b12235165fef",
+      "result": "On-device aspect-preserving RGB565 resize/letterbox to 144x208 preview."
+    },
+    {
+      "test": 64,
+      "status": "hardware-pass-protected",
+      "artifact": "xgo-classic-test64-integrated-jpeg-refresh.zip",
+      "zip_sha256": "09ce9cd0a983f4a2887a5050718e30e55fe487dcb8ecc15b16f2b6c184676d3d",
+      "firmware_sha256": "0fb8dda0f03b3a8068b23a02d03354475538be0c8e7ed83d8f2ee5d69ab57fef",
+      "refresh_xgc_sha256": "6d416c71af871445023de96522d78bfa62b6277cfb7e5e37945bc12ea76dc98d",
+      "result": "Ordinary baseline/non-progressive JPEG decoded, resized and converted on-device inside refresh.xgc, then embedded into stock-style wrapper preview."
+    },
+    {
+      "tests": "65-70",
+      "status": "deferred-not-protected",
+      "result": "PNG experiments failed or were diagnostic only; PNG deliberately removed from scope because the hardware-proven JPEG path satisfies the practical requirement."
+    },
+    {
+      "test": 72,
+      "status": "hardware-pass-batch-validation",
+      "artifact": "xgo-classic-test72-one-shot-batch-import.zip",
+      "zip_sha256": "af14ce8eb2e111386873ad697e1c4654ea2dcde663be5410bfd5a71f36fa4a16",
+      "result": "50 matching ROM/JPG/TXT sets imported successfully; friendly-title ZFB wrappers generated; all 50 JPGs converted; second unchanged Refresh returned No New Games. Automatic sidecar cleanup was not promoted and files remain intentionally retained."
+    }
+  ],
+  "finding": "findings/classic-test72-batch-metadata-jpeg-hardware-pass.md"
+}
