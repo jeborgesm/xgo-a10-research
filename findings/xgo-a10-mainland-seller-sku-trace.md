@@ -55,6 +55,42 @@ An export image of the exact enclosure independently labels a controller bundle 
 
 Interpretation: controller inclusion is a package/SKU variable. It should not be treated as evidence of a different motherboard or firmware without binary/PCB evidence.
 
+## Content tier and controller bundle are independently selectable — STRONG
+
+The older JD Marvel/XGO listing preserves four combinations in one exact 10000mAh product family:
+
+```text
+500 games, standalone
+500 games + dual-controller bundle
+10,000 games, standalone/premium
+10,000 games + dual-controller bundle
+```
+
+This is important because it separates two retail axes:
+
+1. **game/card-content tier**: 500 vs 10,000 games;
+2. **accessory/package tier**: device alone vs external dual-controller bundle.
+
+Therefore the 500-game vs 10,000-game distinction cannot be explained merely by the presence of the external controller. It is strong evidence for independently provisioned game/content bundles on the same physical 10000mAh family.
+
+This increases the value of recovering the 500-game stock card: it may expose a smaller/earlier factory catalog and ROM payload while retaining a closely related executable/resources layer.
+
+Evidence level: **STRONG retail configuration evidence**, not yet binary/card equivalence.
+
+## Independent SMZDM retail-archive confirmation — STRONG
+
+什么值得买 / SMZDM independently retains an XGO product/deal index entry for:
+
+```text
+XGO 芯果 游戏机双人对战手柄+万款游戏+1W毫安快充
+10000mAh游戏机充电宝
+historical tracked price: ¥278（需用券）
+```
+
+This independently confirms that the 10000mAh / 10,000-game / controller-bundle configuration circulated in the Chinese retail market outside the currently indexed JD pages.
+
+The corresponding old deal URL has not yet been recovered from public indexing, so merchant identity and card-capacity details remain unresolved.
+
 ## XGO card-provisioning practice — supporting context only
 
 Current JD indexing for newer XGO handhelds explicitly exposes:
