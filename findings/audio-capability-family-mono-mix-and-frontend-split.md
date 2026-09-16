@@ -61,7 +61,47 @@ patched JAL site              0x8035e800
 dual-mono shim                0x807db9c0
 ```
 
-The current repository copy records Test13 as a hardware candidate, not a promoted/golden result. Therefore it must not be cited as proof that downmixing improved XGO audio until its actual hardware outcome is recovered or repeated.
+The repository records Test13 as a hardware candidate, not a promoted/golden result. Therefore it must not be cited as proof that downmixing improved XGO audio until its actual hardware outcome is recovered or repeated.
+
+## Lineage audit: Test13 mixer is absent from the current cumulative firmware
+
+The historical Test13 patch can now be compared directly against preserved current artifacts.
+
+Test13 required two distinctive modifications:
+
+1. replacing the JAL at firmware file offset `0x35e800` so the stock libretro batch callback entered the dual-mono shim instead of directly entering `run_sound_advance`;
+2. installing the 156-byte mixer shim at file offset `0x7db9c0` (runtime `0x807db9c0`).
+
+Direct byte comparison was performed against:
+
+- original stock `XGoAnalisis.zip` `bios/bisrv.asd`;
+- Test72 cumulative firmware, SHA-256 `0fb8dda0f03b3a8068b23a02d03354475538be0c8e7ed83d8f2ee5d69ab57fef`;
+- hardware-passed Test74 cumulative firmware, SHA-256 `160e2bb9cb5ac04d2cba6df2802ead39b46e42208a5b6a5a0a8d6467e259632d`;
+- Test75 FC candidate firmware, SHA-256 `67461ff030aadd5bf2f7fa62315a5cd176f97dfb105488ce57f1d4c938343801`.
+
+At `0x35e800`, **stock, Test72, Test74 and Test75 contain the same bytes**:
+
+```text
+e8 72 0d 0c 21 88 40 00 b2 3f 0c 0c 00 00 00 00
+23 18 51 00 15 00 71 28
+```
+
+Therefore the Test13 callback redirection is not present in any of those cumulative artifacts.
+
+At `0x7db9c0`, stock contains zero-filled cave space. Test72/Test74/Test75 use that region for later Refresh/CLASSIC data; the bytes begin:
+
+```text
+63 6c 6d 2e 62 76 73 00 63 6c 73 73 69 63 2e 72
+35 36 00 00 00 00 00 00
+```
+
+ASCII includes `clm.bvs` / `clssic.r56`, not the historical 156-byte dual-mono shim.
+
+**CONFIRMED:** the Arcade Test13 stereo-to-dual-mono implementation did **not survive** into Test72, Test74, or Test75. Its original cave was later repurposed and its JAL interception is absent.
+
+This resolves the user's recollection: stereo/mono analysis and an implementation really did happen, but that implementation was experimental and was not part of the later protected cumulative baseline.
+
+It also means the improved system/menu music heard on the current modified card **cannot be attributed to the Test13 mixer**.
 
 ## Frontend music is a separate investigation
 
@@ -102,7 +142,7 @@ individual emulator       -> its own PCM generation/rate -> libretro path
 1. Trace the frontend `wav_play_file`/LPCM path into the common PCM/SND driver and recover its channel count, source rate, gain/volume application, and buffer format.
 2. Compare stock firmware against the cumulative modified firmware at every audio-relevant changed address, rather than assuming Audio OSD rendering alone caused the audible difference.
 3. Determine whether the XGO physical mono path selects one channel, sums channels in analog, duplicates one channel, or receives an already-mixed digital stream.
-4. Recover the hardware result of the historical Arcade Test13 dual-mono candidate if available.
+4. Recover the hardware result of the historical Arcade Test13 dual-mono candidate if available; if not, treat a future generalized downmix as a new controlled experiment.
 5. Compare family SND/I2SO configuration and gain staging, but do not import SF2000 GPIOs or board-specific analog assumptions; XGO L23 remains protected.
 
 ## Safety / regression rule
