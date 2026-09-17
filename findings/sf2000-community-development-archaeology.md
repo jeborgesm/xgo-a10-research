@@ -23,6 +23,14 @@ The same documentation attributes initial menu-audio sample-rate math to `notv37
 
 Other contemporaneous documentation credits `taizou` with identifying previously unknown stock Resources files and `adcockm` with detailed arcade-emulation metadata.
 
+### Osaka and bnister are the same Retro Handhelds developer identity — CONFIRMED
+
+A contemporaneous November 2023 SF2000 multicore prerelease post preserves the developer credits as **`@osaka (@bnister) research and low-level developer`**, alongside `@kobil (@kobily) multicore developer (internals)` and `@adcockm multicore developer (cores)`. Later GB300 documentation independently states that Discord user **osaka (`bnister`)** and Prosty (`_prosty`) brought multicore to GB300 v1.
+
+This closes an important attribution gap: the earlier stock-firmware discoveries credited to `bnister` and the later low-level multicore work credited to `osaka` belong to the same community developer identity. Therefore the development history is more continuous than the handles initially suggested: the person who discovered stock `.kmp`/mapping behavior was also the low-level researcher behind the initial multicore/native-loader work.
+
+This does **not** by itself prove that every external historical record for the real name appearing in source headers belongs to the same person; handle identity and real-world identity remain separate provenance questions.
+
 ## Multicore lineage
 
 ### Repository ancestry — CONFIRMED
@@ -33,9 +41,9 @@ The original GitLab project remains publicly indexed at `gitlab.com/kobily/sf200
 
 Working lineage:
 
-stock SF2000 reverse engineering -> community/Discord experimentation including Osaka's native-loader work -> kobil multicore GitLab -> madcock/adcockm integration/release mirror -> GB300 and other family adaptation
+stock SF2000 reverse engineering by bnister/osaka and other community researchers -> Discord experimentation and native-loader work -> kobil multicore GitLab -> madcock/adcockm integration/release mirror -> GB300 and other family adaptation
 
-with Osaka contributing important low-level platform work and later an explicit DY19 adaptation.
+with Osaka contributing important low-level platform work and later explicit GB300 and DY19 adaptations.
 
 ## Osaka initial multicore code — CONFIRMED, high importance
 
@@ -56,11 +64,11 @@ This establishes that by 2023-09-16 Osaka already had the essential external-cor
 
 The commit also contains an on-device LCD debugging implementation using the stock hardware GPIO path, demonstrating that the developers were actively creating instrumentation for a platform without conventional UART output.
 
-### Osaka identity/provenance clue — CONFIRMED source attribution; identity correlation remains PARTIAL
+### Osaka identity/provenance clue — CONFIRMED source attribution; real-world correlation remains PARTIAL
 
-Several files inherited from Osaka's initial contribution (`crc.c`, `debug.c`, `main.c`, and `video_sf2000.c`) carry the explicit source header **`Copyright (C) 2023 Nikita Burnashev`**. This makes `Nikita Burnashev` a much stronger archival search key than the handle `Osaka` alone.
+Several files inherited from Osaka's initial contribution (`crc.c`, `debug.c`, `main.c`, and `video_sf2000.c`) carry the explicit source header **`Copyright (C) 2023 Nikita Burnashev`**. Combined with the independent `osaka (@bnister)` attribution, the source tree now gives us two strong archival handles for the same SF2000 development stream: Osaka/bnister and the source-header name.
 
-External web traces exist for a programmer named Nikita Burnashev in older low-level/software-development contexts, including a Game Boy Advance programming credit and compression/tooling work. These are **not yet sufficient to assert that every historical Nikita Burnashev record is the same person as SF2000 Osaka**. Preserve the distinction until a handle-to-name bridge is independently corroborated.
+External web traces exist for a programmer named Nikita Burnashev in older low-level/software-development contexts, including a Game Boy Advance programming credit and compression/tooling work. These are **not yet sufficient to assert that every historical Nikita Burnashev record is the same person as SF2000 Osaka/bnister**. Preserve that distinction until independently corroborated.
 
 ## Osaka follow-on discoveries preserved in commit history — CONFIRMED
 
@@ -95,12 +103,12 @@ That observation is highly relevant to XGO, where our own external-core/CLASSIC 
 
 Surviving multicore release notes preserve a division of labor that is otherwise easy to lose:
 
-- Osaka: PicoDrive/Sega CD/32X work; Genesis Plus GX; stereo-to-mono mixing; video fixes and stock scaling mode.
-- kobil: unusual MAME2000 build/toolchain work; FPS display; options/logging behavior; substantial `core_api` work/cleanup.
+- Osaka/bnister: research and low-level development; PicoDrive/Sega CD/32X work; Genesis Plus GX; stereo-to-mono mixing; video fixes and stock scaling mode.
+- kobil/kobily: multicore internals; unusual MAME2000 build/toolchain work; FPS display; options/logging behavior; substantial `core_api` work/cleanup.
+- adcockm/madcock: multicore core integration, release packaging and documentation, plus other core work.
 - ommokazza: NTSC overscan fix.
-- adcockm/madcock: integration, release packaging and documentation, plus other core work.
 
-This reinforces the rule that the GitHub mirror/release owner is not necessarily the originator of low-level discoveries.
+A contemporaneous prerelease archive compiled by adcockm explicitly labels the division as `osaka (@bnister) research and low-level developer`, `kobil (@kobily) multicore developer (internals)`, and `adcockm multicore developer (cores)`. This is stronger evidence for role separation than inferring roles from commit ownership alone.
 
 ## Discord as missing primary record — CONFIRMED
 
@@ -118,6 +126,16 @@ The same surviving 4PDA material describes multicore as a **modification of the 
 
 Therefore Git history and release notes should be treated as a surviving projection of a richer development conversation, not the complete record.
 
+## GB300 propagation — CONFIRMED
+
+The GB300 branch gives unusually good evidence of how SF2000 knowledge propagated to another HCSEMI-family product.
+
+`tzubertowski/gb300_multicore` explicitly says the port would not exist without Osaka's work in the Retro Handhelds Discord. Independent GB300 documentation states that **osaka (`bnister`) and Prosty (`_prosty`) brought multicore to GB300 v1 on 2024-04-27**. A contemporaneous 2024-04-28 community announcement says Osaka figured out the patches necessary to make the SF2000 multicore modification work on GB300.
+
+Later GB300 v2 documentation expands the porting credits to Osaka, Prosty, Karl Ellis, Mutandone and the original SF2000 multicore developers, especially kobil. This shows the family knowledge continuing to evolve rather than a one-time binary transplant.
+
+GB300 tooling also preserves later Osaka firmware research: a July 2024 tool release incorporated Osaka's newer VTxx patch and removed earlier VT02/VT03 workarounds, allowing `.nfc` VTxx ROMs, including headerless VT03, to work through the revised patch. This demonstrates that Osaka/bnister continued investigating the stock emulator/firmware layer after multicore itself was already established.
+
 ## Architectural interpretation — STRONG
 
 The accumulated evidence supports a more precise description of SF2000 multicore than 'custom firmware'. The work exploits and extends an existing stock firmware/frontend environment: stock services, libretro-like callbacks, runtime globals and interrupt handling remain relevant while external core images are introduced. The 4PDA community's explicit distinction between multicore and CFW independently matches this technical architecture.
@@ -126,7 +144,7 @@ This matters for family archaeology because later ports can inherit the *contrac
 
 ## XGO relevance discovered so far
 
-The most important convergence is now historical as well as technical. The family contract used in our XGO CLASSIC experiments was not an arbitrary modern reconstruction. Osaka's September 2023 initial SF2000 multicore code already exposed:
+The most important convergence is now historical as well as technical. The family contract used in our XGO CLASSIC experiments was not an arbitrary modern reconstruction. Osaka/bnister's September 2023 initial SF2000 multicore code already exposed:
 
 `g_retro_game_info` / `g_run_file_size` / `gp_buf_64m` / `gfn_retro_*` / native callbacks / `run_emulator()` / external core at 0x87000000.
 
@@ -134,17 +152,20 @@ Later kobil work documents the `$gp` conflict between dynamic core execution and
 
 The newly recovered chronology is also important: Osaka's initial code is dated **seven days before** the public creation date of kobil's GitLab project. That makes the pre-GitLab Discord/experimental phase a concrete missing chapter rather than a vague possibility.
 
+The identification of Osaka with bnister now joins two previously separate histories: early stock-firmware reverse engineering and later multicore low-level development. This makes the likely path less like `stock researchers -> unrelated multicore developers` and more like a continuous research program in which the same low-level investigator moved from mapping stock behavior to exploiting the native frontend contract and then porting that knowledge to GB300/DY19.
+
 ## Next targets
 
-1. Recover the pre-September-16-2023 path that produced Osaka's initial symbol map and 0x87000000 contract.
+1. Recover the pre-September-16-2023 path that produced Osaka/bnister's initial symbol map and 0x87000000 contract.
 2. Use the recovered Discord anchors (`1099465777825972347` especially) to search quotes, reposts, screenshots, message links and archives from the SF2000 Dev channel.
-3. Determine whether Osaka or another developer first identified `gp_buf_64m`, `run_emulator`, and the native `gfn_retro_*` table.
+3. Determine whether Osaka/bnister or another developer first identified `gp_buf_64m`, `run_emulator`, and the native `gfn_retro_*` table.
 4. Trace the November 2023 cache-flush experiments and MAME2000 linker discussion.
 5. Trace the March 2024 kobil `$gp`/IRQ discovery back to discussion or experimental commits.
 6. Diff Osaka's later DY19 adaptation against the SF2000 contract to identify which portions were family-generic versus product-specific.
 7. Correlate GB300 adaptation changes to LCD, input, memory, and native callback differences.
-8. Search `Nikita Burnashev` as an archival provenance key while keeping identity correlation separate from confirmed SF2000 source attribution.
+8. Search `Nikita Burnashev` as an archival provenance key while keeping real-world identity correlation separate from confirmed Osaka/bnister handle identity.
 9. Recover as much of kobil's GitLab commit chronology as possible, especially the first week after project creation on 2023-09-23.
+10. Trace Prosty/_prosty's role in the GB300 port and determine which product-specific patches were Osaka's versus Prosty's.
 
 ## Source anchors
 
@@ -155,7 +176,11 @@ The newly recovered chronology is also important: Osaka's initial code is dated 
 - https://gitlab.com/kobily/sf2000_multicore
 - https://github.com/vonmillhausen/sf2000
 - https://github.com/tzubertowski/gb300_multicore
+- https://github.com/nummacway/gb300
+- https://github.com/nummacway/gb300-sf2000-tool
 - https://github.com/Trademarked69/dy19_multicore
 - https://4pda.to/forum/index.php?showtopic=1067862
+- https://www.reddit.com/r/DataFrog/comments/17cj3zo/
+- https://www.reddit.com/r/SBCGaming/comments/1cfin56/
 
 Research log begun 2026-09-17.
