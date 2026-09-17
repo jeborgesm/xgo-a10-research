@@ -30,6 +30,16 @@ By June 2023, public documentation also records discovery of an SDK for the SF20
 
 Sources: https://github.com/vonmillhausen/sf2000 ; https://dteyn.github.io/sf2000/ ; https://dteyn.github.io/sf2000_projects.htm
 
+## 2023-06-22 — stock GBA execution path already under bnister investigation — CONFIRMED
+
+Public SF2000 documentation records bnister's discovery that the stock gpSP emulator was not loading the bundled `gba_bios.bin` from the apparent top-level BIOS location. The actual stock paths included nested `mnt/sda1/bios/gba_bios.bin` locations under the GBA and user-ROM execution trees.
+
+This predates multicore by almost three months and establishes that bnister/osaka was already tracing concrete behavior inside the stock GBA execution path well before that path became multicore's launch mechanism.
+
+**Causal connection remains PARTIAL:** there is not yet surviving evidence that the BIOS-path investigation itself led directly to the later loader design. The chronology is nevertheless important because GBA was not an unexplored subsystem when multicore selected it.
+
+Source: https://github.com/vonmillhausen/sf2000
+
 ## 2023-06 to 2023-07 — hcRTOS / true-CFW experiment — CONFIRMED
 
 The recovered HC-RTOS project describes itself as HiChip Semiconductor's HC-FreeRTOS SDK platform modified for the SF2000 / HCSEMI B210 and identifies the project roles as:
@@ -53,13 +63,40 @@ The true-CFW effort later stalled because the SDK was incomplete/low-quality: im
 
 Sources: https://github.com/Data-Frog-Central/HC-RTOS ; https://github.com/vonmillhausen/sf2000
 
+## Late summer 2023 — architectural pivot toward the stock runtime — STRONG
+
+Contemporaneous documentation explicitly describes multicore as a **new tack** after the HC-RTOS effort: rather than replacing the complete firmware, the developers modified the stock environment so they could retain the manufacturer's working audio/video drivers. The public description specifically says multicore **hijacks the stock Game Boy Advance emulator** to run additional cores and engines.
+
+This establishes the practical reason for the pivot: the community had demonstrated arbitrary software/core execution with the SDK-based replacement environment, but the proprietary stock environment already solved difficult product-specific audio/video integration.
+
+A useful working distinction is therefore:
+
+1. **execution breakthrough:** HC-RTOS/RetroArch proved community code and cores could run on the platform;
+2. **integration breakthrough:** stock-runtime archaeology revealed that the manufacturer's existing frontend could be repurposed to host external cores without recreating the complete device-support stack.
+
+Source: https://github.com/vonmillhausen/sf2000 ; https://pt13762104.github.io/sf2000/faq/
+
+## 2023-09-05 — bnister still actively mapping stock firmware immediately before multicore — CONFIRMED
+
+The SF2000 documentation changelog records addition of `bnister`'s CPU clock-bump discovery on 2023-09-05. This is only eleven days before the preserved `osaka's initial code` commit.
+
+The proximity matters: Osaka/bnister did not simply leave stock-firmware analysis behind during the HC-RTOS experiment. Stock `bisrv.asd` investigation was still producing concrete discoveries immediately before the external-core loader appeared.
+
+Source: https://github.com/vonmillhausen/sf2000
+
 ## 2023-09-16 — Osaka's native-loader code is preserved — CONFIRMED
 
 Commit `bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c` in `madcock/sf2000_multicore`, titled `osaka's initial code`, preserves the native symbol map, stock libretro callbacks/runtime globals, external-core jump table at `0x87000000`, CRC patcher, and LCD/GPIO UARTless-debug mechanism.
 
 The source files carry `Copyright (C) 2023 Nikita Burnashev`. The community handle relationship `osaka (@bnister)` is independently preserved by later prerelease credits. Real-world identity correlation beyond those source/community records remains separate and should not be assumed.
 
-Source: https://github.com/madcock/sf2000_multicore/commit/bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c
+### Why the GBA hijack now matters — STRONG architecture clue
+
+The September loader's mapped state includes `g_retro_game_info`, `g_run_file_size`, `gp_buf_64m`, `gfn_retro_*`, native frontend callbacks and `run_emulator()`, while the public multicore description says the modification hijacks the stock GBA emulator. Combined with bnister's June investigation of stock gpSP behavior, this narrows the missing archaeology question considerably: the likely breakthrough was not merely discovering an arbitrary executable address, but understanding enough of the stock GBA/frontend launch contract to substitute an external libretro-style core while retaining native services.
+
+The exact discovery sequence remains **OPEN**. Do not promote the June BIOS-path bug to the cause of multicore without a surviving discussion, patch, disassembly note or commit establishing that connection.
+
+Source: https://github.com/madcock/sf2000_multicore/commit/bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c ; https://github.com/vonmillhausen/sf2000
 
 ## 2023-09-23 — kobil public GitLab project created — CONFIRMED
 
@@ -107,13 +144,16 @@ The chronology now supports a continuous development story:
 
 The especially important transition to investigate is **July-September 2023**. In July the community had a barely functional replacement RetroArch environment built on the incomplete HC-RTOS SDK. By September 16 Osaka had instead mapped enough of the stock runtime to expose its existing libretro-like frontend and load an external core at `0x87000000`. Recovering the discussion/experiments behind that pivot may explain exactly why multicore took its final architecture.
 
+The GBA evidence makes the target more specific: bnister had already traced stock gpSP filesystem behavior in June; multicore later hijacked the stock GBA execution path; and Osaka's initial loader exposes the surrounding native frontend/runtime contract. This is a **strong chronological/architectural convergence**, but the causal bridge remains unproven pending recovery of the missing July-September development conversation.
+
 ## Immediate archaeology targets
 
 1. Recover Retro Handhelds Discord material between the July 20 gpSP true-CFW milestone and Osaka's September 16 native-loader code.
-2. Determine when the developers realized the stock firmware already exposed a reusable libretro-style frontend contract.
+2. Determine when the developers realized the stock GBA path exposed a reusable libretro-style frontend contract.
 3. Trace the source of the native symbol addresses in Osaka's initial map: disassembly, SDK symbols, map files, runtime experiments, or a combination.
 4. Search the HC-RTOS tree/history for code or notes that bridge the SDK-based experiment to the later stock-runtime loader.
 5. Trace the original SDK dump provenance and compare its symbol/API vocabulary with Osaka's `stockfw` map.
 6. Recover the earliest kobil GitLab commits after September 23 and distinguish Osaka's supplied loader foundation from kobil's generalized multicore internals.
+7. Search for early references to stub files, the GBA-size discriminator, `gp_buf_64m`, `g_run_file_size`, and `run_emulator()` that may preserve the first description of the hijack mechanism.
 
 Research timeline created 2026-09-17.
