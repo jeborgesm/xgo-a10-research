@@ -63,6 +63,29 @@ The true-CFW effort later stalled because the SDK was incomplete/low-quality: im
 
 Sources: https://github.com/Data-Frog-Central/HC-RTOS ; https://github.com/vonmillhausen/sf2000
 
+## 2023-08-19 to 2023-08-29 — stock-core substitution appears as a separate experiment — CONFIRMED
+
+The contemporaneous public documentation provides a much narrower window for the conceptual pivot than previously recognized. On **2023-08-19**, the custom-firmware status describes the HC-RTOS/RetroArch effort as individual cores built as complete firmware images, with no way to switch cores without replacing the firmware on the SD card. There is not yet any mention of modifying the stock firmware to host another emulator core.
+
+By the **2023-08-29** documentation revision, a new sentence appears: **a side project was investigating modifying the stock firmware to replace or add additional emulator cores**. Crucially, the stated purpose at that point was exploratory—learning more about the device internals—and the documentation says there was not yet a plan to build custom firmware by this route.
+
+This establishes that the stock-core substitution idea existed before the preserved September multicore repository and narrows its first publicly visible appearance to the ten-day interval **August 19–29, 2023**.
+
+The distinction is historically important: two architectures were being explored in parallel by late August:
+
+1. SDK/HC-RTOS replacement firmware containing a community-built RetroArch/core environment;
+2. modification of the manufacturer's existing firmware to replace or add emulator cores.
+
+Source: https://github.com/vonmillhausen/sf2000 (README revisions dated 2023-08-19 and 2023-08-29)
+
+## 2023-09-03 — stock-core experiment persists; toolchain work becomes explicit — CONFIRMED
+
+The September 3 documentation retains the stock-firmware core-replacement side project and adds that other efforts are focused on building an **efficient toolchain for further development**. Two days later bnister's CPU-clock discovery is documented; thirteen days later the surviving multicore repository begins with Osaka's native-loader work and a reproducible firmware-patching Makefile.
+
+This does not prove that the September 3 toolchain effort was specifically the multicore toolchain, but it establishes that tooling work and stock-core experimentation were contemporaneous immediately before the external loader appeared.
+
+Source: https://github.com/vonmillhausen/sf2000/commit/92384b220edf2d534254e8fe811e8157283c1819
+
 ## Late summer 2023 — architectural pivot toward the stock runtime — STRONG
 
 Contemporaneous documentation explicitly describes multicore as a **new tack** after the HC-RTOS effort: rather than replacing the complete firmware, the developers modified the stock environment so they could retain the manufacturer's working audio/video drivers. The public description specifically says multicore **hijacks the stock Game Boy Advance emulator** to run additional cores and engines.
