@@ -29,9 +29,11 @@ Other contemporaneous documentation credits `taizou` with identifying previously
 
 The surviving `madcock/sf2000_multicore` README states that it mirrors/follows `kobil`'s original GitLab multicore repository and directs readers to the Retro Handhelds Discord development channel for the latest information. Later GB300 multicore material preserves the same ancestry. The surviving DY19 multicore repository explicitly says its DY19 work was originally made by Osaka and later updated from the SF2000 multicore lineage.
 
+The original GitLab project remains publicly indexed at `gitlab.com/kobily/sf2000_multicore`. GitLab reports that the project was created on **2023-09-23**. This is historically significant because Osaka's preserved initial-code commit in madcock's GitHub history is dated **2023-09-16**, one week earlier. Therefore the surviving Osaka code predates the creation date of kobil's public GitLab project. The pre-2023-09-23 discovery/exchange path cannot be reconstructed by treating the GitLab project as the beginning of multicore development.
+
 Working lineage:
 
-stock SF2000 reverse engineering -> kobil multicore -> madcock/adcockm integration/release mirror -> GB300 and other family adaptation
+stock SF2000 reverse engineering -> community/Discord experimentation including Osaka's native-loader work -> kobil multicore GitLab -> madcock/adcockm integration/release mirror -> GB300 and other family adaptation
 
 with Osaka contributing important low-level platform work and later an explicit DY19 adaptation.
 
@@ -53,6 +55,12 @@ The same initial contribution defines the external core jump table at **0x870000
 This establishes that by 2023-09-16 Osaka already had the essential external-core/native-frontend contract that later became recognizable as SF2000 multicore. For XGO archaeology this is especially important because our CLASSIC work independently encountered the same family-style concepts: external image at 0x87000000, native callback slots/services, `gp_buf_64m`, `g_retro_game_info`, `g_run_file_size`, and `run_emulator()`.
 
 The commit also contains an on-device LCD debugging implementation using the stock hardware GPIO path, demonstrating that the developers were actively creating instrumentation for a platform without conventional UART output.
+
+### Osaka identity/provenance clue — CONFIRMED source attribution; identity correlation remains PARTIAL
+
+Several files inherited from Osaka's initial contribution (`crc.c`, `debug.c`, `main.c`, and `video_sf2000.c`) carry the explicit source header **`Copyright (C) 2023 Nikita Burnashev`**. This makes `Nikita Burnashev` a much stronger archival search key than the handle `Osaka` alone.
+
+External web traces exist for a programmer named Nikita Burnashev in older low-level/software-development contexts, including a Game Boy Advance programming credit and compression/tooling work. These are **not yet sufficient to assert that every historical Nikita Burnashev record is the same person as SF2000 Osaka**. Preserve the distinction until a handle-to-name bridge is independently corroborated.
 
 ## Osaka follow-on discoveries preserved in commit history — CONFIRMED
 
@@ -79,7 +87,7 @@ Preserved commits attribute to kobil:
 - an on-screen FPS-display branch;
 - joint fixes with Osaka.
 
-A particularly important 2024-03-23 upstream-sync commit (`7998e068b6ade53a2f9dd56c4a08d63b7eeaa88b`) documents a gpSP dynarec failure mechanism: dynamically generated code changes `$gp`, while the stock IRQ/interrupt handlers expect the original stock `$gp`. The fix patches the path before `irq_handler` to restore the original stock `$gp` value. This is direct family-runtime evidence for the significance of `$gp` ownership across external/dynamic code and native interrupt handling.
+A particularly important 2024-03-23 upstream-sync commit (`7998e068b6ade53a2f9dd56c4a08d63b7eeaa88b`) documents a gpSP dynarec failure mechanism: dynamically generated code changes `$gp`, while the stock IRQ/interrupt handlers expect the original stock `$gp`. The fix patches the path before `irq_handler` to restore the original stock `$gp` value. The commit explicitly states that the patch came from kobil's GitLab repository. This is direct family-runtime evidence for the significance of `$gp` ownership across external/dynamic code and native interrupt handling.
 
 That observation is highly relevant to XGO, where our own external-core/CLASSIC work independently required explicit stock/core `$gp` transitions. It should be treated as a family-platform precedent, not proof that every XGO address or patch location is identical.
 
@@ -98,7 +106,23 @@ This reinforces the rule that the GitHub mirror/release owner is not necessarily
 
 Multiple surviving project READMEs explicitly direct developers to the Retro Handhelds Discord development channel/thread for current information. Contemporary SF2000 documentation also links particular technical discoveries directly to Discord discussions. A later user guide complains that much multicore information remained scattered through Discord chats, independently corroborating the archival problem.
 
+A surviving 4PDA SF2000 thread preserves the actual Discord channel/message anchors that were being circulated with multicore instructions:
+
+- general SF2000 discussion: message/channel anchor `1092831839955193987`;
+- test-build discussion: `1147949255911297155`;
+- **SF2000 Dev** development channel: `1099465777825972347`.
+
+The 4PDA instructions explicitly tell users to keep development discussion in the SF2000 Dev channel and link kobil's GitLab repository alongside those Discord anchors. This is useful archival evidence that the Discord dev channel was not merely casual support: it was the designated development venue surrounding the GitLab project.
+
+The same surviving 4PDA material describes multicore as a **modification of the factory firmware**, explicitly warning users not to call it a CFW, and identifies **kobil as the main author/developer**. A later preserved 4PDA header states that contact with kobil had been lost since **August 2024**. Treat that latter statement as community-reported provenance rather than independently verified biography.
+
 Therefore Git history and release notes should be treated as a surviving projection of a richer development conversation, not the complete record.
+
+## Architectural interpretation — STRONG
+
+The accumulated evidence supports a more precise description of SF2000 multicore than 'custom firmware'. The work exploits and extends an existing stock firmware/frontend environment: stock services, libretro-like callbacks, runtime globals and interrupt handling remain relevant while external core images are introduced. The 4PDA community's explicit distinction between multicore and CFW independently matches this technical architecture.
+
+This matters for family archaeology because later ports can inherit the *contract* without replacing the complete native environment. It also explains why cache behavior, `$gp`, stock IRQ assumptions, native save-state buffers and product-specific display/input adaptations remain important even when a new emulator core itself is portable.
 
 ## XGO relevance discovered so far
 
@@ -108,15 +132,19 @@ The most important convergence is now historical as well as technical. The famil
 
 Later kobil work documents the `$gp` conflict between dynamic core execution and stock interrupt handlers. Together these provide a development-history explanation for several mechanisms independently observed while adapting family multicore ideas to XGO.
 
+The newly recovered chronology is also important: Osaka's initial code is dated **seven days before** the public creation date of kobil's GitLab project. That makes the pre-GitLab Discord/experimental phase a concrete missing chapter rather than a vague possibility.
+
 ## Next targets
 
 1. Recover the pre-September-16-2023 path that produced Osaka's initial symbol map and 0x87000000 contract.
-2. Search surviving Discord message IDs, quoted text, mirrors, 4PDA posts and commit messages for the conversations around the initial external-core loader.
+2. Use the recovered Discord anchors (`1099465777825972347` especially) to search quotes, reposts, screenshots, message links and archives from the SF2000 Dev channel.
 3. Determine whether Osaka or another developer first identified `gp_buf_64m`, `run_emulator`, and the native `gfn_retro_*` table.
 4. Trace the November 2023 cache-flush experiments and MAME2000 linker discussion.
 5. Trace the March 2024 kobil `$gp`/IRQ discovery back to discussion or experimental commits.
 6. Diff Osaka's later DY19 adaptation against the SF2000 contract to identify which portions were family-generic versus product-specific.
 7. Correlate GB300 adaptation changes to LCD, input, memory, and native callback differences.
+8. Search `Nikita Burnashev` as an archival provenance key while keeping identity correlation separate from confirmed SF2000 source attribution.
+9. Recover as much of kobil's GitLab commit chronology as possible, especially the first week after project creation on 2023-09-23.
 
 ## Source anchors
 
@@ -124,8 +152,10 @@ Later kobil work documents the `$gp` conflict between dynamic core execution and
 - https://github.com/madcock/sf2000_multicore/commit/bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c
 - https://github.com/madcock/sf2000_multicore/commit/7998e068b6ade53a2f9dd56c4a08d63b7eeaa88b
 - https://github.com/madcock/sf2000_multicore_cores/releases
+- https://gitlab.com/kobily/sf2000_multicore
 - https://github.com/vonmillhausen/sf2000
 - https://github.com/tzubertowski/gb300_multicore
 - https://github.com/Trademarked69/dy19_multicore
+- https://4pda.to/forum/index.php?showtopic=1067862
 
 Research log begun 2026-09-17.
