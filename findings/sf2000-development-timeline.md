@@ -86,9 +86,40 @@ Source: https://github.com/vonmillhausen/sf2000
 
 ## 2023-09-16 — Osaka's native-loader code is preserved — CONFIRMED
 
-Commit `bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c` in `madcock/sf2000_multicore`, titled `osaka's initial code`, preserves the native symbol map, stock libretro callbacks/runtime globals, external-core jump table at `0x87000000`, CRC patcher, and LCD/GPIO UARTless-debug mechanism.
+Commit `bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c` in `madcock/sf2000_multicore`, titled `osaka's initial code`, is the **root commit** of the surviving Git history: it has no parent. It preserves the native symbol map, stock libretro callbacks/runtime globals, external-core jump table at `0x87000000`, CRC patcher, and LCD/GPIO UARTless-debug mechanism.
 
 The source files carry `Copyright (C) 2023 Nikita Burnashev`. The community handle relationship `osaka (@bnister)` is independently preserved by later prerelease credits. Real-world identity correlation beyond those source/community records remains separate and should not be assumed.
+
+### 2023-09-16, six minutes later — first surviving firmware-interception recipe — CONFIRMED
+
+At 18:59:52Z, six minutes after the root commit, kobil committed the initial Makefile (`b9ace165a739a56e9240e7f01757c02303e12f2d`). It already contains the complete patching mechanism needed to enter the loader from stock firmware:
+
+- link the external core at `0x87000000`;
+- link the tiny loader at `0x800016d0`;
+- inject `loader.bin` into `bisrv.asd` at file offset `0x16d0`;
+- patch the stock call site at file offset `0x35a900` to `jal 0x800016d0`;
+- patch watchdog and general-exception paths to loader-side debug handlers;
+- recalculate the firmware CRC.
+
+The original Makefile comment labels the patched call `jal run_nes`; later history identifies the same interception as the GBA launch path. The binary patch itself is the important evidence; the early comment is likely stale or mistaken documentation and must not be used to claim a NES-based origin without independent evidence.
+
+This means the GBA/native-launch interception was **not invented by the later September 22 size-check commit**. The mechanism was already present at the beginning of the surviving repository history. Because the root commit is already labeled `osaka's initial code`, Git cannot presently establish whether Osaka identified the `0x35a900` call site, kobil identified it while packaging Osaka's code, or the two established it collaboratively before the first commit.
+
+**Discovery attribution for the `0x35a900` interception therefore remains OPEN.** The missing evidence must predate the surviving repository history, making the Retro Handhelds development conversation and any reposts/notes from before September 16 the primary target.
+
+Source: https://github.com/madcock/sf2000_multicore/commit/b9ace165a739a56e9240e7f01757c02303e12f2d
+
+### 2023-09-17 — kobil generalizes Osaka's fixed core ABI — CONFIRMED
+
+Within roughly nineteen hours, kobil replaced the initial hard-coded jump-table offsets at `0x87000000` with a single `__core_entry__()` function returning a structured table of libretro function pointers. The loader still reads the external image at `0x87000000`, but no longer needs a separate magic address for every exported core function. This is strong direct evidence for the later documented role split: Osaka supplied the low-level/native foundation while kobil rapidly developed generalized multicore internals.
+
+Source: https://github.com/madcock/sf2000_multicore/commit/8874ebda98259a873971cfda1a9e8850e4c21e27
+
+### 2023-09-21 — stock firmware ABI becomes an explicit interface — CONFIRMED
+
+Commit `207a6f57e9cd89826927cbee6ad2b1f170626d58` extracts the native runtime declarations into `stockfw.h`. The interface includes `run_emulator`, stock video/audio/input/environment callbacks, save/load slots, `gfn_retro_*`, `g_retro_game_info`, `g_run_file_size`, `gp_buf_64m`, `RAMSIZE`, sound-task flags and native services. This is an important conceptual milestone: the proprietary firmware is being treated explicitly as a host ABI for the external core rather than merely as a binary to patch.
+
+Source: https://github.com/madcock/sf2000_multicore/commit/207a6f57e9cd89826927cbee6ad2b1f170626d58
 
 ### Why the GBA hijack now matters — STRONG architecture clue
 
@@ -96,7 +127,7 @@ The September loader's mapped state includes `g_retro_game_info`, `g_run_file_si
 
 The exact discovery sequence remains **OPEN**. Do not promote the June BIOS-path bug to the cause of multicore without a surviving discussion, patch, disassembly note or commit establishing that connection.
 
-Source: https://github.com/madcock/sf2000_multicore/commit/bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c ; https://github.com/vonmillhausen/sf2000
+Sources: https://github.com/madcock/sf2000_multicore/commit/bdd02b0cd23e3005a6b3100278b445bf4dbcfd7c ; https://github.com/vonmillhausen/sf2000
 
 ## 2023-09-23 — kobil public GitLab project created — CONFIRMED
 
@@ -142,18 +173,20 @@ The chronology now supports a continuous development story:
 
 **stock firmware archaeology and family identification (spring 2023) -> SDK discovery and true-CFW/RetroArch experiments (summer 2023) -> pivot toward reusing the stock frontend/native runtime (late summer/September 2023) -> generalized multicore internals (kobil) and core integration (adcockm) -> runtime hardening and debugging -> propagation to GB300/DY19 and related HCSEMI devices.**
 
-The especially important transition to investigate is **July-September 2023**. In July the community had a barely functional replacement RetroArch environment built on the incomplete HC-RTOS SDK. By September 16 Osaka had instead mapped enough of the stock runtime to expose its existing libretro-like frontend and load an external core at `0x87000000`. Recovering the discussion/experiments behind that pivot may explain exactly why multicore took its final architecture.
+The especially important transition to investigate is **July-September 2023**. In July the community had a barely functional replacement RetroArch environment built on the incomplete HC-RTOS SDK. By September 16 Osaka had instead mapped enough of the stock runtime to expose its existing libretro-like frontend and load an external core at `0x87000000`; the first surviving Makefile already patches the stock launch path into that loader. Recovering the discussion/experiments behind that pre-Git transition may explain exactly who recognized the interception point and why the GBA path was chosen.
 
-The GBA evidence makes the target more specific: bnister had already traced stock gpSP filesystem behavior in June; multicore later hijacked the stock GBA execution path; and Osaka's initial loader exposes the surrounding native frontend/runtime contract. This is a **strong chronological/architectural convergence**, but the causal bridge remains unproven pending recovery of the missing July-September development conversation.
+The GBA evidence makes the target more specific: bnister had already traced stock gpSP filesystem behavior in June; multicore later hijacked the stock GBA execution path; and Osaka's initial loader exposes the surrounding native frontend/runtime contract. This is a **strong chronological/architectural convergence**, but the causal bridge remains unproven pending recovery of the missing development conversation.
 
 ## Immediate archaeology targets
 
 1. Recover Retro Handhelds Discord material between the July 20 gpSP true-CFW milestone and Osaka's September 16 native-loader code.
-2. Determine when the developers realized the stock GBA path exposed a reusable libretro-style frontend contract.
-3. Trace the source of the native symbol addresses in Osaka's initial map: disassembly, SDK symbols, map files, runtime experiments, or a combination.
-4. Search the HC-RTOS tree/history for code or notes that bridge the SDK-based experiment to the later stock-runtime loader.
-5. Trace the original SDK dump provenance and compare its symbol/API vocabulary with Osaka's `stockfw` map.
-6. Recover the earliest kobil GitLab commits after September 23 and distinguish Osaka's supplied loader foundation from kobil's generalized multicore internals.
-7. Search for early references to stub files, the GBA-size discriminator, `gp_buf_64m`, `g_run_file_size`, and `run_emulator()` that may preserve the first description of the hijack mechanism.
+2. Search specifically for pre-September-16 references to `0x35a900`, `0x800016d0`, `run_gba`, `run_nes`, `0x87000000`, Osaka/bnister and kobil/kobily.
+3. Determine who first identified the stock launch call site and whether the original `run_nes` Makefile comment reflects an earlier experiment, a simple labeling error, or a change in interception target.
+4. Determine when the developers realized the stock GBA path exposed a reusable libretro-style frontend contract.
+5. Trace the source of the native symbol addresses in Osaka's initial map: disassembly, SDK symbols, map files, runtime experiments, or a combination.
+6. Search the HC-RTOS tree/history for code or notes that bridge the SDK-based experiment to the later stock-runtime loader.
+7. Trace the original SDK dump provenance and compare its symbol/API vocabulary with Osaka's `stockfw` map.
+8. Recover the earliest kobil GitLab commits after September 23 and distinguish Osaka's supplied loader foundation from kobil's generalized multicore internals.
+9. Search for early references to stub files, the GBA-size discriminator, `gp_buf_64m`, `g_run_file_size`, and `run_emulator()` that may preserve the first description of the hijack mechanism.
 
 Research timeline created 2026-09-17.
