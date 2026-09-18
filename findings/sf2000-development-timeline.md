@@ -78,6 +78,17 @@ The distinction is historically important: two architectures were being explored
 
 Source: https://github.com/vonmillhausen/sf2000 (README revisions dated 2023-08-19 and 2023-08-29)
 
+## 2023-08-30 — bnister is simultaneously probing cross-device stock-firmware portability — CONFIRMED
+
+A contemporaneous 4PDA exchange adds a useful clue immediately after the August 29 public appearance of the stock-core-replacement side project. Asked whether an X60 could be given an SD card containing the SF2000 shell and emulators, bnister replied that the **reverse procedure was more interesting** to him because he preferred the X60 shell aesthetically. He then reported that an attempted test without an SF2000 physically available had failed: volunteers saw only a gear icon. He planned to revisit it after obtaining the unit and **soldering a debug output**, adding that the failure was unexpected.
+
+This is not direct evidence for the multicore loader, but it is important context for the missing August/September phase. On August 30 bnister/osaka was not merely compiling RetroArch cores in the HC-RTOS environment; he was actively treating related stock firmware images as objects that might be transplanted, compared, instrumented and debugged across devices. That mindset is consistent with the family-level reverse-engineering program visible elsewhere in his work.
+
+The timing is striking: this exchange is one day after public documentation first mentions the side project to modify stock firmware to replace/add emulator cores, and seventeen days before Osaka's preserved external-core loader. It strengthens the interpretation that late-August work had shifted back toward **stock-runtime experimentation and instrumentation**, even though it does not establish a causal link to the GBA interception.
+
+Source: https://4pda.to/forum/index.php?showtopic=1067862&st=400
+
+
 ## 2023-09-03 — stock-core experiment persists; toolchain work becomes explicit — CONFIRMED
 
 The September 3 documentation retains the stock-firmware core-replacement side project and adds that other efforts are focused on building an **efficient toolchain for further development**. Two days later bnister's CPU-clock discovery is documented; thirteen days later the surviving multicore repository begins with Osaka's native-loader work and a reproducible firmware-patching Makefile.
