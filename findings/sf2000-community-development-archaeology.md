@@ -136,6 +136,25 @@ Later GB300 v2 documentation expands the porting credits to Osaka, Prosty, Karl 
 
 GB300 tooling also preserves later Osaka firmware research: a July 2024 tool release incorporated Osaka's newer VTxx patch and removed earlier VT02/VT03 workarounds, allowing `.nfc` VTxx ROMs, including headerless VT03, to work through the revised patch. This demonstrates that Osaka/bnister continued investigating the stock emulator/firmware layer after multicore itself was already established.
 
+## Stub evolution: filename command first, file-content command later — CONFIRMED
+
+The surviving history now separates two mechanisms that had been easy to conflate.
+
+On **2023-09-25**, kobil committed the first runtime core-switching implementation. It selected between SNES and GBA by examining the ROM filename extension while still forcing content through the hooked stock GBA route; e.g. `rom.sfc.gba` selected the SNES core at `/mnt/sda1/cores/snes/core_87000000`.
+
+On **2023-09-27**, commit `ac5729163f2ad907d39b2265899eb6272c694a09` generalized this into the familiar `[console];[rom filename].gba` convention. The commit explicitly says these template files **can be empty**. The filename itself is therefore the command channel: the stock frontend only needs something it recognizes as GBA content, while the loader extracts the console/core and real ROM path from the name.
+
+This is historically useful because it shows that the original multicore stub design did **not** depend on stub payload bytes or a small-file discriminator. The empty-file convention was already sufficient in September 2023.
+
+A substantially different **content-bearing stub** format appears much later in the lineage. Commit `a8b2970dab9580912aab1de1bad1eb6ef5669622` dated **2024-09-14** adds an improved stub format: when the legacy filename parser fails, the loader opens the selected `.gba` file, reads a short path/dispatch string from its contents, and parses that instead. The accompanying README states that files **up to 251 bytes** are treated as stubs and larger files as ordinary GBA ROMs; legacy filename stubs remain supported.
+
+Therefore the **251-byte rule is not evidence for the 2023 invention of multicore**. It is a later compatibility/UX mechanism introduced with the content-bearing stub format. This closes one of the open lineage questions: do not search for the number 251 as a clue to Breakthrough A or B.
+
+The conceptual evolution is now:
+
+stock GBA-visible filename -> filename encodes core/ROM dispatch -> empty stub is enough -> later stub contents carry dispatch metadata -> file size becomes a convenient GBA-vs-stub discriminator.
+
+
 ## Architectural interpretation — STRONG
 
 The accumulated evidence supports a more precise description of SF2000 multicore than 'custom firmware'. The work exploits and extends an existing stock firmware/frontend environment: stock services, libretro-like callbacks, runtime globals and interrupt handling remain relevant while external core images are introduced. The 4PDA community's explicit distinction between multicore and CFW independently matches this technical architecture.
