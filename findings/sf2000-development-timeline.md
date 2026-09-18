@@ -143,6 +143,15 @@ This means the GBA/native-launch interception was **not invented by the later Se
 
 Source: https://github.com/madcock/sf2000_multicore/commit/b9ace165a739a56e9240e7f01757c02303e12f2d
 
+### Binary-level check of the `0x35a900` patch — CONFIRMED / OPEN attribution
+
+The first patch writes little-endian bytes `B4 05 00 0C` at file offset `0x35a900`. Decoded as a MIPS `jal`, this replacement instruction targets `0x800016d0`, exactly the injected loader entry. This confirms that `0x35a900` is a **call instruction site**, not the address of the stock emulator function itself.
+
+Later surviving multicore trees retain the same SF2000 patch site but relabel it explicitly as `jal run_gba`, while the September 16 Makefile called it `jal run_nes`. No surviving GitHub code search has produced an SF2000 `run_nes` symbol corresponding to the early comment. Conversely, the later linker map gives the stock GBA launcher as `run_gba = 0x80359d1c`.
+
+The decisive missing datum is therefore the **four original stock bytes at file offset `0x35a900`** in the August 3 base `bisrv_08_03.asd`. Decoding those bytes will reveal the original JAL destination and let us test directly whether the stock call targeted `0x80359d1c` (`run_gba`) or another function. Until the pristine binary is recovered/inspected, the `run_nes` label remains an unresolved historical clue rather than evidence of a NES-based multicore prototype.
+
+
 ### 2023-09-17 — kobil generalizes Osaka's fixed core ABI — CONFIRMED
 
 Within roughly nineteen hours, kobil replaced the initial hard-coded jump-table offsets at `0x87000000` with a single `__core_entry__()` function returning a structured table of libretro function pointers. The loader still reads the external image at `0x87000000`, but no longer needs a separate magic address for every exported core function. This is strong direct evidence for the later documented role split: Osaka supplied the low-level/native foundation while kobil rapidly developed generalized multicore internals.
