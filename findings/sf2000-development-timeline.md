@@ -135,7 +135,7 @@ At 18:59:52Z, six minutes after the root commit, kobil committed the initial Mak
 - patch watchdog and general-exception paths to loader-side debug handlers;
 - recalculate the firmware CRC.
 
-The original Makefile comment labels the patched call `jal run_nes`; later history identifies the same interception as the GBA launch path. The binary patch itself is the important evidence; the early comment is likely stale or mistaken documentation and must not be used to claim a NES-based origin without independent evidence.
+The original Makefile comment labels the patched call `jal run_nes`. That label should now be preserved as an **unresolved early identification**, not dismissed as merely stale documentation. By 2023-09-25 kobil explicitly states that the hook requires all routed files to have `.gba` appended, establishing that the mechanism was using the stock GBA-visible launch route by then. However, Osaka's 2023-09-16 root symbol map contains `run_emulator` but does **not** yet map `run_gba`; the explicit native `run_gba = 0x80359d1c` symbol is only added on 2023-10-31 when kobil implements fallback to the stock GBA emulator. Thus the surviving repository records an evolution in understanding/naming of the intercepted path. Whether the September 16 `run_nes` comment reflects an earlier NES experiment, an incorrect reverse-engineering label, or a call-site interpretation that was later refined remains **OPEN**.
 
 This means the GBA/native-launch interception was **not invented by the later September 22 size-check commit**. The mechanism was already present at the beginning of the surviving repository history. Because the root commit is already labeled `osaka's initial code`, Git cannot presently establish whether Osaka identified the `0x35a900` call site, kobil identified it while packaging Osaka's code, or the two established it collaboratively before the first commit.
 
@@ -186,6 +186,15 @@ Commit `a8b2970dab9580912aab1de1bad1eb6ef5669622`, titled **Improved stub format
 This resolves the earlier open question about the 251-byte threshold. It is **not part of the September 2023 multicore breakthrough** and should not be used to infer how Osaka/kobil first discovered the GBA interception. It belongs to a later improved stub format, roughly a year after the original empty filename-based stubs.
 
 Source: https://github.com/Trademarked69/dy19_multicore/commit/a8b2970dab9580912aab1de1bad1eb6ef5669622
+
+
+## 2023-10-31 — stock GBA fallback finally names `run_gba` explicitly — CONFIRMED
+
+Commit `be91f03ced4d717e14b09771fbed5b91f0e2b3d5` adds the ability to launch the original stock GBA emulator when a selected filename is not recognized as a multicore stub. To do this, kobil adds the native symbol `run_gba = 0x80359d1c` and calls it directly on parser failure.
+
+This is a small implementation change but an important archaeology marker. Osaka's September 16 symbol map already knew `run_emulator` and the frontend/global contract, but did not expose `run_gba`. The first Makefile six minutes later described the patched `0x35a900` call as `run_nes`; by September 25 the hook was definitely being presented through `.gba` filenames; and on October 31 the native GBA launcher itself is explicitly named and preserved. The evidence therefore supports an **evolving reverse-engineering model of the launch path**, rather than retroactively assuming every early label had the later meaning.
+
+Source: https://github.com/madcock/sf2000_multicore/commit/be91f03ced4d717e14b09771fbed5b91f0e2b3d5
 
 
 ## 2023-10 to 2023-11 — multicore becomes a distinct stock-firmware modification path — CONFIRMED
