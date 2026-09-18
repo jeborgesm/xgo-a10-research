@@ -158,6 +158,25 @@ GitLab reports `kobily/sf2000_multicore` was created on 2023-09-23, seven days a
 
 Source: https://gitlab.com/kobily/sf2000_multicore
 
+## 2023-09-25 to 2023-09-27 — runtime switching and the original empty-stub protocol — CONFIRMED
+
+On **2023-09-25**, commit `f471f68f8e364f6eaaf3302ad09f190cd5d3b893` introduces runtime core selection. At this stage selection is hard-coded for SNES and GBA and uses the ROM's extension while all intercepted files still carry a final `.gba` extension required by the stock launch path. The commit gives the concrete example `rom.sfc.gba` -> `/mnt/sda1/cores/snes/core_87000000`.
+
+On **2023-09-27**, commit `ac5729163f2ad907d39b2265899eb6272c694a09` changes the convention to `[console];[rom filename].gba`. The commit explicitly records that these files **can be empty**: they exist so the stock UI will display/launch an apparent GBA item, while the loader parses the filename and opens the real ROM from `/mnt/sda1/ROMS/[console]/[filename]`.
+
+This pins an important architectural progression after Osaka's initial loader: external-core execution existed first; generalized runtime selection and the user-facing stub protocol were added by kobil afterward. The stub was originally a filename-based dispatch command, not executable content and not a payload structure.
+
+Sources: https://github.com/madcock/sf2000_multicore/commit/f471f68f8e364f6eaaf3302ad09f190cd5d3b893 ; https://github.com/madcock/sf2000_multicore/commit/ac5729163f2ad907d39b2265899eb6272c694a09
+
+## 2024-09-14 — content-bearing stubs and the 251-byte discriminator appear later — CONFIRMED
+
+Commit `a8b2970dab9580912aab1de1bad1eb6ef5669622`, titled **Improved stub format, improved save behavior**, adds a second dispatch path. If the legacy filename parser does not recognize the selected path, the loader opens the `.gba` file, reads its short contents, and parses that content as the core/ROM command. The associated README explains the resulting discriminator: files **up to 251 bytes are stubs; larger files are GBA ROMs**. Legacy filename stubs remain supported.
+
+This resolves the earlier open question about the 251-byte threshold. It is **not part of the September 2023 multicore breakthrough** and should not be used to infer how Osaka/kobil first discovered the GBA interception. It belongs to a later improved stub format, roughly a year after the original empty filename-based stubs.
+
+Source: https://github.com/Trademarked69/dy19_multicore/commit/a8b2970dab9580912aab1de1bad1eb6ef5669622
+
+
 ## 2023-10 to 2023-11 — multicore becomes a distinct stock-firmware modification path — CONFIRMED
 
 By October, public SF2000 documentation explicitly distinguishes the hcRTOS true-CFW effort from the multicore experiment. The latter modifies/exploits the stock firmware environment rather than replacing it wholesale.
