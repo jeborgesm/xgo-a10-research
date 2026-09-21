@@ -10,9 +10,9 @@ import hashlib, struct, sys
 
 BASE = 0x80000000
 BASELINE_SHA = "b66dbcd86ad785875a6804bb7d07c6eb1195ceedb01c0bce8107f65eee2ab66e"
-CAVE_START = 0x80A389B8
+CAVE_START = 0x80A389C8
 CAVE_END   = 0x80A391F8
-CAVE_SHA = "80b67b115f8e28f3b67fddcd4cd1daac24a054603d1dd0cb13793a299a5dadfc"
+# SHA is verified dynamically as all-zero bytes; C0/C4 immediately before cave are live selector state.
 
 # Exact Test106 words recovered from the protected baseline.
 # Values are little-endian MIPS instruction words.
@@ -38,8 +38,14 @@ def audit(path):
     cave = data[off(CAVE_START):off(CAVE_END)]
     if len(cave) != CAVE_END-CAVE_START or any(cave):
         raise SystemExit("FAIL reserved selector cave is not pristine")
-    if sha256(cave) != CAVE_SHA:
-        raise SystemExit("FAIL selector cave SHA mismatch")
+    expected_zero_sha = hashlib.sha256(bytes(len(cave))).hexdigest()
+    if sha256(cave) != expected_zero_sha:
+        raise SystemExit("FAIL selector cave zero-run SHA mismatch")
+    # Live inherited selector state must remain zero-initialized and separate
+    # from executable cave until all old references are intentionally removed.
+    for state_addr in (0x80A389C0, 0x80A389C4):
+        if u32le(data, state_addr) != 0:
+            raise SystemExit(f"FAIL live selector state initializer {state_addr:#010x} is nonzero")
     for addr, expected in EXPECTED_WORDS.items():
         actual = u32le(data, addr)
         if actual != expected:
