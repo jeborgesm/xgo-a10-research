@@ -80,11 +80,16 @@ selector_enter:
     nop
 
 # ---------------------------------------------------------------------------
-# Selector event semantics
+# Selector navigation semantics
 # ---------------------------------------------------------------------------
-# This routine is intentionally specified before final hook encoding.
-# Input: a0 = already-translated frontend event.
-# Output: returns to normal frontend lifecycle; never blocks/polls.
+# IMPORTANT CORRECTION:
+# Do not add a second controller/event decoder for Up/Down/A. Historical
+# Test05/Test85 proves stock state-14 navigation already owns debounce/repeat
+# and selection movement. Final hooks should make the proven terminal sites
+# conditional: normal User Menu terminal=3, selector-active terminal=7.
+#
+# The routine below is retained only as semantic pseudocode/reference and MUST
+# NOT be emitted as a raw event hook unless later binary evidence requires it.
 selector_event:
     la      t0, selector_active
     lw      t1, 0(t0)
@@ -214,6 +219,12 @@ refresh_classic:
 #
 # Renderer hook/stack preservation is not emitted until its exact displaced
 # state-14 instruction sequence is pinned.
+#
+# Final navigation implementation preference:
+#   0x80359AA4 terminal -> active ? 7 : 3
+#   0x80359E60 terminal -> active ? 7 : 3
+# This deliberately reuses the stock state-14 navigation machinery rather than
+# polling or decoding controller events again.
 
 .align 2
 selector_active: .word 0
