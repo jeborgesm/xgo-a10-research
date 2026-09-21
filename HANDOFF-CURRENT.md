@@ -289,3 +289,36 @@ Requirements:
 10. produce source/reconstruction + exact byte-diff manifest before any hardware candidate.
 
 Do not authorize GB/GBC/GBA propagation merely because their selector rows exist; module adapters remain evidence-gated.
+
+
+## Process correction — 2026-09-21 — source-first gate restored
+
+Test113 is the last positive Refresh-selector hardware checkpoint. Tests114–117 are rejected negative experiments and MUST NOT be used as development bases.
+
+Test113 HW:
+- Setup opens;
+- clean REFRESH GAMES presentation;
+- all eight rows navigate;
+- B exits Setup but selector state persists and resurfaces when Setup is reopened;
+- selecting a Refresh option closes the selector, demonstrating that a valid close/redraw mechanism already exists in the active selector/confirm lifecycle.
+
+Rejected:
+- Test114: assumed B exit seam; no behavioral change.
+- Test115: assumed selector-exit helper; no behavioral change.
+- Test116: state clear grafted into stock/global B continuation; wrong lifecycle.
+- Test117: global interception at 0x80356C68; Setup hard-lock. This violated the documented no-custom/global-B-hook architecture.
+
+Mandatory protocol:
+- `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`
+- `docs/FAMILY-SOURCE-PROVENANCE.md`
+
+No Test118 is authorized until:
+1. the selector-specific B-cancel seam is closed offline from Test106 BIN + repository reconstruction + applicable family source;
+2. `selector_module_v0.S` is instruction-pinned rather than leaving the relevant continuation OPEN;
+3. `build_selector_candidate.py` becomes the deterministic emitter rather than audit-only;
+4. every emitted patch site is fail-closed and documented;
+5. a complete byte-diff manifest is reviewed;
+6. LCFG reseal is independently verified.
+
+Do not rediscover behavior by mutating Test113. Test ZIPs are evidence artifacts, not source.
+
