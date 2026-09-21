@@ -16,10 +16,10 @@ normal state 14
   row 3    -> enter Refresh Games selector
 
 Refresh Games
-  UP       -> selected=(selected+7)%8
-  DOWN     -> selected=(selected+1)%8
-  B        -> cancel; stock User Menu redraw
-  A        -> command=selected; enter native Refresh 0x807DB5CC
+  UP       -> stock state-14 navigation with active terminal 7
+  DOWN     -> stock state-14 navigation with active terminal 7
+  B        -> preserve native state-14 Back behavior (no custom B hook)
+  A        -> stock confirm seam; command=selected; enter native Refresh 0x807DB5CC
 ```
 
 Module IDs:
@@ -34,6 +34,7 @@ CLASSIC dispatch after native workspace initialization:
 - no invented frontend state;
 - no guessed resource triplets or /REFRESH resource directory;
 - no blocking/modal controller loop;
+- no custom Up/Down/A/B event decoder; preserve stock state-14 input lifecycle;
 - no change to Test106 MD/catalog.xgc or MD/catalog-safe.xgc;
 - no change to protected status strings/logging/Volume OSD;
 - no GB/GBC/GBA execution adapter until separately authorized;
