@@ -240,3 +240,65 @@ lab4:  .asciz "Game Boy Color"
 lab5:  .asciz "Game Boy Advance"
 lab6:  .asciz "Arcade"
 lab7:  .asciz "Classic"
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-21 instruction-pinned correction: cancel and command separation
+# ---------------------------------------------------------------------------
+# BIN closure: findings/refresh-selector-b-cancel-and-test117-root-cause.md
+#
+# Test113 renderer occupies through 0x80A38FC8 inclusive.  0x80A38F90 was
+# NEVER free in Test113; it is the middle of the live register-restore
+# epilogue.  Tests116/117 corrupted that epilogue.  New executable allocation
+# after the Test113 module starts at 0x80A38FD0, not 0x80A38F90.
+#
+# Test113's inherited active dispatcher also still treats v1==3 as the old
+# diagnostic BACK row.  Because the new UI labels row 3 "Game Boy", the
+# Test113 Game Boy confirm path is actually the proven selector-close path:
+#
+#   80A38668  lui t0,0x80A4
+#   80A3866C  sw  zero,0x89C0(t0)  # selector_active = 0
+#   80A38670  li  t0,3
+#   80A38674  sw  t0,0x1A4(sp)
+#   80A38678  li  fp,1
+#   80A3867C  li  s2,1
+#   80A38680  j   0x80359ABC
+#   80A38684  nop
+#
+# FINAL semantics must separate A from B:
+#
+#   A row 0..7:
+#       command = selected row
+#       selector_active = 0
+#       enter NATIVE_REFRESH
+#
+#   B while selector_active:
+#       selector_active = 0
+#       User Menu selection = 3
+#       fp = 1
+#       s2 = 1
+#       jump MENU_REDRAW
+#
+#   B while selector inactive:
+#       reproduce the exact stock path:
+#       li s6,1
+#       sw s6,0x1AC(sp)
+#       lbu s6,-3564(gp)
+#       j 0x803560E0
+#       sb s6,-3572(gp)            # delay slot
+#
+# Stock translated B discriminator, exact Test113/Test106:
+#   80356C58  beq v0,0x2000,80359E94  # A
+#   80356C5C  li  s1,0x4000
+#   80356C60  bne v0,s1,80356BFC      # not B
+#   80356C64  li  s2,1
+#   80356C68  li  s6,1                # B path begins
+#
+# A conditional hook at 0x80356C68 is permitted only with a helper at/after
+# 0x80A38FD0 and only when the inactive branch reproduces the complete stock
+# B sequence above.  No renderer epilogue bytes may change.
+#
+# This supersedes the earlier blanket "no custom B hook" note.  The actual
+# prohibition is against an unscoped/global replacement that changes inactive
+# state-14 behavior.  The selector-active conditional dispatch is now BIN
+# pinned; its close target is no longer inferred.
