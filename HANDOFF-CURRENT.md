@@ -125,13 +125,15 @@ Binary-only ZIPs are not sufficient archival source.
 SFC:
 - Test74 is independently hardware-proven for multi-entry enrichment, artwork, launch and idempotent Refresh.
 - Test106 MD changes do not constitute a new SFC hardware regression test.
-- therefore SFC is historically proven but should receive a quick regression check before claiming the new cumulative post-Test106 baseline is revalidated across all stock consoles.
+- therefore SFC is proven, but a quick post-Test106 launch spot-check would close cumulative regression evidence.
 
 FC:
-- repository contains Test75 offline-audited candidate documentation;
-- no FC hardware-pass record was found during this closure audit;
-- do **not** claim FC is proven/revalidated merely because the device boots or MD works.
-- This is an evidence gap, not evidence of an FC failure.
+- Test75 is hardware-proven with a five-game batch;
+- all five generated entries launched and ran correctly;
+- supported JPG artwork was hardware-proven after correcting an accidental PNG input mistake and regenerating wrappers;
+- catalog records remained stable without duplication during the repair workflow;
+- standardized deletion/removal remains future work because Test75 merge behavior is append-only.
+- Test106 did not directly modify the protected FC helper files, but a fresh post-Test106 FC launch spot-check has not yet been recorded.
 
 GB/GBC/GBA:
 - retain generalized scanner history; enrichment propagation remains deferred until after CLASSIC resurface / explicit regression priorities.
