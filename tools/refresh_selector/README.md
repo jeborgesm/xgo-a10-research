@@ -6,7 +6,7 @@ Baseline firmware SHA256:
 `b66dbcd86ad785875a6804bb7d07c6eb1195ceedb01c0bce8107f65eee2ab66e`
 
 Reserved module range:
-`0x80A389B8..0x80A391F8` (0x840 bytes).
+`0x80A389C8..0x80A391F8` (0x830 bytes).
 
 ## Behavioral contract
 
@@ -62,3 +62,8 @@ present                    0x8035C398
 ## Construction status
 
 Cave allocation and control contracts are closed. Exact instruction-level replacement is being built next. No hardware artifact is authorized by this specification alone.
+
+
+## Test106 state ownership correction
+
+Exact binary inspection proves `0x80A389C0` and `0x80A389C4` are live inherited selector state words referenced by the Test85/Test106 dispatcher and renderer. They are zero-initialized data, not free cave. Executable allocation begins at `0x80A389C8` unless those references are deliberately migrated first.
