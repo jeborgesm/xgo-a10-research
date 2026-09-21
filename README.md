@@ -4,7 +4,9 @@ Reverse engineering, preservation, and experimental software development for the
 
 The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardware/firmware target. This repository documents the actual XGO firmware, resources, hardware behavior, family relationships, product provenance, and custom modifications proven on physical XGO hardware.
 
-> **Current status — September 2026:** the cumulative hardware-proven baseline includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load, friendly metadata and on-device JPEG artwork conversion, and the Test74 hardware-proven SFC stock-console enrichment path. Test75 extends the same architecture to FC and is an offline-audited hardware candidate; it is **not yet promoted to the proven baseline**.
+> **Current status — September 2026:** the cumulative hardware-proven baseline includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load, CLASSIC friendly metadata/JPEG artwork, Test74 SFC stock enrichment, and the **Test106 hardened Mega Drive Refresh path**. Test106 preserves the known-booting firmware/helper-size contract and adds an external two-stage MD catalog transaction engine with a persistent `ACTIVE` / `CLEAN!` logical state marker. Hardware proves recovery from the deterministic stale-788 fixture, coherent 839 live catalogs, immediate artwork/gameplay, persistent `CLEAN!`, and a subsequent `No new games` pass while the stale 788 backup triplet remains physically present.
+
+> **Regression status:** SFC Test74 remains independently hardware-proven and its protected helper architecture was not the target of Test106. FC Test75 is preserved in the branch history as an offline-audited candidate, but the repository does **not** contain a recorded FC hardware-pass result. Therefore FC should not be described as revalidated after the MD hardening work until a physical regression check is performed.
 
 > **Roadmap clarification:** Pac-Man is not an open load-path defect. Pac-Man was hardware-confirmed running with Save/Load in Test52. Earlier Pac-Man/Ms. Pac-Man failures belong to superseded experimental loader history and must not be promoted into a current blocker without new hardware evidence.
 
@@ -165,13 +167,51 @@ See:
 - `findings/hardware-test74-sfc-batch-catalog-merge-pass.md`
 - `findings/hardware-test74-sfc-three-game-batch-pass.md`
 
-### FC — Test75 awaiting hardware gate
+### FC — Test75 hardware status remains OPEN
 
-Test75 is an additive FC proof built on the exact Test74 baseline. It adds `.nes -> .zfc` materialization plus explicit FC catalog merge while preserving the SFC, CLASSIC, mapper, OSD and stock paths. It has passed offline structural auditing but **must not be called hardware-proven until the physical test passes**.
+Test75 is an additive FC proof built on the exact Test74 SFC baseline. The repository preserves its offline structural audit and candidate contract, but no hardware-pass record was found during the Test106 closure audit. Treat FC enrichment as **not currently hardware-revalidated**. This is an evidence-discipline correction, not evidence that FC is broken.
 
-See `findings/test75-fc-enrichment-candidate.md`.
+### MD — Test106 hardened Refresh baseline
 
-After FC is proven, planned propagation remains MD → GB → GBC → GBA, one family at a time.
+MD work progressed through Tests76–106. The decisive architecture preserves the exact known-booting Test97 firmware and its fixed 2642-byte helper load contract:
+
+```text
+unchanged bisrv.asd
+      |
+      v
+MD/catalog.xgc          2642-byte Stage1
+      |
+      | loads + cache-syncs
+      v
+MD/catalog-safe.xgc     7000-byte relocated Stage2 @ 0x87180000
+```
+
+Test105 proved normal repeated no-change execution and deterministic recovery, but post-run forensics found the coherent stale 788 recovery triplet remained physically present. Static analysis showed the intended remove calls already existed, so Test106 stopped treating file deletion as transaction identity and introduced:
+
+```text
+/mnt/sda1/MD/art/.xgo-cat-state
+
+ACTIVE  -> recovery may be required
+CLEAN!  -> verified LIVE; stale .bak triplet is logically inert
+```
+
+Final hardware sequence:
+
+```text
+LIVE 839 + stale backup 788 + no marker
+    -> Games Updated
+    -> responsive
+    -> artwork + gameplay PASS
+    -> filesystem confirms CLEAN! + coherent LIVE 839
+
+CLEAN! + stale backup 788 still physically present
+    -> No new games
+    -> responsive
+```
+
+This closes the repeated-stale-recovery defect without deliberately power-cutting or corrupting the SD card. Actual power-loss/media durability and fsync semantics remain OPEN.
+
+Source/reconstruction and the full positive/negative experiment history are preserved under `tools/game_lists/md/test106/` and `findings/md-refresh-test76-test106-preservation-record.md`.
 
 ## Physical specimen and product provenance
 
@@ -221,9 +261,9 @@ From the normal XGO menu, **L + SELECT** launches the built-in Super Famicom con
 
 # Current next priority
 
-The immediate software gate is **Test75 FC hardware validation**. Until that passes, FC must not be promoted and an MD firmware candidate should not be produced. Physical/supply-chain archaeology may continue independently.
+The stock-catalog-enrichment / MD hardening cycle is complete through **Test106** and should be merged before further experimental work. The next development branch is for **CLASSIC Refresh resurfacing**: restore CLASSIC as an independent Refresh module using its previously proven invocation/runtime contracts, then move toward the proper first-class `REFRESH GAMES` selector. Do not use the old Settings-page selector as final UX, and do not call the direct `0x80A38000` CLASSIC bootstrap (Test92 hard-locked).
 
-If Test75 passes, record the hardware result, archive the exact candidate in the private artifact vault, promote FC into the protected baseline, and then begin MD wrapper/catalog archaeology before building the next family candidate.
+Before broad propagation to GB/GBC/GBA, perform a small stock-console regression gate. SFC has historical Test74 hardware proof; FC does not have a recorded hardware-pass result in the repository and should be checked rather than assumed.
 
 ## Preservation philosophy
 
