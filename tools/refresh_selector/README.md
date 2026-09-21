@@ -67,3 +67,32 @@ Cave allocation and control contracts are closed. Exact instruction-level replac
 ## Test106 state ownership correction
 
 Exact binary inspection proves `0x80A389C0` and `0x80A389C4` are live inherited selector state words referenced by the Test85/Test106 dispatcher and renderer. They are zero-initialized data, not free cave. Executable allocation begins at `0x80A389C8` unless those references are deliberately migrated first.
+
+
+## 2026-09-21 B-cancel / allocation correction
+
+Direct Test113/Test116/Test117 comparison closed two important gaps.
+
+1. Test113's renderer is live through `0x80A38FC8`.  Its second register-restore
+   epilogue occupies `0x80A38F70..0x80A38FC8`.  Tests116/117 incorrectly
+   placed a helper at `0x80A38F90`, corrupting that epilogue.  This explains
+   the late regression/hard lock.  For a Test113-derived layout, the remaining
+   verified free tail begins at `0x80A38FD0`.
+
+2. Test113 still inherits Test106's old active-dispatch special case
+   `selected_row == 3 -> close selector + redraw User Menu`.  Because the new
+   UI labels row 3 **Game Boy**, selecting Game Boy in Test113 executes the old
+   diagnostic Back/close operation rather than Refresh.  That exact close
+   sequence is now the BIN-pinned semantic target for B.
+
+Final selector contract is therefore:
+
+```text
+A row 0..7 -> command 0..7 -> native Refresh lifecycle
+B active   -> old proven selector-close state transition -> User Menu redraw
+B inactive -> exact stock B path
+```
+
+The A dispatcher must be repaired so row 3 is no longer overloaded as Back.
+
+See `findings/refresh-selector-b-cancel-and-test117-root-cause.md`.
