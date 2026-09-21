@@ -6,7 +6,7 @@ The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardwa
 
 > **Current status — September 2026:** the cumulative hardware-proven baseline includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load, CLASSIC friendly metadata/JPEG artwork, Test74 SFC stock enrichment, and the **Test106 hardened Mega Drive Refresh path**. Test106 preserves the known-booting firmware/helper-size contract and adds an external two-stage MD catalog transaction engine with a persistent `ACTIVE` / `CLEAN!` logical state marker. Hardware proves recovery from the deterministic stale-788 fixture, coherent 839 live catalogs, immediate artwork/gameplay, persistent `CLEAN!`, and a subsequent `No new games` pass while the stale 788 backup triplet remains physically present.
 
-> **Regression status:** SFC Test74 remains independently hardware-proven and its protected helper architecture was not the target of Test106. FC Test75 is preserved in the branch history as an offline-audited candidate, but the repository does **not** contain a recorded FC hardware-pass result. Therefore FC should not be described as revalidated after the MD hardening work until a physical regression check is performed.
+> **Regression status:** SFC Test74 and FC Test75 are both independently hardware-proven enrichment baselines. Test75 passed a real five-game FC batch, launch/play, and JPG artwork repair workflow. Test106 MD work did not directly modify the protected FC/SFC helper files, but the final Test106 cycle did not include a fresh physical FC/SFC launch regression. Therefore FC/SFC are proven historically and structurally preserved, while a post-Test106 spot-check remains the only missing cumulative regression evidence.
 
 > **Roadmap clarification:** Pac-Man is not an open load-path defect. Pac-Man was hardware-confirmed running with Save/Load in Test52. Earlier Pac-Man/Ms. Pac-Man failures belong to superseded experimental loader history and must not be promoted into a current blocker without new hardware evidence.
 
@@ -167,9 +167,11 @@ See:
 - `findings/hardware-test74-sfc-batch-catalog-merge-pass.md`
 - `findings/hardware-test74-sfc-three-game-batch-pass.md`
 
-### FC — Test75 hardware status remains OPEN
+### FC — Test75 hardware PASS
 
-Test75 is an additive FC proof built on the exact Test74 SFC baseline. The repository preserves its offline structural audit and candidate contract, but no hardware-pass record was found during the Test106 closure audit. Treat FC enrichment as **not currently hardware-revalidated**. This is an evidence-discipline correction, not evidence that FC is broken.
+Test75 is hardware-proven. A five-game FC batch was added; all five generated entries launched and ran correctly. The first artwork attempt used unsupported PNG inputs by mistake; after replacing them with supported JPG files and regenerating the wrappers, artwork appeared correctly and the catalog records remained stable without duplication. Test75 also established the current append-only removal limitation: deleting a wrapper alone would leave a stale catalog entry, so standardized removal remains future work.
+
+See `findings/hardware-test75-fc-enrichment-pass.md`.
 
 ### MD — Test106 hardened Refresh baseline
 
@@ -263,7 +265,7 @@ From the normal XGO menu, **L + SELECT** launches the built-in Super Famicom con
 
 The stock-catalog-enrichment / MD hardening cycle is complete through **Test106** and should be merged before further experimental work. The next development branch is for **CLASSIC Refresh resurfacing**: restore CLASSIC as an independent Refresh module using its previously proven invocation/runtime contracts, then move toward the proper first-class `REFRESH GAMES` selector. Do not use the old Settings-page selector as final UX, and do not call the direct `0x80A38000` CLASSIC bootstrap (Test92 hard-locked).
 
-Before broad propagation to GB/GBC/GBA, perform a small stock-console regression gate. SFC has historical Test74 hardware proof; FC does not have a recorded hardware-pass result in the repository and should be checked rather than assumed.
+Before broad propagation to GB/GBC/GBA, perform a small stock-console regression gate. SFC Test74 and FC Test75 are both hardware-proven; because Test106 concentrated on MD, a quick post-Test106 FC/SFC launch spot-check would close cumulative regression evidence without repeating their original enrichment campaigns.
 
 ## Preservation philosophy
 
