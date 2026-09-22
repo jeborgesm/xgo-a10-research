@@ -397,3 +397,49 @@ Do not rebuild future work from Tests114–117. Future candidates must be determ
 ### Refresh All requirement
 
 There is no implicit Refresh All behavior. Each of the eight current rows refreshes only its own system. User approved a future explicit ninth `Refresh All` row after the eight individual paths are stable/closed.
+
+
+## Current checkpoint — 2026-09-21 — Test122 + CLASSIC rescue priority
+
+Test122 is the current HW-positive selector/UI checkpoint.
+
+Test122 HW result:
+- REFRESH GAMES remains responsive;
+- all eight rows navigate;
+- B closes the selector;
+- producer-side suppression removes the underlying stock Setup blue selector border;
+- residual OPEN issue: after B, a stale `No New Games` status can remain on ordinary Setup until another option is selected.
+
+Test122 firmware SHA-256:
+`6378e4a9cbf560afa53c38836826c294c9b2316310d65eb9860894c221cb2f0d`
+LCFG CRC: `0x0EFF6110`
+ZIP SHA-256: `21c3b9e6c871e67d85e334154b7157e12597f918911a76acc5932faa0647c78d`
+
+Rejected presentation experiments:
+- Test120 HW FAIL: full-screen memset/footer approach;
+- Test121 HW FAIL: expansion of inherited repaint loop to 640x480.
+Do not reuse these approaches. Test122 instead suppresses the native state-14 172x172 selector compositor while Refresh Games is active.
+
+### Exact command-wiring correction
+
+The current Test122 UI captures commands 0..7, but the inherited Test85/Test97 execution dispatcher is only three-way:
+- 0 -> FC;
+- 1 -> SFC;
+- every other value -> MD.
+
+Therefore only FC/SFC/MD labels currently match execution. GB/GBC/GBA/Arcade/Classic currently alias MD. Earlier interpretation of Test118 Classic -> `No New Games` as proof of CLASSIC execution is retracted; command 7 fell through to MD.
+
+### Priority now
+
+1. Rescue CLASSIC first.
+2. Then wire GB/GBC/GBA.
+3. Treat Arcade separately because stock UI/catalogs are CPS1/CPS2/NeoGeo/IGS (lists 7..10) sharing /ARCADE; the single Arcade row must eventually orchestrate/classify across those pages.
+4. Explicit ninth `Refresh All` remains a later requirement after all eight individual operations are stable.
+
+CLASSIC is a restoration, not a new scanner. Protected mature lineage: Test47 generalized importer, Test60 external helper, Test64 JPEG conversion, Test72 50-game batch and unchanged second Refresh -> No New Games. Safe invocation remains native Refresh frame/workspace first, then `s5=0; j 0x80A38000`. Never call `0x80A38000` standalone.
+
+Current CLASSIC rescue gate: resolve the documented Test72 `CLASSIC/refresh.xgc` hash discrepancy against the actual artifact before packaging Test123. See:
+- `findings/test122-individual-refresh-command-wiring-audit.md`
+- `findings/refresh-wiring-priority-classic-first.md`
+- `findings/classic-rescue-pre-test123-closure.md`
+- `findings/test122-hw-pass-and-stale-status.md`
