@@ -36,10 +36,13 @@
 # ---------------------------------------------------------------------------
 # State/data ownership
 # ---------------------------------------------------------------------------
-# selector_active: private word, initialized 0 in firmware image
-# selected_row:    private word, initialized 0
-# refresh_command: private word, initialized invalid (-1)
+# selector_active: live inherited word at 0x80A389C0, initialized 0
+# refresh_command: live inherited word at 0x80A389C4, initialized 0
+# selected row: stock state-14 frame field at 0x1A4(sp)
 #
+# IMPORTANT: do not invent a second selected-row owner. Test113 navigation and
+# confirm use the stock state-14 frame selection. C0/C4 are the inherited
+# selector-active/command bridge already referenced by the proven code.
 # No SD persistence. No frontend-state-byte reuse.
 
 # ---------------------------------------------------------------------------
@@ -153,14 +156,14 @@ selector_cancel:
     nop
 
 selector_confirm:
-    la      t0, selected_row
-    lw      t1, 0(t0)
+    # BIN-pinned final semantic: v1/current stock state-14 selection is a
+    # command for ALL eight rows. There is no row-3 Back special case here.
+    # Test113's row==3 branch was inherited diagnostic baggage and made
+    # "Game Boy" execute Back.
     la      t0, refresh_command
-    sw      t1, 0(t0)
+    sw      v1, 0(t0)
     la      t0, selector_active
     sw      zero, 0(t0)
-    # Full build: jump to native Refresh. UI-only first hardware gate replaces
-    # this with cancel/redraw so no catalog mutation is possible.
     j       NATIVE_REFRESH
     nop
 
@@ -227,9 +230,13 @@ refresh_classic:
 # polling or decoding controller events again.
 
 .align 2
-selector_active: .word 0
-selected_row:    .word 0
-refresh_command: .word -1
+# Physical ownership is inherited Test106/Test113 data at:
+#   selector_active  = 0x80A389C0
+#   refresh_command  = 0x80A389C4
+# These labels are symbolic in this reconstruction; the emitter must bind them
+# to those addresses rather than allocate duplicate storage.
+selector_active:
+refresh_command:
 
 title: .asciz "REFRESH GAMES"
 lab0:  .asciz "Famicom"
@@ -302,3 +309,30 @@ lab7:  .asciz "Classic"
 # prohibition is against an unscoped/global replacement that changes inactive
 # state-14 behavior.  The selector-active conditional dispatch is now BIN
 # pinned; its close target is no longer inferred.
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-21 re-entry invariant
+# ---------------------------------------------------------------------------
+# HW Test118 proves B-active -> selector close/redraw.
+# HW also shows that after CLASSIC completes with "No New Games", the old
+# Test113/Test118 selector cannot be reopened. The final implementation must
+# therefore enforce this two-mode state-14 confirm contract:
+#
+#   inactive + ordinary User Menu row3/A:
+#       selector_active = 1
+#       stock selection (sp+0x1A4) = 0
+#       refresh_command = invalid/neutral
+#       MENU_REDRAW
+#
+#   active + row0..7/A:
+#       refresh_command = v1/current selection
+#       selector_active = 0
+#       NATIVE_REFRESH
+#
+# No post-Refresh flag is allowed to be necessary for re-entry. Once the
+# native Refresh status/epilogue returns, a later ordinary row3/A must enter
+# through selector_enter and initialize the overlay from scratch.
+#
+# Future feature note: Refresh All is NOT implicit in A. If added, it is an
+# explicit ninth command/row after the eight individual adapters are closed.
