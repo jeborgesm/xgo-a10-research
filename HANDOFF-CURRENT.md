@@ -322,3 +322,31 @@ No Test118 is authorized until:
 
 Do not rediscover behavior by mutating Test113. Test ZIPs are evidence artifacts, not source.
 
+
+
+## HW Test118 PASS — 2026-09-21
+
+Candidate: `xgo-test118-refresh-B-proven-close-safe-cave-MINIMAL-HARDWARE-CANDIDATE.zip`
+
+Test118 was built from HW-positive Test113, with the selector-aware B helper moved to verified free space beginning at `0x80A38FD0`; Test113's renderer epilogue through `0x80A38FC8` remained byte-identical.
+
+HW result:
+- Setup opens.
+- Refresh Games opens.
+- Pressing B closes Refresh Games and reveals normal Setup.
+- Device remains responsive.
+
+Therefore the following is now **HW-proven**:
+- selector-active B can invoke the inherited selector-close/redraw transition safely;
+- the corrected post-renderer cave allocation is viable;
+- the Test116/117 regression was caused by their bad placement/corruption, not by the close semantic itself.
+
+User additionally exercised CLASSIC beyond the intended Test118 scope:
+- selecting Classic closed Refresh Games;
+- `No New Games` appeared;
+- message disappeared after about one second;
+- afterward, selecting Refresh Games did not reopen the Refresh list.
+
+Classify that final observation as a new **HW finding**, not a Test118 failure. It indicates selector state/lifecycle after native Refresh completion is still incomplete. Do not patch it by guess. Trace the post-refresh return/redraw/state transition from the native Refresh path before another candidate.
+
+Test118 is now the last HW-positive checkpoint for B-cancel behavior. The next source work must also repair the already-identified Test113 command-dispatch defect where row 3/Game Boy still aliases the inherited diagnostic Back operation.
