@@ -443,3 +443,19 @@ Current CLASSIC rescue gate: resolve the documented Test72 `CLASSIC/refresh.xgc`
 - `findings/refresh-wiring-priority-classic-first.md`
 - `findings/classic-rescue-pre-test123-closure.md`
 - `findings/test122-hw-pass-and-stale-status.md`
+
+
+## Branch closure — Test123 HW PASS / merge-ready
+
+The CLASSIC resurface objective is complete. Test123 is HW PASS and is the protected functional Refresh checkpoint.
+
+Authoritative deterministic source: `tools/refresh_selector/build_test123_from_test122.py`.
+
+Next work must start from merged `main`, not from an experimental ZIP:
+1. branch for GB/GBC/GBA individual Refresh wiring;
+2. preserve Test123 exactly while implementing commands 3/4/5;
+3. leave command 6 Arcade inert until a dedicated Arcade branch;
+4. dedicated Arcade branch must handle CPS1/CPS2/NeoGeo/IGS classification/orchestration;
+5. explicit ninth Refresh All only after all eight individual operations are stable.
+
+GitHub repository source/reconstruction, findings, manifests/hashes and hardware records are authoritative. Produced or modified source code must be committed before the work is considered preserved; proprietary hardware binaries belong in the companion artifact vault with repository hash/index records.
