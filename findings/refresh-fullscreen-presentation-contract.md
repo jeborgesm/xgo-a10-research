@@ -83,3 +83,14 @@ Before emitting the full-screen candidate:
 4. add footer text through the existing stock text renderer contract;
 5. verify the renderer epilogue and all Test119 input/dispatch bytes remain exact;
 6. reseal and emit a complete diff manifest.
+
+
+## Superseded implementation direction after Test120/Test121/Test122
+
+The proposed framebuffer-cover/full-screen implementation above is retained as historical design context but is **rejected for implementation**.
+
+- Test120 HW FAIL after replacing the inherited backdrop with full-screen memset/footer work.
+- Test121 HW FAIL after only expanding the inherited repaint loop geometry to 640x480.
+- Test122 HW PASS solved the actual visual problem at its producer: while selector-active, bypass the native state-14 172x172 Setup selector compositor and continue the stock render path. The underlying blue border disappears while REFRESH GAMES remains responsive.
+
+Therefore do not attempt further full-screen framebuffer geometry changes for this issue. Producer-side compositor suppression is the HW-proven solution.
