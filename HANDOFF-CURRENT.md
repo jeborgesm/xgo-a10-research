@@ -350,3 +350,50 @@ User additionally exercised CLASSIC beyond the intended Test118 scope:
 Classify that final observation as a new **HW finding**, not a Test118 failure. It indicates selector state/lifecycle after native Refresh completion is still incomplete. Do not patch it by guess. Trace the post-refresh return/redraw/state transition from the native Refresh path before another candidate.
 
 Test118 is now the last HW-positive checkpoint for B-cancel behavior. The next source work must also repair the already-identified Test113 command-dispatch defect where row 3/Game Boy still aliases the inherited diagnostic Back operation.
+
+
+## HW Test119 PASS — 2026-09-21 — command/re-entry lifecycle closed
+
+Candidate: `xgo-test119-refresh-command-reentry-MINIMAL-HARDWARE-CANDIDATE.zip`
+
+Firmware:
+```text
+SHA-256 d357a86a79175d7c07877026ccfaa94c352fd571ba7d54b08d1e9acf1cdf4c15
+LCFG CRC-32/MPEG-2 0x39A338DE
+```
+
+HW result reported by user: **successful test**.
+
+Test119 changes the active A dispatcher so every selector row 0..7 is an individual Refresh command, removes the inherited Test85/Test106 row-3 Back special case, and normalizes the caller's ordinary state-14 selection to row 3 before entering native Refresh.
+
+This closes the Test118 re-entry defect:
+- CLASSIC may execute and return through native Refresh status/epilogue;
+- the ordinary User Menu caller is left with a valid selection;
+- Refresh Games can be entered again;
+- Game Boy/row 3 is no longer the old diagnostic Back command.
+
+The B-active close path remains the HW-proven Test118 implementation.
+
+Authoritative source/evidence:
+- `tools/refresh_selector/build_test119_from_test106.py`
+- `tools/refresh_selector/selector_module_v0.S`
+- `findings/refresh-post-operation-reentry-selection-closure.md`
+- `findings/refresh-selector-command-and-reentry-closure.md`
+- `findings/refresh-selector-b-cancel-and-test117-root-cause.md`
+
+Important correction to older handoff text: the earlier “no Test118 authorized” gate is historical and is superseded by HW PASS Test118 and HW PASS Test119. Likewise, the older blanket prohibition on a custom/global B hook is superseded by the scoped selector-active Test118 hook whose inactive path reproduces stock behavior.
+
+### Current protected selector checkpoint
+
+**Test119 is now the protected HW-positive Refresh selector checkpoint.**
+
+Do not rebuild future work from Tests114–117. Future candidates must be deterministic derivatives of exact Test106 via the source-preserved builder/reconstruction path and must retain:
+- Test118 B behavior;
+- Test119 unified A row0..7 command semantics;
+- caller state-14 selection normalization before native Refresh;
+- renderer epilogue through `0x80A38FC8`;
+- LCFG reseal validation.
+
+### Refresh All requirement
+
+There is no implicit Refresh All behavior. Each of the eight current rows refreshes only its own system. User approved a future explicit ninth `Refresh All` row after the eight individual paths are stable/closed.
