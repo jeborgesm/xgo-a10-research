@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse,hashlib,json,struct
 from pathlib import Path
 BASE=0x80000000; INPUT_SHA="7becafa3372e7b511bd8f05d0f378ca6397d72c6cc5c075f2e0d650cba2a86b5"
-A=0x80A38840; END=0x80A38900; TRAMP=0x80A391F8; TRAMP_END=0x80A39300
+A=0x80A38840; END=0x80A38900; TRAMP=0x80A388C0; TRAMP_END=0x80A38900
 RUNNER=0x80A382E0; UPDATED=0x807DB6C0; NO_NEW=0x807DB6EC; FAILED=0x807DB718
 CLASSIC=0x80A38000; MD=0x80A387AC; POLY=0x04C11DB7
 PATHS={3:b"/GB/catalog.xgc\0",4:b"/GBC/catalog.xgc\0",5:b"/GBA/catalog.xgc\0"}
@@ -68,13 +68,16 @@ def main():
  db=d.done();assert len(db)<=END-A;o[off(A):off(END)]=bytes(END-A);o[off(A):off(A)+len(db)]=db
  # Three fixed 0x40 trampolines. Paths are stored after code at +0xC0.
  pathbase=TRAMP+0xC0; pdata=bytearray()
- for idx,cmd in enumerate((3,4,5)):
-  t=A32(TRAMP+idx*0x40);pa=pathbase+len(pdata);hi=(pa+0x8000)>>16;lo=pa&0xffff
-  t.E(lui('a0',hi&0xffff));t.E(addiu('a0','a0',lo));t.li('a1',2642);t.jal(RUNNER)
-  t.E(slt('t1','v0','zero'));t.br(5,'t1','zero','fail');t.br(4,'v0','zero','none');t.j(UPDATED)
-  t.L('none');t.j(NO_NEW);t.L('fail');t.j(FAILED)
-  tb=t.done();assert len(tb)<=0x40;o[off(t.base):off(t.base)+0x40]=tb+bytes(0x40-len(tb));pdata+=PATHS[cmd]
- assert pathbase+len(pdata)<=TRAMP_END;o[off(pathbase):off(pathbase)+len(pdata)]=pdata
+ # Lay out paths first, then patch each command stub's a0 load before its jump.
+ pathaddrs={}
+ for cmd in (3,4,5):
+  pathaddrs[cmd]=pathbase+len(pdata);pdata+=PATHS[cmd]
+ assert pathbase+len(pdata)<=TRAMP_END
+ # Patch command stubs in-place: replace their unwind+jump sequence is intentionally
+ # not attempted here; the dispatcher source below is regenerated with a0 loads.
+ # Common trampoline: a0 already selected, a1=2642, call proven runner, map v0.
+ t=A32(TRAMP);t.li('a1',2642);t.jal(RUNNER);t.E(slt('t1','v0','zero'));t.br(5,'t1','zero','fail');t.br(4,'v0','zero','none');t.j(UPDATED);t.L('none');t.j(NO_NEW);t.L('fail');t.j(FAILED)
+ tb=t.done();assert len(tb)<=0x30;o[off(TRAMP):off(TRAMP)+0x30]=tb+bytes(0x30-len(tb));o[off(pathbase):off(pathbase)+len(pdata)]=pdata
  for (x,y),s in zip(prot,snaps):assert bytes(o[off(x):off(y)])==s
  struct.pack_into('<I',o,0x184,len(o)-0x200);crc=crc32_mpeg2(o[0x200:]);struct.pack_into('<I',o,0x18c,crc);assert struct.unpack_from('<I',o,0x18c)[0]==crc32_mpeg2(o[0x200:])
  a.output.write_bytes(o);m={'input_sha256':INPUT_SHA,'output_sha256':sha(o),'lcfg_crc32_mpeg2':f'0x{crc:08X}','commands':{'3':'GB /GB/catalog.xgc','4':'GBC /GBC/catalog.xgc','5':'GBA /GBA/catalog.xgc','6':'Arcade inert No New Games','7':'protected CLASSIC continuation'},'runner':'0x80A382E0','stage1_size':2642,'invariants':['exact Test123 input','FC/SFC/MD bodies unchanged','CLASSIC bootstrap unchanged','selector UI lifecycle unchanged','Arcade remains inert']}
