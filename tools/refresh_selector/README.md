@@ -18,7 +18,7 @@ normal state 14
 Refresh Games
   UP       -> stock state-14 navigation with active terminal 7
   DOWN     -> stock state-14 navigation with active terminal 7
-  B        -> preserve native state-14 Back behavior (no custom B hook)
+  B        -> selector-active Test118 close/redraw; inactive path reproduces exact stock B
   A        -> stock confirm seam; command=selected; enter native Refresh 0x807DB5CC
 ```
 
@@ -34,7 +34,8 @@ CLASSIC dispatch after native workspace initialization:
 - no invented frontend state;
 - no guessed resource triplets or /REFRESH resource directory;
 - no blocking/modal controller loop;
-- no custom Up/Down/A/B event decoder; preserve stock state-14 input lifecycle;
+- no custom Up/Down/A event decoder; preserve stock state-14 input lifecycle;
+- B interception is allowed only at the HW-proven Test118 seam with exact stock inactive behavior;
 - no change to Test106 MD/catalog.xgc or MD/catalog-safe.xgc;
 - no change to protected status strings/logging/Volume OSD;
 - no GB/GBC/GBA execution adapter until separately authorized;
@@ -96,3 +97,29 @@ B inactive -> exact stock B path
 The A dispatcher must be repaired so row 3 is no longer overloaded as Back.
 
 See `findings/refresh-selector-b-cancel-and-test117-root-cause.md`.
+
+
+## HW checkpoint — Test119 PASS
+
+Test119 is the current protected selector checkpoint.
+
+Firmware SHA-256:
+`d357a86a79175d7c07877026ccfaa94c352fd571ba7d54b08d1e9acf1cdf4c15`
+
+LCFG CRC-32/MPEG-2:
+`0x39A338DE`
+
+HW-proven cumulative behavior:
+- clean eight-row REFRESH GAMES overlay;
+- navigation through all eight rows;
+- B closes selector to normal Setup and device remains responsive;
+- A is an individual command for rows 0..7, including Game Boy at row 3;
+- caller state-14 selection is normalized to ordinary User Menu row 3 before native Refresh;
+- after a Refresh operation/status return, REFRESH GAMES can be entered again.
+
+Deterministic emitter:
+`build_test119_from_test106.py`
+
+The emitter accepts only exact Test106, reconstructs the HW-proven Test118 selector/renderer/B state, asserts its exact SHA, emits the Test119 A-dispatch delta from MIPS instruction constructors, preserves the renderer epilogue, reseals LCFG, and asserts the final Test119 SHA/CRC.
+
+Future feature: `Refresh All` is an explicit ninth row/command only. It is never implicit in A on one of the eight system rows.
