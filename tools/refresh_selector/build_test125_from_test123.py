@@ -32,11 +32,11 @@ def main():
  if sha(src)!=INPUT_SHA:raise SystemExit("FAIL exact Test123 required")
  o=bytearray(src)
  if any(o[off(0x80A3888C):off(EXT_END)]):raise SystemExit("FAIL Test123 extension tail not free")
- if any(o[off(PATH_AREA):off(PATH_LIMIT)]):raise SystemExit("FAIL path tail not free")
+ if any(o[off(ADAPTER):off(PATH_LIMIT)]):raise SystemExit("FAIL post-suppression tail not free")
  protected={
   "classic":bytes(o[off(0x80A38000):off(0x80A38240)]),
   "stock_bodies":bytes(o[off(0x80A386F4):off(EXT)]),
-  "selector":bytes(o[off(0x80A389C0):off(PATH_AREA)]),
+  "selector":bytes(o[off(0x80A389C0):off(ADAPTER)]),
  }
  # Place path literals in the verified zero tail after the Test122 suppression helper.
  ptr=[];p=PATH_AREA
@@ -44,7 +44,7 @@ def main():
   ptr.append(p);o[off(p):off(p)+len(s)]=s;p+=len(s)
  # compact command adapter. t0=8 command, t1=9, t2=10, a0=4,a1=5,s0=16,s5=21,sp=29,ra=31
  W=[];L={};F=[]
- def label(n):L[n]=EXT+4*len(W)
+ def label(n):L[n]=ADAPTER+4*len(W)
  def emit(x):W.append(x)
  def li(r,v):emit(iop(9,0,r,v))
  def nop():emit(0)
@@ -56,9 +56,8 @@ def main():
  li(9,2);br(4,8,9,"md");li(9,7);br(4,8,9,"classic");li(9,6);br(4,8,9,"safe")
  # command 3..5: select path by three short branches, then shared runner.
  li(9,3);br(4,8,9,"gb");li(9,4);br(4,8,9,"gbc");li(9,5);br(4,8,9,"gba");j(NO_NEW)
- for n,pa in zip(("gb","gbc","gba"),ptr):
-  label(n);hi=((pa+0x8000)>>16)&0xffff;lo=pa&0xffff;emit(iop(15,0,4,hi));emit(iop(9,4,4,lo));j(L.get("call",EXT)) if False else None
-  # branch to shared call is fixed later
+ for n in ("gb","gbc","gba"):
+  label(n);emit(0);emit(0) # path LUI/ADDIU resolved after adapter size is known
   F.append((len(W),2,0,0,"call"));emit(0);nop()
  label("call");li(5,2642);jal(RUNNER);li(9,0);emit(rtype(2,9,10,0x2A));br(5,10,0,"fail");emit(rtype(16,2,16,0x25));j(FINISH)
  label("fail");unwind();j(FAILED)
@@ -66,14 +65,14 @@ def main():
  label("classic");unwind();li(21,0);j(CLASSIC)
  label("md");j(MD)
  for idx,op,rs,rt,l in F:
-  pc=EXT+4*idx
+  pc=ADAPTER+4*idx
   if op==2:W[idx]=jop(2,L[l])
   else:W[idx]=iop(op,rs,rt,(L[l]-(pc+4))//4)
  if 4*len(W)>EXT_END-EXT:raise SystemExit(f"FAIL adapter overflow {4*len(W)}")
  o[off(EXT):off(EXT_END)]=bytes(EXT_END-EXT);struct.pack_into("<"+"I"*len(W),o,off(EXT),*W)
  if bytes(o[off(0x80A38000):off(0x80A38240)])!=protected["classic"]:raise SystemExit("FAIL CLASSIC changed")
  if bytes(o[off(0x80A386F4):off(EXT)])!=protected["stock_bodies"]:raise SystemExit("FAIL FC/SFC/MD changed")
- if bytes(o[off(0x80A389C0):off(PATH_AREA)])!=protected["selector"]:raise SystemExit("FAIL selector/suppression changed")
+ if bytes(o[off(0x80A389C0):off(ADAPTER)])!=protected["selector"]:raise SystemExit("FAIL selector/suppression changed")
  struct.pack_into("<I",o,0x184,len(o)-0x200);c=crc(o[0x200:]);struct.pack_into("<I",o,0x18c,c)
  if struct.unpack_from("<I",o,0x18c)[0]!=crc(o[0x200:]):raise SystemExit("FAIL reseal")
  a.output.write_bytes(o)
