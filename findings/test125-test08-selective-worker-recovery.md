@@ -199,3 +199,33 @@ Therefore the Test08 stable-merge lineage uses an 8-byte stride indexed as `base
 The later native-scanner note using `base + zero_based_list*4` describes a different implementation and must not be mixed into the Test08-derived worker.
 
 This closes the previously OPEN cache-invalidation gate for Test125.
+
+
+## Source reconstruction milestone — 2026-09-22
+
+The selective implementation is now preserved as readable source on this branch:
+
+- `tools/game_lists/build_test125_handheld_stage1.py` — derives each exact 2642-byte Stage1 from the HW-passed Test106 Stage1 template; preserves the fixed loader/read/cache grammar and removes only the MD-specific marker finalizer.
+- `tools/game_lists/build_test125_handheld_stage2.py` — source-built single-family relocation of the Test07/Test08 stable-merge worker at `0x87180000`, padded to exactly 7000 bytes. It has no UI/status renderer and returns only `-1/0/1`.
+- `tools/refresh_selector/build_test125_from_test123.py` — exact-Test123 firmware dispatcher builder. Commands 3/4/5 each make one call to the existing 2642-byte generic runner; command 6 remains inert and command 7 retains the Test123 CLASSIC continuation.
+
+### Dispatcher allocation
+
+The Test123 extension at `0x80A38840` is intentionally kept tiny: it becomes a jump trampoline into the verified zero tail after the Test122 compositor-suppression helper.
+
+The selective adapter begins at `0x80A3904C`. Its code plus the three absolute Stage1 path strings fits below the protected cave limit `0x80A391F8`. The Test122 suppression body through `0x80A39048`, selector state at `0x80A389C0/0x80A389C4`, renderer/B helper region, FC/SFC/MD bodies and CLASSIC bootstrap are asserted unchanged by the builder.
+
+Runtime paths:
+- command 3 -> `/mnt/sda1/GB/catalog.xgc`;
+- command 4 -> `/mnt/sda1/GBC/catalog.xgc`;
+- command 5 -> `/mnt/sda1/GBA/catalog.xgc`.
+
+Each Stage1 privately loads its matching `catalog-saf.xgc` Stage2.
+
+### Evidence status
+
+SRC: readable Stage1, Stage2 and firmware-dispatch builders now exist and encode the recovered contracts.
+
+HW: the discovery/stable-merge behavior being reused is Test08-proven; the fixed-size Stage1/Stage2 loader grammar is Test105/Test106-proven; the current UI/native-workspace/CLASSIC lifecycle is Test123-proven.
+
+OPEN: the composed Test125 binaries have not yet been emitted, independently audited, or run on hardware. No Test125 hardware package is promoted by this source milestone.
