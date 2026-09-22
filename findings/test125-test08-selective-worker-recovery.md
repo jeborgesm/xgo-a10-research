@@ -140,3 +140,62 @@ Do not emit Test125 until:
 5. Stage2 is padded/asserted to the proven 7000-byte Stage1 read contract;
 6. current Test123 firmware receives only command-3/4/5 dispatch additions plus path data;
 7. LCFG is resealed and all protected Test123 regions are asserted unchanged.
+
+
+## Exact Test106 Stage1 recovery from preserved hardware package — 2026-09-22
+
+The preserved local Test106 hardware candidate was re-opened and hash-verified against repository records:
+
+- `MD/catalog.xgc`: 2642 bytes, SHA-256 `e4c21a94055a6aec817494d2f69450f12fbba3244a91c1b74e73de2a4e91b338`;
+- `MD/catalog-safe.xgc`: 7000 bytes, SHA-256 `45b3e2638b27e0d4a3ffa518e359413de619184ea9c93c4a5c83bbbc2e0ac65c`;
+- Test106 firmware: SHA-256 `b66dbcd86ad785875a6804bb7d07c6eb1195ceedb01c0bce8107f65eee2ab66e`.
+
+The current Test123 package was independently re-opened and verified:
+- firmware `7becafa3372e7b511bd8f05d0f378ca6397d72c6cc5c075f2e0d650cba2a86b5`;
+- CLASSIC helper `9f932f35b1627bb8a4a7427831454e3c5dd854972231c1062316a814ada8723f`.
+
+### Stage1 loader body recovered
+
+Direct word inspection of the Test106 Stage1 shows:
+- helper path literal begins at Stage1 offset `0x110`;
+- mode `rb` remains at offset `0x12E`;
+- Stage2 is read as exactly `0x1B58 = 7000` bytes to `0x87180000`;
+- the established cache-maintenance loops execute before Stage2;
+- Stage2 is called through `jalr` at runtime `0x87180000`;
+- returned `v0` is copied to `s0`;
+- Test106 then jumps at Stage1 offset `0xE4` to its transaction-marker finalizer at runtime `0x87000420`;
+- ordinary Stage1 epilogue begins at offset `0xEC`.
+
+For GB/GBC/GBA raw discovery, the MD transaction-marker finalizer is not applicable: it owns `/MD/art/.xgo-cat-state` and would create an incorrect cross-system dependency. The recovered loader can be reused without that subsystem by changing exactly the post-Stage2 jump at offset `0xE4` from the marker finalizer to the existing epilogue at `0xEC`. At that point `v0` still contains the Stage2 result, so the existing caller receives the worker result unchanged.
+
+This is a one-instruction semantic subtraction from an HW-proven loader, not a new loader implementation.
+
+### Path-size closure
+
+The original literal `/mnt/sda1/MD/catalog-safe.xgc` is 29 bytes before NUL, and `rb` starts immediately at fixed offset `0x12E`. The naive GBC/GBA replacement is 30 bytes and would collide with that fixed mode string.
+
+Use a uniform shorter Stage2 filename:
+
+- `/mnt/sda1/GB/catalog-saf.xgc` (28 bytes),
+- `/mnt/sda1/GBC/catalog-saf.xgc` (29 bytes),
+- `/mnt/sda1/GBA/catalog-saf.xgc` (29 bytes).
+
+This preserves the fixed `rb` address and requires no relocation of Stage1 data or code.
+
+The installed 2642-byte Stage1 remains named `catalog.xgc`; only its private Stage2 filename is shortened.
+
+### Count-cache ambiguity resolved for Test08 lineage
+
+The Test08 candidate record explicitly defines **one-based** runtime system IDs 1..6 and states that its per-list count array begins at `0x80D2894C`. The independently preserved FC/SFC/MD helper lineage proves:
+- FC/list 1 -> `0x80D2894C`,
+- SFC/list 2 -> `0x80D28954`,
+- MD/list 3 -> `0x80D2895C`.
+
+Therefore the Test08 stable-merge lineage uses an 8-byte stride indexed as `base + (one_based_id-1)*8`, giving:
+- GB/Test08 ID 4 -> `0x80D28964`,
+- GBC/Test08 ID 5 -> `0x80D2896C`,
+- GBA/Test08 ID 6 -> `0x80D28974`.
+
+The later native-scanner note using `base + zero_based_list*4` describes a different implementation and must not be mixed into the Test08-derived worker.
+
+This closes the previously OPEN cache-invalidation gate for Test125.
