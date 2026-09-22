@@ -25,6 +25,8 @@ UP/INF must never silently become XGO fact.
 
 Before emitting a firmware candidate:
 
+0. Read `docs/REUSE-FIRST-ENGINEERING-INDEX.md` and identify the nearest already-solved XGO mechanism. Document why it can or cannot be reused. This precedes new disassembly or patch design.
+
 1. Read `HANDOFF-CURRENT.md` completely.
 2. Identify the protected HW baseline and its exact hashes.
 3. Read the relevant reconstruction/source under `tools/`.
@@ -143,3 +145,12 @@ Therefore the immediate engineering work is:
 5. convert `build_selector_candidate.py` into the deterministic emitter;
 6. produce and review the complete diff manifest offline;
 7. only then create the next hardware candidate.
+
+
+## Reuse-first amendment — 2026-09-21
+
+The Test120/Test121 Refresh presentation regressions exposed a process gap: preserving source is insufficient if later work does not consult it before designing a patch.
+
+Therefore the reuse preflight in `docs/REUSE-FIRST-ENGINEERING-INDEX.md` is mandatory. In particular, UI work must compare Mapper v19, Mapper v16 stock-layer suppression, Test05b/Test06 Setup repaint source, Audio OSD framebuffer work, and the current protected selector before new renderer code is authorized.
+
+Test119 remains the protected Refresh checkpoint. Test120 and Test121 are rejected HW evidence, not development bases.
