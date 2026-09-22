@@ -58,3 +58,16 @@ This discrepancy must be resolved against the actual artifact bytes before packa
 ## Next exact action
 
 Recover/materialize the protected Test72 artifact from the artifact vault or locally available package, hash its `CLASSIC/refresh.xgc`, compare its `0x80A38000..0x80A3823F` firmware bootstrap against Test122, then emit the smallest dispatcher-only Test123 delta.
+
+## Test72 helper identity discrepancy RESOLVED
+
+The artifact vault contains `recovered/test72-artifact-identity.md`, recovered from Jaime's preserved local copy on 2026-09-13. It verifies the canonical HW-proven Test72 ZIP:
+
+- ZIP SHA-256: `af14ce8eb2e111386873ad697e1c4654ea2dcde663be5410bfd5a71f36fa4a16`
+- firmware SHA-256: `0fb8dda0f03b3a8068b23a02d03354475538be0c8e7ed83d8f2ee5d69ab57fef`
+- `CLASSIC/refresh.xgc` SHA-256: `9f932f35b1627bb8a4a7427831454e3c5dd854972231c1062316a814ada8723f`
+- MAME2000 core SHA-256: `60a62e463fd6faf92744a7be666602dd1621b9fd706f90d20e3b55ee3382bb1e`
+
+Therefore `9f932f...` is the canonical helper identity for the recovered Test72 hardware artifact. The `6d416c...` value in the narrative Test64/Test72 finding belongs to an earlier helper/build stage and must not be used as the Test72 packaging identity.
+
+The helper-hash gate is closed. Remaining Test123 gate is binary preservation/comparison of the Test72 bootstrap and construction of the minimal command-7 dispatcher delta.
