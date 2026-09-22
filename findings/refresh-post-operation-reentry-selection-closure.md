@@ -76,3 +76,24 @@ B remains the separate Test118 HW-proven close path.
 - ordinary inactive selector terminal=3: **BIN + HW**
 - selection-domain mismatch as cause of re-entry failure: **BIN-derived causal closure**
 - proposed unified active A transition: **DESIGN directly derived from closed BIN contracts; not yet HW**
+
+
+## HW closure — Test119
+
+Test119 implemented the unified active-A transition described above and was reported **successful on hardware** on 2026-09-21.
+
+Promote the following from design/BIN-derived expectation to cumulative HW evidence:
+- row 3/Game Boy no longer uses the inherited diagnostic Back semantic;
+- the selected command survives independently in `0x80A389C4`;
+- ordinary state-14 selection normalization to row 3 before native Refresh is compatible with the native Refresh lifecycle;
+- Refresh Games can be entered again after the selected Refresh operation returns;
+- Test118 B-cancel behavior remains compatible with the corrected A path.
+
+Test119 firmware SHA-256:
+`d357a86a79175d7c07877026ccfaa94c352fd571ba7d54b08d1e9acf1cdf4c15`
+
+LCFG CRC-32/MPEG-2:
+`0x39A338DE`
+
+Source reproducer:
+`tools/refresh_selector/build_test119_from_test106.py`
