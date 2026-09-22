@@ -4,7 +4,7 @@ Reverse engineering, preservation, and experimental software development for the
 
 The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardware/firmware target. This repository documents the actual XGO firmware, resources, hardware behavior, family relationships, product provenance, and custom modifications proven on physical XGO hardware.
 
-> **Current status — September 2026:** the cumulative hardware-proven baseline includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load, CLASSIC friendly metadata/JPEG artwork, Test74 SFC stock enrichment, and the **Test106 hardened Mega Drive Refresh path**. Test106 preserves the known-booting firmware/helper-size contract and adds an external two-stage MD catalog transaction engine with a persistent `ACTIVE` / `CLEAN!` logical state marker. Hardware proves recovery from the deterministic stale-788 fixture, coherent 839 live catalogs, immediate artwork/gameplay, persistent `CLEAN!`, and a subsequent `No new games` pass while the stale 788 backup triplet remains physically present.
+> **Current status — September 2026:** the cumulative hardware-proven baseline now includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load and metadata/JPEG artwork, Test74 SFC enrichment, Test75 FC enrichment, Test106 hardened Mega Drive Refresh, and the new first-class **REFRESH GAMES** selector through **Test123**. Test123 hardware-proves independent CLASSIC Refresh routing through the preserved native Refresh lifecycle and canonical Test72 external helper. FC/SFC/MD execution paths remain preserved; GB/GBC/GBA and Arcade are the next individually gated wiring work.
 
 > **Regression status:** SFC Test74 and FC Test75 are both independently hardware-proven enrichment baselines. Test75 passed a real five-game FC batch, launch/play, and JPG artwork repair workflow. Test106 MD work did not directly modify the protected FC/SFC helper files, but the final Test106 cycle did not include a fresh physical FC/SFC launch regression. Therefore FC/SFC are proven historically and structurally preserved, while a post-Test106 spot-check remains the only missing cumulative regression evidence.
 
@@ -263,9 +263,33 @@ From the normal XGO menu, **L + SELECT** launches the built-in Super Famicom con
 
 # Current next priority
 
-The stock-catalog-enrichment / MD hardening cycle is complete through **Test106** and should be merged before further experimental work. The next development branch is for **CLASSIC Refresh resurfacing**: restore CLASSIC as an independent Refresh module using its previously proven invocation/runtime contracts, then move toward the proper first-class `REFRESH GAMES` selector. Do not use the old Settings-page selector as final UX, and do not call the direct `0x80A38000` CLASSIC bootstrap (Test92 hard-locked).
+The CLASSIC Refresh resurfacing branch is complete through **Test123 HW PASS** and is ready to merge. The first-class REFRESH GAMES UI has eight system rows, hardware-proven navigation/B-cancel/re-entry, suppression of the underlying Setup selector border, and independent CLASSIC execution. The canonical CLASSIC helper remains external at `/CLASSIC/refresh.xgc` with SHA-256 `9f932f35b1627bb8a4a7427831454e3c5dd854972231c1062316a814ada8723f`.
 
-Before broad propagation to GB/GBC/GBA, perform a small stock-console regression gate. SFC Test74 and FC Test75 are both hardware-proven; because Test106 concentrated on MD, a quick post-Test106 FC/SFC launch spot-check would close cumulative regression evidence without repeating their original enrichment campaigns.
+Exact current execution status:
+
+```text
+Famicom          -> preserved FC path
+Super Famicom    -> preserved SFC path
+Mega Drive       -> preserved MD path
+Game Boy         -> intentionally inert pending next branch
+Game Boy Color   -> intentionally inert pending next branch
+Game Boy Advance -> intentionally inert pending next branch
+Arcade            -> intentionally inert pending dedicated Arcade branch
+Classic           -> HW-proven CLASSIC path (Test123)
+```
+
+The next branch wires **GB, GBC and GBA** individually using the already-preserved generalized native scanner/materializer evidence. Do not infer a generic Arcade list ID from that work: Arcade is a separate follow-on because the stock frontend separates shared `/ARCADE` content into CPS1, CPS2, NeoGeo and IGS catalogs (lists 7..10), requiring classification/orchestration rather than a single blind scan.
+
+After all eight individual operations are stable, add the explicitly requested ninth **Refresh All** row. It must never be implicit in one of the eight system commands.
+
+Source-of-truth rule: GitHub is the authoritative engineering record. Every firmware modification must have preserved source/reconstruction, deterministic build logic where practical, exact hashes/manifests, evidence classification, and hardware result before a branch is considered complete. Proprietary binary artifacts belong in the companion artifact vault; source, patch logic and findings belong in this repository.
+
+Key current records:
+- `HANDOFF-CURRENT.md`
+- `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`
+- `docs/REUSE-FIRST-ENGINEERING-INDEX.md`
+- `findings/test123-classic-rescue-hardware-pass.md`
+- `tools/refresh_selector/build_test123_from_test122.py`
 
 ## Preservation philosophy
 

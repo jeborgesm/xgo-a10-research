@@ -1,0 +1,373 @@
+# REFRESH GAMES selector module — MIPS reconstruction v0
+#
+# Runtime home: 0x80A389B8..0x80A391F8
+# Baseline: Test106 bisrv.asd SHA256
+# b66dbcd86ad785875a6804bb7d07c6eb1195ceedb01c0bce8107f65eee2ab66e
+#
+# This is an architectural reconstruction, not yet an emitted candidate.
+# Every external entry/continuation below is evidence-pinned.
+
+.set noreorder
+
+.equ NATIVE_REFRESH,      0x807DB5CC
+.equ REFRESH_POST_WS,     0x807DB67C
+.equ CLASSIC_CONT,        0x80A38000
+.equ TEXT_DRAW,           0x803528A4
+.equ MENU_REDRAW,         0x80359ABC
+.equ STOCK_TV,            0x80359EB0
+.equ STOCK_OTHER,         0x80356BFC
+
+# translated UI events
+.equ EVT_UP,              0x0010
+.equ EVT_DOWN,            0x0040
+.equ EVT_A,               0x2000
+.equ EVT_B,               0x4000
+
+# command IDs
+.equ CMD_FC,              0
+.equ CMD_SFC,             1
+.equ CMD_MD,              2
+.equ CMD_GB,              3
+.equ CMD_GBC,             4
+.equ CMD_GBA,             5
+.equ CMD_ARCADE,          6
+.equ CMD_CLASSIC,         7
+
+# ---------------------------------------------------------------------------
+# State/data ownership
+# ---------------------------------------------------------------------------
+# selector_active: live inherited word at 0x80A389C0, initialized 0
+# refresh_command: live inherited word at 0x80A389C4, initialized 0
+# selected row: stock state-14 frame field at 0x1A4(sp)
+#
+# IMPORTANT: do not invent a second selected-row owner. Test113 navigation and
+# confirm use the stock state-14 frame selection. C0/C4 are the inherited
+# selector-active/command bridge already referenced by the proven code.
+# No SD persistence. No frontend-state-byte reuse.
+
+# ---------------------------------------------------------------------------
+# normal state-14 row dispatch replacement
+# ---------------------------------------------------------------------------
+# Entry contract inherited from Test05/Test85: v1 = current User Menu row;
+# original delay-slot semantics at 0x80359EAC must be reproduced.
+#
+# rows 0/1 have already been handled before the historical dispatch seam.
+# row 2 -> stock TV
+# row 3 -> enter dedicated selector
+# fallback -> stock continuation
+
+row_dispatch:
+    li      t0, 2
+    beq     v1, t0, row_tv
+    nop
+    li      t0, 3
+    beq     v1, t0, selector_enter
+    nop
+    j       STOCK_OTHER
+    nop
+row_tv:
+    j       STOCK_TV
+    nop
+
+selector_enter:
+    la      t0, selector_active
+    li      t1, 1
+    sw      t1, 0(t0)
+    la      t0, selected_row
+    sw      zero, 0(t0)
+    la      t0, refresh_command
+    li      t1, -1
+    sw      t1, 0(t0)
+    # Renderer hook/redraw continuation still being instruction-pinned.
+    j       MENU_REDRAW
+    nop
+
+# ---------------------------------------------------------------------------
+# Selector navigation semantics
+# ---------------------------------------------------------------------------
+# IMPORTANT CORRECTION:
+# Do not add a second controller/event decoder for Up/Down/A. Historical
+# Test05/Test85 proves stock state-14 navigation already owns debounce/repeat
+# and selection movement. Final hooks should make the proven terminal sites
+# conditional: normal User Menu terminal=3, selector-active terminal=7.
+#
+# The routine below is retained only as semantic pseudocode/reference and MUST
+# NOT be emitted as a raw event hook unless later binary evidence requires it.
+selector_event:
+    la      t0, selector_active
+    lw      t1, 0(t0)
+    beq     t1, zero, selector_event_inactive
+    nop
+
+    li      t2, EVT_UP
+    beq     a0, t2, selector_up
+    nop
+    li      t2, EVT_DOWN
+    beq     a0, t2, selector_down
+    nop
+    li      t2, EVT_A
+    beq     a0, t2, selector_confirm
+    nop
+    li      t2, EVT_B
+    beq     a0, t2, selector_cancel
+    nop
+    # Unknown event: consume nothing and return through pinned continuation.
+    # FINAL CONTINUATION OPEN.
+    jr      ra
+    nop
+
+selector_up:
+    la      t0, selected_row
+    lw      t1, 0(t0)
+    bne     t1, zero, selector_up_dec
+    nop
+    li      t1, 7
+    b       selector_store_redraw
+    nop
+selector_up_dec:
+    addiu   t1, t1, -1
+    b       selector_store_redraw
+    nop
+
+selector_down:
+    la      t0, selected_row
+    lw      t1, 0(t0)
+    li      t2, 7
+    bne     t1, t2, selector_down_inc
+    nop
+    move    t1, zero
+    b       selector_store_redraw
+    nop
+selector_down_inc:
+    addiu   t1, t1, 1
+
+selector_store_redraw:
+    sw      t1, 0(t0)
+    j       MENU_REDRAW
+    nop
+
+selector_cancel:
+    la      t0, selector_active
+    sw      zero, 0(t0)
+    la      t0, refresh_command
+    li      t1, -1
+    sw      t1, 0(t0)
+    j       MENU_REDRAW
+    nop
+
+selector_confirm:
+    # BIN-pinned final semantic: v1/current stock state-14 selection is a
+    # command for ALL eight rows. There is no row-3 Back special case here.
+    # Test113's row==3 branch was inherited diagnostic baggage and made
+    # "Game Boy" execute Back.
+    la      t0, refresh_command
+    sw      v1, 0(t0)
+    la      t0, selector_active
+    sw      zero, 0(t0)
+    j       NATIVE_REFRESH
+    nop
+
+selector_event_inactive:
+    # Must execute displaced stock input instruction(s) and continuation.
+    # Exact words/target still OPEN; builder must refuse emission until pinned.
+    jr      ra
+    nop
+
+# ---------------------------------------------------------------------------
+# post-workspace Refresh dispatcher
+# ---------------------------------------------------------------------------
+# Entry is reached from native Refresh after its 0xB0 frame and workspace are
+# alive. CLASSIC may therefore use the proven continuation safely.
+refresh_dispatch:
+    la      t0, refresh_command
+    lw      t1, 0(t0)
+    li      t2, CMD_CLASSIC
+    beq     t1, t2, refresh_classic
+    nop
+
+    # Other adapters remain evidence-gated. Do NOT fall through to CLASSIC or
+    # a different system. Final builder will bind only individually closed
+    # adapters and fail safely for unsupported IDs.
+    # OPEN: exact safe failure continuation for unsupported command.
+    jr      ra
+    nop
+
+refresh_classic:
+    move    s5, zero
+    j       CLASSIC_CONT
+    nop
+
+# ---------------------------------------------------------------------------
+# renderer contract
+# ---------------------------------------------------------------------------
+# TEXT_DRAW call recovered from hardware-lineage status renderer:
+#   a0 = *(gp-5136) framebuffer
+#   a1 = x
+#   a2 = y
+#   a3 = 0
+#   sp+16 = s5
+#   sp+20 = *(gp-30380) stock text config/color
+#   sp+24 = char *
+#
+# Planned labels:
+#   REFRESH GAMES
+#   Famicom
+#   Super Famicom
+#   Mega Drive
+#   Game Boy
+#   Game Boy Color
+#   Game Boy Advance
+#   Arcade
+#   Classic
+#
+# Renderer hook/stack preservation is not emitted until its exact displaced
+# state-14 instruction sequence is pinned.
+#
+# Final navigation implementation preference:
+#   0x80359AA4 terminal -> active ? 7 : 3
+#   0x80359E60 terminal -> active ? 7 : 3
+# This deliberately reuses the stock state-14 navigation machinery rather than
+# polling or decoding controller events again.
+
+.align 2
+# Physical ownership is inherited Test106/Test113 data at:
+#   selector_active  = 0x80A389C0
+#   refresh_command  = 0x80A389C4
+# These labels are symbolic in this reconstruction; the emitter must bind them
+# to those addresses rather than allocate duplicate storage.
+selector_active:
+refresh_command:
+
+title: .asciz "REFRESH GAMES"
+lab0:  .asciz "Famicom"
+lab1:  .asciz "Super Famicom"
+lab2:  .asciz "Mega Drive"
+lab3:  .asciz "Game Boy"
+lab4:  .asciz "Game Boy Color"
+lab5:  .asciz "Game Boy Advance"
+lab6:  .asciz "Arcade"
+lab7:  .asciz "Classic"
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-21 instruction-pinned correction: cancel and command separation
+# ---------------------------------------------------------------------------
+# BIN closure: findings/refresh-selector-b-cancel-and-test117-root-cause.md
+#
+# Test113 renderer occupies through 0x80A38FC8 inclusive.  0x80A38F90 was
+# NEVER free in Test113; it is the middle of the live register-restore
+# epilogue.  Tests116/117 corrupted that epilogue.  New executable allocation
+# after the Test113 module starts at 0x80A38FD0, not 0x80A38F90.
+#
+# Test113's inherited active dispatcher also still treats v1==3 as the old
+# diagnostic BACK row.  Because the new UI labels row 3 "Game Boy", the
+# Test113 Game Boy confirm path is actually the proven selector-close path:
+#
+#   80A38668  lui t0,0x80A4
+#   80A3866C  sw  zero,0x89C0(t0)  # selector_active = 0
+#   80A38670  li  t0,3
+#   80A38674  sw  t0,0x1A4(sp)
+#   80A38678  li  fp,1
+#   80A3867C  li  s2,1
+#   80A38680  j   0x80359ABC
+#   80A38684  nop
+#
+# FINAL semantics must separate A from B:
+#
+#   A row 0..7:
+#       command = selected row
+#       selector_active = 0
+#       enter NATIVE_REFRESH
+#
+#   B while selector_active:
+#       selector_active = 0
+#       User Menu selection = 3
+#       fp = 1
+#       s2 = 1
+#       jump MENU_REDRAW
+#
+#   B while selector inactive:
+#       reproduce the exact stock path:
+#       li s6,1
+#       sw s6,0x1AC(sp)
+#       lbu s6,-3564(gp)
+#       j 0x803560E0
+#       sb s6,-3572(gp)            # delay slot
+#
+# Stock translated B discriminator, exact Test113/Test106:
+#   80356C58  beq v0,0x2000,80359E94  # A
+#   80356C5C  li  s1,0x4000
+#   80356C60  bne v0,s1,80356BFC      # not B
+#   80356C64  li  s2,1
+#   80356C68  li  s6,1                # B path begins
+#
+# A conditional hook at 0x80356C68 is permitted only with a helper at/after
+# 0x80A38FD0 and only when the inactive branch reproduces the complete stock
+# B sequence above.  No renderer epilogue bytes may change.
+#
+# This supersedes the earlier blanket "no custom B hook" note.  The actual
+# prohibition is against an unscoped/global replacement that changes inactive
+# state-14 behavior.  The selector-active conditional dispatch is now BIN
+# pinned; its close target is no longer inferred.
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-21 re-entry invariant
+# ---------------------------------------------------------------------------
+# HW Test118 proves B-active -> selector close/redraw.
+# HW also shows that after CLASSIC completes with "No New Games", the old
+# Test113/Test118 selector cannot be reopened. The final implementation must
+# therefore enforce this two-mode state-14 confirm contract:
+#
+#   inactive + ordinary User Menu row3/A:
+#       selector_active = 1
+#       stock selection (sp+0x1A4) = 0
+#       refresh_command = invalid/neutral
+#       MENU_REDRAW
+#
+#   active + row0..7/A:
+#       refresh_command = v1/current selection
+#       selector_active = 0
+#       NATIVE_REFRESH
+#
+# No post-Refresh flag is allowed to be necessary for re-entry. Once the
+# native Refresh status/epilogue returns, a later ordinary row3/A must enter
+# through selector_enter and initialize the overlay from scratch.
+#
+# Future feature note: Refresh All is NOT implicit in A. If added, it is an
+# explicit ninth command/row after the eight individual adapters are closed.
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-21 post-Refresh re-entry closure — exact active-A sequence
+# ---------------------------------------------------------------------------
+# Native Refresh does not return through an opaque caller continuation. Its
+# common epilogue restores the 0xB0 frame and explicitly redraws User Menu:
+#
+#   807DB7B8  addiu sp,sp,0xB0
+#   807DB7BC  li fp,1
+#   807DB7C0  li s2,1
+#   807DB7C4  j 0x80359ABC
+#   807DB7C8  nop
+#
+# Therefore the caller's state-14 selection at sp+0x1A4 must already be valid
+# for ordinary User Menu before entering NATIVE_REFRESH.
+#
+# Test113/Test118 left the selector row there. CLASSIC therefore left 7 in a
+# menu whose inactive terminal is 3. HW then showed that Refresh Games could
+# not be reopened after CLASSIC/No New Games.
+#
+# Final active A dispatcher, instruction-pinned for emission at 0x80A38648:
+#
+#   80A38648  lui t0,0x80A4
+#   80A3864C  sw  v1,0x89C4(t0)    # preserve selected command 0..7
+#   80A38650  sw  zero,0x89C0(t0)  # selector inactive
+#   80A38654  li  t0,3
+#   80A38658  sw  t0,0x1A4(sp)     # normalize ordinary User Menu selection
+#   80A3865C  j   0x807DB5CC       # native Refresh
+#   80A38660  nop
+#   80A38664..80A38684             # retired diagnostic row3-Back tail = NOP
+#
+# This is deliberately independent of the Test118 B path. B-active continues
+# to invoke the HW-proven close/redraw transition. A-active always means the
+# selected individual system command.
