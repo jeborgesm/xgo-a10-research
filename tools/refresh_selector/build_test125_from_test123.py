@@ -11,7 +11,7 @@ from pathlib import Path
 BASE=0x80000000
 INPUT_SHA="7becafa3372e7b511bd8f05d0f378ca6397d72c6cc5c075f2e0d650cba2a86b5"
 POLY=0x04C11DB7; EXT=0x80A38840; EXT_END=0x80A38900
-PATH_AREA=0x80A3904C; PATH_LIMIT=0x80A391F8
+ADAPTER=0x80A3904C; PATH_LIMIT=0x80A391F8
 RUNNER=0x80A382E0; MD=0x80A387AC; CLASSIC=0x80A38000
 NO_NEW=0x807DB6EC; FAILED=0x807DB718; FINISH=0x80A38808
 PATHS=[b"/mnt/sda1/GB/catalog.xgc\0",b"/mnt/sda1/GBC/catalog.xgc\0",b"/mnt/sda1/GBA/catalog.xgc\0"]
@@ -38,10 +38,8 @@ def main():
   "stock_bodies":bytes(o[off(0x80A386F4):off(EXT)]),
   "selector":bytes(o[off(0x80A389C0):off(ADAPTER)]),
  }
- # Place path literals in the verified zero tail after the Test122 suppression helper.
- ptr=[];p=PATH_AREA
- for s in PATHS:
-  ptr.append(p);o[off(p):off(p)+len(s)]=s;p+=len(s)
+ # Build adapter first; path literals follow it in the same verified zero tail.
+ ptr=[]
  # compact command adapter. t0=8 command, t1=9, t2=10, a0=4,a1=5,s0=16,s5=21,sp=29,ra=31
  W=[];L={};F=[]
  def label(n):L[n]=ADAPTER+4*len(W)
@@ -68,8 +66,15 @@ def main():
   pc=ADAPTER+4*idx
   if op==2:W[idx]=jop(2,L[l])
   else:W[idx]=iop(op,rs,rt,(L[l]-(pc+4))//4)
- if 4*len(W)>EXT_END-EXT:raise SystemExit(f"FAIL adapter overflow {4*len(W)}")
- o[off(EXT):off(EXT_END)]=bytes(EXT_END-EXT);struct.pack_into("<"+"I"*len(W),o,off(EXT),*W)
+ code_end=ADAPTER+4*len(W);p=(code_end+3)&~3
+ for s in PATHS:ptr.append(p);p+=len(s)
+ if p>PATH_LIMIT:raise SystemExit(f"FAIL adapter/path tail overflow {hex(p)}")
+ for name,pa in zip(("gb","gbc","gba"),ptr):
+  idx=(L[name]-ADAPTER)//4;hi=((pa+0x8000)>>16)&0xffff;lo=pa&0xffff
+  W[idx]=iop(15,0,4,hi);W[idx+1]=iop(9,4,4,lo)
+ o[off(EXT):off(EXT_END)]=bytes(EXT_END-EXT);struct.pack_into("<II",o,off(EXT),jop(2,ADAPTER),0)
+ struct.pack_into("<"+"I"*len(W),o,off(ADAPTER),*W)
+ for pa,s in zip(ptr,PATHS):o[off(pa):off(pa)+len(s)]=s
  if bytes(o[off(0x80A38000):off(0x80A38240)])!=protected["classic"]:raise SystemExit("FAIL CLASSIC changed")
  if bytes(o[off(0x80A386F4):off(EXT)])!=protected["stock_bodies"]:raise SystemExit("FAIL FC/SFC/MD changed")
  if bytes(o[off(0x80A389C0):off(ADAPTER)])!=protected["selector"]:raise SystemExit("FAIL selector/suppression changed")
