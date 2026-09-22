@@ -336,3 +336,38 @@ lab7:  .asciz "Classic"
 #
 # Future feature note: Refresh All is NOT implicit in A. If added, it is an
 # explicit ninth command/row after the eight individual adapters are closed.
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-21 post-Refresh re-entry closure — exact active-A sequence
+# ---------------------------------------------------------------------------
+# Native Refresh does not return through an opaque caller continuation. Its
+# common epilogue restores the 0xB0 frame and explicitly redraws User Menu:
+#
+#   807DB7B8  addiu sp,sp,0xB0
+#   807DB7BC  li fp,1
+#   807DB7C0  li s2,1
+#   807DB7C4  j 0x80359ABC
+#   807DB7C8  nop
+#
+# Therefore the caller's state-14 selection at sp+0x1A4 must already be valid
+# for ordinary User Menu before entering NATIVE_REFRESH.
+#
+# Test113/Test118 left the selector row there. CLASSIC therefore left 7 in a
+# menu whose inactive terminal is 3. HW then showed that Refresh Games could
+# not be reopened after CLASSIC/No New Games.
+#
+# Final active A dispatcher, instruction-pinned for emission at 0x80A38648:
+#
+#   80A38648  lui t0,0x80A4
+#   80A3864C  sw  v1,0x89C4(t0)    # preserve selected command 0..7
+#   80A38650  sw  zero,0x89C0(t0)  # selector inactive
+#   80A38654  li  t0,3
+#   80A38658  sw  t0,0x1A4(sp)     # normalize ordinary User Menu selection
+#   80A3865C  j   0x807DB5CC       # native Refresh
+#   80A38660  nop
+#   80A38664..80A38684             # retired diagnostic row3-Back tail = NOP
+#
+# This is deliberately independent of the Test118 B path. B-active continues
+# to invoke the HW-proven close/redraw transition. A-active always means the
+# selected individual system command.
