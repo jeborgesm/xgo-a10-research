@@ -154,3 +154,25 @@ The Test120/Test121 Refresh presentation regressions exposed a process gap: pres
 Therefore the reuse preflight in `docs/REUSE-FIRST-ENGINEERING-INDEX.md` is mandatory. In particular, UI work must compare Mapper v19, Mapper v16 stock-layer suppression, Test05b/Test06 Setup repaint source, Audio OSD framebuffer work, and the current protected selector before new renderer code is authorized.
 
 Test119 remains the protected Refresh checkpoint. Test120 and Test121 are rejected HW evidence, not development bases.
+
+
+## Mandatory historical-solution recovery gate
+
+Before designing, patching, or hardware-testing a mechanism that resembles a problem previously investigated in XGO Archeology, **search this repository first for a hardware-proven implementation**.
+
+This is a hard engineering rule, not a suggestion:
+
+1. Search findings, builders/source, manifests, golden-artifact records, handoffs, and branch history for the same mechanism or the closest solved analogue.
+2. Prefer an existing **HW-proven** mechanism over a newly inferred or merely BIN-compatible implementation.
+3. If a new design differs from an earlier HW-proven solution, document why the proven mechanism cannot be reused before producing a candidate.
+4. A known ABI or plausible native function is not sufficient reason to replace a preserved HW-proven implementation.
+5. Hardware tests should validate a bounded new unknown; they must not rediscover behavior already established and preserved in GitHub.
+6. When a test contradicts current assumptions, immediately search historical hardware records before proposing another patch.
+
+### Test124 lesson
+
+Test124 (2026-09-22) demonstrated why this gate is mandatory. A selective call to native scanner `0x807DAE4C` was statically coherent but returned `No New Games` for new GB/GBC/GBA raw ROMs. Repository recovery then found the earlier **Test08 HW PASS**, whose custom table-driven filesystem scanner had already discovered forgotten raw `.gb` files on hardware, appended them to the stock Game Boy catalog, and launched them successfully.
+
+Therefore the correct next engineering action is to reuse/selectively adapt the Test08 HW-proven discovery worker, not continue experimenting with alternative scanner paths.
+
+**Repository-first maxim:** if XGO Archeology solved it before, recover and reuse that solution before inventing another one.
