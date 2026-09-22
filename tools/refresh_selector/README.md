@@ -123,3 +123,18 @@ Deterministic emitter:
 The emitter accepts only exact Test106, reconstructs the HW-proven Test118 selector/renderer/B state, asserts its exact SHA, emits the Test119 A-dispatch delta from MIPS instruction constructors, preserves the renderer epilogue, reseals LCFG, and asserts the final Test119 SHA/CRC.
 
 Future feature: `Refresh All` is an explicit ninth row/command only. It is never implicit in A on one of the eight system rows.
+
+
+## HW checkpoint — Test122 PASS and execution-wiring correction
+
+Test122 is the current HW-positive selector/UI checkpoint. It conditionally bypasses the native state-14 172x172 Setup selector compositor while `selector_active != 0`, eliminating the blue selection border behind REFRESH GAMES without changing Test119 input/navigation/Refresh lifecycle.
+
+Firmware SHA-256: `6378e4a9cbf560afa53c38836826c294c9b2316310d65eb9860894c221cb2f0d`
+LCFG CRC: `0x0EFF6110`.
+Builder: `build_test122_from_test119.py`.
+
+Residual OPEN UI issue: B close can expose stale `No New Games` on ordinary Setup until another option is selected.
+
+Important command correction: the UI command bridge is eight-way, but the inherited execution dispatcher is not. Exact BIN audit shows command 0 -> FC, command 1 -> SFC, and every other value -> MD. Thus GB/GBC/GBA/Arcade/CLASSIC are not yet functionally wired and must not be described as individual working Refresh operations.
+
+Current priority is CLASSIC rescue. Command 7 must branch after native Refresh workspace initialization to the preserved CLASSIC continuation `s5=0; j 0x80A38000`. Commands 3..6 must cease aliasing MD before they are exposed as working operations. GB/GBC/GBA follow; Arcade is separately classified across CPS1/CPS2/NeoGeo/IGS.
