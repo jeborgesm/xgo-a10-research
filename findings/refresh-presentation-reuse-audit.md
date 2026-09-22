@@ -80,3 +80,29 @@ Priority:
 5. only then decide whether any firmware candidate is warranted.
 
 This audit demonstrates a concrete reusable path already present in repository source and bounds what still requires binary closure.
+
+## Exact Test119 comparison — BIN closure
+
+The protected Test119 image was inspected directly at the same state-14 repaint seam:
+
+```
+80359AFC  3C060008  lui  a2,0x0008
+80359B00  34C66600  ori  a2,a2,0x6600   # a2 = 0x86600
+80359B04  01202021  move a0,t1
+80359B08  0C0A525B  jal  0x8029496C
+80359B0C  01602821  move a1,t3          # delay slot
+```
+
+`0x86600 / 0x500 = 430` exactly. Thus Test119's native state-14 path copies/repaints **430 complete 640-pixel RGB565 rows**. The preserved Test05b source changes only the size argument at this seam from `0x86600` to `0x96000` (480 rows), while preserving `move a0,t1`, the existing `jal 0x8029496C`, and `move a1,t3`.
+
+This is now a concrete BIN/SRC correspondence, not analogy:
+
+```
+Test119 current: 0x86600 = 640 * 430 * 2
+Test05b proven intent: 0x96000 = 640 * 480 * 2
+Delta:             0x0FA00 = 640 * 50  * 2
+```
+
+Therefore a future presentation candidate can test the already-preserved Test05b mechanism by changing **only two existing immediate words at 0x80359AFC and 0x80359B00**, leaving Test119's injected renderer/backdrop loop byte-identical. This is fundamentally different from Test120/121.
+
+Hardware authorization is still withheld until the Test05b/Test06 hardware record is pinned and the state-14 blue-highlight composition order is traced, because the goal is not merely repainting the bottom 50 rows; it is eliminating underlying Setup leakage without another unnecessary cycle.
