@@ -53,3 +53,44 @@ Pin the exact call/instruction range in `0x80359B1C..0x80359BA8` that emits the 
 Only after that range and continuation are exact may a selector-active conditional suppression helper be emitted.
 
 No full-screen repaint change is authorized.
+
+## Exact native selector producer — BIN closure
+
+Direct disassembly of protected Test119 closes the dynamic selector producer before the overlay hook:
+
+```
+80359B10  lw    a1,0x1A4(sp)       # current state-14 selection
+80359B14  lw    s0,-5136(gp)       # frontend framebuffer
+80359B18  lw    t0,-3608(gp)
+80359B1C..80359B38                # derive selector x/y from selection
+80359B3C  move  a0,s4
+80359B40  move  a1,zero
+80359B44  move  a2,zero
+80359B48  li    a3,172
+80359B4C  sw    a3,20(sp)
+80359B50  sw    t2,24(sp)          # x
+80359B54  sw    ra,28(sp)          # y
+80359B58  sw    s0,32(sp)          # framebuffer
+80359B5C  sw    t0,36(sp)
+80359B60  jal   0x80353250         # native 172x172 selector compositor
+80359B64  sw    a3,16(sp)          # 172 height/width companion
+```
+
+The call target `0x80353250` has a normal function prologue and is distinct from the stock text renderer `0x803528A4`. This pins `0x80359B3C..0x80359B64` as the dynamic 172x172 selector/highlight composition call.
+
+After it returns, native code continues at `0x80359B68` with TV-mode/text handling and reaches the existing Test119 hook at `0x80359BA8`.
+
+### Safe suppression seam
+
+The narrowest producer-side suppression is therefore to bypass **only** the call setup/call block `0x80359B3C..0x80359B64` when `selector_active @ 0x80A389C0 != 0`, continuing at `0x80359B68`.
+
+This preserves:
+- selection load and coordinate math at `0x80359B10..0x80359B38`;
+- stock navigation/state ownership;
+- all post-selector native TV/text work at `0x80359B68...`;
+- Test119 hook at `0x80359BA8`;
+- Test119 overlay renderer and native-tail return.
+
+When selector_active == 0, execution must reproduce the exact original `0x80359B3C..0x80359B64` block with its original delay-slot semantics. No instruction in that block may simply be discarded.
+
+This is the state-14 analogue of the Mapper-v16 producer-suppression pattern, now pinned to XGO BIN addresses rather than inferred from Mapper addresses.
