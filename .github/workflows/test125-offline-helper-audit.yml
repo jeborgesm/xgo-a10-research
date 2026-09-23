@@ -25,31 +25,4 @@ jobs:
           test "$(stat -c%s /tmp/test125/stage2/gba-catalog-saf.xgc)" = 7000
           sha256sum /tmp/test125/stage1/* /tmp/test125/stage2/*
       - name: Prove handheld Stage2 descriptor isolation
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import struct
-          root=Path('/tmp/test125/stage2')
-          systems={
-            'gb':  {'names':0x80A3C35C,'count':0x80D28964,'folder':b'GB'},
-            'gbc': {'names':0x80A3C368,'count':0x80D2896C,'folder':b'GBC'},
-            'gba': {'names':0x80A3C374,'count':0x80D28974,'folder':b'GBA'},
-          }
-          def be_words(b):
-              return [struct.pack('>I',x) for x in b]
-          for name,d in systems.items():
-              blob=(root/f'{name}-catalog-saf.xgc').read_bytes()
-              # MIPS immediates split absolute addresses into LUI + signed low-half.
-              # Require the selected descriptor/count high+low halves and folder literal.
-              for key in ('names','count'):
-                  v=d[key]; hi=(v>>16)&0xffff; lo=v&0xffff
-                  if struct.pack('>H',hi) not in blob or struct.pack('>H',lo) not in blob:
-                      raise SystemExit(f'FAIL {name}: missing own {key} address 0x{v:08X}')
-              if d['folder']+b'\0' not in blob:
-                  raise SystemExit(f'FAIL {name}: missing own folder literal')
-              for other,od in systems.items():
-                  if other==name: continue
-                  if od['folder']+b'\0' in blob:
-                      raise SystemExit(f'FAIL {name}: contains foreign folder {other}')
-              print('PASS isolation',name,hex(d['names']),hex(d['count']),d['folder'].decode())
-          PY
+        run: python tools/game_lists/audit_test126_handheld_isolation.py /tmp/test125/stage2
