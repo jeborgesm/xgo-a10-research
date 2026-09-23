@@ -25,6 +25,11 @@ PATHS={
  "gbc":b"/mnt/sda1/GBC/catalog-saf.xgc\0",
  "gba":b"/mnt/sda1/GBA/catalog-saf.xgc\0",
 }
+EXPECTED_SHA={
+ "gb":"d41df10bb3e561a18eee6f53ac34170244143b9ca670c8fac43933951916a207",
+ "gbc":"62de14865f8a14143c7980df0b242f33a5c76cbfe967ef16ff9db367a47ac13f",
+ "gba":"dca88ac36235669a0e98a591d145e45b005b58d80221e09b9ae8b4b54a55e3a8",
+}
 def sha(b):return hashlib.sha256(b).hexdigest()
 def build(system):
  b=bytearray(zlib.decompress(base64.b64decode(TEMPLATE_ZB64)))
@@ -37,6 +42,7 @@ def build(system):
  struct.pack_into("<I",b,FINALIZER_J_OFF,EPILOGUE_J)
  assert bytes(b[MODE_OFF:MODE_OFF+3])==b"rb\0"
  assert len(b)==TEMPLATE_SIZE
+ assert sha(b)==EXPECTED_SHA[system]
  return bytes(b)
 def main():
  ap=argparse.ArgumentParser();ap.add_argument("--outdir",type=Path,required=True);a=ap.parse_args();a.outdir.mkdir(parents=True,exist_ok=True)
