@@ -28,9 +28,9 @@ PATHBUF=0x8109F65C; ROOT=0x8109F25C; PATHFMT=0x809A33DC
 MODE_RB=0x809A6687; MODE_WB=0x809A3404
 
 SYSTEMS={
- "gb":  dict(names=0x80A3C374,count=0x80D28964,folder=b"GB", wrapper=6,native=(23,25)),
- "gbc": dict(names=0x80A3C38C,count=0x80D2896C,folder=b"GBC",wrapper=6,native=(23,25)),
- "gba": dict(names=0x80A3C3A4,count=0x80D28974,folder=b"GBA",wrapper=6,native=(20,22)),
+ "gb":  dict(names=0x80A3C35C,count=0x80D28964,folder=b"GB", wrapper=6,native=(23,25)),
+ "gbc": dict(names=0x80A3C368,count=0x80D2896C,folder=b"GBC",wrapper=6,native=(23,25)),
+ "gba": dict(names=0x80A3C374,count=0x80D28974,folder=b"GBA",wrapper=6,native=(20,22)),
 }
 EXPECTED_SHA={
  "gb":"705198908eccb8e828bf4f121d1843bceef0e92a65a5e9a5d988a91e0f40209b",
