@@ -21,9 +21,9 @@ def main():
  ap=argparse.ArgumentParser();ap.add_argument("test127_fw",type=Path);ap.add_argument("gb_refresh",type=Path);ap.add_argument("out",type=Path);a=ap.parse_args()
  fw=bytearray(a.test127_fw.read_bytes()); h=a.gb_refresh.read_bytes()
  assert sha(fw)==IN_FW and sha(h)==GB_REFRESH
- # Test127 GB body: after first helper success/OR, second helper starts at 0x80A39078.
+ # Test127 GB body: after first helper success/OR, second helper starts at 0x80A3907C.
  # Replace that point with jump to common successful status tail 0x80A38808.
- p=off(0x80A39078)
+ p=off(0x80A3907C)
  old=struct.unpack_from("<I",fw,p)[0]
  assert old==0x3c0480a3,hex(old) # lui a0,path2 high
  struct.pack_into("<I",fw,p,jop(0x80A38808));struct.pack_into("<I",fw,p+4,0)
