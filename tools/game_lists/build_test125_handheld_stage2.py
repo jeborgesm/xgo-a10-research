@@ -33,9 +33,9 @@ SYSTEMS={
  "gba": dict(names=0x80A3C3A4,count=0x80D28974,folder=b"GBA",wrapper=6,native=(20,22)),
 }
 EXPECTED_SHA={
- "gb":None,
- "gbc":None,
- "gba":None,
+ "gb":"705198908eccb8e828bf4f121d1843bceef0e92a65a5e9a5d988a91e0f40209b",
+ "gbc":"f31740039e53dbc051e37fa58347577762d1f9d6b27459c75cee5c0bbbb98246",
+ "gba":"637c30ed10282e534704631e1261cc9fe9c25e051949271eaee15f9527137cbe",
 }
 CAT0=0x00000; CAT1=0x10000; CAT2=0x20000
 OUT0=0x30000; OUT1=0x40000; OUT2=0x50000
