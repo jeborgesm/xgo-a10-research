@@ -32,6 +32,11 @@ SYSTEMS={
  "gbc": dict(names=0x80A3C38C,count=0x80D2896C,folder=b"GBC",wrapper=6,native=(23,25)),
  "gba": dict(names=0x80A3C3A4,count=0x80D28974,folder=b"GBA",wrapper=6,native=(20,22)),
 }
+EXPECTED_SHA={
+ "gb":None,
+ "gbc":None,
+ "gba":None,
+}
 CAT0=0x00000; CAT1=0x10000; CAT2=0x20000
 OUT0=0x30000; OUT1=0x40000; OUT2=0x50000
 ENTRY=0x60000; CANDS=0x61000; CAND_REC=0x240; MAX_CANDS=512
@@ -168,7 +173,9 @@ def build(system):
  build_slot(a)
  while a.pc%4: a.data(b'\0')
  a.label('cand_base'); a.data(struct.pack('<I',0)); a.label('cand_count'); a.data(struct.pack('<I',0)); a.label('dirfmt'); a.data(b'%s/'+cfg['folder']+b'\0')
- blob=a.emit(); assert len(blob)<=OUT_SIZE,(system,len(blob)); return blob+b'\0'*(OUT_SIZE-len(blob)),len(blob)
+ blob=a.emit(); assert len(blob)<=OUT_SIZE,(system,len(blob)); out=blob+b'\0'*(OUT_SIZE-len(blob))
+ if EXPECTED_SHA[system] is not None: assert sha(out)==EXPECTED_SHA[system]
+ return out,len(blob)
 
 def main():
  ap=argparse.ArgumentParser(); ap.add_argument('--outdir',type=Path,required=True); args=ap.parse_args(); args.outdir.mkdir(parents=True,exist_ok=True)
