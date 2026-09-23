@@ -13,6 +13,8 @@ def dec(pc,w):
  if op==13:return f"ori {REG[rt]},{REG[rs]},0x{imm:04x}"
  if op==35:return f"lw {REG[rt]},{sx(imm)}({REG[rs]})"
  if op==43:return f"sw {REG[rt]},{sx(imm)}({REG[rs]})"
+ if op==36:return f"lbu {REG[rt]},{sx(imm)}({REG[rs]})"
+ if op==40:return f"sb {REG[rt]},{sx(imm)}({REG[rs]})"
  if op==4:return f"beq {REG[rs]},{REG[rt]},0x{pc+4+(sx(imm)<<2):08x}"
  if op==5:return f"bne {REG[rs]},{REG[rt]},0x{pc+4+(sx(imm)<<2):08x}"
  if op in (2,3):
@@ -20,6 +22,11 @@ def dec(pc,w):
  if op==0:
   fn=w&63
   if fn==0x21:return f"addu {REG[rd]},{REG[rs]},{REG[rt]}"
+  if fn==0x23:return f"subu {REG[rd]},{REG[rs]},{REG[rt]}"
+  if fn==0x2b:return f"sltu {REG[rd]},{REG[rs]},{REG[rt]}"
+  if fn==0:return f"sll {REG[rd]},{REG[rt]},{(w>>6)&31}"
+  if fn==0x10:return f"mfhi {REG[rd]}"
+  if fn==0x12:return f"mflo {REG[rd]}"
   if fn==8:return f"jr {REG[rs]}"
   if fn==9:return f"jalr {REG[rd]},{REG[rs]}"
  return ""
