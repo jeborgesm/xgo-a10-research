@@ -53,7 +53,7 @@ def main():
  def unwind():lw(31,0x1c,29);lw(16,0x18,29);emit(iop(9,29,29,0x20))
  li(9,2);br(4,8,9,"md");li(9,7);br(4,8,9,"classic");li(9,6);br(4,8,9,"safe")
  # command 3..5: select path by three short branches, then shared runner.
- li(9,3);br(4,8,9,"gb");li(9,4);br(4,8,9,"gbc");li(9,5);br(4,8,9,"gba");j(NO_NEW)
+ li(9,3);br(4,8,9,"gb");li(9,4);br(4,8,9,"gbc");li(9,5);br(4,8,9,"gba");F.append((len(W),2,0,0,"safe"));emit(0);nop()
  for n in ("gb","gbc","gba"):
   label(n);emit(0);emit(0) # path LUI/ADDIU resolved after adapter size is known
   F.append((len(W),2,0,0,"call"));emit(0);nop()
