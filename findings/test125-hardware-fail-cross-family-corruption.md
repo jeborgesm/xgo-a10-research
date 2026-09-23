@@ -27,8 +27,9 @@ Test sequence and observed result:
    - those cross-listed GB games did not launch from GBA.
 
 4. Refresh -> Classic:
-   - returned **No New Games** rather than the expected independent CLASSIC
-     behavior/status.
+   - CLASSIC activated normally and returned **No New Games**;
+   - this was the expected result for an unchanged CLASSIC catalog and is a
+     **PASS / regression check**, not a Test125 failure.
 
 ## What this disproves
 
@@ -46,7 +47,7 @@ The failure pattern is stronger than a simple extension-classifier miss:
 - GB reported a change with no corresponding new visible GB entry.
 - GBC reported no change despite the pending GBC input.
 - GBA visibly acquired GB entries while reporting no change.
-- CLASSIC status behavior was also wrong.
+- CLASSIC did **not** regress; its activation and No New Games result were expected.
 
 This points first at the reconstructed per-system resource/count/dispatch
 contracts, not at raw filename matching.
@@ -74,7 +75,7 @@ Before Test126:
    blob, especially GB/GBC/GBA resource pointers, directory identity,
    classifier bounds, and count invalidation;
 3. compare those exact values against Test125;
-4. audit Test125 command routing and CLASSIC path against the emitted firmware;
+4. retain CLASSIC as a passed protected regression check; no CLASSIC redesign is indicated;
 5. patch source only from direct BIN/SRC evidence;
 6. perform an offline synthetic isolation test using distinct sentinel
    filenames for GB/GBC/GBA and verify each worker touches only its selected
