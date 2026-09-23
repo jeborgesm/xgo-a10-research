@@ -85,7 +85,7 @@ def make_fw(src):
  def emit(x): w.append(x)
  def pc(): return GB+4*len(w)
  a=P1
- emit(iop(15,0,4,a>>16)); emit(iop(9,4,4,a&0xffff))
+ emit(iop(15,0,4,(a+0x8000)>>16)); emit(iop(9,4,4,a&0xffff))
  emit(iop(15,0,5,0x10)); emit(iop(13,5,5,0x1f08)); emit(jal(RUN)); emit(0)
  emit(iop(9,0,8,0)); emit((2<<21)|(8<<16)|(9<<11)|42)
  emit(br(5,9,0,pc(),FAIL)); emit(0); emit((16<<21)|(2<<16)|(16<<11)|37)
