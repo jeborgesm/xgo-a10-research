@@ -290,3 +290,22 @@ Before a hardware ZIP is promoted, perform one final emitted-binary audit:
 - verify command 7 remains `s5=0; j 0x80A38000`;
 - compare protected Test123 regions byte-for-byte;
 - package only the six handheld helper files plus the exact patched firmware, leaving the pending GBC/GBA Mario ROMs untouched.
+
+
+## Scope correction after Test124 — repository-first enforcement
+
+The next hardware proof is intentionally narrowed back to the already HW-proven Test08 mechanism.
+
+HW Test08 already proved the exact user-visible behavior required for GB: forgotten ordinary raw `.gb` files in `/GB` were discovered, appended to the stock GB list, launched, played, and retained button remapping. Test08 also proved the generalized six-console scan rather than a filename-specific test.
+
+Therefore Test124's native-scanner no-discovery result must not trigger a new scanner architecture project. The Test125 question is only whether the Test08 discovery/stable-merge behavior can be reached selectively from the Test123 selector rows while preserving the cumulative firmware.
+
+Decision:
+- Test08 HW behavior is the semantic oracle.
+- Test07/Test08 source lineage is the implementation oracle.
+- Test125 may relocate/package that behavior because the original Test08 cave collides with later cumulative firmware, but must not deliberately change discovery semantics.
+- No additional transaction/artwork/Arcade architecture is part of this proof.
+- The pending raw GBC/GBA Mario files remain the blind hardware evidence.
+- If the selective worker fails to discover them, compare immediately against exact Test08 behavior before any further redesign.
+
+This is the bounded test that should follow Test124.
