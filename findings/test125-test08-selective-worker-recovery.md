@@ -258,3 +258,35 @@ OPEN before hardware promotion:
 2. execute the Test125 firmware builder against exact Test123 and pin final firmware SHA/LCFG CRC;
 3. perform final binary diff/control-flow audit of the emitted firmware and helpers;
 4. only then package the hardware candidate.
+
+
+## Emission identities and final offline gate — 2026-09-22
+
+GitHub Actions executed both helper builders from the branch source under Python 3.12 and passed all exact-size assertions.
+
+Stage2 outputs (SRC-built, 7000 bytes each):
+- GB: used code/data 2258 bytes; SHA-256 `705198908eccb8e828bf4f121d1843bceef0e92a65a5e9a5d988a91e0f40209b`;
+- GBC: used 2259 bytes; SHA-256 `f31740039e53dbc051e37fa58347577762d1f9d6b27459c75cee5c0bbbb98246`;
+- GBA: used 2259 bytes; SHA-256 `637c30ed10282e534704631e1261cc9fe9c25e051949271eaee15f9527137cbe`.
+
+The same CI run independently reproduced the previously pinned 2642-byte Stage1 identities exactly. These Stage2 hashes are now assertions in the source builder.
+
+The hardened Test125 firmware builder was independently executed against the exact preserved Test123 firmware bytes. Deterministic result:
+- firmware SHA-256 `4e5eb643ede9aa9883fa0ddf5590f92098af4baf369682bfa9ef3d4e185fd6c8`;
+- LCFG CRC-32/MPEG-2 `0xB34148B3`;
+- selective adapter size 240 bytes at `0x80A3904C`;
+- Stage1 path literals at `0x80A3913C`, `0x80A39155`, `0x80A3916F`;
+- allocation ends at `0x80A39189`, below protected limit `0x80A391F8`;
+- independent post-build LCFG recomputation equals stored CRC.
+
+The firmware builder now asserts this exact SHA and CRC, so future source drift fails closed.
+
+### Remaining pre-package audit
+
+Before a hardware ZIP is promoted, perform one final emitted-binary audit:
+- decode the 240-byte adapter and verify commands 3/4/5 each load the correct absolute Stage1 path and call only the existing 2642-byte runner;
+- verify negative helper result unwinds to Refresh Failed and nonnegative result ORs into `s0` before the existing `0x80A38808` finish block;
+- verify command 6 and unexpected commands unwind to No New Games;
+- verify command 7 remains `s5=0; j 0x80A38000`;
+- compare protected Test123 regions byte-for-byte;
+- package only the six handheld helper files plus the exact patched firmware, leaving the pending GBC/GBA Mario ROMs untouched.
