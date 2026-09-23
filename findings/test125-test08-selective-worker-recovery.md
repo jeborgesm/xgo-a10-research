@@ -309,3 +309,46 @@ Decision:
 - If the selective worker fails to discover them, compare immediately against exact Test08 behavior before any further redesign.
 
 This is the bounded test that should follow Test124.
+
+
+## Final target is enrichment, not bare Test08 indexing
+
+Test08 is the discovery oracle for the immediate selective GB/GBC/GBA proof, but it is **not** the finished Refresh contract.
+
+The completed per-system Refresh must converge on the already established stock-enrichment workflow:
+
+```text
+/<SYSTEM>/import/<stem>.<native>   source ROM
+/<SYSTEM>/art/<stem>.jpg|.jpeg     optional artwork
+/<SYSTEM>/meta/<stem>.txt          optional friendly title
+        |
+        v
+on-device materialization
+        |
+        v
+top-level stock-shaped wrapper
+        |
+        v
+stable merge into the system's synchronized catalog triplet
+        |
+        v
+normal stock list / artwork / launch path
+```
+
+This is not speculative architecture. Repository HW evidence already proves:
+- SFC Test74: three-game batch from `/SFC/import` + matching `/SFC/art` + `/SFC/meta` -> generated `.zsf` -> catalog merge -> friendly title -> artwork -> launch -> unchanged Refresh convergence.
+- FC Test75: five-game batch through the same enrichment model -> generated `.zfc` -> stock list -> launch; matching JPG/JPEG artwork was hardware-proven after correcting accidental PNG input.
+
+Test08 remains useful because it proves raw-filesystem discovery/stable append, especially the accidental blind GB raw-ROM case. It does not provide wrapper materialization, metadata, or artwork and must not become the endpoint.
+
+Implementation staging:
+1. close selective GB/GBC/GBA discovery using the Test08 semantics so selector routing is proven;
+2. reuse the Test74/Test75 enrichment contract rather than inventing another metadata/art pipeline;
+3. adapt the materializer descriptor for GB/GBC/GBA: native extension set, shared `.zgb` outer wrapper, per-folder identity, per-system catalog triplet/count cache;
+4. preserve `import/art/meta` as non-top-level source namespaces so source ROMs do not become duplicate catalog identities;
+5. process source ROM + optional TXT + optional JPG/JPEG into a stock-shaped top-level wrapper, then stable-merge only that wrapper;
+6. retain filename-derived/fallback behavior when metadata/art is absent, consistent with existing enrichment findings;
+7. unchanged second Refresh must converge to `No New Games`;
+8. Arcade remains separate because its shared folder/family classification problem is different.
+
+Do not spend a new hardware cycle rediscovering the existence of the enrichment architecture. Test74/Test75 are the reuse baseline. The handheld work should be descriptor propagation plus the minimum family-specific validation needed for the shared `.zgb` wrapper route.
