@@ -26,7 +26,8 @@ def main():
    if op==0x0f: his.append(w&0xffff)          # lui
    if op in (0x09,0x0d): los.append(w&0xffff) # addiu/ori
   for key in ("names","count"):
-   v=d[key]; hi=(v>>16)&0xffff; lo=v&0xffff
+   v=d[key]; lo=v&0xffff; hi=(v>>16)&0xffff
+   if lo&0x8000: hi=(hi+1)&0xffff
    if hi not in his or lo not in los:
     raise SystemExit(f"FAIL {name}: own {key} address 0x{v:08X} not encoded")
   if d["folder"]+b"\0" not in b:
