@@ -16,7 +16,8 @@ jobs:
           mkdir -p out
           python tools/game_lists/extract_test08_scanner.py --output out/test08-scanner.bin
           sha256sum out/test08-scanner.bin
+          python tools/game_lists/analyze_test08_loop.py out/test08-scanner.bin | tee out/test08-loop-analysis.txt
       - uses: actions/upload-artifact@v4
         with:
           name: test08-hw-proven-scanner
-          path: out/test08-scanner.bin
+          path: out/
