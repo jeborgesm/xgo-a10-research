@@ -32,7 +32,11 @@ SYSTEMS={
  "gbc": dict(names=0x80A3C368,count=0x80D2896C,folder=b"GBC",wrapper=6,native=(23,25)),
  "gba": dict(names=0x80A3C374,count=0x80D28974,folder=b"GBA",wrapper=6,native=(20,22)),
 }
-EXPECTED_SHA={"gb":None,"gbc":None,"gba":None}
+EXPECTED_SHA={
+ "gb":"6b3ec79439e7597044024bbf04a959b0309078c3e56b3884c8e277cc12f89568",
+ "gbc":"a79fb1b98ff6253d541e471a3741cb2dbed08dbf928621e2eb70192b4d2395f6",
+ "gba":"1111a51ce927c68599df1dd0b8b958b3e7303ac1cb0b27f04c2e31f882a02635",
+}
 CAT0=0x00000; CAT1=0x10000; CAT2=0x20000
 OUT0=0x30000; OUT1=0x40000; OUT2=0x50000
 ENTRY=0x60000; CANDS=0x61000; CAND_REC=0x240; MAX_CANDS=512
