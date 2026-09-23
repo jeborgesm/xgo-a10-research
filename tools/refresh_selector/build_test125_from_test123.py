@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse,hashlib,json,struct
 from pathlib import Path
 BASE=0x80000000
-INPUT_SHA="7becafa3372e7b511bd8f05d0f378ca6397d72c6cc5c075f2e0d650cba2a86b5"
+INPUT_SHA="7becafa3372e7b511bd8f05d0f378ca6397d72c6cc5c075f2e0d650cba2a86b5"\nEXPECTED_OUTPUT_SHA="4e5eb643ede9aa9883fa0ddf5590f92098af4baf369682bfa9ef3d4e185fd6c8"\nEXPECTED_CRC=0xB34148B3
 POLY=0x04C11DB7; EXT=0x80A38840; EXT_END=0x80A38900
 ADAPTER=0x80A3904C; PATH_LIMIT=0x80A391F8
 RUNNER=0x80A382E0; MD=0x80A387AC; CLASSIC=0x80A38000
@@ -79,7 +79,7 @@ def main():
  if bytes(o[off(0x80A386F4):off(EXT)])!=protected["stock_bodies"]:raise SystemExit("FAIL FC/SFC/MD changed")
  if bytes(o[off(0x80A389C0):off(ADAPTER)])!=protected["selector"]:raise SystemExit("FAIL selector/suppression changed")
  struct.pack_into("<I",o,0x184,len(o)-0x200);c=crc(o[0x200:]);struct.pack_into("<I",o,0x18c,c)
- if struct.unpack_from("<I",o,0x18c)[0]!=crc(o[0x200:]):raise SystemExit("FAIL reseal")
+ if struct.unpack_from("<I",o,0x18c)[0]!=crc(o[0x200:]) or c!=EXPECTED_CRC:raise SystemExit("FAIL reseal")\n if sha(o)!=EXPECTED_OUTPUT_SHA:raise SystemExit("FAIL final SHA")
  a.output.write_bytes(o)
  m={"input_sha256":INPUT_SHA,"output_sha256":sha(o),"lcfg_crc32_mpeg2":f"0x{c:08X}","adapter_bytes":4*len(W),
  "paths":{k:f"0x{v:08X}" for k,v in zip(("GB","GBC","GBA"),ptr)},
