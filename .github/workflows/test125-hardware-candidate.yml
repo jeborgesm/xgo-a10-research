@@ -1,0 +1,23 @@
+name: Build Test125 hardware candidate
+on:
+  push:
+    branches: [research-refresh-gb-gbc-gba]
+    paths: [.github/workflows/test125-hardware-candidate.yml]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact Test123 parent
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/actions/artifacts --paginate > /tmp/artifacts.json
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/artifacts.json'))['artifacts']
+          for x in a:
+              print(x['id'],x['name'])
+          PY
+          echo "Test123 parent is intentionally not fetched from repo: proprietary firmware stays out of Git."
+          exit 1
