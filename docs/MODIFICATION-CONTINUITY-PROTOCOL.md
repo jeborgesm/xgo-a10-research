@@ -176,3 +176,14 @@ Test124 (2026-09-22) demonstrated why this gate is mandatory. A selective call t
 Therefore the correct next engineering action is to reuse/selectively adapt the Test08 HW-proven discovery worker, not continue experimenting with alternative scanner paths.
 
 **Repository-first maxim:** if XGO Archeology solved it before, recover and reuse that solution before inventing another one.
+
+
+## Mandatory architectural-ancestor selection gate
+
+Before implementing a new system-family variant of an existing feature, do not choose an ancestor by chronology or by the first historical test that touched that system. Build a component-level comparison of the HW-proven implementations and select the closest proven ancestor for each mechanism.
+
+Required comparison dimensions include at minimum: input filename/extension geometry, source/art/meta namespace, generated wrapper contract, materializer behavior, catalog/list identity, live frontend/catalog lifecycle, helper loader/ABI, status/return behavior, and persistence/recovery behavior.
+
+A new candidate must identify which proven ancestor supplies each component and enumerate the exact substitutions. If a mechanism was already solved in a closer HW-proven implementation, reuse that solution rather than reopening an older archaeology path.
+
+Example established by GB propagation: Test74/Test75 supply the enrichment/wrapper architecture, while the HW-positive MD lineage supplies the two-character native-extension geometry and later catalog/frontend lifecycle lessons. Test08 raw discovery is supporting evidence, not the architectural parent for enriched GB import.
