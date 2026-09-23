@@ -1,6 +1,9 @@
 name: Build Test125 hardware candidate
 on:
   workflow_dispatch:
+  push:
+    branches: [research-refresh-gb-gbc-gba]
+    paths: [.github/workflows/test125-hardware-candidate.yml]
 jobs:
   build:
     runs-on: ubuntu-latest
