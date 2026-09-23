@@ -1,4 +1,4 @@
-name: Recover Test08 generalized scanner 
+name: Recover Test08 generalized scanner  
 on:
   workflow_dispatch:
   push:
