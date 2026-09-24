@@ -459,3 +459,77 @@ Next work must start from merged `main`, not from an experimental ZIP:
 5. explicit ninth Refresh All only after all eight individual operations are stable.
 
 GitHub repository source/reconstruction, findings, manifests/hashes and hardware records are authoritative. Produced or modified source code must be committed before the work is considered preserved; proprietary hardware binaries belong in the companion artifact vault with repository hash/index records.
+
+
+## Branch closure — 2026-09-24 — Game Boy Refresh GOLDEN HW PASS
+
+Branch: `research-refresh-gb-gbc-gba`.
+
+Game Boy Refresh is now closed as a hardware-proven golden checkpoint. Do not begin GBC by replaying the GB trial sequence.
+
+### Golden identities
+
+```text
+xgo-gb-md-parity-complete-two-stage.zip
+SHA-256 21bcc7e18459244912469035bd3dd4a10e0f2ae6b9b1905985a126ecfe73f71d
+
+bios/bisrv.asd
+SHA-256 b4b1ffa3e92c61d042b77345a21c16d67fcf586c8af6127dbc545997942f5542
+LCFG CRC-32/MPEG-2 0xBB3E41F0
+
+GB/refresh.xgc
+size 1,056,520
+SHA-256 34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238
+
+GB/catalog.xgc
+size 2,642
+SHA-256 66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb
+```
+
+### HW-proven GB contract
+
+- `/GB/import/*.gb` discovery.
+- Correct two-character `.gb` predicate geometry.
+- Correct two-character stem derivation.
+- Metadata lookup and metadata-derived wrapper title.
+- Stock-style `.zgb` generation.
+- Explicit post-materialization GB catalog merge.
+- Existing unlisted `Tetris.zgb` propagated into the normal GB catalog/list.
+- Final native status/epilogue remains responsive.
+
+### Root causes closed
+
+Materializer inherited FC/SFC fixed-extension assumptions:
+- `GB/refresh.xgc +0x009C: 05 -> 06` fixes `.gb` dot geometry.
+- `GB/refresh.xgc +0x0DF8: FB -> FC` fixes stem arithmetic `-5 -> -4`.
+
+The decisive list-propagation defect was caller reachability:
+- catalog code existed at `0x80A39084`;
+- old materializer-only `j 0x80A38808` at `0x80A3907C` bypassed it;
+- therefore earlier `No New Games` results after wrapper creation were not catalog-helper results;
+- final firmware changes `0x80A3907C` to continue at `0x80A39084`, explicitly loads `a0=/mnt/sda1/GB/catalog.xgc`, uses `a1=2642`, invokes generic runner `0x80A382E0`, aggregates `v0`, then enters common native status.
+
+Preserved source/evidence:
+- `findings/test132-exact-gb-helper-filename-predicate-root-cause.md`
+- `findings/gb-first-materialization-hw-pass-stem-defect.md`
+- `findings/gb-two-character-materializer-hardware-pass.md`
+- `findings/gb-list-propagation-isolated-after-materializer-pass.md`
+- `findings/gb-refresh-golden-hardware-pass.md`
+- `tools/refresh_gb/build_test132_gb_predicate_repair.py`
+- `tools/refresh_gb/build_golden_gb_two_stage_dispatch.py`
+
+### Mandatory GBC/GBA propagation discipline
+
+Start from the merged GB golden checkpoint. Before any GBC hardware candidate:
+1. close raw extension/stem geometry offline;
+2. close wrapper extension and directory identity;
+3. close GBC triplet/list/cache identity;
+4. prove materializer -> catalog reachability instruction-by-instruction;
+5. prove catalog pathname and byte count are initialized at the actual call;
+6. simulate duplicate/eligibility/catalog-size behavior against the real fixture;
+7. produce a byte-diff manifest proving GB/FC/SFC/MD/CLASSIC preservation;
+8. verify LCFG reseal and final hashes.
+
+**Engineering rule: prove reachability before diagnosing a helper.**
+
+GBC is next. GBA follows only after GBC has its own hardware gate. Arcade remains separate.
