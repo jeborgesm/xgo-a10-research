@@ -177,6 +177,18 @@
       "parent_artifact": "classic-mame2000-normalized-test47-baseline",
       "finding": "findings/classic-test52-save-load-hardware-pass.md",
       "hardware_observation": "Firmware-side streamed CLASSIC Save/Load hardware PASS on Pac-Man and Galaga. State restoration is correct; Save/Load takes approximately 3 seconds. The protected MAME2000 core remains byte-for-byte unchanged."
+    },
+    {
+      "id": "gb-refresh-two-stage-golden",
+      "status": "hardware-confirmed",
+      "archive_status": "pending-private-vault-promotion",
+      "canonical_filename": "xgo-gb-md-parity-complete-two-stage.zip",
+      "zip_sha256": "21bcc7e18459244912469035bd3dd4a10e0f2ae6b9b1905985a126ecfe73f71d",
+      "firmware_sha256": "b4b1ffa3e92c61d042b77345a21c16d67fcf586c8af6127dbc545997942f5542",
+      "gb_refresh_sha256": "34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238",
+      "gb_catalog_sha256": "66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb",
+      "finding": "findings/gb-refresh-golden-hardware-pass.md",
+      "hardware_observation": "Game Boy Refresh hardware PASS: corrected .gb materializer generated metadata-named Tetris.zgb; reachable explicit GB catalog merge propagated the existing unlisted wrapper into the normal GB list. Final closure proved materializer -> catalog -> native status as the required two-stage contract."
     }
   ]
 }
