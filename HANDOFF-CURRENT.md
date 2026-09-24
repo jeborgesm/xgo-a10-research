@@ -533,3 +533,18 @@ Start from the merged GB golden checkpoint. Before any GBC hardware candidate:
 **Engineering rule: prove reachability before diagnosing a helper.**
 
 GBC is next. GBA follows only after GBC has its own hardware gate. Arcade remains separate.
+
+
+## Branch closure — 2026-09-24 — GBC + GBA Refresh GOLDEN HW PASS
+
+Branch: research-refresh-gbc-gba-golden-propagation
+
+GBC and GBA Refresh propagation is complete and hardware-proven. The cumulative firmware is ea442b74bdc07cd5e05ec2de8da5c997848a76ed3125681c1955fbcb29b66152; candidate ZIP is xgo-gbc-gba-golden-propagation-candidate.zip SHA-256 3c8c7829d2aab4fc6050d896f00335adfe40f4115db1fcfe546586404b10dbb1.
+
+GBC HW proof: import, artwork, catalog listing, launch/play, controller remapping, and unchanged second Refresh -> No New Games.
+
+GBA HW proof: four-game batch import, corrected matching artwork, catalog listing, launch/play, and unchanged second Refresh -> No New Games. Earlier missing artwork was fixture filename mismatch, not firmware failure.
+
+Final post-test GBA catalog cleanup v3 removes six historical leaked GB records (original indices 626..631) plus obsolete first GBA test records (663..666), preserves A Sound of Thunder.zgb at original index 632, and retains the final four working GBA records. Final count 661.
+
+Next work must start from merged main. Do not reopen GBC/GBA correctness. Separate future work: (1) Refresh processing feedback/current filename or n/N progress UI; (2) standardized safe deletion/reconciliation for append-only catalogs; (3) Arcade remains separate command-6 work.
