@@ -1,0 +1,21 @@
+name: Build Test125 hardware candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-refresh-gb-gbc-gba]
+    paths: [.github/workflows/test125-hardware-candidate.yml]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build deterministic handheld helpers
+        run: |
+          mkdir -p out
+          python tools/game_lists/build_test125_handheld_stage1.py --outdir out
+          python tools/game_lists/build_test125_handheld_stage2.py --outdir out
+          sha256sum out/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test125-handheld-helpers
+          path: out/

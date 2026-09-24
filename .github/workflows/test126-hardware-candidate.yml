@@ -1,0 +1,24 @@
+name: Build Test126 corrected handheld helpers 
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-refresh-gb-gbc-gba]
+    paths: [.github/workflows/test126-hardware-candidate.yml]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build corrected deterministic handheld helpers
+        run: |
+          set -euxo pipefail
+          mkdir -p out/stage1 out/stage2
+          python tools/game_lists/build_test125_handheld_stage1.py --outdir out/stage1
+          python tools/game_lists/build_test125_handheld_stage2.py --outdir out/stage2
+          python tools/game_lists/audit_test126_handheld_isolation.py out/stage2
+          sha256sum out/stage1/* out/stage2/* > out/SHA256SUMS.txt
+          cat out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test126-corrected-handheld-helpers
+          path: out/

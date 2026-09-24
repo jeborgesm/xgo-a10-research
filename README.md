@@ -4,7 +4,7 @@ Reverse engineering, preservation, and experimental software development for the
 
 The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardware/firmware target. This repository documents the actual XGO firmware, resources, hardware behavior, family relationships, product provenance, and custom modifications proven on physical XGO hardware.
 
-> **Current status — September 2026:** the cumulative hardware-proven baseline now includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load and metadata/JPEG artwork, Test74 SFC enrichment, Test75 FC enrichment, Test106 hardened Mega Drive Refresh, and the new first-class **REFRESH GAMES** selector through **Test123**. Test123 hardware-proves independent CLASSIC Refresh routing through the preserved native Refresh lifecycle and canonical Test72 external helper. FC/SFC/MD execution paths remain preserved; GB/GBC/GBA and Arcade are the next individually gated wiring work.
+> **Current status — September 2026:** the cumulative hardware-proven baseline now includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load and metadata/JPEG artwork, Test74 SFC enrichment, Test75 FC enrichment, Test106 hardened Mega Drive Refresh, and the new first-class **REFRESH GAMES** selector through **Test123**. Test123 hardware-proves independent CLASSIC Refresh routing through the preserved native Refresh lifecycle and canonical Test72 external helper. FC/SFC/MD execution paths remain preserved, and Game Boy Refresh is now hardware-proven end-to-end as a golden two-stage materializer/catalog checkpoint. GBC/GBA and Arcade remain individually gated follow-on work.
 
 > **Regression status:** SFC Test74 and FC Test75 are both independently hardware-proven enrichment baselines. Test75 passed a real five-game FC batch, launch/play, and JPG artwork repair workflow. Test106 MD work did not directly modify the protected FC/SFC helper files, but the final Test106 cycle did not include a fresh physical FC/SFC launch regression. Therefore FC/SFC are proven historically and structurally preserved, while a post-Test106 spot-check remains the only missing cumulative regression evidence.
 
@@ -215,6 +215,55 @@ This closes the repeated-stale-recovery defect without deliberately power-cuttin
 
 Source/reconstruction and the full positive/negative experiment history are preserved under `tools/game_lists/md/test106/` and `findings/md-refresh-test76-test106-preservation-record.md`.
 
+## Major milestone: Game Boy Refresh golden checkpoint
+
+Game Boy enrichment is now hardware-proven end-to-end and is a protected golden checkpoint.
+
+The final architecture deliberately follows the proven stock-console enrichment pattern:
+
+```text
+/GB/import/<source>.gb
+      |
+      v
+GB/refresh.xgc
+      |
+      | stock-style .zgb materialization
+      v
+GB/catalog.xgc
+      |
+      | explicit synchronized merge
+      v
+vdsdc.tax / umboa.nec / qdvd6.bvs
+      |
+      v
+normal GB frontend list
+```
+
+The GB materializer required two minimal corrections inherited from FC/SFC geometry: the raw `.gb` dot position at helper `+0x009C` and the two-character stem adjustment at `+0x0DF8`. The resulting materializer is frozen at SHA-256 `34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238`.
+
+The decisive final defect was caller reachability, not catalog data. The GB adapter still jumped from `0x80A3907C` directly to the common status path, making the catalog block at `0x80A39084` unreachable. The final hardware-passed dispatcher continues into that block, explicitly loads `/mnt/sda1/GB/catalog.xgc`, runs the 2642-byte helper, aggregates its result, and only then returns through native status handling.
+
+Golden hardware package:
+
+```text
+xgo-gb-md-parity-complete-two-stage.zip
+SHA-256 21bcc7e18459244912469035bd3dd4a10e0f2ae6b9b1905985a126ecfe73f71d
+
+bios/bisrv.asd
+SHA-256 b4b1ffa3e92c61d042b77345a21c16d67fcf586c8af6127dbc545997942f5542
+LCFG CRC-32/MPEG-2 0xBB3E41F0
+
+GB/refresh.xgc
+SHA-256 34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238
+
+GB/catalog.xgc
+SHA-256 66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb
+```
+
+The complete positive/negative history and the reachability lesson are preserved in `findings/gb-refresh-golden-hardware-pass.md`. Deterministic firmware reconstruction is preserved in `tools/refresh_gb/build_golden_gb_two_stage_dispatch.py`.
+
+**Propagation rule for GBC/GBA:** start from this hardware-proven architecture. Mechanically specialize the filesystem, extension, wrapper, catalog and cache contracts, and close the complete caller reachability/argument/fixture audit offline before the first SD-card test. A helper must not be diagnosed until its call path is proven reachable.
+
 ## Physical specimen and product provenance
 
 The repository now preserves primary-source evidence from a newly purchased physical XGO specimen in addition to firmware archaeology.
@@ -271,14 +320,14 @@ Exact current execution status:
 Famicom          -> preserved FC path
 Super Famicom    -> preserved SFC path
 Mega Drive       -> preserved MD path
-Game Boy         -> intentionally inert pending next branch
+Game Boy         -> HW-proven two-stage GB Refresh golden checkpoint
 Game Boy Color   -> intentionally inert pending next branch
 Game Boy Advance -> intentionally inert pending next branch
 Arcade            -> intentionally inert pending dedicated Arcade branch
 Classic           -> HW-proven CLASSIC path (Test123)
 ```
 
-The next branch wires **GB, GBC and GBA** individually using the already-preserved generalized native scanner/materializer evidence. Do not infer a generic Arcade list ID from that work: Arcade is a separate follow-on because the stock frontend separates shared `/ARCADE` content into CPS1, CPS2, NeoGeo and IGS catalogs (lists 7..10), requiring classification/orchestration rather than a single blind scan.
+The next stock-family propagation work is **GBC, then GBA**, mechanically derived from the hardware-proven GB two-stage architecture. Complete the reachability, argument, extension/stem, catalog/cache and real-fixture audit offline before emitting either hardware candidate. Do not infer a generic Arcade list ID from that work: Arcade is a separate follow-on because the stock frontend separates shared `/ARCADE` content into CPS1, CPS2, NeoGeo and IGS catalogs (lists 7..10), requiring classification/orchestration rather than a single blind scan.
 
 After all eight individual operations are stable, add the explicitly requested ninth **Refresh All** row. It must never be implicit in one of the eight system commands.
 
