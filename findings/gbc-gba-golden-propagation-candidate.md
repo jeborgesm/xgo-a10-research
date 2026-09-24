@@ -185,3 +185,23 @@ This hardware result proves the GBC materializer -> explicit catalog merge -> st
 Second unchanged GBC Refresh was then hardware-tested: the device reported `No New Games` and completed normally. This closes GBC idempotence/no-duplicate behavior on hardware.
 
 GBA remains **OFFLINE AUDITED / NOT YET HW-PROVEN** until its separate test is completed.
+
+
+## GBA hardware result — PARTIAL PASS / ARTWORK DEFECT ISOLATED
+
+Date: 2026-09-24
+Status: **GBA GAME PATH HW PASS; ARTWORK ENRICHMENT FAIL**
+
+A four-game GBA batch was processed in one Refresh invocation. Hardware observations:
+- all four games were materialized/listed;
+- games launch and play normally through the stock GBA route;
+- supplied artwork was not incorporated into the generated wrappers;
+- processing four games takes long enough that the unchanged UI gives the appearance of a hang.
+
+Uploaded post-test fixture archive inspection confirms all four generated top-level .zgb wrappers are present together with the original import/, meta/, and art/ inputs. The artwork basenames do **not** exactly match the ROM/meta stems: ROM/meta use scene-style names such as (U) [!], while artwork uses No-Intro-style region strings such as (USA, Europe) / (USA, Australia). This is a concrete candidate root cause for the missing artwork and must be tested against the helper's exact artwork lookup behavior before changing firmware.
+
+Do not classify GBA as complete/golden until artwork is repaired and unchanged second Refresh is confirmed.
+
+### UX follow-up
+
+Refresh currently exposes only final status (Games Updated / No New Games). Batch materialization can therefore look frozen. Add a separate post-GBC/GBA stabilization task to investigate progress feedback using the existing native OSD/text/compositor machinery. Preferred minimum UX is a processing message with current filename or n/N; a progress bar is optional and should not be mixed into the current correctness fix.
