@@ -165,3 +165,23 @@ After both, spot-check GB and CLASSIC unchanged behavior.
 ## Evidence boundary
 
 This document is BIN/SRC/offline evidence until hardware results are recorded. Neither GBC nor GBA is golden yet.
+
+
+## GBC hardware result — PASS
+
+Date: 2026-09-24
+Status: **GBC HARDWARE PASS**
+
+The first GBC hardware test passed on the first candidate. User-confirmed observations:
+
+- a new GBC game was added through the new Refresh path;
+- supplied artwork appeared correctly;
+- the generated game appeared in the normal GBC list;
+- the game launched and was played successfully;
+- controller mapping was changed successfully during play, providing an additional runtime/persistence-path regression check.
+
+This hardware result proves the GBC materializer -> explicit catalog merge -> stock GBC launch path on the candidate firmware. It also confirms that the mechanically specialized three-character materializer contract is valid for GBC on XGO hardware.
+
+The second unchanged-refresh/idempotence observation has not yet been recorded in this finding and must not be silently inferred.
+
+GBA remains **OFFLINE AUDITED / NOT YET HW-PROVEN** until its separate test is completed.
