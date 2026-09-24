@@ -54,3 +54,24 @@ These are classified as **inert archaeological residue**, not baseline dependenc
 For future firmware/card candidates, preserve the physical snapshot as the starting card state, but use the protected component table above as the executable identity contract. GBC work must be derived mechanically from the hardware-proven GB architecture and independently audited offline; existing GBC/GBA candidate helpers on this snapshot are evidence/reference only.
 
 The complete per-file SHA-256 + CRC32 manifest was generated from the uploaded archive during validation and should be retained with the private baseline.
+
+
+## Superseding physical baseline — Post GBC/GBA Refresh
+
+Validated archive: `20260924_PostGBCGBARefresh_CLEAN.zip`
+
+- size: 34,186,948 bytes
+- SHA-256: `5df0b1340e7950ee072ccd72dd6f40fd84535d095f1dabd2359e7c5d9d60872e`
+- ZIP integrity: PASS
+- files: 1,000
+- artifact-vault path: `golden/sd-baselines/2026-09-24/20260924_PostGBCGBARefresh_CLEAN.zip`
+
+This snapshot is now the default physical baseline and supersedes the earlier PostGBRefresh snapshot for future modifications. The earlier snapshot remains historical evidence.
+
+The snapshot contains the exact HW-proven cumulative firmware `ea442b74bdc07cd5e05ec2de8da5c997848a76ed3125681c1955fbcb29b66152`, exact golden GB/GBC/GBA materializer and catalog helpers, protected CLASSIC identities, and the final surgically cleaned GBA resource triplet:
+
+- VFNET.TAX `284379c58bd787d1696b25ba3d1505b4356060b635f9428718b4b83720cc2df0`
+- HTUIW.NEC `400f92601286ddd25a6e404c70618901f051ee0cf3f07309ad83fd0d4f17250c`
+- SPPNP.BVS `39d8597e28a9da3f9cc8127ff791a43e7833caa4d805d7348e5ccea0424190e2`
+
+The final GBA triplet therefore confirms the cleanup that removed the six leaked GB records and obsolete first GBA test batch while preserving A Sound of Thunder and the four working shortened-name GBA additions.
