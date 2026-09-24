@@ -170,7 +170,7 @@ This document is BIN/SRC/offline evidence until hardware results are recorded. N
 ## GBC hardware result — PASS
 
 Date: 2026-09-24
-Status: **GBC HARDWARE PASS**
+Status: **GBC HARDWARE PASS — COMPLETE**
 
 The first GBC hardware test passed on the first candidate. User-confirmed observations:
 
@@ -182,6 +182,6 @@ The first GBC hardware test passed on the first candidate. User-confirmed observ
 
 This hardware result proves the GBC materializer -> explicit catalog merge -> stock GBC launch path on the candidate firmware. It also confirms that the mechanically specialized three-character materializer contract is valid for GBC on XGO hardware.
 
-The second unchanged-refresh/idempotence observation has not yet been recorded in this finding and must not be silently inferred.
+Second unchanged GBC Refresh was then hardware-tested: the device reported `No New Games` and completed normally. This closes GBC idempotence/no-duplicate behavior on hardware.
 
 GBA remains **OFFLINE AUDITED / NOT YET HW-PROVEN** until its separate test is completed.
