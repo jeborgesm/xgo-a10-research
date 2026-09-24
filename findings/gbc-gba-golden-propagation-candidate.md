@@ -200,7 +200,7 @@ A four-game GBA batch was processed in one Refresh invocation. Hardware observat
 
 Uploaded post-test fixture archive inspection confirms all four generated top-level .zgb wrappers are present together with the original import/, meta/, and art/ inputs. The artwork basenames do **not** exactly match the ROM/meta stems: ROM/meta use scene-style names such as (U) [!], while artwork uses No-Intro-style region strings such as (USA, Europe) / (USA, Australia). This is a concrete candidate root cause for the missing artwork and must be tested against the helper's exact artwork lookup behavior before changing firmware.
 
-Do not classify GBA as complete/golden until artwork is repaired and unchanged second Refresh is confirmed.
+Follow-up hardware test corrected the artwork/input naming. Four GBA entries were generated with artwork, listed, launched and played successfully. A second unchanged GBA Refresh returned `No New Games`. Therefore GBA enrichment and idempotence are **HW PASS — COMPLETE**. The earlier missing-artwork observation was test-fixture naming mismatch, not a firmware defect.
 
 ### UX follow-up
 
