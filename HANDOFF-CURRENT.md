@@ -548,3 +548,58 @@ GBA HW proof: four-game batch import, corrected matching artwork, catalog listin
 Final post-test GBA catalog cleanup v3 removes six historical leaked GB records (original indices 626..631) plus obsolete first GBA test records (663..666), preserves A Sound of Thunder.zgb at original index 632, and retains the final four working GBA records. Final count 661.
 
 Next work must start from merged main. Do not reopen GBC/GBA correctness. Separate future work: (1) Refresh processing feedback/current filename or n/N progress UI; (2) standardized safe deletion/reconciliation for append-only catalogs; (3) Arcade remains separate command-6 work.
+
+
+## Active branch recovery — 2026-09-26 — Arcade Refresh / CPS1 Test04
+
+Active branch: `research-arcade-refresh-four-family`.
+
+A project-state gap was discovered: the newest CPS1 Arcade Refresh work had remained in chat while this handoff still ended at the GBC/GBA closure. The missing checkpoint is now restored in:
+
+- `findings/arcade-refresh-cps1-test01-test04-recovery-checkpoint.md`
+
+### Protected current checkpoint
+
+**Test04 is the frozen CPS1 Refresh/import/catalog HW checkpoint.**
+
+Recovered HW:
+- CPS1 Refresh discovers/imports 1941;
+- generated `1941.zfb` exists and is 59,918 bytes;
+- launcher trailer resolves to `1941.zip`;
+- 59,904-byte preview is zero-filled fallback, not presently classified as corruption;
+- catalog persistence is sufficient for the new item to appear;
+- live-list/re-entry can freeze after mutation;
+- generated/imported 1941 does not reach successful gameplay.
+
+Do not use Pac-Man/Test11 as a positive launch oracle. Use a currently working stock CPS1 title, preferably Cadillacs & Dinosaurs, for native-path comparison.
+
+BIN evidence from exact `bios/bisrv.asd` contains 1941 descriptions and internal identifiers (`1941j`, `1941`). This proves driver identity/material exists in the stock XGO FBA binary; it does **not** prove ROM-set compatibility or establish the cause of the launch failure.
+
+The earlier conversational promotion of ROM-set compatibility to "leading suspect" is retracted. It remains one OPEN hypothesis.
+
+### Current OPEN boundaries
+
+Keep these separate until evidence connects them:
+- generated wrapper equivalence to known-good stock CPS1;
+- CPS1 catalog/index/category context;
+- stock preprocessing/archive-name state;
+- any index-dependent launch metadata;
+- exact stock-XGO 1941 ROM filename/size/CRC contract;
+- compatibility of the imported 1941 ZIP with that contract;
+- live-list/cache invalidation after Refresh;
+- causal location of the launch failure.
+
+### Hardware gate
+
+**No Test05 is authorized.**
+
+Continue offline from Test04. First locate the earliest demonstrated divergence between:
+
+```text
+Cadillacs and Dinosaurs.zfb -> dino.zip -> stock CPS1/FBA -> PLAY
+1941.zfb                    -> 1941.zip -> stock CPS1/FBA -> FAIL
+```
+
+Exhaust repository/BIN/source comparison before firmware mutation. Any later candidate must follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`: source/reconstruction first, deterministic fail-closed builder, exact parent hashes, patch-site/range verification, LCFG verification, complete byte-diff manifest, then one narrow HW question.
+
+Immediate offline task: recover the exact 1941 ROM contract from stock XGO `bisrv.asd` as far as BIN evidence permits and compare it with the known-good CPS1 launch contract. Do not ask for another hardware test until this is closed or genuinely exhausted.
