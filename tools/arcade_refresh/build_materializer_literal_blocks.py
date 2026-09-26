@@ -15,8 +15,8 @@ def strings(f):
     return {
       "import_dir":root+"/import",
       "family_root":root,
-      "art_jpg":root+"/art/.xgo.jpg",
-      "art_rgb":root+"/art/.xgo.rgb565",
+      "art_jpg":"/mnt/sda1/ARCADE/.xgo.jpg",
+      "art_rgb":"/mnt/sda1/ARCADE/.xgo.rgb565",
       "meta_txt":root+"/meta/%s.txt",
       "art_stem_jpg":root+"/art/%s.jpg",
       "art_stem_jpeg":root+"/art/%s.jpeg",
