@@ -25,7 +25,8 @@ typedef struct { uint32_t no,po,bo,first; uint16_t count; uint8_t family,res; } 
 static uint16_t u16(const uint8_t*p){return (uint16_t)(p[0]|((uint16_t)p[1]<<8));}
 static uint32_t u32(const uint8_t*p){return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 static int eq(const char*a,const char*b){while(*a&&*a==*b){a++;b++;}return *a==*b;}
-static char lower(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}\nstatic int ends_slash(const char*s){char last=0;while(*s)last=*s++;return last=='/';}
+static char lower(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}
+static int ends_slash(const char*s){char last=0;while(*s)last=*s++;return last=='/';}
 static int ieq(const char*a,const char*b){while(*a&&*b&&lower(*a)==lower(*b)){a++;b++;}return !*a&&!*b;}
 static int rd(Reader*r,uint32_t o,void*d,uint32_t n){return r&&r->read_at&&r->read_at(r->ctx,o,d,n)==0;}
 
@@ -72,7 +73,7 @@ static int zip_open(Reader*r,Zip*z,uint8_t*tail,uint32_t tailcap){
  if(u16(e+4)||u16(e+6)||u16(e+8)!=u16(e+10))return -1;
  if(u16(e+10)==0xffff||u32(e+12)==0xffffffffu||u32(e+16)==0xffffffffu)return -1;
  z->count=u16(e+10);z->cd_size=u32(e+12);z->cd_off=u32(e+16);
- if(z->cd_off>sz||z->cd_size>sz-z->cd_off)return -1;return 0;
+ if(z->cd_off>sz||z->cd_size>sz-z->cd_off)return -1;\n /* Close count/size geometry once here so every later entry lookup inherits it. */\n {uint32_t o=z->cd_off,used=0,i;uint8_t h[46];\n  for(i=0;i<z->count;i++){uint32_t need;uint16_t nl,xl,cl;\n   if(used+46u>z->cd_size||!rd(r,o,h,46)||u32(h)!=CEN)return -1;\n   nl=u16(h+28);xl=u16(h+30);cl=u16(h+32);need=46u+nl+xl+cl;\n   if(need>z->cd_size-used)return -1;o+=need;used+=need;\n  }\n  if(used!=z->cd_size)return -1;\n }\n return 0;
 }
 typedef struct {char name[NAME_MAX+1];uint32_t size,crc;} Entry;
 static int zip_entry(Reader*r,Zip*z,uint32_t wanted,Entry*out){
@@ -101,7 +102,7 @@ int xgo_arcade_validate(Reader*xacm,Reader*zip,const uint8_t expected_sha[32],ui
  if(!found)return XGO_UNSUPPORTED;if(zip_open(zip,&z,tail,tailcap))return XGO_VALIDATOR_ERROR;
  for(i=0;i<d.count;i++){int crc_hit=0,name_hit=0;if(rom_at(&m,d.first+i,&rr)||mstr(&m,rr.name,s,sizeof s))return XGO_VALIDATOR_ERROR;
   if(!rr.type||!rr.size||!rr.crc||(rr.type&(1u<<27)))continue;
-  for(j=0;j<z.count;j++){if(zip_entry(zip,&z,j,&e))return XGO_VALIDATOR_ERROR;if(!e.name[0]||ends_slash(e.name))continue;if(e.crc==rr.crc){crc_hit=1;if(e.size!=rr.size)return XGO_INCOMPATIBLE;break;}if(ieq(e.name,s))name_hit=1;}
+  for(j=0;j<z.count;j++){if(zip_entry(zip,&z,j,&e))return XGO_VALIDATOR_ERROR;if(!e.name[0]||ends_slash(e.name))continue;if(e.crc==rr.crc&&e.size==rr.size){crc_hit=1;break;}if(ieq(e.name,s))name_hit=1;}
   if(!crc_hit&&!name_hit)return XGO_INCOMPATIBLE;
  }
  return XGO_COMPAT;
