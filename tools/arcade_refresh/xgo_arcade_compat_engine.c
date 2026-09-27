@@ -25,7 +25,7 @@ typedef struct { uint32_t no,po,bo,first; uint16_t count; uint8_t family,res; } 
 static uint16_t u16(const uint8_t*p){return (uint16_t)(p[0]|((uint16_t)p[1]<<8));}
 static uint32_t u32(const uint8_t*p){return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 static int eq(const char*a,const char*b){while(*a&&*a==*b){a++;b++;}return *a==*b;}
-static char lower(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}
+static char lower(char c){return c>='A'&&c<='Z'?(char)(c+32):c;}\nstatic int ends_slash(const char*s){char last=0;while(*s)last=*s++;return last=='/';}
 static int ieq(const char*a,const char*b){while(*a&&*b&&lower(*a)==lower(*b)){a++;b++;}return !*a&&!*b;}
 static int rd(Reader*r,uint32_t o,void*d,uint32_t n){return r&&r->read_at&&r->read_at(r->ctx,o,d,n)==0;}
 
@@ -101,7 +101,7 @@ int xgo_arcade_validate(Reader*xacm,Reader*zip,const uint8_t expected_sha[32],ui
  if(!found)return XGO_UNSUPPORTED;if(zip_open(zip,&z,tail,tailcap))return XGO_VALIDATOR_ERROR;
  for(i=0;i<d.count;i++){int crc_hit=0,name_hit=0;if(rom_at(&m,d.first+i,&rr)||mstr(&m,rr.name,s,sizeof s))return XGO_VALIDATOR_ERROR;
   if(!rr.type||!rr.size||!rr.crc||(rr.type&(1u<<27)))continue;
-  for(j=0;j<z.count;j++){if(zip_entry(zip,&z,j,&e))return XGO_VALIDATOR_ERROR;if(e.crc==rr.crc){crc_hit=1;if(e.size!=rr.size)return XGO_INCOMPATIBLE;break;}if(ieq(e.name,s))name_hit=1;}
+  for(j=0;j<z.count;j++){if(zip_entry(zip,&z,j,&e))return XGO_VALIDATOR_ERROR;if(!e.name[0]||ends_slash(e.name))continue;if(e.crc==rr.crc){crc_hit=1;if(e.size!=rr.size)return XGO_INCOMPATIBLE;break;}if(ieq(e.name,s))name_hit=1;}
   if(!crc_hit&&!name_hit)return XGO_INCOMPATIBLE;
  }
  return XGO_COMPAT;
