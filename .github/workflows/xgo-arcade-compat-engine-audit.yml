@@ -1,0 +1,58 @@
+name: XGO Arcade compat engine audit
+
+on:
+  push:
+    branches: [ research-arcade-refresh-four-family ]
+    paths:
+      - 'tools/arcade_refresh/xgo_arcade_compat_engine.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'
+      - '.github/workflows/xgo-arcade-compat-engine-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host strict compile
+        run: |
+          set -euxo pipefail
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o
+      - name: Install exact Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape.tar.gz
+          sudo tar -xzf /tmp/codescape.tar.gz -C /opt
+      - name: Compile MIPS engine and veneers
+        run: |
+          set -euxo pipefail
+          t=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc=$t/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -Wall -Wextra -Werror'
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-engine.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s -o compat-bridges.o
+          $t/mips-mti-elf-objdump -dr compat-engine.o > compat-engine.dis
+          $t/mips-mti-elf-objdump -dr compat-bridges.o > compat-bridges.dis
+          $t/mips-mti-elf-nm -u compat-engine.o compat-bridges.o > undefined.txt
+          grep -q 'xgo_stock_fopen' compat-bridges.dis
+          grep -q '802b3524' compat-bridges.dis
+          grep -q '802b3698' compat-bridges.dis
+          grep -q '802b3804' compat-bridges.dis
+          grep -q '802b3f1c' compat-bridges.dis
+          grep -q '802b2f40' compat-bridges.dis
+          grep -qi '80c3' compat-bridges.dis
+          sha256sum compat-engine.o compat-bridges.o compat-engine.dis compat-bridges.dis > output.sha256
+          wc -c compat-engine.o compat-bridges.o | tee sizes.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-arcade-compat-engine-audit
+          path: |
+            compat-engine.o
+            compat-bridges.o
+            compat-engine.dis
+            compat-bridges.dis
+            undefined.txt
+            output.sha256
+            sizes.txt
+          retention-days: 30
