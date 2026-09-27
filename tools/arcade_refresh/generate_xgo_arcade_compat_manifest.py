@@ -17,7 +17,7 @@ TARGET_SYSTEMS = {
     "PGM": "IGS",
     "Neo Geo": "NEOGEO",
 }
-EXPECTED = {"CPS1": 154, "CPS2": 232, "IGS": 34, "NEOGEO": 258}
+
 
 def main():
     ap=argparse.ArgumentParser()
