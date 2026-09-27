@@ -11,7 +11,7 @@ REFS=[(0x0050,0x0054,"slot0"),(0x0628,0x062C,"slot0"),
 (0x0120,0x0124,"slot2"),(0x06DC,0x06E0,"slot2"),
 (0x02E8,0x02F8,"root")]
 SUFFIX_MID=0x0444
-CACHE_RANGE=range(0x0730,0x073C,4)
+CACHE_HI=0x0730\nCACHE_STORE=0x0734\nCACHE_DELAY=0x0738
 def sha(b): return hashlib.sha256(b).hexdigest()
 def rd32(b,o): return struct.unpack_from("<I",b,o)[0]
 def wr32(b,o,v): struct.pack_into("<I",b,o,v&0xffffffff)
@@ -24,7 +24,7 @@ def patch_pair(b,ho,lo,target):
 def emit(parent:bytes,fam,out:pathlib.Path):
     b=bytearray(parent)
     assert b[SUFFIX_MID]==ord("g"); b[SUFFIX_MID]=ord("f")
-    for o in CACHE_RANGE: wr32(b,o,0)
+    # Preserve the exact parent cache-invalidation instruction shape, but\n    # retarget it to the BIN-closed visible-browser count slot for this family.\n    ch=rd32(b,CACHE_HI); cs=rd32(b,CACHE_STORE); cd=rd32(b,CACHE_DELAY)\n    assert ch>>26==0x0f\n    base=(ch>>16)&31\n    assert cs>>26==0x2b and ((cs>>21)&31)==base and ((cs>>16)&31)==0\n    assert cd==0\n    wr32(b,CACHE_HI,(ch&0xffff0000)|hi16(fam.count_cache))\n    wr32(b,CACHE_STORE,(cs&0xffff0000)|lo16(fam.count_cache))
     strings={"slot0":fam.slot0,"slot1":fam.slot1,"slot2":fam.slot2,
              "root":f"/mnt/sda1/ARCADE/{fam.key}/.refresh-set"}
     offsets={}
