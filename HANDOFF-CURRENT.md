@@ -603,3 +603,25 @@ Cadillacs and Dinosaurs.zfb -> dino.zip -> stock CPS1/FBA -> PLAY
 Exhaust repository/BIN/source comparison before firmware mutation. Any later candidate must follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`: source/reconstruction first, deterministic fail-closed builder, exact parent hashes, patch-site/range verification, LCFG verification, complete byte-diff manifest, then one narrow HW question.
 
 Immediate offline task: recover the exact 1941 ROM contract from stock XGO `bisrv.asd` as far as BIN evidence permits and compare it with the known-good CPS1 launch contract. Do not ask for another hardware test until this is closed or genuinely exhausted.
+
+
+## Active Arcade checkpoint — 2026-09-27 — Test05A artwork HW PASS
+
+This section supersedes the older Test04 statements above where they conflict. Full evidence is in `findings/arcade-test05a-artwork-hardware-result.md`.
+
+Current hardware facts:
+- Test04-generated CPS1 1941 launches and plays when `/ARCADE/bin/1941.zip` satisfies the stock XGO 1941 ROM contract. The earlier launch failure was ROM-set compatibility, not ZFB/launcher architecture.
+- Test05A changes only the disposable JPEG/RGB565 scratch paths to the shared Arcade root:
+  - `/mnt/sda1/ARCADE/.xgo.jpg`
+  - `/mnt/sda1/ARCADE/.xgo.rgb565`
+- Test05A materializer SHA-256: `2d6503ae20937bd9d525d68a18ee845d942667b582e71e2371450a83d8d29ad2`.
+- After forcing ZFB regeneration, hardware produced real 1941 artwork and the game remained playable. **Artwork repair = HW PASS.**
+- A Refresh Failed result during that sequence was associated with a stale incompatible import ZIP differing from the known-good runtime ZIP. After synchronizing the compatible ZIP into the import folder, Refresh returned **No New Games**, artwork persisted, and 1941 remained playable.
+- During repeated 2026-09-27 Refresh/list-entry/launch operations, the original Test04 immediate CPS1 hard freeze was **not reproduced**. Do not patch the list-7 count cache solely for that unreproduced symptom. Preserve the BIN-closed cache knowledge for use only if a reproducible stale-list failure returns.
+
+Process correction:
+- Do not reopen artwork archaeology.
+- Do not spend another pre-hardware cycle attempting to prove unrelated uncertainties.
+- Preserve the Test05A shared-scratch fix.
+- Proceed to the intended four-family Refresh + compatibility-filter implementation using the already recovered XACM/ZIP architecture.
+- Hardware tests may answer remaining controlled questions; the next candidate need only be bounded and interpretable, not preceded by exhaustive closure of every theoretical uncertainty.
