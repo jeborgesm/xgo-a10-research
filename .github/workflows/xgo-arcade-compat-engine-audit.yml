@@ -5,7 +5,7 @@ on:
     branches: [ research-arcade-refresh-four-family ]
     paths:
       - 'tools/arcade_refresh/xgo_arcade_compat_engine.c'
-      - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'\n      - 'tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c'
       - '.github/workflows/xgo-arcade-compat-engine-audit.yml'
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ jobs:
       - name: Host strict compile
         run: |
           set -euxo pipefail
-          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o\n          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o reader-host.o
       - name: Install exact Codescape toolchain
         run: |
           set -euxo pipefail
@@ -31,9 +31,9 @@ jobs:
           cc=$t/mips-mti-elf-gcc
           flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -Wall -Wextra -Werror'
           $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-engine.o
-          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s -o compat-bridges.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s -o compat-bridges.o\n          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o compat-reader.o
           $t/mips-mti-elf-objdump -dr compat-engine.o > compat-engine.dis
-          $t/mips-mti-elf-objdump -dr compat-bridges.o > compat-bridges.dis
+          $t/mips-mti-elf-objdump -dr compat-bridges.o > compat-bridges.dis\n          $t/mips-mti-elf-objdump -dr compat-reader.o > compat-reader.dis
           $t/mips-mti-elf-nm -u compat-engine.o compat-bridges.o > undefined.txt
           grep -q 'xgo_stock_fopen' compat-bridges.dis
           grep -q '802b3524' compat-bridges.dis
@@ -42,8 +42,8 @@ jobs:
           grep -q '802b3f1c' compat-bridges.dis
           grep -q '802b2f40' compat-bridges.dis
           grep -qi '80c3' compat-bridges.dis
-          sha256sum compat-engine.o compat-bridges.o compat-engine.dis compat-bridges.dis > output.sha256
-          wc -c compat-engine.o compat-bridges.o | tee sizes.txt
+          sha256sum compat-engine.o compat-reader.o compat-bridges.o compat-engine.dis compat-reader.dis compat-bridges.dis > output.sha256
+          wc -c compat-engine.o compat-reader.o compat-bridges.o | tee sizes.txt
       - uses: actions/upload-artifact@v4
         with:
           name: xgo-arcade-compat-engine-audit
