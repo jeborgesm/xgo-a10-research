@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Compile verbose XGO Arcade compatibility JSON into a compact binary manifest.
 
-Format XACM v1 is intentionally simple and deterministic:
+XACM v1 contains the driver population discovered from the source firmware.
+There is deliberately no expected/max game count: discovered counts are
+observations written into the manifest, not limits on Refresh import scanning.
+
+Format:
  header: magic[4], version u16, family_count u16, driver_count u32,
          rom_count u32, string_bytes u32, firmware_sha256[32]
- family table: 4 x {name_off u32, first_driver u32, driver_count u32}
+ family table: N x {name_off u32, first_driver u32, driver_count u32}
  driver table: {name_off,parent_off,board_off,first_rom u32; rom_count u16;
                 family u8; reserved u8} = 20 bytes
  ROM table: {name_off,size,crc,type u32} = 16 bytes
@@ -22,10 +26,14 @@ def main():
     fw=bytes.fromhex(m["firmware_sha256"])
     if len(fw)!=32: raise SystemExit("bad firmware SHA")
 
+    unknown=sorted({d["family"] for d in m["drivers"]}-set(FAMILIES))
+    if unknown: raise SystemExit(f"unsupported family labels: {unknown}")
     drivers=sorted(m["drivers"],key=lambda d:(FAMILIES.index(d["family"]),d["name"]))
-    expected={"CPS1":154,"CPS2":232,"IGS":34,"NEOGEO":258}
+    if not drivers: raise SystemExit("manifest contains no target Arcade drivers")
+    names=[(d["family"],d["name"]) for d in drivers]
+    if len(names)!=len(set(names)): raise SystemExit("duplicate family+driver identity")
     got={f:sum(d["family"]==f for d in drivers) for f in FAMILIES}
-    if got!=expected: raise SystemExit(f"population mismatch {got}")
+    if any(v==0 for v in got.values()): raise SystemExit(f"missing target family: {got}")
 
     pool=bytearray(b"\0"); offsets={"":0}
     def soff(s):
@@ -35,13 +43,13 @@ def main():
         except UnicodeEncodeError: raise SystemExit(f"non-ASCII manifest string {s!r}")
         offsets[s]=len(pool); pool.extend(raw); return offsets[s]
 
-    family_rows=[]; driver_rows=[]; rom_rows=[]
-    pos=0
+    family_rows=[]; driver_rows=[]; rom_rows=[]; pos=0
     for fi,f in enumerate(FAMILIES):
         ds=[d for d in drivers if d["family"]==f]
         family_rows.append((soff(f),pos,len(ds)))
         for d in ds:
             first=len(rom_rows)
+            if len(d["roms"])>0xffff: raise SystemExit(f"too many ROM descriptors for {f}/{d['name']}")
             for r in d["roms"]:
                 rom_rows.append((soff(r["name"]),r["size"],r["crc"],r["type"]))
             driver_rows.append((soff(d["name"]),soff(d.get("parent")),
@@ -55,7 +63,8 @@ def main():
     rom=b"".join(struct.pack("<IIII",*x) for x in rom_rows)
     raw=head+fam+drv+rom+pool
     open(a.output,"wb").write(raw)
-    print(f"drivers={len(driver_rows)} roms={len(rom_rows)} strings={len(pool)}")
-    print(f"bytes={len(raw)} sha256={hashlib.sha256(raw).hexdigest()}")
+    print("discovered "+" ".join(f"{f}={got[f]}" for f in FAMILIES)+f" total={len(drivers)}")
+    print(f"roms={len(rom_rows)} strings={len(pool)} bytes={len(raw)}")
+    print(f"sha256={hashlib.sha256(raw).hexdigest()}")
 
 if __name__=="__main__":main()
