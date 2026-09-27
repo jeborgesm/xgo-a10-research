@@ -41,7 +41,9 @@ def main():
             if len(r)!=44: raise ValueError("ROM table outside firmware")
             name=r[:32].split(b"\0",1)[0].decode("ascii")
             size,crc,typ=struct.unpack_from("<III",r,32)
-            if not name: raise ValueError(f"empty ROM record {addr:#x}+{i}")
+            # Empty descriptor slots are legitimate in stock FB Alpha tables.
+            if not name and (size or crc or typ):
+                raise ValueError(f"nameless non-empty ROM record {addr:#x}+{i}")
             out.append({"name":name,"size":size,"crc":crc,"type":typ,
                         "optional":bool(typ & (1<<27))})
         return out
