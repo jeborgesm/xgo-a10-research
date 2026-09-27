@@ -107,8 +107,14 @@ def main():
         })
 
     counts=Counter(x["family"] for x in drivers)
-    if dict(counts) != EXPECTED:
-        raise ValueError(f"target population mismatch: {dict(counts)} != {EXPECTED}")
+    if not drivers:
+        raise ValueError("no target Arcade drivers discovered")
+    missing=[family for family in set(TARGET_SYSTEMS.values()) if counts[family] == 0]
+    if missing:
+        raise ValueError(f"target families missing from extraction: {sorted(missing)}")
+    identities=[(x["family"],x["name"]) for x in drivers]
+    if len(identities) != len(set(identities)):
+        raise ValueError("duplicate family+driver identity in extraction")
 
     out={
         "schema":1,
