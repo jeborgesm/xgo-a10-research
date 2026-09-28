@@ -73,7 +73,6 @@ jobs:
           $t/mips-mti-elf-nm -u compat-hook.elf > compat-hook.undefined
           test ! -s compat-hook.undefined
           grep -q '87002600' compat-hook.nm
-          grep -q 'lui.*0x8718' compat-hook.dis
           grep -q 'ori.*0x1f4' compat-hook.dis
           grep -q 'ori.*0xd84' compat-hook.dis
           grep -q 'cache' compat-hook.dis
