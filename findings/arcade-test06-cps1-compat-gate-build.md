@@ -89,3 +89,17 @@ Then run Refresh once. Expected behavior:
 - Refresh completes without failure and 1941 remains playable.
 
 This probe deliberately reuses the exact Test06 gate that just HW-passed the incompatible rejection path. A successful ZFB regeneration is the observable proof that the compatible verdict passed through the gate into the protected materializer path.
+
+
+## Compatible pass-through HW result — PARTIAL PASS / artwork regression
+
+HW observation: user preserved the previous known-good generated wrapper as `1941good` and allowed Refresh to create a new `1941` wrapper. Refresh reported **Games Added** and created the new file, proving the COMPATIBLE verdict passed the publication gate and resumed materialization. However the newly generated entry had no artwork.
+
+Direct comparison of the two HW files supplied by the user:
+- new Test06 `1941.zfb`: 59,918 bytes, SHA256 `c6e2256179b236330aba871b9372995f7aaa1da065efde894c21c2f5a1bb5387`; its entire 59,904-byte RGB565 preview is zero (0 nonzero bytes; one unique byte value).
+- previous working `1941good` wrapper: 59,918 bytes, SHA256 `55598ecb73d3abfa186812d7792b68efe6299c445a3609ad7fe80136468a9f44`; preview has 26,845 nonzero bytes and 254 distinct byte values.
+- both trailers are identical: four zero bytes + `1941.zip\0\0`.
+
+Therefore the ZFB container/trailer contract is intact; Test06 specifically regressed the JPEG/RGB565 artwork path after the compatibility hook was added. The compatibility acceptance/publication boundary itself is HW-proven. Do not promote Test06 as cumulative baseline until this artwork regression is corrected.
+
+Most likely integration boundary to audit first: Test06 inserted executable hook code at materializer +0x2600. Test05A artwork used a large JPEG decoder tail beginning at +0x100000, but the materializer also contains literal/data state in its lower region. Verify that +0x2600..+0x28ff was truly disposable at runtime and that the compatibility loader/hook does not corrupt artwork scratch/path state or cache ranges. Do not reopen the already HW-proven shared scratch-path diagnosis itself without new evidence.
