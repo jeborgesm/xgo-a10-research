@@ -65,7 +65,7 @@ jobs:
           test -n "$endhex"
           test $((16#$endhex)) -lt $((16#87200000))
           # Build the CPS1 materializer-resident loader/hook at the proven zero region.
-          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_loader.c -o compat-hook-loader.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_loader.c -o compat-hook-loader.o 2> hook-compile.log
           $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_hook.s -o compat-hook-entry.o
           $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_materializer_hook.ld -Map compat-hook.map -o compat-hook.elf compat-hook-entry.o compat-hook-loader.o compat-bridges.o
           $t/mips-mti-elf-objcopy -O binary compat-hook.elf compat-hook.bin
@@ -103,4 +103,5 @@ jobs:
             output.sha256
             sizes.txt
             host-compile.log
+            hook-compile.log
           retention-days: 30
