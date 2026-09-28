@@ -625,3 +625,36 @@ Process correction:
 - Preserve the Test05A shared-scratch fix.
 - Proceed to the intended four-family Refresh + compatibility-filter implementation using the already recovered XACM/ZIP architecture.
 - Hardware tests may answer remaining controlled questions; the next candidate need only be bounded and interpretable, not preceded by exhaustive closure of every theoretical uncertainty.
+
+
+## Active Arcade checkpoint — 2026-09-27 — Test05B-COMPAT hardware candidate
+
+Test05A artwork remains HW PASS. The old Test04 freeze remains non-reproduced;
+do not add a browser-cache patch.
+
+The first CPS1 on-device compatibility publication gate is now constructed and
+offline-audited. Final Codescape workflow run 36376769603 passed.
+
+Candidate package:
+- xgo-arcade-test05B-cps1-compat-gate.zip
+- SHA-256 503e07e2f2cb2857ee584fd76605ce910ac2cb348d58f53232130235177e748d
+
+Key payloads:
+- CPS1 refresh.xgc SHA-256 6f4e4fef212e6881a6a428349a2af34a430f429d3b3e7f08da52b03797299d21
+- compat-safe.xgc size 3929 SHA-256 6cf8d8bab0a26a582111336b005c057387a0ab6a6e03ec3d0eff07b37deafc8a
+- .xgo-compat size 237921 SHA-256 86a798ab9e0c8042a84b99a37fcfacd8708706d0010e0459726420d92ab7c0f5
+
+Important hook correction: source path is live after +0x04CC, but the stem helper
+is called at +0x0524. The implemented compatibility hook is therefore at
++0x052C, not +0x04CC. Compatible flow replays the two overwritten loads and
+continues +0x0534. INCOMPATIBLE/UNSUPPORTED returns to the next-directory-entry
+path +0x01F4 before publication. Validator error uses existing failure cleanup
++0x0D84.
+
+First HW probe uses a copy of known-incompatible 1941(1).zip renamed
+ARCADE/CPS1/import/1941j.zip so the existing proven 1941 row does not obscure
+the non-publication result. Expected: responsive, no 1941j row/ZFB/runtime ZIP,
+existing 1941 unchanged. Quarantine rename is still deferred.
+
+Full construction/failure/audit record:
+findings/arcade-test05b-cps1-compatibility-gate-candidate.md
