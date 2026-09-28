@@ -103,3 +103,5 @@ jobs:
             sizes.txt
             host-compile.log
           retention-days: 30
+
+# rebuild after RGB565 boundary cleanup
