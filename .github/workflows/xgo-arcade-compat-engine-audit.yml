@@ -1,4 +1,5 @@
-name: XGO Arcade compat engine audit\n# Test07: validate Stage2 release before JPEG decoder
+name: XGO Arcade compat engine audit
+# Test07 artwork-safe rebuild
 
 on:
   push:
@@ -101,5 +102,5 @@ jobs:
             undefined.txt
             output.sha256
             sizes.txt
-            host-compile.log\n            mips-build.log
+            host-compile.log
           retention-days: 30
