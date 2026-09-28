@@ -4,7 +4,7 @@ on:
   push:
     branches: [ research-arcade-refresh-four-family ]
     paths:
-      - 'tools/arcade_refresh/xgo_arcade_compat_engine.c'
+      - 'tools/arcade_refresh/**'
       - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'
       - 'tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c'
       - 'tools/arcade_refresh/xgo_arcade_compat_entry.c'
