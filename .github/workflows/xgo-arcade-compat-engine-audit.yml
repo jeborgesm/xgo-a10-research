@@ -101,5 +101,5 @@ jobs:
             undefined.txt
             output.sha256
             sizes.txt
-            host-compile.log
+            host-compile.log\n            mips-build.log
           retention-days: 30
