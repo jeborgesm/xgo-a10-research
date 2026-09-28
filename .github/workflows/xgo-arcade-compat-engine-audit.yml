@@ -23,7 +23,8 @@ jobs:
           set -euxo pipefail
           gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o
           gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o reader-host.o
-          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_entry.c -o entry-host.o
+          # Device entry intentionally depends on XGO Reader symbols; compile it with
+          # the same freestanding flags in the MIPS step below rather than as a host TU.
       - name: Install exact Codescape toolchain
         run: |
           set -euxo pipefail
