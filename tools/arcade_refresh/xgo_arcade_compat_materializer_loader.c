@@ -7,7 +7,7 @@ extern int xgo_stock_fs_close(int);
 typedef union { struct { unsigned char pad[0x38]; uint32_t size; } s; unsigned char raw[160]; } xgo_stat_t;
 static uint32_t loaded_cookie=0x58474f30u;
 static const char stage2_path[]="/mnt/sda1/ARCADE/compat-safe.xgc";
-enum { STAGE2_SIZE=3929, STAGE2_BASE=0x87180000u };
+enum { STAGE2_SIZE=3929, STAGE2_BASE=0x87180000u, JPEG_WORKSPACE=0x871821dcu };
 
 static void zero(void*p,uint32_t n){uint8_t*q=(uint8_t*)p;while(n--)*q++=0;}
 static void cache_stage2(void){
