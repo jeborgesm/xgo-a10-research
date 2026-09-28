@@ -658,3 +658,8 @@ existing 1941 unchanged. Quarantine rename is still deferred.
 
 Full construction/failure/audit record:
 findings/arcade-test05b-cps1-compatibility-gate-candidate.md
+
+
+## 2026-09-28 — Test06 ready for HW
+
+CPS1 compatibility publication gate is now built and offline-audited. Codescape run 36378065831 PASS. Test06 package SHA256 `4bfc148c866a5526ee82a6cca08a641573cc9bfbd8c1256d7e361c35495fac7f`. It preserves HW-proven Test05A artwork behavior and does not modify `bisrv.asd`. First HW probe: place known-incompatible modern 1941 archive as `/ARCADE/CPS1/import/1941j.zip`; Refresh should report No New Games and must not publish 1941j. Existing working 1941 should remain intact/playable. See `findings/arcade-test06-cps1-compat-gate-build.md`.
