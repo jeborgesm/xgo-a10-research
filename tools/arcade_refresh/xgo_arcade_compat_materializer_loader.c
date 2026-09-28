@@ -18,7 +18,11 @@ static void cache_stage2(void){
  for(p=(uintptr_t)STAGE2_BASE&~(uintptr_t)31u;p<end;p+=32u)__asm__ volatile("cache 0,0(%0)"::"r"(p):"memory");
  __asm__ volatile("sync":::"memory");
 }
-void xgo_compat_release_loaded(void){\n zero((void*)(uintptr_t)STAGE2_BASE,STAGE2_CLEAR_SIZE);\n loaded_cookie=0x58474f30u;\n}\nint xgo_compat_ensure_loaded(void){
+void xgo_compat_release_loaded(void){
+ zero((void*)(uintptr_t)STAGE2_BASE,STAGE2_CLEAR_SIZE);
+ loaded_cookie=0x58474f30u;
+}
+int xgo_compat_ensure_loaded(void){
  xgo_stat_t st;int fd,n;
  if(loaded_cookie==0x58474f31u)return 0;
  fd=xgo_stock_fs_open(stage2_path,0,0);if(fd<0)return -1;
