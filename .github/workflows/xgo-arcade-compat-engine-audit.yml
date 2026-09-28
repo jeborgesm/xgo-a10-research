@@ -59,10 +59,10 @@ jobs:
           grep -q '802ac4d4' compat-stage2.dis
           grep -Eq 'lw[[:space:]].*48\(sp\)' compat-stage2.dis
           grep -Eq 'sw[[:space:]].*16\(sp\)' compat-stage2.dis
-          grep -q '87180000' compat-stage2.nm
+          grep -q '87300000' compat-stage2.nm
           endhex=$($t/mips-mti-elf-nm -n compat-stage2.elf | awk '$3=="__stage2_end"{print $1}')
           test -n "$endhex"
-          test $((16#$endhex)) -lt $((16#87200000))
+          test $((16#$endhex)) -lt $((16#87400000))
           # Build the CPS1 materializer-resident loader/hook at the proven zero region.
           $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_loader.c -o compat-hook-loader.o
           $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_hook.s -o compat-hook-entry.o
@@ -73,7 +73,7 @@ jobs:
           $t/mips-mti-elf-nm -u compat-hook.elf > compat-hook.undefined
           test ! -s compat-hook.undefined
           grep -q '87002600' compat-hook.nm
-          grep -q 'lui.*0x8718' compat-hook.dis
+          grep -q 'lui.*0x8730' compat-hook.dis
           grep -q 'ori.*0x1f4' compat-hook.dis
           grep -q 'ori.*0xd84' compat-hook.dis
           grep -q 'cache' compat-hook.dis
