@@ -103,6 +103,9 @@ restore_context:
  nop
 
 compatible:
+ lw $t0,104($sp)
+ lw $t1,0x7c($t0)
+ sw $t1,16($sp)
  lui $k0,0x8700
  ori $k0,$k0,0x0534
  b restore_context
