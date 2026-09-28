@@ -73,7 +73,17 @@ static int zip_open(Reader*r,Zip*z,uint8_t*tail,uint32_t tailcap){
  if(u16(e+4)||u16(e+6)||u16(e+8)!=u16(e+10))return -1;
  if(u16(e+10)==0xffff||u32(e+12)==0xffffffffu||u32(e+16)==0xffffffffu)return -1;
  z->count=u16(e+10);z->cd_size=u32(e+12);z->cd_off=u32(e+16);
- if(z->cd_off>sz||z->cd_size>sz-z->cd_off)return -1;\n /* Close count/size geometry once here so every later entry lookup inherits it. */\n {uint32_t o=z->cd_off,used=0,i;uint8_t h[46];\n  for(i=0;i<z->count;i++){uint32_t need;uint16_t nl,xl,cl;\n   if(used+46u>z->cd_size||!rd(r,o,h,46)||u32(h)!=CEN)return -1;\n   nl=u16(h+28);xl=u16(h+30);cl=u16(h+32);need=46u+nl+xl+cl;\n   if(need>z->cd_size-used)return -1;o+=need;used+=need;\n  }\n  if(used!=z->cd_size)return -1;\n }\n return 0;
+ if(z->cd_off>sz||z->cd_size>sz-z->cd_off)return -1;
+ /* Close count/size geometry once here so every later entry lookup inherits it. */
+ {uint32_t o=z->cd_off,used=0,i;uint8_t h[46];
+  for(i=0;i<z->count;i++){uint32_t need;uint16_t nl,xl,cl;
+   if(used+46u>z->cd_size||!rd(r,o,h,46)||u32(h)!=CEN)return -1;
+   nl=u16(h+28);xl=u16(h+30);cl=u16(h+32);need=46u+nl+xl+cl;
+   if(need>z->cd_size-used)return -1;o+=need;used+=need;
+  }
+  if(used!=z->cd_size)return -1;
+ }
+ return 0;
 }
 typedef struct {char name[NAME_MAX+1];uint32_t size,crc;} Entry;
 static int zip_entry(Reader*r,Zip*z,uint32_t wanted,Entry*out){
