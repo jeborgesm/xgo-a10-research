@@ -1,4 +1,4 @@
-name: XGO Arcade compat engine audit
+name: XGO Arcade compat engine audit\n# Test07: validate Stage2 release before JPEG decoder
 
 on:
   push:
