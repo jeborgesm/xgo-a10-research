@@ -19,10 +19,6 @@ xgo_compat_materializer_hook:
  lui $t9,0x8718
  jalr $t9
  nop
- sw $v0,16($sp)
- jal xgo_compat_release_loaded
- nop
- lw $v0,16($sp)
  beq $v0,$zero,compatible
  nop
  addiu $t0,$zero,1
