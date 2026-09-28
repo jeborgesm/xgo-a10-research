@@ -18,10 +18,6 @@ static void cache_stage2(void){
  for(p=(uintptr_t)STAGE2_BASE&~(uintptr_t)31u;p<end;p+=32u)__asm__ volatile("cache 0,0(%0)"::"r"(p):"memory");
  __asm__ volatile("sync":::"memory");
 }
-void xgo_compat_release_loaded(void){
- zero((void*)(uintptr_t)STAGE2_BASE,STAGE2_CLEAR_SIZE);
- loaded_cookie=0x58474f30u;
-}
 int xgo_compat_ensure_loaded(void){
  xgo_stat_t st;int fd,n;
  if(loaded_cookie==0x58474f31u)return 0;
