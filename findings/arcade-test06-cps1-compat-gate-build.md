@@ -73,3 +73,19 @@ non-reproduced Test04 freeze/cache issue.
 HW observation: with the known-incompatible archive installed as `/ARCADE/CPS1/import/1941j.zip`, one Refresh returned **No New Games** with no issues observed.
 
 This is the first HW proof that the CPS1 compatibility gate can reject a non-publishable import without destabilizing Refresh. The rejection/publication-boundary half of Test06 is therefore HW PASS. No cache/freeze regression was observed.
+
+
+## Complementary HW probe — compatible pass-through (same Test06 binary)
+
+No new binary is required: changing code between rejection and acceptance would weaken the A/B test.
+
+Use the already HW-proven compatible `1941.zip` as both import and runtime ZIP. Remove only the generated CPS1 `1941.zfb` so the materializer must revisit 1941 rather than taking the already-published fast path. Leave the existing catalog entry intact.
+
+Then run Refresh once. Expected behavior:
+- validator returns COMPATIBLE and execution resumes at the original Test05A materialization path;
+- 1941 ZFB is regenerated with real artwork;
+- runtime ZIP convergence succeeds because import/runtime are byte-identical;
+- existing catalog entry is not duplicated;
+- Refresh completes without failure and 1941 remains playable.
+
+This probe deliberately reuses the exact Test06 gate that just HW-passed the incompatible rejection path. A successful ZFB regeneration is the observable proof that the compatible verdict passed through the gate into the protected materializer path.
