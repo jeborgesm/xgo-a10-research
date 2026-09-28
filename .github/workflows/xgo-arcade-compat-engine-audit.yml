@@ -105,3 +105,5 @@ jobs:
             host-compile.log
             hook-compile.log
           retention-days: 30
+
+# rebuild after Test07 source repair
