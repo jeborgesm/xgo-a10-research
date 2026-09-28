@@ -73,6 +73,9 @@ jobs:
           $t/mips-mti-elf-nm -u compat-hook.elf > compat-hook.undefined
           test ! -s compat-hook.undefined
           grep -q '87002600' compat-hook.nm
+          grep -q 'lui.*0x8718' compat-hook.dis
+          grep -q 'ori.*0x1f4' compat-hook.dis
+          grep -q 'ori.*0xd84' compat-hook.dis
           grep -q 'cache' compat-hook.dis
           hookend=$($t/mips-mti-elf-nm -n compat-hook.elf | awk '$3=="__hook_end"{print $1}')
           test -n "$hookend"
@@ -100,4 +103,3 @@ jobs:
             sizes.txt
             host-compile.log
           retention-days: 30
-# rebuild Test08 non-clearing hook
