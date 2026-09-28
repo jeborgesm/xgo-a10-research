@@ -16,7 +16,7 @@ xgo_compat_materializer_hook:
  ori $a1,$a1,0x0100
  lui $a2,0x8760
  ori $a2,$a2,0x0500
- lui $t9,0x8718
+ lui $t9,0x8730
  jalr $t9
  nop
  beq $v0,$zero,compatible
