@@ -67,7 +67,8 @@ static int zip_open(Reader*r,Zip*z,uint8_t*tail,uint32_t tailcap){
  uint32_t sz,n,start,p;const uint8_t *e;
  if(!r||!z||!tail||tailcap<ZIP_TAIL_MAX||r->size(r->ctx,&sz))return -1;
  n=sz<ZIP_TAIL_MAX?sz:ZIP_TAIL_MAX;start=sz-n;if(!rd(r,start,tail,n))return -1;
- if(n<22)return -1;\n p=n-22;
+ if(n<22)return -1;
+ p=n-22;
  for(;;){if(u32(tail+p)==EOCD)break;if(!p)return -1;p--;}
  e=tail+p;if(p+22u>n||p+22u+u16(e+20)!=n)return -1;
  if(u16(e+4)||u16(e+6)||u16(e+8)!=u16(e+10))return -1;
@@ -79,7 +80,8 @@ static int zip_open(Reader*r,Zip*z,uint8_t*tail,uint32_t tailcap){
   for(i=0;i<z->count;i++){uint32_t need;uint16_t nl,xl,cl;
    if(used+46u>z->cd_size||!rd(r,o,h,46)||u32(h)!=CEN)return -1;
    nl=u16(h+28);xl=u16(h+30);cl=u16(h+32);need=46u+nl+xl+cl;
-   if(need>z->cd_size-used)return -1;\n   o+=need;used+=need;
+   if(need>z->cd_size-used)return -1;
+   o+=need;used+=need;
   }
   if(used!=z->cd_size)return -1;
  }
@@ -106,10 +108,12 @@ static int zip_entry(Reader*r,Zip*z,uint32_t wanted,Entry*out){
 int xgo_arcade_validate(Reader*xacm,Reader*zip,const uint8_t expected_sha[32],uint8_t family,const char*stem,uint8_t*tail,uint32_t tailcap){
  Manifest m;Driver d;Rom rr;Zip z;Entry e;char s[NAME_MAX+1];uint8_t fb[12];uint32_t first,count,i,j;int found=0;
  if(family>=4||!stem||manifest_open(xacm,expected_sha,&m))return XGO_VALIDATOR_ERROR;
- if(!rd(xacm,m.fam_off+family*12u,fb,12))return XGO_VALIDATOR_ERROR;\n first=u32(fb+4);count=u32(fb+8);
+ if(!rd(xacm,m.fam_off+family*12u,fb,12))return XGO_VALIDATOR_ERROR;
+ first=u32(fb+4);count=u32(fb+8);
  if(first>m.ndrv||count>m.ndrv-first)return XGO_VALIDATOR_ERROR;
  for(i=0;i<count;i++){if(driver_at(&m,first+i,&d)||d.family!=family||d.res||mstr(&m,d.no,s,sizeof s))return XGO_VALIDATOR_ERROR;if(eq(s,stem)){found=1;break;}}
- if(!found)return XGO_UNSUPPORTED;\n if(zip_open(zip,&z,tail,tailcap))return XGO_VALIDATOR_ERROR;
+ if(!found)return XGO_UNSUPPORTED;
+ if(zip_open(zip,&z,tail,tailcap))return XGO_VALIDATOR_ERROR;
  for(i=0;i<d.count;i++){int crc_hit=0,name_hit=0;if(rom_at(&m,d.first+i,&rr)||mstr(&m,rr.name,s,sizeof s))return XGO_VALIDATOR_ERROR;
   if(!rr.type||!rr.size||!rr.crc||(rr.type&(1u<<27)))continue;
   for(j=0;j<z.count;j++){if(zip_entry(zip,&z,j,&e))return XGO_VALIDATOR_ERROR;if(!e.name[0]||ends_slash(e.name))continue;if(e.crc==rr.crc&&e.size==rr.size){crc_hit=1;break;}if(ieq(e.name,s))name_hit=1;}
