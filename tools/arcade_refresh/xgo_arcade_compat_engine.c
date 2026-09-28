@@ -64,7 +64,7 @@ static int rom_at(Manifest*m,uint32_t i,Rom*x){
  * a potentially large central directory. */
 typedef struct { uint32_t cd_off,cd_size,count; } Zip;
 static int zip_open(Reader*r,Zip*z,uint8_t*tail,uint32_t tailcap){
- uint32_t sz,n,start,p;uint8_t *e;
+ uint32_t sz,n,start,p;const uint8_t *e;
  if(!r||!z||!tail||tailcap<ZIP_TAIL_MAX||r->size(r->ctx,&sz))return -1;
  n=sz<ZIP_TAIL_MAX?sz:ZIP_TAIL_MAX;start=sz-n;if(!rd(r,start,tail,n))return -1;
  if(n<22)return -1;p=n-22;
@@ -89,9 +89,9 @@ typedef struct {char name[NAME_MAX+1];uint32_t size,crc;} Entry;
 static int zip_entry(Reader*r,Zip*z,uint32_t wanted,Entry*out){
  uint32_t o=z->cd_off,i,used=0;uint8_t h[46];
  for(i=0;i<=wanted;i++){
-  uint16_t flags,nl,xl,cl,ds;uint32_t cs,us,lo,need;
+  uint16_t flags,nl,xl,cl,ds;uint32_t us,lo,need;
   if(used+46u>z->cd_size||!rd(r,o,h,46)||u32(h)!=CEN)return -1;
-  flags=u16(h+8);out->crc=u32(h+16);cs=u32(h+20);us=u32(h+24);nl=u16(h+28);xl=u16(h+30);cl=u16(h+32);ds=u16(h+34);lo=u32(h+42);
+  flags=u16(h+8);out->crc=u32(h+16);us=u32(h+24);nl=u16(h+28);xl=u16(h+30);cl=u16(h+32);ds=u16(h+34);lo=u32(h+42);
   if((flags&1)||cs==0xffffffffu||us==0xffffffffu||lo==0xffffffffu||ds==0xffff||ds)return -1;
   need=46u+nl+xl+cl;if(need>z->cd_size-used||nl>NAME_MAX)return -1;
   if(i==wanted){uint32_t j,base=0;if(!rd(r,o+46,out->name,nl))return -1;out->name[nl]=0;
