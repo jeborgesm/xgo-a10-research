@@ -40,3 +40,8 @@ Corrected distribution contains only:
 
 Corrected package: `xgo-arcade-test09-cps1-full-context-CLEAN.zip`
 SHA256: `2cb367ceda05afcae36a6bae923001343c700a77430e2cb817d36678d8db23ae`.
+
+
+## HW result
+
+FAIL for artwork: Refresh reported Games Updated, but the newly generated entry again had no image. This falsifies simple live-register/HI/LO clobber as the cause. Do not iterate another context-preservation hook at +0x0530. See `arcade-test05a-vs-compat-byte-diff.md` for the byte-for-byte closure and preflight-isolation direction.
