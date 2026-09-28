@@ -21,7 +21,7 @@ jobs:
       - name: Host strict compile
         run: |
           set -euxo pipefail
-          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o 2>&1 | tee host-compile.log
           # xgo_reader is device-specific (recovered ALi VFS ABI) and is compiled
           # under the exact MIPS freestanding flags below, not as host libc code.
           # Device entry intentionally depends on XGO Reader symbols; compile it with
@@ -63,6 +63,7 @@ jobs:
           sha256sum compat-safe.xgc compat-stage2.elf compat-stage2.dis compat-stage2.map > output.sha256
           wc -c compat-safe.xgc compat-stage2.elf | tee sizes.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: xgo-arcade-compat-stage2-audit
           path: |
@@ -74,4 +75,5 @@ jobs:
             undefined.txt
             output.sha256
             sizes.txt
+            host-compile.log
           retention-days: 30
