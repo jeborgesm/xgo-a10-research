@@ -26,3 +26,17 @@ Test09 materializer is rebuilt from exact HW-proven Test05A parent:
 - no bisrv.asd; no ROM payloads.
 
 HW probe: compatible 1941 only, force regeneration of 1941.zfb. Expected Games Updated/Added, visible artwork, playable 1941. If artwork returns, immediately repeat incompatible 1941j on the same binary to verify No New Games/rejection.
+
+
+## Packaging correction
+
+The first exported Test09 distribution accidentally included build input `parent.xgc` at ZIP root. That file was not part of the intended SD payload and the first distribution is withdrawn.
+
+Corrected distribution contains only:
+- `ARCADE/.xgo-compat`
+- `ARCADE/compat-safe.xgc`
+- `ARCADE/CPS1/refresh.xgc`
+- `TEST09-README.txt`
+
+Corrected package: `xgo-arcade-test09-cps1-full-context-CLEAN.zip`
+SHA256: `2cb367ceda05afcae36a6bae923001343c700a77430e2cb817d36678d8db23ae`.
