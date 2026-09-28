@@ -107,3 +107,5 @@ jobs:
           retention-days: 30
 
 # rebuild after Test07 source repair
+
+# Test08 rebuild: preserve JPEG-owned 0x8718 workspace
