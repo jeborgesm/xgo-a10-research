@@ -80,7 +80,16 @@ jobs:
           hookend=$($t/mips-mti-elf-nm -n compat-hook.elf | awk '$3=="__hook_end"{print $1}')
           test -n "$hookend"
           test $((16#$hookend)) -lt $((16#87100000))
-          sha256sum compat-safe.xgc compat-stage2.elf compat-stage2.dis compat-stage2.map compat-hook.bin compat-hook.elf compat-hook.dis compat-hook.map > output.sha256
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_preflight_hook.s -o compat-preflight-entry.o
+          $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_preflight_hook.ld -Map compat-preflight.map -o compat-preflight.elf compat-preflight-entry.o compat-hook-loader.o compat-bridges.o
+          $t/mips-mti-elf-objcopy -O binary compat-preflight.elf compat-preflight.bin
+          $t/mips-mti-elf-objdump -dr compat-preflight.elf > compat-preflight.dis
+          $t/mips-mti-elf-nm -u compat-preflight.elf > compat-preflight.undefined
+          test ! -s compat-preflight.undefined
+          grep -q '87002600' compat-preflight.dis
+          grep -q '8730' compat-preflight.dis
+          grep -q '/mnt/sda1/ARCADE/CPS1/import/1941.zip' compat-preflight.bin
+          sha256sum compat-safe.xgc compat-stage2.elf compat-stage2.dis compat-stage2.map compat-hook.bin compat-hook.elf compat-hook.dis compat-hook.map compat-preflight.bin compat-preflight.elf compat-preflight.dis compat-preflight.map > output.sha256
           wc -c compat-safe.xgc compat-stage2.elf | tee sizes.txt
       - uses: actions/upload-artifact@v4
         if: always()
@@ -97,6 +106,11 @@ jobs:
             compat-hook.dis
             compat-hook.nm
             compat-hook.map
+            compat-preflight.bin
+            compat-preflight.elf
+            compat-preflight.dis
+            compat-preflight.map
+            compat-preflight.undefined
             compat-hook.undefined
             undefined.txt
             output.sha256
