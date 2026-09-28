@@ -5,7 +5,11 @@ on:
     branches: [ research-arcade-refresh-four-family ]
     paths:
       - 'tools/arcade_refresh/xgo_arcade_compat_engine.c'
-      - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'\n      - 'tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'
+      - 'tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_entry.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stage2_start.s'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stage2.ld'
       - '.github/workflows/xgo-arcade-compat-engine-audit.yml'
   workflow_dispatch:
 
@@ -17,41 +21,54 @@ jobs:
       - name: Host strict compile
         run: |
           set -euxo pipefail
-          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o\n          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o reader-host.o
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o reader-host.o
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_entry.c -o entry-host.o
       - name: Install exact Codescape toolchain
         run: |
           set -euxo pipefail
           url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
           curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape.tar.gz
           sudo tar -xzf /tmp/codescape.tar.gz -C /opt
-      - name: Compile MIPS engine and veneers
+      - name: Compile and link MIPS Stage2
         run: |
           set -euxo pipefail
           t=/opt/mips32-mti-elf/2019.09-03-2/bin
           cc=$t/mips-mti-elf-gcc
           flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -Wall -Wextra -Werror'
           $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-engine.o
-          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s -o compat-bridges.o\n          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o compat-reader.o
-          $t/mips-mti-elf-objdump -dr compat-engine.o > compat-engine.dis
-          $t/mips-mti-elf-objdump -dr compat-bridges.o > compat-bridges.dis\n          $t/mips-mti-elf-objdump -dr compat-reader.o > compat-reader.dis
-          $t/mips-mti-elf-nm -u compat-engine.o compat-bridges.o > undefined.txt
-          grep -q 'xgo_stock_fopen' compat-bridges.dis
-          grep -q '802b3524' compat-bridges.dis
-          grep -q '802b3698' compat-bridges.dis
-          grep -q '802b3804' compat-bridges.dis
-          grep -q '802b3f1c' compat-bridges.dis
-          grep -q '802b2f40' compat-bridges.dis
-          grep -qi '80c3' compat-bridges.dis
-          sha256sum compat-engine.o compat-reader.o compat-bridges.o compat-engine.dis compat-reader.dis compat-bridges.dis > output.sha256
-          wc -c compat-engine.o compat-reader.o compat-bridges.o | tee sizes.txt
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s -o compat-bridges.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o compat-reader.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_entry.c -o compat-entry.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stage2_start.s -o compat-start.o
+          $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_stage2.ld -Map compat-stage2.map -o compat-stage2.elf compat-start.o compat-entry.o compat-engine.o compat-reader.o compat-bridges.o
+          $t/mips-mti-elf-objcopy -O binary compat-stage2.elf compat-safe.xgc
+          $t/mips-mti-elf-objdump -dr compat-stage2.elf > compat-stage2.dis
+          $t/mips-mti-elf-nm -n compat-stage2.elf > compat-stage2.nm
+          $t/mips-mti-elf-nm -u compat-stage2.elf > undefined.txt
+          test ! -s undefined.txt
+          grep -q '802abd58' compat-stage2.dis
+          grep -q '802ac080' compat-stage2.dis
+          grep -q '802ac150' compat-stage2.dis
+          grep -q '802ac394' compat-stage2.dis
+          grep -q '802ac4d4' compat-stage2.dis
+          grep -Eq 'lw[[:space:]].*48\(sp\)' compat-stage2.dis
+          grep -Eq 'sw[[:space:]].*16\(sp\)' compat-stage2.dis
+          grep -q '87180000' compat-stage2.nm
+          endhex=$($t/mips-mti-elf-nm -n compat-stage2.elf | awk '$3=="__stage2_end"{print $1}')
+          test -n "$endhex"
+          test $((16#$endhex)) -lt $((16#87200000))
+          sha256sum compat-safe.xgc compat-stage2.elf compat-stage2.dis compat-stage2.map > output.sha256
+          wc -c compat-safe.xgc compat-stage2.elf | tee sizes.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: xgo-arcade-compat-engine-audit
+          name: xgo-arcade-compat-stage2-audit
           path: |
-            compat-engine.o
-            compat-bridges.o
-            compat-engine.dis
-            compat-bridges.dis
+            compat-safe.xgc
+            compat-stage2.elf
+            compat-stage2.dis
+            compat-stage2.nm
+            compat-stage2.map
             undefined.txt
             output.sha256
             sizes.txt
