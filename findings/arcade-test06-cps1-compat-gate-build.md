@@ -66,3 +66,10 @@ Expected:
 
 This is a rejection/publication-boundary probe only. Do not reopen the historical
 non-reproduced Test04 freeze/cache issue.
+
+
+## HW result — PASS
+
+HW observation: with the known-incompatible archive installed as `/ARCADE/CPS1/import/1941j.zip`, one Refresh returned **No New Games** with no issues observed.
+
+This is the first HW proof that the CPS1 compatibility gate can reject a non-publishable import without destabilizing Refresh. The rejection/publication-boundary half of Test06 is therefore HW PASS. No cache/freeze regression was observed.
