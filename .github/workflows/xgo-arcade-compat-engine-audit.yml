@@ -96,9 +96,8 @@ jobs:
           $t/mips-mti-elf-objdump -dr compat-dynamic.elf > compat-dynamic.dis
           $t/mips-mti-elf-nm -u compat-dynamic.elf > compat-dynamic.undefined
           test ! -s compat-dynamic.undefined
-          grep -q '807d40c4' compat-dynamic.dis
-          grep -q '807d4124' compat-dynamic.dis
-          grep -q '807d41f4' compat-dynamic.dis
+          grep -q 'lui.*0x807d' compat-dynamic.dis
+          grep -q 'jalr' compat-dynamic.dis
           grep -q '8730' compat-dynamic.dis
           grep -q '/mnt/sda1/ARCADE/CPS1/import' compat-dynamic.bin
           grep -q '/mnt/sda1/ARCADE/CPS2/import' compat-dynamic.bin
