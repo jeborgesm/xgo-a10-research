@@ -72,3 +72,18 @@ No mechanically justified IGS-only return patch has yet been identified. Do not 
 No Test16 is authorized yet.
 
 Next offline target is the data-dependent post-publication state: compare the exact successful CPS1/CPS2 publication state against the IGS Test15 output, especially marker identity, catalog record lengths, helper scratch/buffer bounds, and any state surviving into native status epilogue. The launch lock should be treated independently until a stock-curated IGS import control demonstrates the same transition failure.
+
+
+## 6. Source-drift audit after closure
+
+A branch-integrity check found that commit `121cdca` corrected the validation assertions but did **not** fully correct the live descriptor tuples: IGS still carried NeoGeo's `0x80D28974` count target and NeoGeo still carried list ID 9. This was repository drift introduced during the post-Test15 investigation, not evidence about the already-built Test15 package. The tuples are now corrected in `d482d456` to IGS=list9/`0x80D28970` and NeoGeo=list10/`0x80D28974`.
+
+Historical reconstruction confirms the descriptor file was correct before the post-Test15 false-reversal work, so this source drift did not create the observed Test15 hardware lock. It did, however, prove the branch needed an explicit source-vs-assertion integrity check before any Test16 build.
+
+## 7. Refresh-return candidate boundary narrowed
+
+The catalog emitter deliberately performs a family-specific frontend-count invalidation immediately before returning. Earlier architecture had explicitly NOPed this write until exact Arcade count slots were closed; commit `32413da` later restored it after the stock count-array addresses were recovered. CPS1/CPS2 hardware passes show the mechanism is not generically invalid, but Test15 IGS reaches a valid committed catalog and `Games Added` before locking, placing the remaining failure after publication and making this post-commit frontend-state mutation the narrowest remaining IGS-specific lifecycle surface.
+
+This is not yet proof that the IGS count invalidation is the cause. A Test16 must not change publication/JPEG/wrapper logic. If emitted, its only Refresh-side experiment should suppress the IGS post-commit count invalidation while leaving CPS1/CPS2 and all Test15 materialization/publication bytes unchanged. That is a single-boundary lifecycle test, not a list-ID guess.
+
+The launch failure remains independent. `theglad` is not a stock-curated IGS runtime control; do not modify the shared stock launch path based on it. The next runtime control should use a stock-curated PGM/IGS driver or an otherwise hardware-proven 0x81/0x91 PGM control before changing runtime code.
