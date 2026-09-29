@@ -663,3 +663,19 @@ findings/arcade-test05b-cps1-compatibility-gate-candidate.md
 ## 2026-09-28 — Test06 ready for HW
 
 CPS1 compatibility publication gate is now built and offline-audited. Codescape run 36378065831 PASS. Test06 package SHA256 `4bfc148c866a5526ee82a6cca08a641573cc9bfbd8c1256d7e361c35495fac7f`. It preserves HW-proven Test05A artwork behavior and does not modify `bisrv.asd`. First HW probe: place known-incompatible modern 1941 archive as `/ARCADE/CPS1/import/1941j.zip`; Refresh should report No New Games and must not publish 1941j. Existing working 1941 should remain intact/playable. See `findings/arcade-test06-cps1-compat-gate-build.md`.
+
+
+## Mandatory continuity overlay — 2026-09-29
+
+This handoff is long and contains historical checkpoints. On any new/forced chat or context disruption, **do not resume from the first apparently relevant older checkpoint**. Read through the latest superseding checkpoint and follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`, especially its **Chat-disruption recovery contract**.
+
+Interaction rule: user `go` / `continue` authorizes autonomous offline investigation. Do not emit micro-progress narration or require repeated permission. Return only at a meaningful gate: an audited hardware candidate genuinely requiring HW, a substantive offline closure with no immediate offline continuation, or indispensable user-owned input unavailable from project artifacts.
+
+Project-state rule: GitHub is the notebook/source of truth. Any new HW observation, negative result, correction, exact artifact identity, or changed stopping point must be committed before subsequent reasoning depends on it. Conversation memory is supplemental, never authoritative.
+
+Experimental rule: no speculative numbered-test ladder. Recover historical solutions and exact proven ancestors first; exhaust offline evidence; mechanically audit the smallest evidence-driven delta; ask hardware one unresolved question only when offline work cannot answer it.
+
+Evidence rule: preserve HW/BIN/SRC/UP/INF/OPEN distinctions. Failed tests and disproved interpretations remain evidence. Later corrections supersede interpretations but do not erase history.
+
+Durable workflow:
+`Recover -> provenance -> offline comparison -> smallest delta -> mechanical audit -> one HW boundary -> exact HW record -> archive -> commit -> promote only after HW proof.`
