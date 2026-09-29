@@ -23,8 +23,8 @@ FAMILIES=(
  Family("CPS2",8,"/mnt/sda1/ARCADE/CPS2/.refresh-list",
         "/mnt/sda1/Resources/kjbyr.tax","/mnt/sda1/Resources/djoin.nec","/mnt/sda1/Resources/ke89a.bvs",0x80D2896C),
  Family("IGS",9,"/mnt/sda1/ARCADE/IGS/.refresh-list",
-        "/mnt/sda1/Resources/subst.tax","/mnt/sda1/Resources/aepic.nec","/mnt/sda1/Resources/sensc.bvs",0x80D28974),
- Family("NEOGEO",9,"/mnt/sda1/ARCADE/NEOGEO/.refresh-list",
+        "/mnt/sda1/Resources/subst.tax","/mnt/sda1/Resources/aepic.nec","/mnt/sda1/Resources/sensc.bvs",0x80D28970),
+ Family("NEOGEO",10,"/mnt/sda1/ARCADE/NEOGEO/.refresh-list",
         "/mnt/sda1/Resources/rmapi.tax","/mnt/sda1/Resources/pcadm.nec","/mnt/sda1/Resources/ntdll.bvs",0x80D28974),
 )
 
