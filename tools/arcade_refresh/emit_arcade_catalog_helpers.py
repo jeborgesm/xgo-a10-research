@@ -24,7 +24,15 @@ def patch_pair(b,ho,lo,target):
 def emit(parent:bytes,fam,out:pathlib.Path):
     b=bytearray(parent)
     assert b[SUFFIX_MID]==ord("g"); b[SUFFIX_MID]=ord("f")
-    # Preserve the exact parent cache-invalidation instruction shape, but\n    # retarget it to the BIN-closed visible-browser count slot for this family.\n    ch=rd32(b,CACHE_HI); cs=rd32(b,CACHE_STORE); cd=rd32(b,CACHE_DELAY)\n    assert ch>>26==0x0f\n    base=(ch>>16)&31\n    assert cs>>26==0x2b and ((cs>>21)&31)==base and ((cs>>16)&31)==0\n    assert cd==0\n    wr32(b,CACHE_HI,(ch&0xffff0000)|hi16(fam.count_cache))\n    wr32(b,CACHE_STORE,(cs&0xffff0000)|lo16(fam.count_cache))
+    # Preserve the exact parent cache-invalidation instruction shape, but
+    # retarget it to the BIN-closed visible-browser count slot for this family.
+    ch=rd32(b,CACHE_HI); cs=rd32(b,CACHE_STORE); cd=rd32(b,CACHE_DELAY)
+    assert ch>>26==0x0f
+    base=(ch>>16)&31
+    assert cs>>26==0x2b and ((cs>>21)&31)==base and ((cs>>16)&31)==0
+    assert cd==0
+    wr32(b,CACHE_HI,(ch&0xffff0000)|hi16(fam.count_cache))
+    wr32(b,CACHE_STORE,(cs&0xffff0000)|lo16(fam.count_cache))
     strings={"slot0":fam.slot0,"slot1":fam.slot1,"slot2":fam.slot2,
              "root":f"/mnt/sda1/ARCADE/{fam.key}/.refresh-set"}
     offsets={}
