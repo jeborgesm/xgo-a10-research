@@ -54,3 +54,18 @@ Immediate offline XACM recheck against the exact Test12 manifest:
 Correction: the earlier recommendation that the supplied `bstars.zip` was a valid Test12 NeoGeo candidate was wrong; archive-shape inspection was insufficient and should not have replaced exact XACM validation.
 
 Because Test11-family preflight maps incompatible/unsupported to no-change rather than validator error, the incompatible `bstars` alone does not yet explain an aggregate Refresh Failed. The next discriminating HW probe is IGS `theglad` alone (remove NeoGeo import candidate) to determine whether the failure is in the IGS family specialization/materializer or only appears in combined-family execution. Do not change validator/cleanup architecture during this isolation.
+
+
+## Isolation result — IGS specialization FAIL; NeoGeo candidate correctly withheld
+
+Further HW isolation:
+1. Removed `theglad`, left `bstars` NeoGeo candidate alone -> **No New Games**. Nothing added. This is consistent with current preflight withholding the XACM-incompatible `bstars` set and is not a NeoGeo materializer execution result.
+2. Removed `bstars`, restored compatible `theglad` in IGS import -> **Refresh Failed**. Nothing added.
+
+Therefore Test12 family parity currently stands:
+- CPS1 PASS
+- CPS2 PASS
+- IGS FAIL before successful publication; family specialization/build must be investigated offline
+- NeoGeo NOT YET TESTED through materialization because the supplied bstars set was rejected at preflight
+
+Do not attribute the original combined failure to simultaneous-family execution. The isolated IGS path reproduces Refresh Failed by itself.
