@@ -245,3 +245,15 @@ The OEM-unlisted `Puzzle Star.zfb` / `puzlstar.zip` pair recovered from the orig
 ### Process lesson
 
 Do not patch the validator from a family-level dependency theory until the exact generated XACM record for the failing driver has been inspected. The manifest's extraction boundary can intentionally remove dependencies that exist in the stock callback stream.
+
+
+## 18. Corrected offline direction after Test16
+
+The immediate Test16 failure does not authorize another hardware probe. Reuse/source audit establishes:
+
+1. XACM v1 is intentionally a **game-specific descriptor** manifest. PGM shared-board descriptors are excluded at extraction time; board/parent names are metadata. Therefore adding `/bios/pgm.zip` lookup to Stage2 would solve a problem the current manifest does not present.
+2. The stock `drgw2` control was not a valid new-publication discriminator because it is already represented in the stock IGS catalog. Refresh's planner is catalog-membership/idempotence oriented; using an already-cataloged driver while independently clearing markers mixed two state contracts.
+3. The correct unlisted OEM control remains Puzzle Star: original-card inventory independently pairs `Puzzle Star.zfb` with `/ARCADE/bin/puzlstar.zip`, and the compiled driver is in the stock PGM family. Unlike `drgw2`, it is absent from the visible stock six-entry IGS catalog.
+4. Before any HW candidate, the exact `puzlstar` game-specific descriptor stream must be recovered from stock BIN/XACM and the OEM `puzlstar.zip` must be validated offline against it. If the actual OEM archive bytes are not present in repository/artifacts, that missing user-owned file is the only justified input request.
+
+No Test17 is authorized at this point.
