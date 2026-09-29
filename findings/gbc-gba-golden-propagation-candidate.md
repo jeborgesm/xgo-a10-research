@@ -256,3 +256,24 @@ The GBC/GBA implementation remains HW-proven for GBC/GBA themselves, but the cum
 ### Repair gate
 
 Do not change either golden GB external helper. Repair must preserve the existing GB two-stage architecture and current GBC/GBA behavior. Offline work must relocate either the GB catalog pathname or the colliding GBC body into proven-owned space, patch the single corresponding reference, and mechanically audit the current firmware before any hardware request.
+
+
+## 2026-09-29 deterministic GB pathname repair candidate
+
+The physical failing firmware from the user snapshot was used as the exact repair parent. No GB external helper or catalog resource is changed.
+
+Repair:
+- preserve colliding GBC body at `0x80A390F8`;
+- relocate the complete NUL-terminated GB catalog pathname to verified zero space at `0x80A398E1`;
+- change only the GB catalog-stage pathname low immediate at `0x80A39088`: `0x248490E0 -> 0x248498E1`;
+- reseal LCFG CRC-32/MPEG-2.
+
+The destination is the 55-byte zero run `0x80A398E1..0x80A39917`, immediately after the documented GBA body ending at `0x80A398E0`. Required string is 25 bytes and remains wholly inside that verified zero run.
+
+Candidate:
+- package `xgo-gb-refresh-path-terminator-repair.zip`
+- firmware SHA-256 `3a3206279a1d18ffb6e29b3708383c56cdae11ba89227e078517335c810c3fd0`
+- package SHA-256 `6775ed6e3801ca05576fc51a7a9ae6304157e4bf18654c0fff7f3154e76404d2`
+- LCFG CRC-32/MPEG-2 `0x38F17EE5`
+
+Hardware question is intentionally narrow: with no GB input/catalog changes, does selecting GB Refresh return `No New Games` rather than `Refresh Failed`? If yes, immediately spot-check GBC and GBA Refresh still return `No New Games`. Arcade is not part of this repair test.
