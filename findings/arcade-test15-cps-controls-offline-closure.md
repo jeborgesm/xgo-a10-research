@@ -100,3 +100,17 @@ Accordingly:
 - Keep the Refresh-return hard lock as a separate lifecycle defect; changing the runtime fixture does not retire that defect.
 
 This prevents sample-game compatibility from hijacking the four-family Refresh objective.
+
+
+## 9. Replacement IGS fixture identified from original-card archaeology
+
+The preserved original-card inventory already supplies a better next IGS control: **Puzzle Star.zfb** is one of the seven packaged Arcade wrappers physically present on the vendor card but absent from all four visible stock Arcade catalogs. Independent driver-table inspection identifies `puzlstar` as PGM hardware discriminator `0x81`, matching the parent-class discriminator of the stock-curated `kov`, `orlegend`, and `drgw2` controls.
+
+This makes Puzzle Star preferable to The Gladiator for the next runtime proof:
+- vendor-supplied XGO wrapper existed physically;
+- not already exposed in the visible IGS list;
+- PGM/IGS family;
+- 0x81 discriminator matches the curated parent class;
+- does not require treating `theglad` compatibility as a branch objective.
+
+Do not yet claim Puzzle Star is HW-playable merely from its presence. First recover its exact vendor wrapper/runtime ZIP identity from the preserved card/artifacts if available and use those bytes as the compatibility reference. The Refresh-return lock remains a separate lifecycle defect.
