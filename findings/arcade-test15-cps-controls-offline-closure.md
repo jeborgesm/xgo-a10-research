@@ -123,3 +123,10 @@ A search of the currently mounted analysis bundle and repository found no recove
 Do not fabricate the target from the display name. For a future hardware fixture, either (a) recover the OEM `Puzzle Star.zfb` from the physical/original-card corpus and inspect its wrapper tail, or (b) construct a new metadata fixture only after independently proving the matching runtime ZIP/driver identity. The likely driver name `puzlstar` remains a compatibility lead, not provenance proof.
 
 This does not block the Refresh-return investigation, which remains independent of game runtime compatibility.
+
+
+## 11. Tooling integrity repair before any Test16
+
+Offline branch audit found a concrete repository defect in `emit_arcade_catalog_helpers.py`: commit `32413da` had inserted literal backslash-n text into the Python source while restoring family count-cache invalidation. This made the current emitter source syntactically unusable even though already-built Test15 binaries predate/stand independently of this source-state defect. The emitter was normalized in `33db32dd`; the companion audit source did not contain remaining literal escapes.
+
+This repair is **tooling integrity only** and must not be interpreted as a Test15 hardware diagnosis. Any future candidate must be rebuilt from audited source and mechanically diffed against the protected Test15 behavior before hardware use.
