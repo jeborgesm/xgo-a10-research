@@ -87,3 +87,16 @@ The catalog emitter deliberately performs a family-specific frontend-count inval
 This is not yet proof that the IGS count invalidation is the cause. A Test16 must not change publication/JPEG/wrapper logic. If emitted, its only Refresh-side experiment should suppress the IGS post-commit count invalidation while leaving CPS1/CPS2 and all Test15 materialization/publication bytes unchanged. That is a single-boundary lifecycle test, not a list-ID guess.
 
 The launch failure remains independent. `theglad` is not a stock-curated IGS runtime control; do not modify the shared stock launch path based on it. The next runtime control should use a stock-curated PGM/IGS driver or an otherwise hardware-proven 0x81/0x91 PGM control before changing runtime code.
+
+
+## 8. Hardware-fixture policy: The Gladiator is disposable
+
+User clarified the intent of `theglad`: it was selected only as a sample unlisted IGS game to exercise the Refresh pipeline. It is **not** a target title and must not become an investigation dependency.
+
+Accordingly:
+- Test15 already proves the metadata/artwork/wrapper/catalog publication path can create a correct enriched IGS entry from an unlisted candidate.
+- If `theglad` itself is outside the XGO runtime-compatible PGM subset, replace it with another unlisted candidate rather than modifying shared runtime code to accommodate it.
+- Prefer the next fixture from a driver class closest to the stock-curated IGS set (0x81/0x91) while requiring that it is not already in the visible stock IGS catalog.
+- Keep the Refresh-return hard lock as a separate lifecycle defect; changing the runtime fixture does not retire that defect.
+
+This prevents sample-game compatibility from hijacking the four-family Refresh objective.
