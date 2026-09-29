@@ -40,7 +40,7 @@ def main():
   else:put(b,STAGE_CPS1,0x24,stage)
   w=struct.unpack_from("<I",b,FAMILY_WORD)[0]
   if w!=0x00002025:raise SystemExit("dynamic family selector drift")
-  struct.pack_into("<I",b,FAMILY_WORD,0x24040000|famid)
+  if famid:\n   struct.pack_into("<I",b,FAMILY_WORD,0x24040000|famid)
   p=out/f/"refresh.xgc";p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)
   print(f,sha(b),len(b))
 if __name__=="__main__":main()
