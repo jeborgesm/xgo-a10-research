@@ -130,3 +130,37 @@ This does not block the Refresh-return investigation, which remains independent 
 Offline branch audit found a concrete repository defect in `emit_arcade_catalog_helpers.py`: commit `32413da` had inserted literal backslash-n text into the Python source while restoring family count-cache invalidation. This made the current emitter source syntactically unusable even though already-built Test15 binaries predate/stand independently of this source-state defect. The emitter was normalized in `33db32dd`; the companion audit source did not contain remaining literal escapes.
 
 This repair is **tooling integrity only** and must not be interpreted as a Test15 hardware diagnosis. Any future candidate must be rebuilt from audited source and mechanically diffed against the protected Test15 behavior before hardware use.
+
+
+## 12. BIN closure: exact-count invalidation can trap before lazy reload
+
+Direct disassembly of the preserved stock `bisrv.asd` closes the previously missing mechanism. In the normal browser path around `0x80357ECC..0x80357F18`, firmware computes the current list's count-slot address from the same `0x80D2894C + list_id*4` array, loads that count into `$24`, and executes:
+
+```
+80357ee8  lw    $24,0($25)       # count[list]
+80357ef4  div   $zero,$2,$24
+80357ef8  teq   $24,$zero,7      # divide-by-zero trap guard emitted after DIV
+...
+80357f14  bnez  $5,0x80357ce8
+80357f1c  ...                     # later lazy-reload path
+```
+
+The important ordering is mechanical: **the count is consumed as a divisor before the later zero-count lazy-reload branch is reached.** Therefore forcing the active list's exact count slot to zero at catalog-helper return is not a universally safe cache invalidation operation. On a re-entry path that reaches this block first, it can trap/hard-lock before stock lazy reload has an opportunity to repopulate the count.
+
+This directly matches Test15 IGS: publication completes, native success status is visible, then the device hard-locks during frontend return/re-entry.
+
+### Historical control resolves the apparent GBC/GBA contradiction
+
+The earlier HW-proven handheld catalog helpers do **not** prove that exact active-list zeroing is safe. Their recorded count-cache targets were inherited/retargeted values that did not consistently correspond to the active handheld list. For example the golden GBA propagation record explicitly used `0x80D28974`, which direct stock BIN mapping identifies as Arcade list 10, not GBA list 6 (`0x80D28964`). Those hardware passes therefore demonstrate that catalog publication does not require exact active-list invalidation; they do not validate zeroing the active count immediately before browser return.
+
+### Test16 authorization boundary
+
+Offline evidence is now sufficient for a single-variable Refresh-side candidate:
+
+- preserve Test15 firmware/materializer/publication/JPEG/title/wrapper/catalog semantics;
+- in **IGS catalog.xgc only**, replace the final count-slot invalidation instruction sequence at helper offsets `+0x0730..+0x0738` with NOPs, restoring the earlier safe-emitter behavior;
+- do not alter CPS1/CPS2/NeoGeo helpers;
+- do not change shared launch/runtime code;
+- judge only whether IGS Refresh returns normally after `Games Added` and whether the newly published entry remains visible after normal browser reload/reboot.
+
+This is no longer a speculative list-ID test. It isolates a stock-BIN-proven divide-before-reload hazard introduced by exact active-list invalidation.
