@@ -52,3 +52,12 @@ User removed NeoGeo candidate and ran Test13 with only compatible `theglad.zip` 
 Therefore the +0x0BE4 import-prefix skip correction was real but **not sufficient** to specialize the Test11 CPS1 materializer for IGS. IGS remains independently broken after Test13. NeoGeo remains unisolated.
 
 Next work is offline binary archaeology only: compare all path-derived arithmetic, literal references, staging/finalizer assumptions and family-dependent geometry in the materializer against the working equal-length CPS1/CPS2 cases. Do not request another HW test until a complete mechanical delta audit identifies the remaining IGS-specific assumption(s).
+
+
+## Offline audit after isolated IGS failure — test artwork violated proven JPEG input geometry
+
+A full Test13 CPS1-vs-IGS binary delta audit found only the intended family specializations: IGS family ID, family path literals, and the corrected import-prefix skip. No second hidden CPS1/IGS executable delta was present.
+
+The remaining test-input difference exposed a separate mistake in the HW fixture: the assistant-generated `theglad.jpg` supplied for the IGS test is **887x887 RGB JFIF**. The physical artwork path previously proven on Test05A used an ordinary **600x400 RGB JFIF** source. Therefore the isolated IGS failure has not yet cleanly falsified the IGS specialization: its artwork input was outside the hardware-proven JPEG-worker input geometry.
+
+Do not patch firmware again before controlling this variable. A replacement of the same generated artwork has been prepared at exactly 600x400 RGB JFIF. Next HW probe keeps Test13 firmware and compatible `theglad.zip` unchanged and changes only the JPEG fixture to the proven 600x400 geometry. If this still returns Refresh Failed, resume materializer archaeology; if it passes, the apparent IGS code failure was an invalid artwork test fixture.
