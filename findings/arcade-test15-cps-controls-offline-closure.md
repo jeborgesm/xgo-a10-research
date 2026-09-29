@@ -222,3 +222,26 @@ This is a different failure class from Test15. Because `drgw2` is a stock-curate
 The source-level reason is now concrete: `xgo_arcade_compat_engine.c` validates every required descriptor in the imported game ZIP alone. The previously closed PGM callback archaeology explicitly established that PGM uses `STDROMPICKEXT(..., pgm)`, with shared board ROM descriptors owned by `/bios/pgm.zip`. The implementation never opens/searches that board archive (nor parent archives), despite the finding requiring search ownership order game -> parent -> board ROM. Thus a legitimate stock PGM archive can be rejected by the Refresh validator before materialization.
 
 Test16 therefore does **not** test the Test15 return lock. It exposes an independent validator implementation gap. Do not alter catalog/runtime code from this result. Next candidate must first make PGM validation honor shared-board dependency ownership, then repeat the clean stock control.
+
+
+## 17. Test16 interpretation correction — board-ROM theory retracted
+
+A source/reuse-first audit after the Test16 `Refresh Failed` result disproves the immediately recorded explanation that the validator rejects stock PGM games because it fails to search `/bios/pgm.zip`.
+
+The PGM callback finding remains correct: stock PGM has shared board-ROM descriptors. However, the manifest generator intentionally extracts **game-specific ROM descriptors only** from the `STDROMPICKEXT` callback and retains `parent`/`board` merely as metadata. XACM v1 therefore does not contain the shared PGM board descriptors as requirements in the imported game ZIP. The Stage2 engine cannot reject `drgw2.zip` for absence of `pgm_p01s.rom`, `pgm_t01s.rom`, or `pgm_m01s.rom`, because those records are not in the driver's XACM ROM slice.
+
+This correction preserves both facts:
+- BIN/SRC: PGM dependency ownership is real;
+- SRC: current XACM v1 validates only the game-specific descriptor stream.
+
+Therefore commit `725b615e...` captured the HW result correctly but its causal interpretation was premature. Test16 `Refresh Failed` returns to OPEN. Do not implement board-ROM lookup as a response to this result.
+
+### More important fixture defect
+
+The Test16 control procedure copied `/ARCADE/bin/drgw2.zip` into `/ARCADE/IGS/import/drgw2.zip` while the stock catalog already contains Dragon World II. The materializer/Refresh path is append/idempotence-oriented and the test also changed marker state independently. That makes the probe unsuitable for isolating the Test15 post-publication lock: it was not a clean *new publication* control.
+
+The OEM-unlisted `Puzzle Star.zfb` / `puzlstar.zip` pair recovered from the original-card inventory remains the correct provenance-backed IGS publication fixture. No further HW test is authorized until its exact XACM game-descriptor contract and current import/materializer decision path are simulated offline.
+
+### Process lesson
+
+Do not patch the validator from a family-level dependency theory until the exact generated XACM record for the failing driver has been inspected. The manifest's extraction boundary can intentionally remove dependencies that exist in the stock callback stream.
