@@ -189,3 +189,25 @@ The preserved original-card file inventory (`xgo_filelist.csv`) closes the previ
 The 59,922-byte wrapper size is exactly the 59,904-byte stock preview prefix plus an 18-byte wrapper tail, consistent with the runtime identity `puzlstar.zip` plus wrapper framing. More importantly, the matching OEM bin archive is independently present on the same original card, so `Puzzle Star -> puzlstar.zip` is now provenance-backed rather than guessed from the driver table.
 
 Puzzle Star is therefore approved as the replacement unlisted OEM PGM/IGS runtime control when the Refresh-return defect is isolated. It remains physically vendor-supplied but absent from the visible six-entry IGS catalog, making it suitable for testing import/publication without using The Gladiator.
+
+
+## 15. Test16 hardware gate — clean known-stock IGS control, no firmware delta
+
+After the exact Test15 catalog helper falsified the count-cache theory, the remaining ambiguity is whether the observed post-`Games Added` lock belongs to the IGS Refresh lifecycle itself or to the contaminated Test13/Test14/Test15 marker/runtime fixture state.
+
+The smallest hardware discriminator requires **no firmware change**. Use current Test15 with a clean IGS marker directory and the OEM `drgw2.zip` already present on the card as the import source. Driver/archive identity is stock-curated and hardware-known; give it a unique metadata title `Dragon World II Refresh Control` so publication does not collide with the existing stock catalog identity. Deliberately omit artwork to remove JPEG handling as a variable.
+
+Preparation:
+1. back up then remove/rename `/ARCADE/IGS/.refresh-set` so the run begins with no stale markers;
+2. copy existing OEM `/ARCADE/bin/drgw2.zip` to `/ARCADE/IGS/import/drgw2.zip`;
+3. provide `/ARCADE/IGS/meta/drgw2.txt` containing `Dragon World II Refresh Control`;
+4. no `drgw2.jpg/.jpeg` for this control;
+5. run Refresh once.
+
+Expected publication: `Dragon World II Refresh Control.zfb`, catalog title of the same friendly name, embedded/runtime target `drgw2.zip`.
+
+Decision:
+- if Refresh returns responsive, the Test15 lock is not an intrinsic IGS command/catalog lifecycle failure; stale-marker/Test13-15 fixture contamination becomes the primary cause class, and launch can then be checked with a known-stock runtime;
+- if it locks after `Games Added`, the failure is reproduced with clean marker state and a stock-curated IGS driver, closing the fixture/runtime ambiguity and justifying deeper materializer-state tracing.
+
+Fixture package: `xgo-arcade-test16-clean-igs-control.zip`, SHA-256 `ce775aa11e964fd41bdc4a0215aedbd05c411bab325fab520c5feb914221ba63`. It contains only the metadata/control instructions; it does not redistribute ROM data.
