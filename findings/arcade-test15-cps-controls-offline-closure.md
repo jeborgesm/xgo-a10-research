@@ -114,3 +114,12 @@ This makes Puzzle Star preferable to The Gladiator for the next runtime proof:
 - does not require treating `theglad` compatibility as a branch objective.
 
 Do not yet claim Puzzle Star is HW-playable merely from its presence. First recover its exact vendor wrapper/runtime ZIP identity from the preserved card/artifacts if available and use those bytes as the compatibility reference. The Refresh-return lock remains a separate lifecycle defect.
+
+
+## 10. Puzzle Star provenance gate
+
+A search of the currently mounted analysis bundle and repository found no recoverable `Puzzle Star.zfb` payload, only the preserved inventory evidence that the OEM card contained that filename. Therefore the original wrapper's embedded runtime target cannot yet be byte-verified from the available archive.
+
+Do not fabricate the target from the display name. For a future hardware fixture, either (a) recover the OEM `Puzzle Star.zfb` from the physical/original-card corpus and inspect its wrapper tail, or (b) construct a new metadata fixture only after independently proving the matching runtime ZIP/driver identity. The likely driver name `puzlstar` remains a compatibility lead, not provenance proof.
+
+This does not block the Refresh-return investigation, which remains independent of game runtime compatibility.
