@@ -44,3 +44,15 @@ Use compatible 1941 only and force regeneration of 1941.zfb. Required proof:
 - 1941 launches/plays.
 
 If this passes, the ordering contract is HW-proven and the next implementation replaces the fixed fixture with the dynamic four-family preflight scanner while preserving the same pre-materialization boundary.
+
+
+## HW result — PASS
+
+User hardware observation on 2026-09-28:
+- Refresh reported **Games Updated**;
+- newly generated 1941 entry displayed the image/artwork;
+- 1941 launched and gameplay worked.
+
+This closes the architectural ordering question. Compatibility validation must execute before the family materializer begins. The Test06-Test09 design that injected validation into the live materialization transaction is rejected. Test10 proves that the existing Test05A artwork/materialization path remains correct when entered only after a successful compatibility preflight.
+
+**Promoted invariant:** for CPS1/CPS2/IGS/NeoGeo, validate candidate imports before any artwork, ZFB, runtime-ZIP, marker, or catalog processing. A compatible candidate may then enter the proven family materializer unchanged; incompatible/unsupported candidates must never enter it.
