@@ -25,3 +25,19 @@ Package:
 - SHA256 1851cc99485a25ac16235cef5e049a63a88e2e293adc4e15a257ea93800566bf
 
 HW objective: with known-compatible ROM(s) in each desired family import folder, one Refresh should process the populated families through the same Test11 procedure. Verify additions, artwork and launch per populated family. Cleanup and incompatible-file policy remain explicitly deferred.
+
+
+## HW result — CPS2 PASS
+
+Test ROM: compatible `1944.zip` set (the second supplied archive, host/XACM result COMPATIBLE: 0 missing, 0 size mismatches).
+
+Observed on hardware:
+- Refresh processing completed;
+- CPS2 entry was added;
+- artwork displayed;
+- launch read the ZIP contents and then showed a black screen for a noticeably long interval;
+- after the extended load, the game started and ran successfully.
+
+Result: **CPS2 four-family-parity path PASS.** The initial black screen is load latency for this working set and must not be recorded as a launch failure.
+
+The earlier supplied modern/encrypted-layout 1944 archive reached publication but did not establish gameplay and remains separate evidence for later validator tightening. Per scope freeze, validator cleanup remains deferred until family parity is complete.
