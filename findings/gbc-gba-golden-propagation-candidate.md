@@ -221,3 +221,38 @@ Final cleanup v3 hashes:
 ## Branch closure
 
 GBC and GBA propagation are complete and HW-proven. The firmware/package identities above are promoted to the golden cumulative Refresh architecture. Normal Refresh remains append-only; standardized deletion/reconciliation remains future work. Batch-processing progress feedback remains a separate UX follow-up.
+
+
+## 2026-09-29 regression correction — GB catalog pathname terminator overwritten by GBC body
+
+A physical-card forensic snapshot taken after the user observed GB `Refresh Failed` exposed a deterministic regression in the supposedly cumulative GBC/GBA propagation.
+
+Current physical identities:
+- `GB/refresh.xgc` SHA-256 `34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238` — exact GB golden helper.
+- `GB/catalog.xgc` SHA-256 `66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb` — exact GB golden helper.
+- GB triplet remains synchronized at count 975.
+- The current firmware's GB command body at `0x80A39050` retains the correct two-stage reachability, including `0x80A3907C -> 0x80A39084`.
+
+The failure is in the firmware pathname storage.
+
+GB catalog pathname begins at `0x80A390E0`:
+
+`/mnt/sda1/GB/catalog.xgc`
+
+That string is exactly **24 bytes**, so its required NUL terminator is at **0x80A390F8**.
+
+The GBC/GBA propagation placed the new GBC command body at **0x80A390F8**. Consequently the first GBC instruction overwrote the GB pathname terminator. On the physical firmware the bytes are:
+
+`... /mnt/sda1/GB/catalog.xgc A4 80 04 3C 60 91 84 24 10 00 ...`
+
+The generic helper runner therefore receives a non-terminated/garbage-extended catalog pathname instead of `/mnt/sda1/GB/catalog.xgc\0`, fails to open the helper, returns negative, and the preserved GB dispatcher correctly reports **Refresh Failed**.
+
+This is not an Arcade/Test17 mutation and not a GB-helper defect. It is a latent cumulative regression introduced when GBC code was allocated at the exact byte required by the protected GB catalog-path terminator. The GBC/GBA finding's earlier statement that GB was byte-identical/fully preserved was therefore incomplete: the GB *code body* was preserved, but an adjacent live GB string datum was not.
+
+### Status correction
+
+The GBC/GBA implementation remains HW-proven for GBC/GBA themselves, but the cumulative-baseline preservation claim is withdrawn until GB is repaired and regression-tested. The superseding physical baseline must not be treated as fully cumulative for GB Refresh.
+
+### Repair gate
+
+Do not change either golden GB external helper. Repair must preserve the existing GB two-stage architecture and current GBC/GBA behavior. Offline work must relocate either the GB catalog pathname or the colliding GBC body into proven-owned space, patch the single corresponding reference, and mechanically audit the current firmware before any hardware request.
