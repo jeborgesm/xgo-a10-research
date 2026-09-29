@@ -16,7 +16,7 @@ SLOTS=((0x1200,0x20,"/mnt/sda1/ARCADE/{f}/import"),
 STAGE_REF=0x21D8
 STAGE_CPS1=0x258C
 STAGE_NEOGEO=0x3000
-FAMILY_WORD=0x2618\nIMPORT_PREFIX_SKIP_WORD=0x0BE4
+FAMILY_WORD=0x2618\nIMPORT_PREFIX_SKIP_WORD=0x0BE4\nMARKER_NAME_SOURCE_WORD=0x21F0\nMARKER_NAME_CAP_WORD=0x21F4
 def sha(b):return hashlib.sha256(b).hexdigest()
 def put(b,o,n,s):
  raw=s.encode()+b"\0"
@@ -41,6 +41,15 @@ def main():
   w=struct.unpack_from("<I",b,FAMILY_WORD)[0]
   if w!=0x00002025:raise SystemExit("dynamic family selector drift")
   if famid:\n   struct.pack_into("<I",b,FAMILY_WORD,0x24040000|famid)\n  # Original materializer skips the import-directory prefix plus slash with\n  # a compiled immediate. CPS1/CPS2 share 28+1=29; IGS and NeoGeo do not.\n  # Retarget this geometry together with the family pathname.\n  w=struct.unpack_from("<I",b,IMPORT_PREFIX_SKIP_WORD)[0]\n  if w!=0x2422001d:raise SystemExit("import-prefix skip instruction drift")\n  skip=len(f"/mnt/sda1/ARCADE/{f}/import/")\n  struct.pack_into("<I",b,IMPORT_PREFIX_SKIP_WORD,(w&0xffff0000)|skip)
+  # The finalizer must keep ROM shortname identity for import/bin ZIP paths,
+  # but the publication marker must name the actual enriched outer wrapper.
+  # The display-title buffer is already built at 0x87600400. The append helper
+  # at 0x87002398 preserves a1, so its prior 0x140 capacity remains live while
+  # these two words retarget only a2 from s0 (stem) to the display-title buffer.
+  if struct.unpack_from("<I",b,MARKER_NAME_SOURCE_WORD)[0]!=0x02003025:raise SystemExit("marker source instruction drift")
+  if struct.unpack_from("<I",b,MARKER_NAME_CAP_WORD)[0]!=0x24050140:raise SystemExit("marker capacity instruction drift")
+  struct.pack_into("<I",b,MARKER_NAME_SOURCE_WORD,0x3C068760) # lui a2,0x8760
+  struct.pack_into("<I",b,MARKER_NAME_CAP_WORD,0x24C60400)    # addiu a2,a2,0x400
   p=out/f/"refresh.xgc";p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)
   print(f,sha(b),len(b))
 if __name__=="__main__":main()
