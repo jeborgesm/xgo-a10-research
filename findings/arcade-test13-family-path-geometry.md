@@ -29,3 +29,17 @@ First HW target: compatible `theglad.zip` alone in IGS/import with `theglad.jpg`
 User tested Test13 with the later `bstars` candidate (archive supplied as `bstars(4).zip`, renamed for import) and Refresh returned **Refresh Failed**.
 
 This means NeoGeo parity is not established. Do not infer that the +0x0BE4 prefix-length correction was sufficient for NeoGeo. The NeoGeo specialization has at least one remaining family-length/path-geometry or materializer specialization defect, OR the candidate does not satisfy the exact XACM contract despite containing the sought alternate program payload. Re-run exact manifest validation and mechanically compare every path-length-dependent immediate/reference against CPS1/CPS2 before requesting another HW probe.
+
+
+### Correction — Test13 probe was combined IGS + NeoGeo, not NeoGeo-only
+
+User clarified that the Refresh Failed observation was obtained with **both IGS and NeoGeo candidates present simultaneously**. Therefore the previous wording must not be interpreted as an isolated NeoGeo Test13 failure.
+
+Current evidence after Test13:
+- CPS1: PASS (prior HW)
+- CPS2: PASS (prior HW)
+- IGS: Test12 isolated FAIL; **Test13 not yet isolated**
+- NeoGeo: **not yet isolated through materialization**
+- Test13 combined IGS+NeoGeo: Refresh Failed
+
+Because command6/aggregate status reports failure if either family returns failure, the combined Test13 result cannot identify which family failed. Do not mark NeoGeo individually failed from this run and do not mark the IGS path-length fix failed until an isolated Test13 IGS run exists.
