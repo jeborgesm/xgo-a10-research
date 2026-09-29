@@ -22,3 +22,10 @@ Test13 hashes:
 - NeoGeo `08ebb7029e38c23cf9a006e76ea849971060f4316cc98b1dba9cb7c5d2706b33`
 
 First HW target: compatible `theglad.zip` alone in IGS/import with `theglad.jpg` in IGS/art. Expected: Games Added, artwork, launch. NeoGeo remains pending a compatible ROM candidate.
+
+
+## NeoGeo HW probe — Refresh Failed
+
+User tested Test13 with the later `bstars` candidate (archive supplied as `bstars(4).zip`, renamed for import) and Refresh returned **Refresh Failed**.
+
+This means NeoGeo parity is not established. Do not infer that the +0x0BE4 prefix-length correction was sufficient for NeoGeo. The NeoGeo specialization has at least one remaining family-length/path-geometry or materializer specialization defect, OR the candidate does not satisfy the exact XACM contract despite containing the sought alternate program payload. Re-run exact manifest validation and mechanically compare every path-length-dependent immediate/reference against CPS1/CPS2 before requesting another HW probe.
