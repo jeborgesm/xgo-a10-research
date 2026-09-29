@@ -76,3 +76,25 @@ HW observation:
 Interpretation: this is materially different from the earlier Refresh Failed result. IGS now reaches successful publication/aggregate status, so the 28-byte import-prefix correction plus proven JPEG geometry removed the hard failure. However, the generated IGS entry is semantically wrong: metadata/artwork/runtime identity specialization is not equivalent to the working CPS1/CPS2 path. The absence of even the black fallback is especially strong evidence that this is not merely a JPEG decode failure; the IGS wrapper/finalization path or family-specific literal/reference geometry is wrong.
 
 Do not promote IGS. Next work is offline comparison of the actual generated IGS artifacts/path identities against CPS1/CPS2 contracts; no validator or cleanup work yet.
+
+
+## Captured Test13 IGS output — wrapper/artwork are actually correct; catalog publication is wrong
+
+User supplied the exact post-Refresh IGS outputs in `igs.zip`. Offline inspection:
+
+- `The Gladiator.zfb`: 59,921 bytes, SHA256 `39cb098cab5a7ebabbd621698065016e12ae8eb73a404f17901d6eda9060f6c9`
+- `.xgo.rgb565`: 59,904 bytes, SHA256 `2fa20ba67982b94db573f8407803f28752a5fee54e290d93954cc3b64eb904a8`
+- the wrapper's entire 0xEA00 preview prefix is byte-for-byte identical to `.xgo.rgb565`
+- wrapper tail at 0xEA00 is exactly `00 00 00 00 'theglad.zip' 00 00`
+- therefore metadata title selection, JPEG decode, RGB565 generation, wrapper construction, and runtime ZIP basename embedding all succeeded.
+- `.refresh-set/theglad.zfb` exists as a zero-byte marker.
+- runtime `theglad.zip` exists, 20,377,176 bytes, SHA256 `31aac538a31f1c0c5db132659ddfd8dc033268d902e728837b832141a6ec2cc1`.
+
+Captured IGS catalog triplet has count 7, but the appended seventh entries are:
+- SUBST.TAX: `theglad.zfb`
+- AEPIC.NEC: `theglad`
+- SENSC.BVS: `theglad`
+
+This explains the observed bare `theglad` entry and missing image: the enriched wrapper `The Gladiator.zfb` is valid on disk, but the catalog helper publishes filename-derived `theglad.zfb` instead of the enriched outer wrapper filename. The frontend therefore cannot open the actual enriched wrapper. The earlier interpretation that IGS wrapper/finalization itself was broken is superseded by this artifact evidence.
+
+Next fix must target IGS catalog publication/marker naming contract, not JPEG/materializer internals.
