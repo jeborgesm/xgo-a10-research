@@ -98,3 +98,16 @@ Captured IGS catalog triplet has count 7, but the appended seventh entries are:
 This explains the observed bare `theglad` entry and missing image: the enriched wrapper `The Gladiator.zfb` is valid on disk, but the catalog helper publishes filename-derived `theglad.zfb` instead of the enriched outer wrapper filename. The frontend therefore cannot open the actual enriched wrapper. The earlier interpretation that IGS wrapper/finalization itself was broken is superseded by this artifact evidence.
 
 Next fix must target IGS catalog publication/marker naming contract, not JPEG/materializer internals.
+
+
+## Test14 HW — FAIL; marker-title substitution was wrong
+
+HW observation after Test14 IGS rerun:
+- Refresh reported Games Updated;
+- IGS list now contains two bad appended entries: prior `theglad` plus new `The Gladiator.zfb`;
+- neither entry displays artwork;
+- neither launches.
+
+The photo confirms the new slot is rendered literally as **The Gladiator.zfb**, including extension, unlike stock titles. Therefore Test14's assumption that the marker basename could simply be replaced by the enriched wrapper display filename is false. The catalog helper is not a transparent marker->slot0 publisher; its three synchronized slots have their own naming/normalization contract. Test14 is rejected and must not be promoted.
+
+Important: the prior captured Test13 artifact still proves `The Gladiator.zfb` itself was correctly built with artwork and embedded `theglad.zip`. The unresolved boundary is catalog triplet construction / launcher identity, not JPEG decoding.
