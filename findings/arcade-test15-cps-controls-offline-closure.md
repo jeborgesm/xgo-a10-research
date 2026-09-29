@@ -164,3 +164,17 @@ Offline evidence is now sufficient for a single-variable Refresh-side candidate:
 - judge only whether IGS Refresh returns normally after `Games Added` and whether the newly published entry remains visible after normal browser reload/reboot.
 
 This is no longer a speculative list-ID test. It isolates a stock-BIN-proven divide-before-reload hazard introduced by exact active-list invalidation.
+
+
+## 13. Uploaded Test15 IGS catalog helper falsifies count-invalidation hypothesis
+
+User supplied the exact `IGS/catalog.xgc` from the tested SD card on 2026-09-29. Mechanical inspection:
+- size: 2766 bytes;
+- SHA-256: `97cde79e59626dcfc1997f1678d61a87d81dd0b5e686ec5ba629fb4b55683b7b`;
+- words at `+0x0730/+0x0734/+0x0738`: all `0x00000000`.
+
+Therefore the Test15 helper already had the earlier safe behavior: **no frontend count-cache invalidation at all**. The proposed Test16 NOP experiment would be byte-identical at that boundary and is cancelled. The divide-before-lazy-reload stock mechanism remains real, but it did not cause the observed Test15 IGS lock.
+
+The uploaded helper hash also matches the pre-retarget IGS emitter lineage recorded in `arcade-refresh-catalog-first-emission-delta-audit.md` (`97cde7...`), proving Test15 used that lineage rather than the later exact-count retarget source state.
+
+Investigation must return to post-publication lifecycle/data effects with this hypothesis eliminated. Do not emit a hardware candidate from the count-cache theory.
