@@ -640,3 +640,16 @@ The first question to close offline is:
 Do not ask the user for another hardware test until that comparison yields a concrete evidence-driven candidate.
 
 Keep GitHub updated and narration minimal.
+
+
+## 2026-09-29 correction — stock list order revalidated from exact XGO binary
+
+A prior direct-comparison note incorrectly reversed IGS and NeoGeo list IDs. Exact stock `bisrv.asd` evidence resolves this mechanically: the resource-triplet pointer table contains CPS1, CPS2, IGS (`subst.tax/aepic.nec/sensc.bvs`), then NeoGeo (`rmapi.tax/pcadm.nec/ntdll.bvs`) in consecutive list slots. With CPS1=list7, this pins CPS2=list8, IGS=list9, NeoGeo=list10. The physical catalog-correlation record independently agrees.
+
+Correct mapping:
+- CPS1 list7 / count word `0x80D28968`
+- CPS2 list8 / count word `0x80D2896C`
+- IGS list9 / count word `0x80D28970`
+- NeoGeo list10 / count word `0x80D28974`
+
+Therefore the temporary descriptor reversal from commit `73117a3` is rejected and corrected by `121cdca`. It must NOT be used as the Test15 Refresh-lock fix. The IGS Refresh-return failure remains open.
