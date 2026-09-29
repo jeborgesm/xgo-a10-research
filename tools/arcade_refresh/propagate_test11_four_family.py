@@ -16,7 +16,7 @@ SLOTS=((0x1200,0x20,"/mnt/sda1/ARCADE/{f}/import"),
 STAGE_REF=0x21D8
 STAGE_CPS1=0x258C
 STAGE_NEOGEO=0x3000
-FAMILY_WORD=0x2618
+FAMILY_WORD=0x2618\nIMPORT_PREFIX_SKIP_WORD=0x0BE4
 def sha(b):return hashlib.sha256(b).hexdigest()
 def put(b,o,n,s):
  raw=s.encode()+b"\0"
@@ -40,7 +40,7 @@ def main():
   else:put(b,STAGE_CPS1,0x24,stage)
   w=struct.unpack_from("<I",b,FAMILY_WORD)[0]
   if w!=0x00002025:raise SystemExit("dynamic family selector drift")
-  if famid:\n   struct.pack_into("<I",b,FAMILY_WORD,0x24040000|famid)
+  if famid:\n   struct.pack_into("<I",b,FAMILY_WORD,0x24040000|famid)\n  # Original materializer skips the import-directory prefix plus slash with\n  # a compiled immediate. CPS1/CPS2 share 28+1=29; IGS and NeoGeo do not.\n  # Retarget this geometry together with the family pathname.\n  w=struct.unpack_from("<I",b,IMPORT_PREFIX_SKIP_WORD)[0]\n  if w!=0x2422001d:raise SystemExit("import-prefix skip instruction drift")\n  skip=len(f"/mnt/sda1/ARCADE/{f}/import/")\n  struct.pack_into("<I",b,IMPORT_PREFIX_SKIP_WORD,(w&0xffff0000)|skip)
   p=out/f/"refresh.xgc";p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b)
   print(f,sha(b),len(b))
 if __name__=="__main__":main()
