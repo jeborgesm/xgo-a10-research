@@ -41,3 +41,16 @@ Observed on hardware:
 Result: **CPS2 four-family-parity path PASS.** The initial black screen is load latency for this working set and must not be recorded as a launch failure.
 
 The earlier supplied modern/encrypted-layout 1944 archive reached publication but did not establish gameplay and remains separate evidence for later validator tightening. Per scope freeze, validator cleanup remains deferred until family parity is complete.
+
+
+## Combined IGS + NeoGeo HW probe — Refresh Failed
+
+User tested IGS `theglad.zip` and NeoGeo `bstars.zip` together and Refresh returned **Refresh Failed**.
+
+Immediate offline XACM recheck against the exact Test12 manifest:
+- IGS `theglad`: **COMPATIBLE**, 0 unresolved required ROMs, 0 size mismatches.
+- NeoGeo `bstars`: **INCOMPATIBLE** with the XGO compiled `bstars` contract: unresolved required `002-p1.bin`.
+
+Correction: the earlier recommendation that the supplied `bstars.zip` was a valid Test12 NeoGeo candidate was wrong; archive-shape inspection was insufficient and should not have replaced exact XACM validation.
+
+Because Test11-family preflight maps incompatible/unsupported to no-change rather than validator error, the incompatible `bstars` alone does not yet explain an aggregate Refresh Failed. The next discriminating HW probe is IGS `theglad` alone (remove NeoGeo import candidate) to determine whether the failure is in the IGS family specialization/materializer or only appears in combined-family execution. Do not change validator/cleanup architecture during this isolation.
