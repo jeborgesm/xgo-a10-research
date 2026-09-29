@@ -11,7 +11,9 @@ REFS=[(0x0050,0x0054,"slot0"),(0x0628,0x062C,"slot0"),
 (0x0120,0x0124,"slot2"),(0x06DC,0x06E0,"slot2"),
 (0x02E8,0x02F8,"root")]
 SUFFIX_MID=0x0444
-CACHE_HI=0x0730\nCACHE_STORE=0x0734\nCACHE_DELAY=0x0738
+CACHE_HI=0x0730
+CACHE_STORE=0x0734
+CACHE_DELAY=0x0738
 def sha(b): return hashlib.sha256(b).hexdigest()
 def rd32(b,o): return struct.unpack_from("<I",b,o)[0]
 def wr32(b,o,v): struct.pack_into("<I",b,o,v&0xffffffff)
