@@ -22,19 +22,19 @@ FAMILIES=(
         "/mnt/sda1/Resources/mswb7.tax","/mnt/sda1/Resources/msdtc.nec","/mnt/sda1/Resources/mfpmp.bvs",0x80D28968),
  Family("CPS2",8,"/mnt/sda1/ARCADE/CPS2/.refresh-list",
         "/mnt/sda1/Resources/kjbyr.tax","/mnt/sda1/Resources/djoin.nec","/mnt/sda1/Resources/ke89a.bvs",0x80D2896C),
- Family("IGS",9,"/mnt/sda1/ARCADE/IGS/.refresh-list",
-        "/mnt/sda1/Resources/subst.tax","/mnt/sda1/Resources/aepic.nec","/mnt/sda1/Resources/sensc.bvs",0x80D28970),
- Family("NEOGEO",10,"/mnt/sda1/ARCADE/NEOGEO/.refresh-list",
-        "/mnt/sda1/Resources/rmapi.tax","/mnt/sda1/Resources/pcadm.nec","/mnt/sda1/Resources/ntdll.bvs",0x80D28974),
+ Family("IGS",10,"/mnt/sda1/ARCADE/IGS/.refresh-list",
+        "/mnt/sda1/Resources/subst.tax","/mnt/sda1/Resources/aepic.nec","/mnt/sda1/Resources/sensc.bvs",0x80D28974),
+ Family("NEOGEO",9,"/mnt/sda1/ARCADE/NEOGEO/.refresh-list",
+        "/mnt/sda1/Resources/rmapi.tax","/mnt/sda1/Resources/pcadm.nec","/mnt/sda1/Resources/ntdll.bvs",0x80D28970),
 )
 
 def validate():
-    assert tuple(x.list_id for x in FAMILIES)==(7,8,9,10)
+    assert tuple(x.list_id for x in FAMILIES)==(7,8,10,9)
     assert len({x.manifest for x in FAMILIES})==4
     assert len({x.slot0 for x in FAMILIES})==4
     assert all(x.manifest.startswith("/mnt/sda1/ARCADE/"+x.key+"/") for x in FAMILIES)
     assert all(len({x.slot0,x.slot1,x.slot2})==3 for x in FAMILIES)
-    assert tuple(x.count_cache for x in FAMILIES)==(0x80D28968,0x80D2896C,0x80D28970,0x80D28974)
+    assert tuple(x.count_cache for x in FAMILIES)==(0x80D28968,0x80D2896C,0x80D28974,0x80D28970)
     return True
 
 if __name__=="__main__":
