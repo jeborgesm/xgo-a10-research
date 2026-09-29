@@ -637,3 +637,16 @@ The immediate next action in the new chat is:
 > Continue offline from Test04. Recover a current known-good stock CPS1 wrapper/runtime/catalog row (preferably Cadillacs & Dinosaurs), compare it mechanically against generated `1941.zfb` + `1941.zip`, and trace current stock Arcade preprocessing/driver selection. In parallel, identify exact Arcade live-list cache invalidation from firmware. Do not build Test05 until both failure mechanisms are understood enough to justify the delta.
 
 If the exact current Dino ZFB/ZIP cannot be recovered from golden artifacts/repo, ask the user for those **two exact SD files**. That is a legitimate precise blocker and the user has explicitly offered to facilitate.
+
+
+## 2026-09-28 — Test10 promoted HW checkpoint
+
+Test10 is HW PASS: compatible CPS1 1941 preflight returned into the proven Test05A materializer; Refresh reported Games Updated, artwork displayed, and gameplay worked.
+
+Promoted invariant: compatibility validation for CPS1/CPS2/IGS/NeoGeo occurs before any family materialization. Tests06-09 mid-materializer validation are rejected architecture and must not be reused. The family materialization transaction must remain isolated from validator VFS/cache activity.
+
+Test10 package SHA256: `4c4beef680da140dc99b9bb7d03d67b5ed12e535dde24fdd25f833cb332636a1`.
+Test10 refresh.xgc SHA256: `165e3dc21460b87854fd80fa495c7127b6b80b2fe61e5ea20dcaeb5d65050784`.
+Test05A materializer parent remains the proven artwork/materialization body SHA256 `2d6503ae20937bd9d525d68a18ee845d942667b582e71e2371450a83d8d29ad2`.
+
+Next task: replace Test10's fixed CPS1/1941 preflight fixture with dynamic family-folder enumeration and XACM validation, preserving the same pre-materialization boundary and family order CPS1→CPS2→IGS→NEOGEO.
