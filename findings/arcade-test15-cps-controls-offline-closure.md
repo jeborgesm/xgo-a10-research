@@ -305,3 +305,24 @@ Thus Puzzle Star is now a fully provenance-backed compatibility fixture:
 OEM card inventory + exact OEM archive bytes + exact stock XGO compiled driver contract all agree.
 
 This also demonstrates that the XACM game-owned-descriptor model is sufficient for this fixture; no speculative board-ROM validator change is required before publication testing.
+
+
+## 21. Test17 authorized — OEM Puzzle Star clean IGS publication control
+
+Offline gate is complete. The exact OEM `puzlstar.zip` matches every game-owned descriptor in the stock XGO `puzlstar` callback, and Puzzle Star is physically vendor-supplied yet absent from the visible stock IGS catalog. This is the first clean fixture that simultaneously satisfies provenance, exact XACM/BIN compatibility, IGS family identity, and new-publication semantics.
+
+No firmware/helper change is made. Protected Test15 code remains byte-identical.
+
+Fixture overlay:
+- `ARCADE/IGS/import/puzlstar.zip`
+- `ARCADE/IGS/meta/puzlstar.txt` = `Puzzle Star`
+- no artwork payload, intentionally removing JPEG conversion from this discriminator
+- package SHA-256 `dab7d63c39842148a0d2fa785038a4b8c7cac974403bf12ba75f3dcdefb4cbc8`
+
+Precondition: IGS import and transient `.refresh-set` must contain no prior Test13-16 fixture residue; only `puzlstar.zip` is presented to the IGS import pass. Existing OEM `/ARCADE/bin/puzlstar.zip` and/or `/ARCADE/Puzzle Star.zfb`, if present, are legitimate reusable physical assets and should not be deleted merely for this test.
+
+Single HW question: after a genuine new IGS catalog publication of the exact OEM-compatible Puzzle Star fixture, does native Refresh return responsive after `Games Added`?
+
+If responsive, launch Puzzle Star as the secondary observation because its exact OEM runtime archive is now provenance/BIN compatible. If Refresh locks after Games Added, the post-publication IGS lifecycle defect is reproduced independently of The Gladiator and its runtime compatibility.
+
+This is the first post-Test15 hardware probe that is authorized by the full corrected evidence chain.
