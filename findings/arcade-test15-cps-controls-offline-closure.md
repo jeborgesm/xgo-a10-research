@@ -178,3 +178,14 @@ Therefore the Test15 helper already had the earlier safe behavior: **no frontend
 The uploaded helper hash also matches the pre-retarget IGS emitter lineage recorded in `arcade-refresh-catalog-first-emission-delta-audit.md` (`97cde7...`), proving Test15 used that lineage rather than the later exact-count retarget source state.
 
 Investigation must return to post-publication lifecycle/data effects with this hypothesis eliminated. Do not emit a hardware candidate from the count-cache theory.
+
+
+## 14. OEM Puzzle Star runtime identity recovered from original-card inventory
+
+The preserved original-card file inventory (`xgo_filelist.csv`) closes the previously open provenance gate without inference:
+- `D:\\ARCADE\\Puzzle Star.zfb` — 59,922 bytes — 2023-02-02;
+- `D:\\ARCADE\\bin\\puzlstar.zip` — 5,980,261 bytes — 2022-07-13.
+
+The 59,922-byte wrapper size is exactly the 59,904-byte stock preview prefix plus an 18-byte wrapper tail, consistent with the runtime identity `puzlstar.zip` plus wrapper framing. More importantly, the matching OEM bin archive is independently present on the same original card, so `Puzzle Star -> puzlstar.zip` is now provenance-backed rather than guessed from the driver table.
+
+Puzzle Star is therefore approved as the replacement unlisted OEM PGM/IGS runtime control when the Refresh-return defect is isolated. It remains physically vendor-supplied but absent from the visible six-entry IGS catalog, making it suitable for testing import/publication without using The Gladiator.
