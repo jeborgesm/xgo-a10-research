@@ -257,3 +257,24 @@ The immediate Test16 failure does not authorize another hardware probe. Reuse/so
 4. Before any HW candidate, the exact `puzlstar` game-specific descriptor stream must be recovered from stock BIN/XACM and the OEM `puzlstar.zip` must be validated offline against it. If the actual OEM archive bytes are not present in repository/artifacts, that missing user-owned file is the only justified input request.
 
 No Test17 is authorized at this point.
+
+
+## 19. OEM Puzzle Star archive recovered — exact fixture identity
+
+User supplied the original-card `/ARCADE/bin/puzlstar.zip`.
+
+Exact archive:
+- size 5,980,261 bytes
+- SHA-256 `9de64ad5a4a6ac547da9ca40471628edace1a0c58fcf9d44ef286f6907fc73ce`
+
+ZIP members:
+- `a0800.u1` 4,194,304 CRC32 `e1e6ec40`
+- `b0800.u3` 2,097,152 CRC32 `52e7bef5`
+- `m0800.u2` 4,194,304 CRC32 `e1a46541`
+- `t0800.u5` 2,097,152 CRC32 `f9d84e59`
+- `v100mg.u1` 524,288 CRC32 `5788b77d`
+- `v100mg.u2` 524,288 CRC32 `4c79d979`
+
+This closes the user-owned fixture acquisition gate. The archive is the exact size independently recorded in the original-card inventory and its basename matches the recovered OEM wrapper/runtime pair `Puzzle Star.zfb -> puzlstar.zip`.
+
+Next offline task is exact stock-BIN/XACM descriptor comparison. No hardware test is authorized merely from archive recovery.
