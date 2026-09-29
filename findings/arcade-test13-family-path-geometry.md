@@ -61,3 +61,18 @@ A full Test13 CPS1-vs-IGS binary delta audit found only the intended family spec
 The remaining test-input difference exposed a separate mistake in the HW fixture: the assistant-generated `theglad.jpg` supplied for the IGS test is **887x887 RGB JFIF**. The physical artwork path previously proven on Test05A used an ordinary **600x400 RGB JFIF** source. Therefore the isolated IGS failure has not yet cleanly falsified the IGS specialization: its artwork input was outside the hardware-proven JPEG-worker input geometry.
 
 Do not patch firmware again before controlling this variable. A replacement of the same generated artwork has been prepared at exactly 600x400 RGB JFIF. Next HW probe keeps Test13 firmware and compatible `theglad.zip` unchanged and changes only the JPEG fixture to the proven 600x400 geometry. If this still returns Refresh Failed, resume materializer archaeology; if it passes, the apparent IGS code failure was an invalid artwork test fixture.
+
+
+## Isolated IGS rerun with 600x400 JPEG — partial pipeline PASS, semantic specialization FAIL
+
+User replaced the earlier square test artwork with a 600x400 JPEG matching the HW-proven JPEG input geometry and reran Test13 with IGS `theglad.zip` alone.
+
+HW observation:
+- Refresh completed and reported **Games Added**;
+- list entry was added as literal filename-derived **`theglad`**, ignoring supplied metadata;
+- no artwork appeared (and no black fallback preview appeared either);
+- game did not run.
+
+Interpretation: this is materially different from the earlier Refresh Failed result. IGS now reaches successful publication/aggregate status, so the 28-byte import-prefix correction plus proven JPEG geometry removed the hard failure. However, the generated IGS entry is semantically wrong: metadata/artwork/runtime identity specialization is not equivalent to the working CPS1/CPS2 path. The absence of even the black fallback is especially strong evidence that this is not merely a JPEG decode failure; the IGS wrapper/finalization path or family-specific literal/reference geometry is wrong.
+
+Do not promote IGS. Next work is offline comparison of the actual generated IGS artifacts/path identities against CPS1/CPS2 contracts; no validator or cleanup work yet.
