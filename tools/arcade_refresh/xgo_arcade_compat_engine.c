@@ -115,7 +115,7 @@ int xgo_arcade_validate(Reader*xacm,Reader*zip,const uint8_t expected_sha[32],ui
  if(!found)return XGO_UNSUPPORTED;
  if(zip_open(zip,&z,tail,tailcap))return XGO_VALIDATOR_ERROR;
  for(i=0;i<d.count;i++){int crc_hit=0,name_hit=0;if(rom_at(&m,d.first+i,&rr)||mstr(&m,rr.name,s,sizeof s))return XGO_VALIDATOR_ERROR;
-  if(!rr.type||!rr.size||!rr.crc||(rr.type&(1u<<27)))continue;
+  if(!rr.type||!rr.size||!rr.crc||(rr.type&(1u<<27)))continue;\n  /* XACM v1 deliberately contains game-owned descriptors only. Parent/board\n   * identities are metadata for dependency resolution, not requirements that\n   * must be present in the imported child ZIP. */
   for(j=0;j<z.count;j++){if(zip_entry(zip,&z,j,&e))return XGO_VALIDATOR_ERROR;if(!e.name[0]||ends_slash(e.name))continue;if(e.crc==rr.crc&&e.size==rr.size){crc_hit=1;break;}if(ieq(e.name,s))name_hit=1;}
   if(!crc_hit&&!name_hit)return XGO_INCOMPATIBLE;
  }
