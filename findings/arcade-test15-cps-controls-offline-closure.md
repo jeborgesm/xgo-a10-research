@@ -278,3 +278,30 @@ ZIP members:
 This closes the user-owned fixture acquisition gate. The archive is the exact size independently recorded in the original-card inventory and its basename matches the recovered OEM wrapper/runtime pair `Puzzle Star.zfb -> puzlstar.zip`.
 
 Next offline task is exact stock-BIN/XACM descriptor comparison. No hardware test is authorized merely from archive recovery.
+
+
+## 20. Puzzle Star stock-BIN compatibility gate CLOSED
+
+Direct extraction from exact stock XGO `bisrv.asd` identifies:
+- driver index 1069
+- short name `puzlstar`
+- system `PGM`
+- parent: none
+- board: `pgm`
+- ROM-info callback `0x80494FB8`
+- game-specific descriptor table `0x80B1A690`
+
+Required game-owned descriptors:
+- `v100mg.u1` 524288 CRC `5788b77d`
+- `v100mg.u2` 524288 CRC `4c79d979`
+- `t0800.u5` 2097152 CRC `f9d84e59`
+- `a0800.u1` 4194304 CRC `e1e6ec40`
+- `b0800.u3` 2097152 CRC `52e7bef5`
+- `m0800.u2` 4194304 CRC `e1a46541`
+
+The user-supplied original-card `puzlstar.zip` matches **all six required descriptors exactly by filename, uncompressed size, and CRC32**. There are no extra/missing game-owned requirements in the recovered XGO callback slice.
+
+Thus Puzzle Star is now a fully provenance-backed compatibility fixture:
+OEM card inventory + exact OEM archive bytes + exact stock XGO compiled driver contract all agree.
+
+This also demonstrates that the XACM game-owned-descriptor model is sufficient for this fixture; no speculative board-ROM validator change is required before publication testing.
