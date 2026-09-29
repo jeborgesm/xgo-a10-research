@@ -27,7 +27,14 @@ def main():
         changed={i for i,(x,y) in enumerate(zip(p,b[:PARENT_SIZE])) if x!=y}
         assert changed<=ALLOWED,(fam.key,sorted(changed-ALLOWED))
         assert b[0x0444]==ord("f")
-        ch=u32(b,0x0730); cs=u32(b,0x0734); cd=u32(b,0x0738)\n        assert ch>>26==0x0f\n        base=(ch>>16)&31\n        assert cs>>26==0x2b and ((cs>>21)&31)==base and ((cs>>16)&31)==0\n        hi=ch&0xffff; imm=cs&0xffff\n        cache=((hi<<16)+sx16(imm))&0xffffffff\n        assert cache==fam.count_cache,(fam.key,hex(cache),hex(fam.count_cache))\n        assert cd==0
+        ch=u32(b,0x0730); cs=u32(b,0x0734); cd=u32(b,0x0738)
+        assert ch>>26==0x0f
+        base=(ch>>16)&31
+        assert cs>>26==0x2b and ((cs>>21)&31)==base and ((cs>>16)&31)==0
+        hi=ch&0xffff; imm=cs&0xffff
+        cache=((hi<<16)+sx16(imm))&0xffffffff
+        assert cache==fam.count_cache,(fam.key,hex(cache),hex(fam.count_cache))
+        assert cd==0
         expected={"slot0":fam.slot0,"slot1":fam.slot1,"slot2":fam.slot2,
           "root":f"/mnt/sda1/ARCADE/{fam.key}/.refresh-set"}
         for h,l,key in REFS:
