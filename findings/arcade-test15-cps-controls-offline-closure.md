@@ -211,3 +211,14 @@ Decision:
 - if it locks after `Games Added`, the failure is reproduced with clean marker state and a stock-curated IGS driver, closing the fixture/runtime ambiguity and justifying deeper materializer-state tracing.
 
 Fixture package: `xgo-arcade-test16-clean-igs-control.zip`, SHA-256 `ce775aa11e964fd41bdc4a0215aedbd05c411bab325fab520c5feb914221ba63`. It contains only the metadata/control instructions; it does not redistribute ROM data.
+
+
+## 16. Test16 HW result — Refresh Failed before publication
+
+Hardware result reported 2026-09-29: clean-marker `drgw2.zip` control returned **Refresh Failed**, not Games Added and not the prior post-success hard lock.
+
+This is a different failure class from Test15. Because `drgw2` is a stock-curated PGM driver/archive identity, the result points back into the pre-materialization compatibility gate rather than catalog publication or frontend return. The current XACM validator is therefore not equivalent to stock PGM dependency resolution for this control.
+
+The source-level reason is now concrete: `xgo_arcade_compat_engine.c` validates every required descriptor in the imported game ZIP alone. The previously closed PGM callback archaeology explicitly established that PGM uses `STDROMPICKEXT(..., pgm)`, with shared board ROM descriptors owned by `/bios/pgm.zip`. The implementation never opens/searches that board archive (nor parent archives), despite the finding requiring search ownership order game -> parent -> board ROM. Thus a legitimate stock PGM archive can be rejected by the Refresh validator before materialization.
+
+Test16 therefore does **not** test the Test15 return lock. It exposes an independent validator implementation gap. Do not alter catalog/runtime code from this result. Next candidate must first make PGM validation honor shared-board dependency ownership, then repeat the clean stock control.
