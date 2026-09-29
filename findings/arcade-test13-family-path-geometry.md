@@ -43,3 +43,12 @@ Current evidence after Test13:
 - Test13 combined IGS+NeoGeo: Refresh Failed
 
 Because command6/aggregate status reports failure if either family returns failure, the combined Test13 result cannot identify which family failed. Do not mark NeoGeo individually failed from this run and do not mark the IGS path-length fix failed until an isolated Test13 IGS run exists.
+
+
+## Isolated Test13 IGS result — FAIL
+
+User removed NeoGeo candidate and ran Test13 with only compatible `theglad.zip` in IGS import. Result: **Refresh Failed**.
+
+Therefore the +0x0BE4 import-prefix skip correction was real but **not sufficient** to specialize the Test11 CPS1 materializer for IGS. IGS remains independently broken after Test13. NeoGeo remains unisolated.
+
+Next work is offline binary archaeology only: compare all path-derived arithmetic, literal references, staging/finalizer assumptions and family-dependent geometry in the materializer against the working equal-length CPS1/CPS2 cases. Do not request another HW test until a complete mechanical delta audit identifies the remaining IGS-specific assumption(s).
