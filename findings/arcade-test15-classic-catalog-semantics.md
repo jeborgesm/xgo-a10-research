@@ -66,3 +66,16 @@ The current Arcade descriptor source had IGS labeled list 9 with cache 0x80D2897
 Source corrected in commit 73117a3282f67cefb8c97c62f590677494ce7f54. Do not change the Test15 JPEG/RGB565/wrapper/title acquisition path.
 
 The launch lock is not yet attributed to this descriptor defect: the stock IGS resource triplet routes through list 10, and Test15 reaches ROM parsing plus game audio. That may be a separate `theglad` runtime/core compatibility boundary. First fix/audit list-ID-derived Refresh cleanup; then discriminate generated-wrapper launch from title-specific runtime behavior using a stock-known IGS driver if necessary.
+
+
+## 2026-09-29 correction — stock list order revalidated from exact XGO binary
+
+A prior direct-comparison note incorrectly reversed IGS and NeoGeo list IDs. Exact stock `bisrv.asd` evidence resolves this mechanically: the resource-triplet pointer table contains CPS1, CPS2, IGS (`subst.tax/aepic.nec/sensc.bvs`), then NeoGeo (`rmapi.tax/pcadm.nec/ntdll.bvs`) in consecutive list slots. With CPS1=list7, this pins CPS2=list8, IGS=list9, NeoGeo=list10. The physical catalog-correlation record independently agrees.
+
+Correct mapping:
+- CPS1 list7 / count word `0x80D28968`
+- CPS2 list8 / count word `0x80D2896C`
+- IGS list9 / count word `0x80D28970`
+- NeoGeo list10 / count word `0x80D28974`
+
+Therefore the temporary descriptor reversal from commit `73117a3` is rejected and corrected by `121cdca`. It must NOT be used as the Test15 Refresh-lock fix. The IGS Refresh-return failure remains open.
