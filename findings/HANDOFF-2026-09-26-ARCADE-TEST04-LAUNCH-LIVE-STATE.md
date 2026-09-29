@@ -650,3 +650,24 @@ Test10 refresh.xgc SHA256: `165e3dc21460b87854fd80fa495c7127b6b80b2fe61e5ea20dca
 Test05A materializer parent remains the proven artwork/materialization body SHA256 `2d6503ae20937bd9d525d68a18ee845d942667b582e71e2371450a83d8d29ad2`.
 
 Next task: replace Test10's fixed CPS1/1941 preflight fixture with dynamic family-folder enumeration and XACM validation, preserving the same pre-materialization boundary and family order CPS1→CPS2→IGS→NEOGEO.
+
+
+## 2026-09-28 — Test11 HW PASS / scope freeze
+
+Test11 dynamic CPS1 preflight is HW PASS: Games Added; generated entry had artwork; game launched and ran. Finding commit: 87f9ed600c43fd811825bfebf735ff2b6db8d32f.
+
+### User-directed scope freeze
+Before adding validator quarantine, temporary-art cleanup, path cleanup, or other complexity, preserve this working state and mechanically propagate the same proven procedure across all four Arcade families: CPS1, CPS2, IGS/PGM, NeoGeo.
+
+The next milestone is **four-family parity**, not cleanup:
+1. dynamic import enumeration per family;
+2. existing XACM validation before materialization;
+3. proven family materializer/artwork/catalog path;
+4. family order 7 CPS1, 8 CPS2, 9 IGS, 10 NeoGeo;
+5. no hardcoded game names and no fixed import counts;
+6. do not redesign validator behavior yet;
+7. do not relocate/clean .xgo.jpg/.xgo.rgb565 yet;
+8. do not introduce quarantine/rename yet;
+9. protect Test11 behavior while specializing the existing family helpers.
+
+Only after four-family behavior is HW-proven do validator skip/quarantine and workspace cleanup resume.
