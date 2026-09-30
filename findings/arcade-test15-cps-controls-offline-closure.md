@@ -737,3 +737,75 @@ Return to the one fully proven NeoGeo publication transaction:
 Therefore the shortest path to the project goal is to compare/recover the **older publication architecture that already worked** and decide whether automatic marker creation is actually required for the final four-family implementation. A valid implementation may separate materialization from publication and create/authorize the marker in a safer component, provided it preserves the proven on-device Refresh behavior and marker contract.
 
 No more hardware candidates until that architecture comparison is complete.
+
+
+## 37. Historical Refresh reconstruction — marker architecture is the regression, not the solution
+
+The requested full historical comparison is now complete far enough to identify the architectural divergence.
+
+### HW-proven older enrichment contract
+
+Test74 SFC, Test75 FC, the final GB golden checkpoint, and the successful MD lineage all use an explicit **two-stage** Refresh transaction:
+
+```
+materializer refresh.xgc
+  -> creates/reuses top-level generated wrapper
+  -> returns changed/no-change/failure
+
+catalog merge catalog.xgc
+  -> scans the top-level generated-wrapper directory
+  -> compares exact wrapper filenames against catalog slot 0
+  -> appends every missing wrapper to the synchronized triplet
+  -> invalidates selected count cache
+  -> returns changed/no-change/failure
+
+dispatcher ORs changed state
+  -> native Games Updated / No New Games / Refresh Failed continuation
+```
+
+Critical HW precedent:
+- Test74 SFC recovered a wrapper that had already been created by an earlier failed publication attempt. The explicit catalog helper scanned top-level `/SFC/*.zsf`, found the existing wrapper missing from slot 0, appended it, and publication succeeded.
+- Test74 then passed a three-game batch.
+- Test75 ported the same helper architecture to FC by changing only system contract.
+- Final GB golden uses the same Test74/Test75-style explicit catalog merge and specifically records: **wrapper creation was not enough; materialize first -> catalog merge second**.
+- Successful MD custom architecture likewise proved materializer -> custom catalog update -> coherent triplet -> immediate frontend use.
+
+None of these proven enrichment paths requires a transient per-wrapper publication marker.
+
+### Arcade divergence
+
+The current four-family Arcade materializer added a new coupling:
+```
+wrapper + runtime ZIP convergence
+   -> materializer itself must create .refresh-set/<display>.zfb
+   -> catalog helper scans marker directory
+```
+
+For NeoGeo, HW has repeatedly proven that wrapper and runtime ZIP converge but automatic marker creation fails. Tests23-26 then modified marker implementation details without changing that result.
+
+Test22 is the bridge proof: manually supplying the zero-byte marker allowed the unchanged NeoGeo catalog helper to publish Baseball Stars Pro, display artwork, and launch/play. Therefore the catalog data contract is good; the marker is only an authorization proxy for a wrapper that already exists.
+
+### Correct architectural conclusion
+
+The marker layer is unnecessary for the original Refresh requirement and is the component that diverged from the project's older HW-proven enrichment architecture.
+
+The next implementation must therefore return Arcade to the proven two-stage model:
+1. family materializer creates/reuses the top-level `.zfb` and runtime ZIP;
+2. family catalog helper scans top-level `/ARCADE/*.zfb`, but filters ownership to the selected family before appending;
+3. exact slot-0 de-duplication makes existing wrappers recoverable/idempotent;
+4. changed/no-change state is aggregated by the dispatcher;
+5. no `.refresh-set` marker is required for publication.
+
+Important Arcade-specific constraint: unlike SFC/FC/GB, all four stock Arcade families share `/ARCADE`. Therefore the old top-level-scan architecture cannot be copied blindly. The catalog helper must prove family ownership before appending, using the already-established wrapper/runtime family discriminator rather than filename guessing. CPS1/CPS2/IGS/NeoGeo catalogs must remain isolated.
+
+### Hardware gate
+
+No Test27 yet. Before packaging:
+- recover exact Test74/Test75 catalog-helper semantics and compare against current Arcade catalog helper;
+- identify the smallest way to replace marker-directory enumeration with top-level wrapper enumeration plus family ownership;
+- prove existing stock wrappers de-duplicate and cross-family wrappers are rejected offline against the actual captured Arcade tree;
+- remove marker creation as a materializer success dependency while preserving wrapper/runtime-ZIP convergence;
+- prove dispatcher reachability and result aggregation;
+- mechanically audit all four family helpers and protected Test15 publication/art/title behavior.
+
+This supersedes the Test23-26 marker-repair direction.
