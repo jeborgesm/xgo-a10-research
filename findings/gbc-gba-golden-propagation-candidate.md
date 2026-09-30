@@ -277,3 +277,15 @@ Candidate:
 - LCFG CRC-32/MPEG-2 `0x38F17EE5`
 
 Hardware question is intentionally narrow: with no GB input/catalog changes, does selecting GB Refresh return `No New Games` rather than `Refresh Failed`? If yes, immediately spot-check GBC and GBA Refresh still return `No New Games`. Arcade is not part of this repair test.
+
+
+## 2026-09-29 HW result — GB repair passes; GBA regression exposed
+
+Hardware result for the surgical GB pathname repair:
+- GB: `No New Games` — **PASS**, the GB `Refresh Failed` regression is repaired.
+- GBC: `No New Games` — preserved.
+- GBA: `Refresh Failed` — **regression exposed**.
+- Arcade: `Refresh Failed` — pre-existing current Arcade state; remains out of this handheld repair scope.
+- all other Refresh items tested by user: `No New Games`.
+
+Interpretation boundary: the GB repair itself changed only the GB catalog-path reference plus a relocated pathname and LCFG seal; it did not intentionally modify the GBA command/helper/catalog. Therefore GBA failure must be investigated against the current physical firmware/data before another hardware candidate. Do not reopen Arcade or validator work. Freeze further hardware changes until the GBA path, pathname storage, helper identities, and live-data ownership are mechanically audited for the same class of cumulative cave/string collision.
