@@ -988,3 +988,47 @@ Safety properties:
 - candidate namespace remains family-local.
 
 Before packaging, mechanically verify the existing convergence helper accepts arbitrary source/destination paths and is not hard-wired to import/bin ZIP semantics; if hard-wired, reuse its underlying fopen/fread/fwrite/fclose loop with the already-proven calling convention rather than altering catalog logic.
+
+
+## 42. Test24 scratch repair was incomplete — exact missed delay-slot write identified
+
+Re-disassembly of the HW-working CPS1 marker builder against Test24/Test26 closes a concrete binary defect that earlier audits missed.
+
+Working CPS1 uses one marker pathname buffer at `0x870025E8`. The first bounded-copy call is:
+```
+21d0  lui   t0,0x8700
+21d8  a2 = marker-root source
+21dc  a1 = 0x140
+21e0  a0 = t0 + 0x25E8
+21e4  jal   bounded_copy/+append helper
+21e8  sb    zero,0x25E8(t0)    # DELAY SLOT: initialize destination[0]
+```
+
+Test24 attempted to move the marker destination buffer to `0x87003100` by changing the three explicit `a0` references at +21E0/+21FC/+2224, but **left +21E8 unchanged**:
+```
+21e0  a0 = t0 + 0x3100
+21e4  jal ...
+21e8  sb zero,0x25E8(t0)       # still clears OLD buffer, not new buffer
+```
+
+The helper at +0x2398 is append-oriented, not strcpy:
+- it first scans destination `a0` for an existing NUL, bounded by `a1`;
+- then scans/appends source `a2`;
+- returns -1 on capacity failure.
+
+Therefore the first operation on relocated `0x3100` was performed **without initializing destination[0]**. The zero cave happened to be initially zero in the file image, but runtime contents at 0x87003100 are not contractually initialized by this routine. More importantly, the scratch move was not semantically complete: the original code explicitly initializes the destination in the JAL delay slot and Test24/26 failed to preserve that invariant.
+
+This is the first concrete defect found in the Test24 repair itself and invalidates Tests24-26 as tests of a correctly relocated marker buffer.
+
+Minimal correct relocation from Test15 NeoGeo:
+- +21E0: 0x25E8 -> 0x3100
+- +21E8: store-zero immediate 0x25E8 -> **0x3100**
+- +21FC: 0x25E8 -> 0x3100
+- +2224: 0x25E8 -> 0x3100
+- keep marker-root source at +0x3000
+- no validator, catalog helper, family path, runtime-ZIP, title, or publication semantics changes.
+
+Before hardware packaging, audit that 0x3100..0x323F is unused for the full helper lifetime and mechanically emulate the two append calls to prove the resulting pathname is exactly:
+`/mnt/sda1/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb `.
+
+This supersedes the more invasive markerless/catalog redesign unless the corrected relocation fails its offline gate.
