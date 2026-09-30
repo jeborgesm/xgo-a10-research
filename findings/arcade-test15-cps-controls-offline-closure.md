@@ -680,3 +680,21 @@ Next work is offline only:
 2. compare the automatic marker-creation sequence against an older HW-working family/materializer and/or source implementation;
 3. identify the exact difference that prevents NeoGeo from producing the same zero-byte marker;
 4. no Test26 until that comparison produces a specific correction to the proven architecture.
+
+
+## 35. Working-version revision — NeoGeo propagation introduced an unnecessary out-of-layout marker-source relocation
+
+Revision was reset to the last automatic working family implementations and the known NeoGeo manual-publication success.
+
+Mechanical comparison of the complete finalizer (`+0x2000..+0x2397`) between HW-working IGS Test15 and original NeoGeo Test15 shows exactly one word difference: marker-root source pointer at `+0x21D8`.
+- IGS: `0x24c6258c` -> source at helper-local `+0x258c`.
+- NeoGeo: `0x24c63000` -> relocated source at helper-local `+0x3000`.
+Everything else in the materializer/finalizer is instruction-identical after family normalization.
+
+The propagation script explains why: it treats `+0x258c` as a fixed 0x24-byte slot and relocates NeoGeo because its root string is longer. But byte inspection shows the actual zero/data geometry before the next literal at `+0x25b0` is `+0x2588..+0x25af` = **40 bytes**. The NeoGeo root `/mnt/sda1/ARCADE/NEOGEO/.refresh-set/\0` is **38 bytes**, so it fits completely in the original finalizer data neighborhood if started four bytes earlier at `+0x2588`, with two bytes spare, without touching the next literal.
+
+This is materially different from Tests23-25: those retained an out-of-layout source relocation and varied scratch/path geometry. The older working families keep the marker-root source adjacent to the finalizer literals. NeoGeo is the only propagated family that moved it far away to +0x3000.
+
+Test22 remains decisive publication proof: with the original NeoGeo Test15 binaries unchanged, manually supplying the zero-byte marker caused Games Added, correct list/art publication, and playable launch. Therefore catalog linkage is already proven; the unresolved automatic defect is marker production.
+
+Next action is offline reconstruction/audit of a minimal **layout-restoration** candidate: put the 38-byte NeoGeo marker root at +0x2588 and retarget only +0x21D8 to +0x2588, restoring the working-family data-layout model. Do not yet request HW until collision/reference audits are complete.
