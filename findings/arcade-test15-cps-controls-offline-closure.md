@@ -1065,3 +1065,23 @@ Hardware setup remains the clean transition used for Test24:
 - run Arcade Refresh once.
 
 Expected if root cause is closed: Games Added/Updated, Baseball Stars Pro published with image, playable; second unchanged invocation No New Games.
+
+
+## 42. Test27 HW FAIL — marker repair line is closed and rejected
+
+HW result, 2026-09-30:
+- first NeoGeo Refresh: `Refresh Failed`
+- second unchanged Refresh: `No New Games`
+- no successful automatic publication.
+
+Test27 specifically corrected the previously missed initialization store for relocated marker scratch (`0x25E8 -> 0x3100`). Because the hardware result is unchanged from Test24, the missing initialization was real but **not causal**.
+
+This is the terminal result for the marker-repair line. Tests23–27 have now independently varied source relocation, scratch relocation, scratch initialization, pathname length/layout, and literal placement without restoring automatic publication. Do not build Test28 as another marker micro-patch.
+
+The earlier historical reconstruction is now mandatory implementation direction:
+- marker publication is not the Test74/Test75 architectural parent;
+- wrapper + runtime ZIP convergence is already HW-proven;
+- Test22 proves catalog mutation/launch once publication input exists;
+- therefore replace the marker dependency rather than continue repairing it.
+
+Next work is offline only: recover/build an explicit family publication merge derived from the HW-proven Test74/Test75 catalog helper, with family ownership established from the materializer transaction rather than a post-hoc zero-byte marker. No further hardware request until that replacement path is fully simulated and mechanically audited.
