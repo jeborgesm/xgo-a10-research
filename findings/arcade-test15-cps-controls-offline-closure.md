@@ -502,3 +502,20 @@ Test22 remains important but must be interpreted carefully: the manually seeded 
 The +0x3000/+0x2CE0 marker-string relocation hypothesis is therefore rejected not only by Test23 HW failure but also because it targeted a later stage than the first missing post-wrapper artifact.
 
 Offline priority is reset to the runtime-ZIP convergence block immediately following final ZFB convergence. No further hardware candidate until that block is mechanically compared with CPS1/CPS2/IGS and its state/idempotency behavior is resolved.
+
+
+## 29. Runtime-ZIP convergence block mechanically closed; next defect boundary corrected again
+
+Disassembly of exact Test15 CPS1/CPS2/IGS/NeoGeo helpers shows the complete materializer core at +0x2000..+0x2397 is instruction-identical across all four families except NeoGeo's already-known marker-root pointer at +0x21D8. In particular, the runtime-ZIP path construction and convergence logic is identical:
+
+- +0x2118..+0x2158 builds the import source pathname in the 0x87002828 0x100-byte scratch buffer from family import-root + ROM stem + `.zip`.
+- +0x2160..+0x219C builds the common `/mnt/sda1/ARCADE/bin/<stem>.zip` destination in the 0x87002728 0x100-byte scratch buffer.
+- +0x21A8 calls the shared compare/convergence helper at 0x870023F4.
+- +0x21C0 repeats the same convergence helper and requires return == 1 before entering marker construction at +0x21D0.
+- 0x870023F4 opens both built paths, compares/copies in 0x2000-byte chunks, closes both streams, and returns 0/1/-1 according to convergence state.
+
+NeoGeo's import literal at +0x25C8 is 32 bytes including NUL and ends exactly at +0x25E7. This is within its intended literal slot and the resulting `bstars.zip` source path is only 42 bytes including NUL, far below the 0x100-byte scratch bound. Destination is shorter. There is no NeoGeo-specific executable difference in runtime-ZIP convergence itself.
+
+Important remaining anomaly: +0x25E8 is immediately reused as the 0x140-byte marker-path scratch buffer, yet executable code begins at +0x2600 only 24 bytes later. Marker construction necessarily overwrites +0x2600 onward. This is true in all four propagated helpers, so it cannot alone explain NeoGeo unless the working families avoid re-entering the overwritten region while NeoGeo's control/state causes a re-entry. The marker file is opened at +0x222C using this scratch path.
+
+The post-Test21 capture lacking `ARCADE/bin/bstars.zip` still proves the first-pass transaction did not leave runtime ZIP convergence durable, but the static code comparison does not support a NeoGeo-specific bug in the copy routine. Next offline task is to reconcile Test21/Test23 persistence with helper return/re-entry semantics and inspect whether the 0x25E8 self-overwrite is part of the repeated-lock mechanism before generating another candidate.
