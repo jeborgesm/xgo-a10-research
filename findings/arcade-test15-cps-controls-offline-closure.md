@@ -537,3 +537,18 @@ The zero-owned region after the XGO preflight metadata is large enough for a pro
 This differs fundamentally from failed Test23, which moved only the marker SOURCE string and left the corrupting destination at +0x25E8. No validator, runtime-ZIP, catalog, ROM, artwork, or family logic needs to change.
 
 Before HW candidate generation, restore the original Test15 NeoGeo marker-root source at +0x3000 (not Test23's +0x2CE0) and mechanically audit that +0x3100..+0x323F is zero-owned and has no static references.
+
+
+## 31. Test24 HW result — scratch relocation changes failure mode but does not complete publication
+
+Hardware result:
+- Test24 moved only the NeoGeo marker-path destination scratch from unsafe +0x25E8 to zero-owned +0x3100, preserving the original marker-root source at +0x3000 and restoring the exact 117-entry pre-Test22 NeoGeo resource triplet.
+- First Arcade Refresh returned **Refresh Failed** rather than hard-locking.
+- Immediate second Refresh returned **No New Games**.
+- Baseball Stars Pro was **not added to the game list**.
+
+Interpretation discipline:
+- Test24 falsifies the claim that fixing the marker scratch self-overwrite alone closes NeoGeo publication.
+- The changed first-run behavior (hard-lock -> explicit Refresh Failed) is evidence that removing self-overwrite affected control/return behavior, but it does not prove the remaining failure is specifically marker creation.
+- The second-run No New Games again indicates durable convergence/state was written on the first pass while catalog publication remained absent.
+- Do not generate Test25 from another code guess. Preserve current post-Test24 SD state and capture it physically before further modification so wrapper, runtime ZIP, marker, import and catalog triplet can be compared against post-Test21/Test22 evidence.
