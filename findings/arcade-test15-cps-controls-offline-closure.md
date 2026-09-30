@@ -326,3 +326,28 @@ Single HW question: after a genuine new IGS catalog publication of the exact OEM
 If responsive, launch Puzzle Star as the secondary observation because its exact OEM runtime archive is now provenance/BIN compatible. If Refresh locks after Games Added, the post-publication IGS lifecycle defect is reproduced independently of The Gladiator and its runtime compatibility.
 
 This is the first post-Test15 hardware probe that is authorized by the full corrected evidence chain.
+
+
+## 22. Physical SD audit closes current IGS Refresh Failed cause
+
+User supplied the actual current `/ARCADE` tree after Test18. This exposes a concrete filesystem-contract break that explains why IGS worked at Test15 and every later clean-control run returned `Refresh Failed`.
+
+Current physical IGS tree contains:
+`/ARCADE/IGS/.refreshset/`
+
+It does **not** contain:
+`/ARCADE/IGS/.refresh-set/`
+
+Exact Test15 IGS binaries both require the hyphenated pathname:
+- `refresh.xgc` literal: `/mnt/sda1/ARCADE/IGS/.refresh-set/`
+- `catalog.xgc` literal: `/mnt/sda1/ARCADE/IGS/.refresh-set`
+
+The wrongly named `.refreshset` directory contains the historical Test13-15 markers (`theglad.zfb`, `The Gladiator.zfb.zfb`, `The Gladiator.zfb`), proving it is the old marker directory renamed during cleanup rather than a directory created by current helpers.
+
+CPS1 and CPS2 on the same physical SD still have correctly named `.refresh-set` directories and are the known working family controls.
+
+This also explains the timeline: Test15 succeeded through publication while the required IGS marker directory existed. The Test16/Test17 cleanup procedure explicitly instructed removal/rename of `.refresh-set`. The materializer writes a marker *inside* that directory but does not establish a replacement directory under the misspelled name. Once the required parent directory disappeared, IGS materialization could reach marker publication and fail. Test18 bypassed preflight but could not repair this missing filesystem prerequisite, so it also returned `Refresh Failed`.
+
+Therefore Test16/Test17/Test18 do not demonstrate an IGS validator failure. Their common physical prerequisite was broken.
+
+Next test must restore the directory name exactly and restore the exact Test15 IGS `refresh.xgc`; no firmware, catalog helper, validator, artwork, wrapper, or runtime change is justified.
