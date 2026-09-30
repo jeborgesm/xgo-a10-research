@@ -891,3 +891,27 @@ Next offline gate:
 - simulate the complete catalog selection against the captured 191-wrapper tree and all four catalog triplets;
 - prove CPS1/CPS2/IGS/NeoGeo isolation and idempotence;
 - prove dispatcher aggregation/reachability before any HW candidate.
+
+
+## 39. Old catalog-helper recovery closes the implementation path without validator changes
+
+The exact Arcade catalog helpers are not bespoke marker readers. Repository provenance proves they were emitted by mechanically specializing the HW-proven 2642-byte GBA/Test74-Test75-style explicit catalog helper:
+- parent size 2642, SHA `db7c1173...`;
+- only wrapper suffix, catalog triplet, scan root, and count-cache contract were specialized;
+- the current Arcade helpers retain the parent's directory-scan/stable-merge implementation byte-for-byte.
+
+The architectural regression is therefore narrower than previously stated: the catalog algorithm is already the old proven algorithm; only its **scan root** was redirected from the real family/top-level wrapper namespace to `/ARCADE/<family>/.refresh-set`.
+
+This means no new catalog algorithm and no validator integration are required. Restore the proven catalog helper's scan-root semantics, but Arcade's shared top-level requires a family-local candidate namespace.
+
+Safest old-architecture adaptation:
+1. materializer already knows the selected family and successfully creates the final top-level `/ARCADE/<title>.zfb`;
+2. instead of creating a zero-byte authorization marker, materializer places/copies the actual finalized ZFB into a family-local publication directory (e.g. the existing family staging namespace) using the same already-proven file-copy ABI used for runtime ZIP convergence;
+3. catalog helper scans that family-local directory using its inherited Test74/Test75 directory scanner and appends exact wrapper names;
+4. top-level launch wrapper remains the authoritative launch object; family-local copy is only the deterministic publication candidate set.
+
+However, before adopting a duplicate-wrapper staging copy, compare the existing helper's candidate strings: Test74/Test75 scanner appends the physical filename only, so the candidate file contents are irrelevant to catalog mutation. Therefore a full duplicate is unnecessary; the old marker directory was already serving exactly this candidate-list role.
+
+This exposes the real simplification: **marker creation itself is the only broken primitive.** Instead of synthesizing marker pathname + fopen("wb"), create the candidate filename through an already-proven directory/file operation path, or generate the family candidate manifest before entering the external helper. Do not involve XACM.
+
+Next offline gate: identify an already-HW-proven native/file-copy primitive in the same materializer that can create a family-local candidate filename without the failing zero-byte fopen sequence, and verify its pathname/buffer contract against all four family names. No HW candidate until this is mechanically closed.
