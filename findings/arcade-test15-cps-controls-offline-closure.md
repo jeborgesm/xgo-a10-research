@@ -574,3 +574,25 @@ This reproduces the Test21 durable state, but Test24 converts the former hard-lo
 The first durable missing artifact after the completed ZFB remains runtime ZIP convergence. The immediate second-run `No New Games` is now explained as a materializer/preflight idempotence issue: existence of the generated root wrapper is sufficient to suppress another import attempt even though later transaction artifacts (runtime ZIP, marker/catalog publication) are absent. Do not treat `No New Games` as successful convergence.
 
 Next offline task: disassemble the +0x227C copy/create branch and reconcile its `/ARCADE/bin/` destination contract with physical HW-working CPS1/CPS2/IGS captures, which also show no persisted `/ARCADE/bin/` contents. Do not alter current SD state.
+
+
+### Correction to section 32 — capture omission is not filesystem absence
+
+User clarified that the physical SD card **does contain** the `/ARCADE/bin/` directory and the runtime ZIP; that directory was intentionally omitted from the uploaded `arcade.zip` solely to keep the upload small enough for chat.
+
+Therefore retract the section-32 statements/inferences that:
+- no physical `/ARCADE/bin/` directory/runtime ZIP exists;
+- the first durable missing artifact is runtime-ZIP convergence;
+- the next investigation should be driven by supposed absence of `/ARCADE/bin/`.
+
+The uploaded capture establishes only that `bin/` was not included in the archive. It provides no evidence about physical `bin/` state. User's direct HW observation establishes that the directory and ZIP are physically present.
+
+The valid post-Test24 boundary from the capture + HW observation is instead:
+- generated root ZFB exists and is structurally correct;
+- runtime ZIP physically exists in `/ARCADE/bin/`;
+- required `.refresh-set/` directory exists;
+- per included tree, Baseball Stars Pro publication marker is absent;
+- catalog/list publication is absent;
+- first run returns controlled `Refresh Failed`, second run `No New Games`.
+
+Thus Test24 now closes runtime-ZIP convergence as successful and isolates the remaining automatic failure to **after runtime-ZIP convergence and before/at marker creation**. Resume offline analysis at marker pathname construction/open/close and its return semantics, not runtime-ZIP copying.
