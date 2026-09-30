@@ -1116,3 +1116,24 @@ Catalog stage:
 This is materially different from Tests23–27: publication becomes an explicit data handoff between materializer and catalog stage, matching the historical two-stage architecture rather than emulating a directory with sentinel files.
 
 Do not use direct `/ARCADE` scan and do not resume marker repair.
+
+
+## 43. Post-Test27 replacement path — materializer marker stage can be removed with four instruction words
+
+Exact Test15/physical helper control-flow closes a minimal markerless materializer change.
+
+Runtime ZIP convergence returns through helper `+0x23F4`. At `+0x21C0` it is called a second time after copy; `+0x21C8` sets `v1=1`; `+0x21CC` rejects any result other than 1 to the existing failure epilogue at `+0x2070`. Only after that successful convergence does execution enter the marker pathname/create block.
+
+Therefore marker publication can be removed without touching trailer generation, runtime ZIP copy, validator, title/artwork, or failure semantics:
+- preserve `+0x21CC bne v0,v1,+0x2070`;
+- replace its delay slot `+0x21D0` with NOP;
+- `+0x21D4: li v0,1`;
+- `+0x21D8: j 0x87002074` (common epilogue);
+- `+0x21DC: nop`.
+
+This makes successful ZFB + runtime ZIP convergence the materializer success boundary and makes the entire marker block unreachable. It also preserves negative/non-converged failure behavior.
+
+Exact NeoGeo Test15-derived helper after this four-word control-flow change:
+SHA-256 `1935380625110159337458c0ef25e7f4757f079b0aee3221c07c4e664b4adfc0`.
+
+This alone does not publish the catalog; it deliberately separates the two stages again, matching Test74/Test75 architecture. The remaining offline work is the explicit family catalog merge input contract. Do not hardware-test the materializer alone.
