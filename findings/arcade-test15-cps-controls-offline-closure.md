@@ -1137,3 +1137,33 @@ Exact NeoGeo Test15-derived helper after this four-word control-flow change:
 SHA-256 `1935380625110159337458c0ef25e7f4757f079b0aee3221c07c4e664b4adfc0`.
 
 This alone does not publish the catalog; it deliberately separates the two stages again, matching Test74/Test75 architecture. The remaining offline work is the explicit family catalog merge input contract. Do not hardware-test the materializer alone.
+
+
+## 44. Family publication ownership closes without shared-root scan or wrapper parser
+
+The actual captured Arcade transaction already contains a simpler family-local ownership join:
+
+`/<family>/import/<stem>.zip` + `/<family>/meta/<stem>.txt` -> friendly title -> top-level `/ARCADE/<friendly>.zfb`.
+
+Offline simulation against the physical capture:
+- CPS1: `1941.zip + 1941.txt -> 1941.zfb` (exists)
+- CPS2: `1944.zip + 1944.txt -> 1944.zfb` (exists)
+- IGS: `puzlstar.zip + puzlstar.txt -> Puzzle Star.zfb` (exists)
+- NeoGeo: `bstars.zip + bstars.txt -> Baseball Stars Pro.zfb` (exists)
+
+Historical malformed/noncanonical imports are excluded by requiring canonical `<stem>.zip`; unrelated top-level orphan wrappers are excluded because there is no selected-family import+meta pair resolving to them.
+
+This is safer than scanning shared `/ARCADE` and classifying every wrapper, and safer than adding a WQW/trailer parser to the 2642-byte catalog helper.
+
+Implementation target for explicit catalog merge:
+1. enumerate selected family's import directory;
+2. accept canonical `.zip` files only;
+3. require matching meta sidecar;
+4. read bounded/sanitized friendly title using the same title contract as materializer;
+5. form `<friendly>.zfb`;
+6. verify that exact top-level wrapper exists/readable;
+7. exact slot0 de-dup;
+8. append synchronized triplet using inherited Test74/Test75 writer;
+9. invalidate only selected family's count cache.
+
+This restores materializer -> explicit catalog merge with no marker and no validator policy change.
