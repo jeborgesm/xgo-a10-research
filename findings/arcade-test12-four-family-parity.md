@@ -69,3 +69,21 @@ Therefore Test12 family parity currently stands:
 - NeoGeo NOT YET TESTED through materialization because the supplied bstars set was rejected at preflight
 
 Do not attribute the original combined failure to simultaneous-family execution. The isolated IGS path reproduces Refresh Failed by itself.
+
+
+## 2026-09-29 NeoGeo physical-SD re-audit after Test20
+
+Test20 HW result: **Refresh Failed**.
+
+Before changing code, the supplied physical `arcde.zip` was re-audited against the already HW-proven family controls. Two fixture defects were found:
+
+1. The physical import had been named `bstarszip`, which is invisible to the dynamic `.zip` enumerator. Test20 corrected this to `bstars.zip`.
+2. The physical `/ARCADE/NEOGEO/art/bstars.jpg` is **887x887 RGB JPEG**. This is the same invalid test-art geometry class previously encountered on IGS: the HW-proven JPEG-worker fixture geometry is 600x400 RGB JFIF, and changing the IGS keeper from 887x887 to 600x400 was what moved that path from hard Refresh failure into successful materialization.
+
+The exact current NeoGeo helper is otherwise the protected Test15 binary:
+`b8d7e99637dea8f217e062040a4550283f7542b040232e20ad54526115a36a9f`.
+Its family ID=3, import-prefix skip=31, relocated `.refresh-set/` literal/reference, and physical structural `.refresh-set/` directory are all correct.
+
+The current `bstars` archive was also rechecked directly against stock XGO `bisrv.asd`: all 14 game-owned requirements match by CRC32+size. Internal extension differences do not invalidate it under the current XACM matching rule; the older note claiming unresolved `002-p1.bin` is superseded by this exact CRC+size audit.
+
+Therefore no NeoGeo code change is justified from Test20. The next isolated variable is artwork geometry only: retain exact helper/catalog/ROM/meta/path topology and replace only `bstars.jpg` with a 600x400 RGB JPEG derived from the same supplied image.
