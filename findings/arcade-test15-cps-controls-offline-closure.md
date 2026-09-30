@@ -915,3 +915,48 @@ However, before adopting a duplicate-wrapper staging copy, compare the existing 
 This exposes the real simplification: **marker creation itself is the only broken primitive.** Instead of synthesizing marker pathname + fopen("wb"), create the candidate filename through an already-proven directory/file operation path, or generate the family candidate manifest before entering the external helper. Do not involve XACM.
 
 Next offline gate: identify an already-HW-proven native/file-copy primitive in the same materializer that can create a family-local candidate filename without the failing zero-byte fopen sequence, and verify its pathname/buffer contract against all four family names. No HW candidate until this is mechanically closed.
+
+
+## 40. Reliable publication fix selected — remove materializer marker creation; catalog scans family import and resolves final wrapper name
+
+Further comparison closes the safer fix without inventing another file-creation primitive.
+
+The family import directory already is:
+- family-isolated;
+- the source namespace the materializer successfully enumerates;
+- persistent across the transaction;
+- populated before validation/materialization;
+- canonicalized by the successful cases to `<driver-stem>.zip`.
+
+Therefore the materializer does not need to create any publication sentinel at all.
+
+Revised transaction:
+1. family materializer validates `/ARCADE/<family>/import/<stem>.zip`;
+2. it creates/converges `/ARCADE/<friendly-title>.zfb` and `/ARCADE/bin/<stem>.zip`;
+3. on success it returns normally — marker block removed as a success dependency;
+4. family catalog helper scans that family's `import` directory;
+5. for each canonical `*.zip` import candidate, it resolves the corresponding finalized top-level ZFB by parsing ZFB trailer runtime identity, not by assuming friendly title == stem;
+6. append the resolved physical ZFB filename only if absent from slot 0;
+7. candidates with no finalized matching ZFB are ignored, so failed validation/materialization cannot publish;
+8. exact slot-0 de-dup makes repeated Refresh idempotent.
+
+This preserves friendly titles such as `Puzzle Star.zfb -> puzlstar.zip` and `Baseball Stars Pro.zfb -> bstars.zip`, which a stem-derived wrapper lookup would break.
+
+Physical capture simulation:
+- 191 top-level ZFB wrappers;
+- 181 already represented by the four current slot-0 catalogs;
+- canonical family imports resolve uniquely to the intended generated wrappers:
+  - CPS1 `1941.zip -> 1941.zfb`
+  - CPS2 `1944.zip -> 1944.zfb`
+  - IGS `puzlstar.zip -> Puzzle Star.zfb`
+  - NeoGeo `bstars.zip -> Baseball Stars Pro.zfb`
+- malformed historical imports lacking the `.zip` separator are naturally excluded;
+- unrelated orphan ZFBs are not candidates because no selected-family canonical import points to their trailer identity.
+
+This eliminates the failing NeoGeo zero-byte fopen path completely and restores the old materialize-then-catalog-merge architecture. XACM remains untouched.
+
+Implementation gate:
+- derive the catalog-side resolver from HW-proven directory ABI and bounded trailer parsing;
+- fail closed on duplicate top-level ZFBs advertising the same runtime ZIP identity;
+- preserve synchronized triplet writer and status aggregation;
+- mechanically simulate all four families against captured tree before packaging.
