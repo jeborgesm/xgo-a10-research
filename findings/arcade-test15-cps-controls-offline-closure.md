@@ -423,3 +423,18 @@ HW result after correcting the physical NeoGeo fixture to a visible `bstars.zip`
 This is materially different from Test20's immediate `Refresh Failed`. Test21 consumed/converged enough state that the next run reports no-change, but the NeoGeo catalog did not receive the new entry. Treat this as a transaction split between materializer output/marker state and NeoGeo catalog publication, not as evidence to modify validator policy.
 
 Next step is an actual post-Test21 SD-state capture/comparison: inspect generated root ZFB, runtime bin ZIP, NeoGeo `.refresh-set` marker, and the three NeoGeo resource files. Do not delete or rename anything before that capture; the committed partial state is the evidence needed to locate the NeoGeo-only boundary.
+
+
+## 26. Post-Test21 physical SD capture — NeoGeo split located before marker publication
+
+User supplied an untouched post-Test21 `ARCADE` capture. Mechanical comparison with the pre-Test21 capture proves:
+- NEW `/ARCADE/Baseball Stars Pro.zfb`, 59,920 bytes, SHA-256 `ee8c2da9ec72e8a38986a1022bbf97ee32b0be97e3801a253322139affe804de`;
+- wrapper preview prefix is byte-identical to the new 59,904-byte `.xgo.rgb565`;
+- wrapper tail is exactly four zero bytes + `bstars.zip\0\0`;
+- corrected `/ARCADE/NEOGEO/import/bstars.zip` exists;
+- **no** `/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb` marker exists;
+- NeoGeo resource triplet remains stock count 117 and contains no Baseball Stars Pro entry.
+
+Therefore Test21's hard lock occurred **after successful JPEG/RGB565/wrapper construction but before marker creation**. The subsequent `No New Games` is explained by the already-converged final wrapper short-circuiting the materializer while no marker remains for the catalog stage. This is the exact transaction split.
+
+Test22 is authorized as a marker-only recovery discriminator: create only the missing zero-byte `/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb` and run Refresh once. It changes no executable, catalog, ROM, artwork, wrapper, or directory topology. If catalog publication succeeds, NeoGeo catalog helper semantics are cleared and the remaining defect is isolated to the NeoGeo materializer's post-wrapper marker path.
