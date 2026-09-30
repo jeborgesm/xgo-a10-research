@@ -809,3 +809,27 @@ No Test27 yet. Before packaging:
 - mechanically audit all four family helpers and protected Test15 publication/art/title behavior.
 
 This supersedes the Test23-26 marker-repair direction.
+
+
+## 38. Validator-separation audit after historical publication reconstruction
+
+Concern checked explicitly: whether the current NeoGeo publication failures are fallout from the paused XACM/validator work.
+
+They are **not the same boundary**.
+
+SRC/BIN separation:
+- `xgo_arcade_compat_engine.c` is the pre-materialization compatibility decision engine. It parses XACM v1 + the imported ZIP and returns COMPAT / INCOMPATIBLE / UNSUPPORTED / VALIDATOR_ERROR before publication.
+- `propagate_test11_four_family.py` preserves that validator policy and specializes family/path geometry; its later finalizer performs wrapper/runtime-ZIP convergence and then the newly introduced `.refresh-set` marker operation.
+- Test24 physical evidence proves NeoGeo got past validation/materialization far enough to produce a complete `Baseball Stars Pro.zfb` and byte-identical `import/bstars.zip == bin/bstars.zip`. The missing object was the publication marker; the catalog remained untouched.
+- Test22 proves that supplying only that marker lets the existing catalog helper publish, display artwork, and launch/play.
+Therefore the current NeoGeo defect is downstream of validator acceptance. Changing XACM policy cannot explain a transaction that already emitted the final wrapper and converged runtime ZIP.
+
+The paused validation work remains a **separate real issue** exposed by Test16/other fixture work: XACM policy/driver compatibility determines whether an import is admitted in the first place. It must eventually be resumed for broad four-family ROM coverage, but it is not the cause of the current wrapper-to-catalog linkage failure.
+
+Architectural consequence:
+- do not modify validator/XACM while repairing publication;
+- use already accepted/proven fixtures for publication work;
+- restore the Test74/Test75 two-stage publication contract independently;
+- after all four families publish/launch correctly, resume validator coverage as a separate milestone.
+
+This preserves the user's requested priority: four-family functionality first; common validator second.
