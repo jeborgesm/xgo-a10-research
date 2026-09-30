@@ -411,3 +411,15 @@ The 3,472,134-byte `bstarszip` is a valid ZIP (SHA-256 `15b18b01df522625340fd237
 Test20 is therefore a filesystem-only correction: present those exact bytes as `/ARCADE/NEOGEO/import/bstars.zip`, preserve the exact Test15 NeoGeo refresh/catalog helpers, artwork, metadata, and structural `.refresh-set/`. Package SHA-256 `e97ec6d77da015468b422f8fb69dc936fa2aa66ae82e7a3257edddb91a1beadc`.
 
 Single HW boundary: Refresh once. Expected new-publication path is Games Added -> `Baseball Stars Pro` with artwork -> responsive return -> launch/play. Any different result is new NeoGeo-specific evidence; do not alter other families.
+
+
+## 25. Test21 NeoGeo HW result — materialization commits state, catalog publication does not
+
+HW result after correcting the physical NeoGeo fixture to a visible `bstars.zip` import and proven 600x400 RGB JPEG input:
+1. selecting Arcade Refresh **hard-locked** before a native status message;
+2. after reboot, a second Refresh returned **No New Games**;
+3. NeoGeo game list was **not updated**.
+
+This is materially different from Test20's immediate `Refresh Failed`. Test21 consumed/converged enough state that the next run reports no-change, but the NeoGeo catalog did not receive the new entry. Treat this as a transaction split between materializer output/marker state and NeoGeo catalog publication, not as evidence to modify validator policy.
+
+Next step is an actual post-Test21 SD-state capture/comparison: inspect generated root ZFB, runtime bin ZIP, NeoGeo `.refresh-set` marker, and the three NeoGeo resource files. Do not delete or rename anything before that capture; the committed partial state is the evidence needed to locate the NeoGeo-only boundary.
