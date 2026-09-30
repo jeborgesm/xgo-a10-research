@@ -471,3 +471,18 @@ The surrounding marker-builder/finalizer instructions are byte-identical. NeoGeo
 The current +0x3000 location is therefore the only executable/addressing delta at the isolated failure boundary. Re-audit found a 0x320-byte zero-owned cave at +0x2CE0..+0x2FFF, immediately after the dynamic preflight block/data and before +0x3000. A minimal candidate can relocate only the NeoGeo staging string to +0x2CE0 and retarget the single `addiu` immediate, leaving validator policy, materializer logic, wrapper/artwork code, catalog helper, ROM, and all other families unchanged.
 
 This is an evidence-backed candidate, not yet HW-proven. Preserve Test22 as proof that no catalog/runtime change is required.
+
+
+## 28. Test23 HW FAIL — +0x2CE0 relocation does not fix NeoGeo marker transition
+
+Hardware result:
+- clean transition was prepared by deleting only the generated `/ARCADE/Baseball Stars Pro.zfb` and `/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb`, preserving the required `.refresh-set/` directory;
+- exact 117-entry pre-Test22 NeoGeo resource triplet was restored;
+- Test23 NeoGeo helper relocated the marker staging pathname from +0x3000 to +0x2CE0 and retargeted only the finalizer pointer;
+- every Arcade Refresh attempt **hard-locks**;
+- reboot/retry hard-locks again;
+- game list is **not updated**.
+
+Therefore the earlier inference that +0x3000 itself was the defect is falsified. Test22 remains the key boundary proof: manually supplying the marker makes catalog publication/artwork/runtime pass. The unresolved defect is still in the automatic materializer path at or before marker publication, but it is not repaired merely by moving the staging pathname to another zero-owned cave.
+
+Do not ask for another hardware candidate until the materializer finalizer is disassembled/traced against HW-working CPS1/CPS2/IGS and the exact call at +0x21E4/+0x21F8, its buffer ownership, and return/error branches are resolved offline.
