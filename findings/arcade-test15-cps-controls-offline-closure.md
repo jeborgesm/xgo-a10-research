@@ -698,3 +698,21 @@ This is materially different from Tests23-25: those retained an out-of-layout so
 Test22 remains decisive publication proof: with the original NeoGeo Test15 binaries unchanged, manually supplying the zero-byte marker caused Games Added, correct list/art publication, and playable launch. Therefore catalog linkage is already proven; the unresolved automatic defect is marker production.
 
 Next action is offline reconstruction/audit of a minimal **layout-restoration** candidate: put the 38-byte NeoGeo marker root at +0x2588 and retarget only +0x21D8 to +0x2588, restoring the working-family data-layout model. Do not yet request HW until collision/reference audits are complete.
+
+
+### Test26 offline gate — working-layout restoration candidate
+
+Further byte audit corrected the candidate start from +0x2588 to **+0x2589**: +0x2588 is the required NUL terminator of the preceding `.zip` literal. Bytes +0x2589..+0x25AF are otherwise zero before the next literal at +0x25B0. This gives 39 bytes; the NeoGeo marker root including NUL is 38 bytes and ends at +0x25AE, leaving +0x25AF zero.
+
+Candidate is based on Test24, not Test25:
+- preserves Test24 safe marker destination scratch +0x3100 (the change that converted hard lock to controlled failure);
+- restores catalog helper to the proven `.refresh-set` contract;
+- writes exact root `/mnt/sda1/ARCADE/NEOGEO/.refresh-set/\0` at +0x2589;
+- retargets only finalizer source instruction +0x21D8 from +0x3000 to +0x2589;
+- preserves `.zip\0` at +0x2584..+0x2588 and next literal beginning +0x25B0;
+- leaves runtime ZIP/import/ZFB semantics unchanged.
+
+Helper SHA-256: `f29bc963431e6d11d878926e478dc95ada23bf23fdf52921058a28d22dd04762`.
+Package SHA-256: `942c3c8720e771fede6205f80fac7633badf3b3b38be2623845e06c31f13bcf8`.
+
+This candidate is justified by direct comparison against HW-working CPS1/CPS2/IGS finalizer layout and Test22's proven NeoGeo publication path. It is the first candidate after the working-version reset; it is not a continuation of the rejected path-length ladder.
