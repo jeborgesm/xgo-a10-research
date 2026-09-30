@@ -189,6 +189,18 @@
       "gb_catalog_sha256": "66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb",
       "finding": "findings/gb-refresh-golden-hardware-pass.md",
       "hardware_observation": "Game Boy Refresh hardware PASS: corrected .gb materializer generated metadata-named Tetris.zgb; reachable explicit GB catalog merge propagated the existing unlisted wrapper into the normal GB list. Final closure proved materializer -> catalog -> native status as the required two-stage contract."
+    },
+    {
+      "id": "cumulative-handheld-refresh-path-repair-v2",
+      "status": "hardware-confirmed",
+      "archive_status": "pending-private-vault-promotion",
+      "canonical_filename": "xgo-gb-gba-refresh-path-repair-v2.zip",
+      "vault_path": "golden/xgo-gb-gba-refresh-path-repair-v2.zip",
+      "zip_sha256": "0f66812520558d5f4d4597c24418e1db786264e5b57fe9361d1d32e5673400e0",
+      "firmware_sha256": "b5f1651b146b52070f2e89d51cc2694852af565150568f78d06404e9f9f461ab",
+      "lcfg_crc32_mpeg2": "4AB4C686",
+      "finding": "findings/gbc-gba-golden-propagation-candidate.md",
+      "hardware_observation": "Cumulative non-Arcade Refresh regression closure: GB, GBC, GBA and all other non-Arcade selectors return No New Games on unchanged inputs. GB catalog pathname relocated without overwriting GBA pathname terminator. Arcade remains expected Refresh Failed and outside this golden checkpoint."
     }
   ]
 }
