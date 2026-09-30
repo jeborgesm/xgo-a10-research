@@ -457,3 +457,17 @@ No executable, ROM, artwork, wrapper, catalog file, or directory was deleted/ren
 This closes the NeoGeo catalog helper, synchronized resource-triplet publication, frontend reload/return, wrapper identity, runtime ZIP identity, and game launch path as HW-good. Combined with the untouched post-Test21 capture, the remaining NeoGeo defect is now tightly isolated: the normal materializer creates the valid final `Baseball Stars Pro.zfb` and then hard-locks before creating the required `.refresh-set/Baseball Stars Pro.zfb` marker. Supplying only that missing marker allows the rest of the pipeline to complete end-to-end.
 
 Next work is OFFLINE: mechanically compare the Test15 NeoGeo materializer's post-wrapper/marker-creation sequence against HW-working CPS1/CPS2/IGS, paying special attention to NeoGeo's relocated staging pathname at +0x3000 and any compiled address/capacity assumptions. Do not ask hardware to retest catalog/runtime behavior already proven by Test22.
+
+
+## 27. NeoGeo post-wrapper marker failure — offline binary comparison
+
+Test22 proves the catalog/runtime half is good. Mechanical comparison of exact Test15 family materializers now reduces the post-wrapper finalizer difference to one instruction:
+
+- CPS1/CPS2/IGS at `+0x21D8`: `addiu a2,a2,0x258c`
+- NeoGeo at `+0x21D8`: `addiu a2,a2,0x3000`
+
+The surrounding marker-builder/finalizer instructions are byte-identical. NeoGeo alone relocated its longer staging pathname from the inherited +0x258c slot to +0x3000. Test21 then HW-proved a lock precisely before marker creation, while Test22 proved manually supplying that marker completes publication/runtime.
+
+The current +0x3000 location is therefore the only executable/addressing delta at the isolated failure boundary. Re-audit found a 0x320-byte zero-owned cave at +0x2CE0..+0x2FFF, immediately after the dynamic preflight block/data and before +0x3000. A minimal candidate can relocate only the NeoGeo staging string to +0x2CE0 and retarget the single `addiu` immediate, leaving validator policy, materializer logic, wrapper/artwork code, catalog helper, ROM, and all other families unchanged.
+
+This is an evidence-backed candidate, not yet HW-proven. Preserve Test22 as proof that no catalog/runtime change is required.
