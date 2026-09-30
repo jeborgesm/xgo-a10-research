@@ -552,3 +552,25 @@ Interpretation discipline:
 - The changed first-run behavior (hard-lock -> explicit Refresh Failed) is evidence that removing self-overwrite affected control/return behavior, but it does not prove the remaining failure is specifically marker creation.
 - The second-run No New Games again indicates durable convergence/state was written on the first pass while catalog publication remained absent.
 - Do not generate Test25 from another code guess. Preserve current post-Test24 SD state and capture it physically before further modification so wrapper, runtime ZIP, marker, import and catalog triplet can be compared against post-Test21/Test22 evidence.
+
+
+## 32. Post-Test24 physical capture — exact persistence boundary
+
+User supplied the untouched post-Test24 Arcade tree after first `Refresh Failed` and second `No New Games`.
+
+Physical evidence:
+- `/ARCADE/Baseball Stars Pro.zfb` EXISTS, size 59,920, SHA-256 `ee8c2da9ec72e8a38986a1022bbf97ee32b0be97e3801a253322139affe804de`.
+- Wrapper trailer is structurally correct and contains `bstars.zip`.
+- `/ARCADE/NEOGEO/.refresh-set/` EXISTS.
+- `/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb` is ABSENT.
+- `/ARCADE/NEOGEO/import/bstars.zip` EXISTS, size 3,472,134, SHA-256 `15b18b01df522625340fd237263853ee1a994e5803626058d837c4063da94905`.
+- Test24 helper is exactly installed: SHA-256 `efdcd6c44fd7ae55db91123f74a7cc4cbb2d590bd99d8cb3996624051dcefb01`.
+- NeoGeo catalog helper remains SHA-256 `6f91ff89aeecea7f3128bdbdbd66e2a0eca2df46257ca93edcd02aa790f3ac7c`.
+- No `/ARCADE/bin/` directory or runtime ZIP is present in the supplied Arcade capture.
+- Game list remains unpublished per HW observation.
+
+This reproduces the Test21 durable state, but Test24 converts the former hard-lock into a controlled `Refresh Failed`. Therefore scratch relocation fixed a real control-corruption symptom while exposing the underlying transaction failure.
+
+The first durable missing artifact after the completed ZFB remains runtime ZIP convergence. The immediate second-run `No New Games` is now explained as a materializer/preflight idempotence issue: existence of the generated root wrapper is sufficient to suppress another import attempt even though later transaction artifacts (runtime ZIP, marker/catalog publication) are absent. Do not treat `No New Games` as successful convergence.
+
+Next offline task: disassemble the +0x227C copy/create branch and reconcile its `/ARCADE/bin/` destination contract with physical HW-working CPS1/CPS2/IGS captures, which also show no persisted `/ARCADE/bin/` contents. Do not alter current SD state.
