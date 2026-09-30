@@ -960,3 +960,31 @@ Implementation gate:
 - fail closed on duplicate top-level ZFBs advertising the same runtime ZIP identity;
 - preserve synchronized triplet writer and status aggregation;
 - mechanically simulate all four families against captured tree before packaging.
+
+
+## 41. Implementation correction — avoid adding trailer parsing to the 2642-byte catalog helper
+
+The prior markerless design correctly identified `import/<stem>.zip` as the family-isolated publication source, but putting ZFB-trailer resolution inside the small catalog helper would introduce a new parser into a helper whose old scanner/stable-merge logic is already HW-proven.
+
+A lower-risk implementation keeps the proven catalog helper unchanged and changes only how its candidate directory is populated.
+
+Use a family-local **publication candidate directory containing the actual friendly ZFB filename**. Populate it from the already-finalized top-level ZFB using the materializer's proven compare/copy routine rather than zero-byte `fopen("wb")`.
+
+The materializer already has both identities simultaneously:
+- display/friendly wrapper name in the 0x87600400 title buffer;
+- driver stem used for import/bin ZIP convergence.
+
+After final top-level ZFB close and runtime ZIP convergence, build:
+`/ARCADE/<family>/.refresh-set/<friendly>.zfb`
+and copy the completed top-level ZFB bytes into that path with the existing convergence helper. The catalog helper then remains exactly the inherited Test74/Test75 scanner: it enumerates candidate filenames, de-dupes slot 0, and appends synchronized records. Candidate file contents are irrelevant to catalog mutation, but using a real copy avoids the failing zero-byte-create primitive and reuses a file-write/copy path already proven in the same invocation.
+
+Safety properties:
+- no validator/XACM change;
+- no catalog-parser change;
+- no shared /ARCADE ownership ambiguity;
+- friendly-title identity preserved directly;
+- failed materialization cannot create candidate because copy is after final ZFB + runtime ZIP convergence;
+- repeated invocation converges by byte comparison and catalog exact-name de-dup;
+- candidate namespace remains family-local.
+
+Before packaging, mechanically verify the existing convergence helper accepts arbitrary source/destination paths and is not hard-wired to import/bin ZIP semantics; if hard-wired, reuse its underlying fopen/fread/fwrite/fclose loop with the already-proven calling convention rather than altering catalog logic.
