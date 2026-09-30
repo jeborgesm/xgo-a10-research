@@ -289,3 +289,18 @@ Hardware result for the surgical GB pathname repair:
 - all other Refresh items tested by user: `No New Games`.
 
 Interpretation boundary: the GB repair itself changed only the GB catalog-path reference plus a relocated pathname and LCFG seal; it did not intentionally modify the GBA command/helper/catalog. Therefore GBA failure must be investigated against the current physical firmware/data before another hardware candidate. Do not reopen Arcade or validator work. Freeze further hardware changes until the GBA path, pathname storage, helper identities, and live-data ownership are mechanically audited for the same class of cumulative cave/string collision.
+
+
+## 2026-09-29 correction — first GB repair collided with GBA pathname terminator
+
+The first GB pathname repair fixed GB on hardware but caused GBA `Refresh Failed`. Offline comparison of the exact tested repair against the pre-repair physical firmware closes the cause:
+
+- GBA catalog pathname starts at `0x80A398C8`: `/mnt/sda1/GBA/catalog.xgc\0`.
+- Its required NUL terminator is exactly `0x80A398E1`.
+- The first GB repair selected the apparent zero run beginning at **0x80A398E1** for the relocated GB pathname.
+- That repeated the same ownership error: a zero byte was misclassified as free space without accounting for its role as the terminator of the preceding live string.
+- Hardware result is therefore fully explained: GB passed after relocation; GBA failed because its catalog pathname became garbage-extended.
+
+This is a repair-construction defect, not a latent GBA baseline defect. Withdraw the earlier interpretation that GBA failure was merely newly exposed. The next repair must restore `0x80A398E1..` padding exactly and place the GB pathname only in a range whose ownership is established independently, not merely because it contains zero bytes.
+
+New invariant: **NUL terminators and alignment/padding adjacent to live path strings are owned data. A zero run is not a code/data cave until predecessor-string ownership and references are audited.**
