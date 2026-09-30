@@ -1167,3 +1167,41 @@ Implementation target for explicit catalog merge:
 9. invalidate only selected family's count cache.
 
 This restores materializer -> explicit catalog merge with no marker and no validator policy change.
+
+
+## 43. Markerless publication implementation gate — metadata primitive recovered
+
+The remaining source gate for family-safe markerless publication is now closed from the exact Test15 materializer binary.
+
+Exact metadata path:
+- format pointer stored from helper offset `+0x1280`;
+- `sprintf` builds `/ARCADE/<family>/meta/%s.txt`;
+- stock `fopen @ 0x802B3524` opens with the helper's existing read-mode literal;
+- stock `fread @ 0x802B3698` is called in a one-byte loop into frame-local storage;
+- `fclose @ 0x802B2F40` closes the handle;
+- the existing sanitizer trims/normalizes the friendly title into the 0x87600400 display-title workspace;
+- absent/empty metadata falls back to the driver/source stem.
+
+This means the markerless catalog stage does not need a guessed text parser. The exact title-resolution grammar is recoverable and can be transplanted source-first.
+
+Selected architecture:
+1. materializer validates/materializes and converges top-level ZFB + runtime ZIP;
+2. materializer returns success immediately after convergence; zero-byte marker creation is removed;
+3. family catalog Stage2 scans only `/ARCADE/<family>/import/*.zip`;
+4. for each canonical import stem, resolve friendly title with the recovered metadata-read/sanitize contract;
+5. form `<friendly>.zfb`;
+6. require that exact top-level `/ARCADE/<friendly>.zfb` exists before considering it publishable;
+7. compare exact filename against selected family slot0;
+8. stable-append synchronized triplet using the HW-proven Test07/Test08/Test74 merge grammar;
+9. invalidate only selected family count cache;
+10. repeated invocation is no-change by exact slot0 de-dup.
+
+Captured-tree simulation resolves exactly:
+- CPS1 `1941.zip -> 1941.zfb`;
+- CPS2 `1944.zip -> 1944.zfb`;
+- IGS `puzlstar.zip -> Puzzle Star.zfb`;
+- NeoGeo `bstars.zip -> Baseball Stars Pro.zfb`.
+
+Malformed historical files without a canonical `.zip` suffix are excluded. Unrelated orphan top-level ZFBs are unreachable because they have no selected-family canonical import source.
+
+The old `.refresh-set` catalog helper remains historical evidence but is no longer the implementation target. The next binary candidate must be a genuinely different architecture, not Test28 marker repair.
