@@ -653,3 +653,29 @@ Correct mapping:
 - NeoGeo list10 / count word `0x80D28974`
 
 Therefore the temporary descriptor reversal from commit `73117a3` is rejected and corrected by `121cdca`. It must NOT be used as the Test15 Refresh-lock fix. The IGS Refresh-return failure remains open.
+
+
+---
+
+# 2026-09-29 superseding checkpoint — handheld baseline repaired; resume IGS
+
+A cumulative handheld regression discovered during Arcade testing has been closed before resuming IGS.
+
+New HW-proven cumulative non-Arcade firmware:
+- firmware SHA-256 `b5f1651b146b52070f2e89d51cc2694852af565150568f78d06404e9f9f461ab`
+- package `xgo-gb-gba-refresh-path-repair-v2.zip`
+- package SHA-256 `0f66812520558d5f4d4597c24418e1db786264e5b57fe9361d1d32e5673400e0`
+- LCFG CRC-32/MPEG-2 `0x4AB4C686`
+- HW: every non-Arcade Refresh selector returned `No New Games`.
+- Arcade alone remains `Refresh Failed`, as expected for the current unresolved Arcade state.
+
+Regression lesson: GBC propagation had overwritten the GB catalog-path NUL terminator at `0x80A390F8`; the first repair then mistakenly reused GBA's catalog-path NUL at `0x80A398E1`. v2 restores GBA and relocates the complete GB pathname into audited owned padding. See `findings/gbc-gba-golden-propagation-candidate.md`.
+
+**This checkpoint supersedes the older pre-Arcade firmware identity only for cumulative baseline protection. It does not change the IGS research direction.**
+
+Resume exactly here:
+- Test15 remains the protected IGS metadata/artwork/wrapper/catalog publication partial pass.
+- CPS1/CPS2 remain immediate runtime/Refresh controls.
+- preflight/validator redesign remains deferred.
+- Test16/Test17 are retained as failed diagnostic evidence but are not the active direction.
+- first close why current Arcade dispatch reports `Refresh Failed` before returning to the Test15 post-publication and IGS Loading/runtime-transition failures.
