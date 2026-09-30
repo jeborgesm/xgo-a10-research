@@ -716,3 +716,24 @@ Helper SHA-256: `f29bc963431e6d11d878926e478dc95ada23bf23fdf52921058a28d22dd0476
 Package SHA-256: `942c3c8720e771fede6205f80fac7633badf3b3b38be2623845e06c31f13bcf8`.
 
 This candidate is justified by direct comparison against HW-working CPS1/CPS2/IGS finalizer layout and Test22's proven NeoGeo publication path. It is the first candidate after the working-version reset; it is not a continuation of the rejected path-length ladder.
+
+
+## 36. Test26 HW failure — stop patch ladder; reframe from proven Test22 transaction
+
+HW result for Test26:
+- first Arcade Refresh: **Refresh Failed**
+- immediate second call: **No New Games**
+- no publication.
+
+Test26 therefore rejects the NeoGeo-only far marker-root source relocation as the remaining cause.
+
+**Investigation reset:** do not issue Test27 from another local marker hypothesis. Tests23-26 have now varied source relocation, destination scratch, and pathname geometry without reproducing automatic publication. This is no longer an efficient HW bisection.
+
+Return to the one fully proven NeoGeo publication transaction:
+- Test21 created the outer ZFB and runtime assets but did not publish.
+- Test22 changed no executable code; it supplied only the zero-byte marker.
+- With that marker present, the unchanged Test15 NeoGeo catalog helper published the entry, artwork displayed, and the game launched/played.
+
+Therefore the shortest path to the project goal is to compare/recover the **older publication architecture that already worked** and decide whether automatic marker creation is actually required for the final four-family implementation. A valid implementation may separate materialization from publication and create/authorize the marker in a safer component, provided it preserves the proven on-device Refresh behavior and marker contract.
+
+No more hardware candidates until that architecture comparison is complete.
