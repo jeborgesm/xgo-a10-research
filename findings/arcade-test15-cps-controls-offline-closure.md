@@ -617,3 +617,28 @@ This definitively closes the Test24 transaction boundary:
 **wrapper complete -> runtime ZIP converged byte-identically -> marker creation fails -> catalog remains untouched -> Refresh Failed.**
 
 The next offline investigation is exclusively marker construction/create semantics after +0x21C0. Do not revisit runtime ZIP convergence.
+
+
+## 34. Marker create narrowed to pathname geometry; Test25 discriminator
+
+Exact Test24 marker finalizer disassembly:
+- marker source root: `/mnt/sda1/ARCADE/NEOGEO/.refresh-set/`
+- enriched-name source at `0x87600400` is the complete outer wrapper filename including `.zfb`; Test15 intentionally removed the redundant suffix append.
+- marker destination scratch is now safely at +0x3100.
+- finalizer calls stock stdio fopen wrapper `0x802B3524` with mode `wb`, then fclose `0x802B2F40`; absent physical marker after Test24 means create/commit did not succeed.
+- stock fopen routes the pathname through a 0x400-byte canonicalization buffer, so no generic 56-byte software buffer was found offline. Nevertheless NeoGeo's full marker pathname is 60 bytes including NUL, materially longer than the HW-proven IGS Puzzle Star marker path, and path/directory geometry is now the remaining family-local input at the failing fopen boundary.
+
+Test25 is a controlled pathname-geometry discriminator, not a claimed final architecture. It preserves Test24's safe +0x3100 marker scratch and all materializer/catalog logic, but shortens only the NeoGeo marker directory:
+`.refresh-set/` -> `.r/`
+in both the materializer and NeoGeo catalog helper. This reduces the Baseball Stars Pro marker pathname from 60 bytes including NUL to 50, approximately the proven IGS geometry, while preserving the complete friendly marker filename.
+
+Test25 hashes:
+- helper SHA-256 `ec5bd91f6c1161bd4f285cbd4bf9848daf63c8ba9726bf3f49a92af7898dcf2d`
+- catalog helper SHA-256 `2da7642100baed5778f81c1db0e464b4cd01160f6f5b293045f26242ee9235e6`
+- package SHA-256 `1c03ccadc932452900d7750303eb55e8bcda7a66dc3df0f61f1e3214d7d32ff5`
+- exact 117-entry NeoGeo resource triplet retained.
+- existing byte-identical `/ARCADE/bin/bstars.zip` may remain; delete only generated root `/ARCADE/Baseball Stars Pro.zfb` before the test.
+
+Interpretation:
+- If Test25 creates `.r/Baseball Stars Pro.zfb` and publishes, the unresolved failure is marker pathname/directory geometry rather than ZIP convergence or catalog logic.
+- If it still fails with no marker, pathname length is rejected and investigation returns to fopen/create semantics or runtime contents of the enriched-name buffer.
