@@ -1085,3 +1085,34 @@ The earlier historical reconstruction is now mandatory implementation direction:
 - therefore replace the marker dependency rather than continue repairing it.
 
 Next work is offline only: recover/build an explicit family publication merge derived from the HW-proven Test74/Test75 catalog helper, with family ownership established from the materializer transaction rather than a post-hoc zero-byte marker. No further hardware request until that replacement path is fully simulated and mechanically audited.
+
+
+## 43. Post-Test27 architecture closure — direct /ARCADE scan rejected; publication manifest is the reliable replacement
+
+Mechanical simulation against the captured 191-wrapper Arcade tree proves that simply restoring the Test74 root to top-level `/ARCADE` is unsafe:
+- CPS1 would see 163 wrappers absent from its slot0;
+- CPS2 162;
+- IGS 184;
+- NeoGeo 74.
+The inherited catalog helper has no family discriminator; a direct root retarget would cross-pollute all four lists.
+
+The reliable replacement must therefore preserve a family-local publication set but must not depend on creating one file per title.
+
+Use a **single family publication manifest file**, written by the materializer after successful ZFB + runtime ZIP convergence. The materializer already owns the friendly wrapper filename and family identity at that exact point. One manifest record can therefore be written directly without reconstructing family ownership later.
+
+Contract:
+`/ARCADE/<family>/.refresh-list`
+contains NUL-terminated exact physical wrapper filenames produced successfully in the current/past transaction. For first implementation, one record is sufficient because the current materializer iterates imports serially; extend append semantics for batches before release.
+
+Catalog stage:
+- derive from HW-proven Test74/Test75 stable-merge writer;
+- replace directory enumeration only with bounded manifest enumeration;
+- keep slot0 exact-name de-dup, synchronized triplet append, cache invalidation, and return/status semantics unchanged;
+- manifest is family-local, so no shared-root ambiguity;
+- materializer writes manifest only after wrapper/runtime convergence, so failed validation/materialization cannot authorize publication;
+- no zero-byte marker pathname creation and no per-title fopen;
+- XACM remains unchanged.
+
+This is materially different from Tests23–27: publication becomes an explicit data handoff between materializer and catalog stage, matching the historical two-stage architecture rather than emulating a directory with sentinel files.
+
+Do not use direct `/ARCADE` scan and do not resume marker repair.
