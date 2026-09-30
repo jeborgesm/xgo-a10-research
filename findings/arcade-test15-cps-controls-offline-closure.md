@@ -1032,3 +1032,36 @@ Before hardware packaging, audit that 0x3100..0x323F is unused for the full help
 `/mnt/sda1/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb `.
 
 This supersedes the more invasive markerless/catalog redesign unless the corrected relocation fails its offline gate.
+
+
+## 43. Test27 authorized — corrected marker scratch relocation
+
+Offline gate closed.
+
+Root cause in Tests24-26: marker destination relocation changed three explicit pathname-buffer references from 0x25E8 to 0x3100 but missed the JAL delay-slot initialization store at +0x21E8. Working CPS1 explicitly executes `sb zero,0x25E8(t0)` while calling the append helper; relocated NeoGeo must execute `sb zero,0x3100(t0)`.
+
+Corrected helper is exact Test24 helper plus this single instruction-immediate correction:
+- +0x21E8: `A10025E8 -> A1003100`
+- changed bytes only at helper offsets 0x21E8 and 0x21E9.
+- SHA-256: `e3548e6711b41cc394c7233c436f9f9accefe041850237a31b332b2ef66b008c`
+
+Mechanical audit:
+- 0x3100..0x323F is 0x140 bytes, all zero in helper image;
+- executable-region immediate scan finds no other live references to that range except the four intended marker-buffer operations;
+- bounded append emulation produces exactly 60-byte NUL-terminated pathname:
+  `/mnt/sda1/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb`
+- marker root remains +0x3000;
+- runtime ZIP convergence, title source, catalog helper, validator/XACM, resources, artwork, and firmware are unchanged from Test24 clean transition.
+
+Candidate:
+`xgo-arcade-neogeo-marker-scratch-init-fix-test27.zip`
+ZIP SHA-256:
+`584d86ce8b7b0e2aa5f19340aaa7cb317be12acffb96ba4ba87b53e7c7e657bb`
+
+Hardware setup remains the clean transition used for Test24:
+- preserve required `/ARCADE/NEOGEO/.refresh-set/` directory;
+- remove only stale generated `/ARCADE/Baseball Stars Pro.zfb` and any `.refresh-set/Baseball Stars Pro.zfb` marker before installing candidate;
+- preserve canonical `import/bstars.zip`, art/meta and runtime/bin state supplied by candidate/current proven card;
+- run Arcade Refresh once.
+
+Expected if root cause is closed: Games Added/Updated, Baseball Stars Pro published with image, playable; second unchanged invocation No New Games.
