@@ -519,3 +519,21 @@ NeoGeo's import literal at +0x25C8 is 32 bytes including NUL and ends exactly at
 Important remaining anomaly: +0x25E8 is immediately reused as the 0x140-byte marker-path scratch buffer, yet executable code begins at +0x2600 only 24 bytes later. Marker construction necessarily overwrites +0x2600 onward. This is true in all four propagated helpers, so it cannot alone explain NeoGeo unless the working families avoid re-entering the overwritten region while NeoGeo's control/state causes a re-entry. The marker file is opened at +0x222C using this scratch path.
 
 The post-Test21 capture lacking `ARCADE/bin/bstars.zip` still proves the first-pass transaction did not leave runtime ZIP convergence durable, but the static code comparison does not support a NeoGeo-specific bug in the copy routine. Next offline task is to reconcile Test21/Test23 persistence with helper return/re-entry semantics and inspect whether the 0x25E8 self-overwrite is part of the repeated-lock mechanism before generating another candidate.
+
+
+## 30. Marker scratch self-overwrite resolved as a real implementation defect
+
+Further control-flow tracing closes the ambiguity around the 0x870025E8 marker scratch buffer.
+
+The helper entry at +0x0008 calls the dynamic preflight entry at +0x2600 exactly once, before materialization. The +0x2600 block returns to the wrapper entry; there are no later direct calls from the materializer finalizer back into +0x2600. Therefore overwriting +0x2600 during marker construction does not necessarily crash the same invocation, explaining why CPS1/CPS2/IGS could pass despite the defect.
+
+However, +0x25E8 is unquestionably an unsafe scratch allocation: the finalizer treats it as a 0x140-byte mutable marker-path buffer at +0x21E0/+0x21FC/+0x2224, while executable preflight code begins at +0x2600. Any normal marker pathname overwrites the loaded helper's preflight code. This is self-modifying corruption, not merely adjacent data.
+
+The zero-owned region after the XGO preflight metadata is large enough for a proper scratch object. In the Test15 NeoGeo image, +0x3025 onward is zero-filled; +0x3100..+0x323F provides a 0x140-byte scratch region with no code/data ownership. NeoGeo's marker-root literal can remain at +0x3000. A minimal repair therefore retargets only the three marker destination references:
+- +0x21E0: destination base +0x25E8 -> +0x3100
+- +0x21FC: destination base +0x25E8 -> +0x3100
+- +0x2224: fopen pathname +0x25E8 -> +0x3100
+
+This differs fundamentally from failed Test23, which moved only the marker SOURCE string and left the corrupting destination at +0x25E8. No validator, runtime-ZIP, catalog, ROM, artwork, or family logic needs to change.
+
+Before HW candidate generation, restore the original Test15 NeoGeo marker-root source at +0x3000 (not Test23's +0x2CE0) and mechanically audit that +0x3100..+0x323F is zero-owned and has no static references.
