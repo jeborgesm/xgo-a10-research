@@ -486,3 +486,19 @@ Hardware result:
 Therefore the earlier inference that +0x3000 itself was the defect is falsified. Test22 remains the key boundary proof: manually supplying the marker makes catalog publication/artwork/runtime pass. The unresolved defect is still in the automatic materializer path at or before marker publication, but it is not repaired merely by moving the staging pathname to another zero-owned cave.
 
 Do not ask for another hardware candidate until the materializer finalizer is disassembled/traced against HW-working CPS1/CPS2/IGS and the exact call at +0x21E4/+0x21F8, its buffer ownership, and return/error branches are resolved offline.
+
+
+## 29. CORRECTION — Test21 did not isolate the lock specifically to marker creation
+
+Re-audit of the untouched post-Test21 physical capture `arcde(1).zip` found:
+- `/ARCADE/Baseball Stars Pro.zfb` exists and has the valid `bstars.zip` trailer;
+- **`/ARCADE/bin/bstars.zip` does not exist**;
+- **the NeoGeo .refresh-set marker does not exist**.
+
+This corrects sections 26–28 where the lock was described too narrowly as a marker-creation failure. The documented materializer splice contract is: final ZFB -> runtime ZIP convergence -> marker. Therefore the physical evidence places the Test21/Test23 failure **after final ZFB creation but before completion of runtime-ZIP convergence and marker publication**. Marker creation is not yet proven to be the first failing operation.
+
+Test22 remains important but must be interpreted carefully: the manually seeded marker allowed the subsequent Refresh to publish the catalog and the game was HW-playable. Because no post-Test22 physical capture was taken, that run may also have converged `/ARCADE/bin/bstars.zip`; it does not prove that marker creation alone was the original failing instruction.
+
+The +0x3000/+0x2CE0 marker-string relocation hypothesis is therefore rejected not only by Test23 HW failure but also because it targeted a later stage than the first missing post-wrapper artifact.
+
+Offline priority is reset to the runtime-ZIP convergence block immediately following final ZFB convergence. No further hardware candidate until that block is mechanically compared with CPS1/CPS2/IGS and its state/idempotency behavior is resolved.
