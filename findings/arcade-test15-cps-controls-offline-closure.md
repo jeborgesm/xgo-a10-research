@@ -658,3 +658,25 @@ Conclusion:
 - Do not perform another marker-path shortening/relocation experiment.
 - The remaining failure is in marker create semantics/state after the already-proven ZFB and runtime-ZIP convergence, or in the return condition feeding that operation.
 - Preserve Test25 state until offline analysis determines whether `.r/Baseball Stars Pro.zfb` was physically created; if a physical capture is needed, request only after exhausting binary/source comparison.
+
+
+## 35. Investigation reset after Test25 — return to last proven successful NeoGeo publication
+
+User stopped the speculative Test ladder and required comparison against the older version that actually worked. This is now the controlling direction.
+
+Mechanical reconstruction from preserved local artifacts:
+- Test21 package contains the exact stock/Test15 NeoGeo helper `b8d7e996...`, stock 117-entry catalog helper, corrected `import/bstars.zip`, metadata and corrected artwork.
+- Test21 HW created the root ZFB but did not publish.
+- Test22 package contains **only** the structural `.refresh-set/` directory plus a zero-byte `.refresh-set/Baseball Stars Pro.zfb` marker. It changes no helper, catalog helper, import ZIP, metadata, artwork, runtime ZIP, or firmware.
+- Test22 HW result was **Games Added**, Baseball Stars Pro appeared with image, and launched/played.
+- Therefore the only demonstrated difference needed to turn the already-materialized Test21 state into successful catalog publication was the marker file itself.
+- Tests23–25 modified the materializer in an attempt to make that marker automatically. Those changes are not part of the proven successful publication configuration and must not be treated as a new baseline.
+
+Protected conclusion:
+**The ZFB is not directly linked into the game list. The per-title marker is the authorization/hand-off between successful materialization and the already-proven NeoGeo catalog helper. Once the marker exists, the original Test15/Test21 catalog path publishes correctly.**
+
+Next work is offline only:
+1. restore the exact Test21/Test22 known-working software configuration as the comparison baseline;
+2. compare the automatic marker-creation sequence against an older HW-working family/materializer and/or source implementation;
+3. identify the exact difference that prevents NeoGeo from producing the same zero-byte marker;
+4. no Test26 until that comparison produces a specific correction to the proven architecture.
