@@ -351,3 +351,12 @@ This also explains the timeline: Test15 succeeded through publication while the 
 Therefore Test16/Test17/Test18 do not demonstrate an IGS validator failure. Their common physical prerequisite was broken.
 
 Next test must restore the directory name exactly and restore the exact Test15 IGS `refresh.xgc`; no firmware, catalog helper, validator, artwork, wrapper, or runtime change is justified.
+
+
+## 23. Test19 HW result — required IGS marker directory restoration changes failure to No New Games
+
+Hardware result: after restoring the exact required `/ARCADE/IGS/.refresh-set/` directory and exact Test15 IGS `refresh.xgc`, Arcade Refresh returned **No New Games** and remained responsive.
+
+This confirms the prior `Refresh Failed` state in Tests16-18 was caused at least in material part by the broken physical filesystem prerequisite introduced when `.refresh-set` was removed/renamed during cleanup. Those tests are invalid as evidence that IGS preflight/validator itself was rejecting the fixture.
+
+Test19 does not yet prove new IGS publication because `No New Games` means the current on-card state converged to no appendable change. Before another HW test, inspect the actual SD state and marker/catalog/assets to determine why Puzzle Star is considered unchanged. Do not delete/rename structural directories. Cleanup, if needed, may clear only proven transient contents while preserving required path topology.
