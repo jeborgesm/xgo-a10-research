@@ -596,3 +596,24 @@ The valid post-Test24 boundary from the capture + HW observation is instead:
 - first run returns controlled `Refresh Failed`, second run `No New Games`.
 
 Thus Test24 now closes runtime-ZIP convergence as successful and isolates the remaining automatic failure to **after runtime-ZIP convergence and before/at marker creation**. Resume offline analysis at marker pathname construction/open/close and its return semantics, not runtime-ZIP copying.
+
+
+## 33. Expanded post-Test24 capture closes runtime ZIP convergence physically
+
+User supplied a more complete post-Test24 SD capture, intentionally retaining only the relevant runtime ZIP in `/ARCADE/bin/`.
+
+Physical verification:
+- `/ARCADE/NEOGEO/import/bstars.zip`: 3,472,134 bytes, SHA-256 `15b18b01df522625340fd237263853ee1a994e5803626058d837c4063da94905`.
+- `/ARCADE/bin/bstars.zip`: 3,472,134 bytes, SHA-256 `15b18b01df522625340fd237263853ee1a994e5803626058d837c4063da94905`.
+- The two ZIPs are byte-for-byte identical. Runtime ZIP convergence is therefore HW/physical proven successful in Test24.
+- `/ARCADE/Baseball Stars Pro.zfb`: 59,920 bytes, SHA-256 `ee8c2da9ec72e8a38986a1022bbf97ee32b0be97e3801a253322139affe804de`.
+- NeoGeo `.refresh-set/` exists but contains no Baseball Stars Pro marker. Existing markers are only CPS1 `1941.zfb`, CPS2 `1944.zfb`, and IGS `Puzzle Star.zfb`.
+- NeoGeo resource triplet remains exact pre-publication 117-entry state:
+  - rmapi.tax SHA `921a605a...`, count 117
+  - pcadm.nec SHA `697b3b98...`, count 117
+  - ntdll.bvs SHA `6336c727...`, count 117
+
+This definitively closes the Test24 transaction boundary:
+**wrapper complete -> runtime ZIP converged byte-identically -> marker creation fails -> catalog remains untouched -> Refresh Failed.**
+
+The next offline investigation is exclusively marker construction/create semantics after +0x21C0. Do not revisit runtime ZIP convergence.
