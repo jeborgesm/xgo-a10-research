@@ -386,3 +386,28 @@ Tests16-18 must not be used as evidence that IGS preflight/validator or runtime 
 `/ARCADE/IGS/.refresh-set/` is structural runtime state. Its **contents** may be transient markers; the directory itself must be preserved. Never delete/rename a Refresh directory before proving whether helper code requires its existence.
 
 IGS family functionality is now HW-proven. Preserve this exact mechanism while continuing four-family parity work; common validator refinement remains secondary.
+
+
+## 25. NeoGeo physical-SD gate — current helper is correct; import filename is not
+
+After the IGS HW pass, the user requested continuation to NeoGeo with the supplied physical SD tree as the authority before further changes.
+
+Direct audit of `arcde.zip`:
+- `/ARCADE/NEOGEO/refresh.xgc`: 1,056,520 bytes, SHA-256 `b8d7e99637dea8f217e062040a4550283f7542b040232e20ad54526115a36a9f` — exact protected Test15 NeoGeo helper.
+- family selector at +0x2618 = 3.
+- import-prefix skip at +0x0BE4 = 31, exactly the NeoGeo path length.
+- staging reference at +0x21D8 targets relocated +0x3000.
+- +0x3000 contains exact required `/mnt/sda1/ARCADE/NEOGEO/.refresh-set/`.
+- `/ARCADE/NEOGEO/catalog.xgc`: SHA-256 `6f91ff89aeecea7f3128bdbdbd66e2a0eca2df46257ca93edcd02aa790f3ac7c`; it targets stock NeoGeo triplet `rmapi.tax/pcadm.nec/ntdll.bvs` and the same required marker directory.
+- physical `.refresh-set/` directory exists.
+- metadata exists: `bstars.txt` = `Baseball Stars Pro`.
+- artwork exists: `bstars.jpg`.
+- **physical import is misnamed `bstarszip`, with no dot.**
+
+The dynamic preflight/materializer enumerates only names ending in `.zip`. Therefore the current physical NeoGeo fixture is invisible to Refresh. No helper/catalog/firmware change is justified.
+
+The 3,472,134-byte `bstarszip` is a valid ZIP (SHA-256 `15b18b01df522625340fd237263853ee1a994e5803626058d837c4063da94905`). Direct stock-XGO driver extraction for `bstars` (Neo Geo driver index 789) gives 14 game-owned ROM requirements. Every required CRC+size is present in this archive; filename extensions differ but the validator deliberately accepts CRC+size identity. Thus the fixture is exact-XACM compatible offline.
+
+Test20 is therefore a filesystem-only correction: present those exact bytes as `/ARCADE/NEOGEO/import/bstars.zip`, preserve the exact Test15 NeoGeo refresh/catalog helpers, artwork, metadata, and structural `.refresh-set/`. Package SHA-256 `e97ec6d77da015468b422f8fb69dc936fa2aa66ae82e7a3257edddb91a1beadc`.
+
+Single HW boundary: Refresh once. Expected new-publication path is Games Added -> `Baseball Stars Pro` with artwork -> responsive return -> launch/play. Any different result is new NeoGeo-specific evidence; do not alter other families.
