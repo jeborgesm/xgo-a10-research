@@ -438,3 +438,22 @@ User supplied an untouched post-Test21 `ARCADE` capture. Mechanical comparison w
 Therefore Test21's hard lock occurred **after successful JPEG/RGB565/wrapper construction but before marker creation**. The subsequent `No New Games` is explained by the already-converged final wrapper short-circuiting the materializer while no marker remains for the catalog stage. This is the exact transaction split.
 
 Test22 is authorized as a marker-only recovery discriminator: create only the missing zero-byte `/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb` and run Refresh once. It changes no executable, catalog, ROM, artwork, wrapper, or directory topology. If catalog publication succeeds, NeoGeo catalog helper semantics are cleared and the remaining defect is isolated to the NeoGeo materializer's post-wrapper marker path.
+
+
+## 26. Test22 HW PASS — NeoGeo catalog/runtime path proven; defect isolated to marker creation
+
+Hardware result reported 2026-09-29 from the untouched post-Test21 state plus one manually supplied zero-byte marker:
+`/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb`
+
+Result:
+- Refresh: **Games Added**
+- frontend return: **responsive**
+- NeoGeo list: **updated**
+- artwork: **displayed**
+- launch: **Baseball Stars Pro playable**
+
+No executable, ROM, artwork, wrapper, catalog file, or directory was deleted/renamed for this discriminator.
+
+This closes the NeoGeo catalog helper, synchronized resource-triplet publication, frontend reload/return, wrapper identity, runtime ZIP identity, and game launch path as HW-good. Combined with the untouched post-Test21 capture, the remaining NeoGeo defect is now tightly isolated: the normal materializer creates the valid final `Baseball Stars Pro.zfb` and then hard-locks before creating the required `.refresh-set/Baseball Stars Pro.zfb` marker. Supplying only that missing marker allows the rest of the pipeline to complete end-to-end.
+
+Next work is OFFLINE: mechanically compare the Test15 NeoGeo materializer's post-wrapper/marker-creation sequence against HW-working CPS1/CPS2/IGS, paying special attention to NeoGeo's relocated staging pathname at +0x3000 and any compiled address/capacity assumptions. Do not ask hardware to retest catalog/runtime behavior already proven by Test22.
