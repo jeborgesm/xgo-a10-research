@@ -833,3 +833,61 @@ Architectural consequence:
 - after all four families publish/launch correctly, resume validator coverage as a separate milestone.
 
 This preserves the user's requested priority: four-family functionality first; common validator second.
+
+
+## 39. Direct two-stage Arcade publication — ownership discriminator closed from physical SD
+
+The Test74/Test75 direct top-level catalog scan cannot be copied blindly because all Arcade families share `/ARCADE`. The physical post-Test24 capture was therefore tested against candidate ownership rules before changing code.
+
+Physical capture facts:
+- 191 top-level `/ARCADE/*.zfb` wrappers.
+- union of current slot-0 Arcade catalogs contains 181 unique wrapper names.
+- 10 top-level wrappers are not in any current Arcade catalog:
+  - Baseball Stars Pro.zfb
+  - Dragon World II Refresh Control.zfb
+  - Metal Slug 6.zfb
+  - Ms Pac-Man.zfb
+  - Pop 'n Bounce.zfb
+  - Power Instinct.zfb
+  - Pretty Soldier Sailor Moon.zfb
+  - Shock Troopers -2nd Squad.zfb
+  - Street Fighter Zero.zfb
+  - The Gladiator.zfb
+
+Therefore **selected family + every top-level missing wrapper is unsafe**; it would absorb unrelated historical/orphan wrappers.
+
+A deterministic family-ownership discriminator is already present in the proven filesystem contract and does not require reopening XACM validation:
+1. selected family has its own `/ARCADE/<FAMILY>/import/` namespace;
+2. accepted source archives there use canonical `<runtime-stem>.zip`;
+3. every generated/stock `.zfb` contains its runtime ZIP identity in the wrapper trailer after the fixed 59,904-byte preview prefix;
+4. publication may therefore accept a top-level wrapper only when its embedded runtime target exactly matches a canonical `.zip` currently present in the selected family's import directory.
+
+Applied mechanically to the actual captured SD:
+- CPS1 `1941.zip` -> `1941.zfb`
+- CPS2 `1944.zip` -> `1944.zfb`
+- IGS `puzlstar.zip` -> `Puzzle Star.zfb`
+- NeoGeo `bstars.zip` -> `Baseball Stars Pro.zfb`
+
+No cross-family/orphan wrapper is selected by those canonical import identities. Historical malformed no-dot files (`1941jzip`, `drgw2zip`, `thegladzip`, `bstarszip`) do not satisfy the canonical `.zip` ownership rule and are naturally ignored.
+
+This yields the direct old-style publication contract without `.refresh-set`:
+```
+selected family import/<stem>.zip
+        +
+top-level /ARCADE/<friendly>.zfb trailer == <stem>.zip
+        |
+        v
+selected-family catalog exact slot-0 de-dup
+        |
+        v
+append synchronized triplet
+```
+
+This ownership rule is downstream of validation: it consumes only the canonical import/runtime identity that already survived the materializer. It does not change XACM policy.
+
+Next offline gate:
+- modify/rebuild the Arcade catalog stage to enumerate canonical family imports and match wrapper trailers, rather than enumerate `.refresh-set`;
+- make materializer success stop depending on marker creation;
+- simulate the complete catalog selection against the captured 191-wrapper tree and all four catalog triplets;
+- prove CPS1/CPS2/IGS/NeoGeo isolation and idempotence;
+- prove dispatcher aggregation/reachability before any HW candidate.
