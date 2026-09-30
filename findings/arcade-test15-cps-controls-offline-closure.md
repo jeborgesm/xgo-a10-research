@@ -360,3 +360,29 @@ Hardware result: after restoring the exact required `/ARCADE/IGS/.refresh-set/` 
 This confirms the prior `Refresh Failed` state in Tests16-18 was caused at least in material part by the broken physical filesystem prerequisite introduced when `.refresh-set` was removed/renamed during cleanup. Those tests are invalid as evidence that IGS preflight/validator itself was rejecting the fixture.
 
 Test19 does not yet prove new IGS publication because `No New Games` means the current on-card state converged to no appendable change. Before another HW test, inspect the actual SD state and marker/catalog/assets to determine why Puzzle Star is considered unchanged. Do not delete/rename structural directories. Cleanup, if needed, may clear only proven transient contents while preserving required path topology.
+
+
+## 24. HW MILESTONE — IGS end-to-end Refresh proven with Puzzle Star + artwork
+
+Hardware result reported 2026-09-29 after restoring the required IGS filesystem contract and using the exact OEM Puzzle Star runtime fixture:
+
+- Refresh status: **Games Added**
+- frontend return: **responsive; no freeze**
+- catalog publication: **Puzzle Star appears in the IGS list**
+- artwork: **generated/displayed successfully from the supplied `puzlstar.jpg`**
+- launch: **Puzzle Star launches and is playable**
+
+This is the first clean end-to-end IGS Refresh proof covering:
+`import ZIP + metadata + JPEG -> materializer -> ZFB/artwork -> marker -> catalog append -> native return -> frontend display -> runtime launch`.
+
+The successful fixture uses the exact OEM `puzlstar.zip` previously matched against the stock XGO PGM driver descriptors. The artwork input was 144x208 JPEG and the generated wrapper path was `/ARCADE/Puzzle Star.zfb`.
+
+### Superseded failure interpretation
+
+Tests16-18 must not be used as evidence that IGS preflight/validator or runtime was intrinsically broken. Their common environment had lost the required `/ARCADE/IGS/.refresh-set/` directory after an erroneous cleanup instruction. Restoring that structural prerequisite first changed behavior to `No New Games`; removing only the already-converged `Puzzle Star.zfb` then restored a genuine new-publication transition and produced this full HW pass.
+
+### Protected IGS rule
+
+`/ARCADE/IGS/.refresh-set/` is structural runtime state. Its **contents** may be transient markers; the directory itself must be preserved. Never delete/rename a Refresh directory before proving whether helper code requires its existence.
+
+IGS family functionality is now HW-proven. Preserve this exact mechanism while continuing four-family parity work; common validator refinement remains secondary.
