@@ -642,3 +642,19 @@ Test25 hashes:
 Interpretation:
 - If Test25 creates `.r/Baseball Stars Pro.zfb` and publishes, the unresolved failure is marker pathname/directory geometry rather than ZIP convergence or catalog logic.
 - If it still fails with no marker, pathname length is rejected and investigation returns to fopen/create semantics or runtime contents of the enriched-name buffer.
+
+
+## 34. Test25 HW result — marker pathname length hypothesis rejected
+
+Hardware result:
+- Test25 retained the Test24 safe marker scratch at +0x3100.
+- Materializer and catalog helper marker roots were both shortened from `.refresh-set` to `.r`, reducing the Baseball Stars Pro marker pathname from ~60 bytes including NUL to 50 bytes, comparable to the HW-working IGS marker geometry.
+- First Arcade Refresh returned **Refresh Failed**.
+- Immediate second Refresh returned **No New Games**.
+- No game-list publication occurred.
+
+Conclusion:
+- NeoGeo marker pathname length/directory-name geometry is **not** the remaining cause.
+- Do not perform another marker-path shortening/relocation experiment.
+- The remaining failure is in marker create semantics/state after the already-proven ZFB and runtime-ZIP convergence, or in the return condition feeding that operation.
+- Preserve Test25 state until offline analysis determines whether `.r/Baseball Stars Pro.zfb` was physically created; if a physical capture is needed, request only after exhausting binary/source comparison.
