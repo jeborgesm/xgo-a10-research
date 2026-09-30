@@ -304,3 +304,29 @@ The first GB pathname repair fixed GB on hardware but caused GBA `Refresh Failed
 This is a repair-construction defect, not a latent GBA baseline defect. Withdraw the earlier interpretation that GBA failure was merely newly exposed. The next repair must restore `0x80A398E1..` padding exactly and place the GB pathname only in a range whose ownership is established independently, not merely because it contains zero bytes.
 
 New invariant: **NUL terminators and alignment/padding adjacent to live path strings are owned data. A zero run is not a code/data cave until predecessor-string ownership and references are audited.**
+
+
+## Repair v2 — offline closure and hardware gate
+
+The first repair's GBA regression is mechanically closed and corrected without changing any GB/GBC/GBA helper or catalog.
+
+Exact correction from the hardware-tested first repair:
+- restore `0x80A398E1..` to its original zeros, restoring the GBA catalog pathname terminator and following padding;
+- relocate the complete GB catalog pathname to `0x80A381D8`;
+- patch only the GB catalog-path `addiu a0,a0,low` at `0x80A39088` from low immediate `0x98E1` to `0x81D8`;
+- reseal LCFG.
+
+Ownership audit for `0x80A381D8..0x80A381FF`:
+- the preceding live mode string is `rb\0`, whose terminator at `0x80A381D4` is preserved;
+- `0x80A381D8..0x80A381FF` is padding before the generic helper runner beginning at aligned `0x80A38200`;
+- the range is zero in both stock firmware and the current tested lineage before repair;
+- scan of MIPS absolute jump/JAL and PC-relative branch targets found no target in `0x80A381D4..0x80A38200`;
+- the 25-byte GB pathname fits wholly inside the audited padding and cannot touch the runner.
+
+Candidate:
+- ZIP `xgo-gb-gba-refresh-path-repair-v2.zip`
+- ZIP SHA-256 `0f66812520558d5f4d4597c24418e1db786264e5b57fe9361d1d32e5673400e0`
+- firmware SHA-256 `b5f1651b146b52070f2e89d51cc2694852af565150568f78d06404e9f9f461ab`
+- LCFG CRC-32/MPEG-2 `0x4AB4C686`.
+
+Hardware gate is bounded to cumulative handheld restoration: GB, GBC, and GBA unchanged Refresh should each return `No New Games`. Arcade remains frozen and is not part of this gate.
