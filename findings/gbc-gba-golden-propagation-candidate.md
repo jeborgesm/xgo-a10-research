@@ -330,3 +330,23 @@ Candidate:
 - LCFG CRC-32/MPEG-2 `0x4AB4C686`.
 
 Hardware gate is bounded to cumulative handheld restoration: GB, GBC, and GBA unchanged Refresh should each return `No New Games`. Arcade remains frozen and is not part of this gate.
+
+
+## 2026-09-29 HW closure — cumulative handheld Refresh restored
+
+Second repair hardware result:
+- GB: `No New Games` — PASS.
+- GBC: `No New Games` — PASS.
+- GBA: `No New Games` — PASS.
+- all other non-Arcade Refresh selectors tested by user: `No New Games` — PASS.
+- Arcade: `Refresh Failed` — expected current Arcade/IGS investigation state and explicitly outside this repair.
+
+The v2 repair therefore restores the cumulative non-Arcade Refresh baseline on hardware. The first repair is rejected evidence and must never be promoted.
+
+HW-proven v2 identities:
+- package `xgo-gb-gba-refresh-path-repair-v2.zip`
+- ZIP SHA-256 `0f66812520558d5f4d4597c24418e1db786264e5b57fe9361d1d32e5673400e0`
+- firmware SHA-256 `b5f1651b146b52070f2e89d51cc2694852af565150568f78d06404e9f9f461ab`
+- LCFG CRC-32/MPEG-2 `0x4AB4C686`
+
+Promote this exact package/firmware as the new cumulative handheld Refresh golden checkpoint. Arcade remains an independent OPEN subsystem and must resume from the protected Test15 IGS publication/runtime boundary, with validator/preflight redesign still deferred until four-family functionality is established.
