@@ -1,0 +1,130 @@
+name: Audio fidelity latency offline archaeology
+
+on:
+  push:
+    branches: [ research-audio-fidelity-latency ]
+    paths:
+      - '.github/workflows/audio-fidelity-latency-offline.yml'
+  workflow_dispatch:
+
+jobs:
+  archaeology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify authoritative XGO firmware
+        shell: bash
+        run: |
+          set -eux
+          test -f bios/bisrv.asd
+          echo "XGO:"
+          sha256sum bios/bisrv.asd
+          stat -c '%n %s bytes' bios/bisrv.asd
+
+      - name: Fetch pinned family references
+        shell: bash
+        run: |
+          set -eux
+          BASE=https://raw.githubusercontent.com/Trademarked69/sf2000_multicore/d973e5dd0bfe5a77ea7a11f42391e7f39294e8b0/assets/os
+          curl -L --fail --retry 3 "$BASE/bisrv_08_03.asd" -o sf2000.asd
+          curl -L --fail --retry 3 "$BASE/bisrv_GB300_V2.asd" -o gb300v2.asd
+          sha256sum sf2000.asd gb300v2.asd
+
+      - name: Install MIPS binutils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y binutils-mips-linux-gnu
+
+      - name: Disassemble XGO audio producer init consumer neighborhood
+        shell: bash
+        run: |
+          set -eux
+          O="mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000"
+          $O --start-address=0x8035c880 --stop-address=0x8035ce80 bios/bisrv.asd > xgo-frontend-audio.txt
+          $O --start-address=0x80306000 --stop-address=0x80308100 bios/bisrv.asd > xgo-snd-runtime.txt
+          $O --start-address=0x801b3a80 --stop-address=0x801b4100 bios/bisrv.asd > xgo-volume-gate.txt
+
+      - name: Recover GP-relative ring globals and audio call graph
+        shell: bash
+        run: |
+          cat > analyze_audio.py <<'PY'
+          from pathlib import Path
+          import struct, hashlib, re
+
+          BASE=0x80000000
+          GP=0x80c34774
+          xgo=Path("bios/bisrv.asd").read_bytes()
+
+          def u32(va):
+              return struct.unpack_from("<I",xgo,va-BASE)[0]
+          def sx16(x): return x-0x10000 if x&0x8000 else x
+          def reg(n):
+              names=["zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7",
+                     "s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra"]
+              return names[n]
+
+          print("XGO sha256",hashlib.sha256(xgo).hexdigest())
+          for name,start,end in [
+              ("sound_init",0x8035c998,0x8035cba0),
+              ("ring_writer",0x8035cba0,0x8035ce80),
+              ("i2so_config",0x80306cdc,0x80307080),
+              ("snd_runtime",0x80307a68,0x80308000),
+              ("L23_helper",0x801b4024,0x801b4080),
+          ]:
+              print("\n==",name,hex(start),hex(end),"==")
+              for va in range(start,end,4):
+                  w=u32(va); op=w>>26; rs=(w>>21)&31; rt=(w>>16)&31; imm=w&0xffff
+                  if rs==28 and op in (0x20,0x21,0x23,0x24,0x25,0x28,0x29,0x2b):
+                      ea=(GP+sx16(imm))&0xffffffff
+                      print(f"GPREF {va:#010x} op={op:#x} {reg(rt)} {sx16(imm):+d}(gp) -> {ea:#010x}")
+                  if op==3:
+                      tgt=((va+4)&0xf0000000)|((w&0x03ffffff)<<2)
+                      print(f"JAL   {va:#010x} -> {tgt:#010x}")
+                  if op==2:
+                      tgt=((va+4)&0xf0000000)|((w&0x03ffffff)<<2)
+                      print(f"J     {va:#010x} -> {tgt:#010x}")
+
+          # Exact direct callers of selected audio functions.
+          for target in [0x8035c998,0x8035cba0,0x80306cdc,0x801b4024]:
+              enc=(3<<26)|((target>>2)&0x03ffffff)
+              hits=[]
+              for off in range(0,len(xgo)-4,4):
+                  if struct.unpack_from("<I",xgo,off)[0]==enc:
+                      hits.append(BASE+off)
+              print("CALLERS",hex(target),",".join(hex(x) for x in hits))
+
+          # Find source-rate constants and 960 in executable immediates.
+          for value in [11025,22050,44100,48000,960,8,16,24,32]:
+              hits=[]
+              for off in range(0,len(xgo)-4,4):
+                  w=struct.unpack_from("<I",xgo,off)[0]
+                  op=w>>26; rs=(w>>21)&31; imm=w&0xffff
+                  got=None
+                  if rs==0 and op==0x0d: got=imm
+                  elif rs==0 and op in (0x08,0x09): got=sx16(imm)&0xffffffff
+                  if got==value: hits.append(BASE+off)
+              print("CONST",value,",".join(hex(x) for x in hits[:100]))
+          PY
+          python3 analyze_audio.py | tee xgo-audio-analysis.txt
+
+      - name: Family producer and nearby consumer comparison
+        shell: bash
+        run: |
+          set -eux
+          O="mips-linux-gnu-objdump -D -b binary -m mips:isa32 -EL --adjust-vma=0x80000000"
+          $O --start-address=0x80356740 --stop-address=0x80356c80 sf2000.asd > sf2000-audio-window.txt
+          $O --start-address=0x8035b390 --stop-address=0x8035b8d0 gb300v2.asd > gb300v2-audio-window.txt
+
+      - name: Preserve offline evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: audio-fidelity-latency-offline-archaeology
+          path: |
+            xgo-frontend-audio.txt
+            xgo-snd-runtime.txt
+            xgo-volume-gate.txt
+            xgo-audio-analysis.txt
+            sf2000-audio-window.txt
+            gb300v2-audio-window.txt
+          retention-days: 30
