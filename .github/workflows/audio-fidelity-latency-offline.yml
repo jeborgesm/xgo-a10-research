@@ -1,6 +1,8 @@
 name: Audio fidelity latency offline archaeology
 
 on:
+  pull_request:
+    branches: [ main ]
   push:
     branches: [ research-audio-fidelity-latency ]
     paths:
