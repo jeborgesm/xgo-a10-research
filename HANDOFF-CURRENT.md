@@ -679,3 +679,51 @@ Evidence rule: preserve HW/BIN/SRC/UP/INF/OPEN distinctions. Failed tests and di
 
 Durable workflow:
 `Recover -> provenance -> offline comparison -> smallest delta -> mechanical audit -> one HW boundary -> exact HW record -> archive -> commit -> promote only after HW proof.`
+
+
+## GOLDEN CLOSURE — 2026-09-30 — Arcade four-family Refresh / Test28 HW PASS
+
+This checkpoint supersedes all earlier Arcade stopping points where they conflict.
+
+**All four stock Arcade Refresh families are now HW-proven: CPS1, CPS2, IGS and NeoGeo.**
+
+Final NeoGeo candidate:
+- `xgo-arcade-neogeo-stage-fit-test28.zip`
+- ZIP SHA-256 `8ad2f19c06194ce81f00321f90fa192fb89156b7d86b1d9f2e3c03d9b71b88f6`
+- `ARCADE/NEOGEO/refresh.xgc` SHA-256 `0f411226154475530010071bca261c4dcc52b10fb258c043d89be029ea2ebe81`
+- parent Test15/Test21 helper SHA-256 `b8d7e99637dea8f217e062040a4550283f7542b040232e20ad54526115a36a9f`
+
+HW observation reported by user:
+- **Games Added**
+- Baseball Stars Pro added to NeoGeo list
+- artwork/image present
+- game launches and runs successfully
+
+### Final defect / correction
+
+The canonical NeoGeo publication namespace remains:
+`/mnt/sda1/ARCADE/NEOGEO/.refresh-set/`
+
+The path requires 38 bytes including NUL. Earlier code relocated it to helper `+0x3000` because the nominal family slot at `+0x258C` appeared too short. Exact byte audit found the preceding `.zip\0` ends at `+0x2588`, exposing a 39-byte zero gap at `+0x2589..+0x25AF`. Test28 places the canonical path at `+0x2589`, patches only the source reference at `+0x21D8`, and clears the obsolete `+0x3000` copy. Scratch remains at `+0x25E8`; marker logic, fopen/fclose logic, catalog helper and firmware remain unchanged.
+
+The resulting marker block matches the HW-working IGS control except for the expected family-specific source pointer.
+
+### Rejected work remains rejected
+
+Tests23–27 remain negative evidence. Do not revive scratch relocation, shortened `.r` namespaces, or marker micro-patch ladders. The briefly generated `.r` Test28 draft was withdrawn before HW and is not a valid experiment.
+
+Canonical topology is protected:
+```text
+/ARCADE/CPS1/.refresh-set/
+/ARCADE/CPS2/.refresh-set/
+/ARCADE/IGS/.refresh-set/
+/ARCADE/NEOGEO/.refresh-set/
+```
+
+### Source / provenance
+
+- finding: `findings/arcade-test28-neogeo-stage-fit-hardware-pass.md`
+- deterministic patch source: `tools/arcade_refresh/build_test28_neogeo_stage_fit.py`
+- golden registry: `artifacts/golden-artifacts.json`
+
+**Promotion:** Test28 is the protected golden NeoGeo publication checkpoint. The four-family Arcade Refresh milestone is closed.
