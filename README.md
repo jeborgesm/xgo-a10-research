@@ -339,11 +339,11 @@ Mega Drive       -> preserved MD path
 Game Boy         -> HW-proven two-stage GB Refresh golden checkpoint
 Game Boy Color   -> intentionally inert pending next branch
 Game Boy Advance -> intentionally inert pending next branch
-Arcade            -> intentionally inert pending dedicated Arcade branch
+Arcade            -> HW-proven four-family Refresh (CPS1/CPS2/IGS/NeoGeo; Test28 closes NeoGeo)
 Classic           -> HW-proven CLASSIC path (Test123)
 ```
 
-The next stock-family propagation work is **GBC, then GBA**, mechanically derived from the hardware-proven GB two-stage architecture. Complete the reachability, argument, extension/stem, catalog/cache and real-fixture audit offline before emitting either hardware candidate. Do not infer a generic Arcade list ID from that work: Arcade is a separate follow-on because the stock frontend separates shared `/ARCADE` content into CPS1, CPS2, NeoGeo and IGS catalogs (lists 7..10), requiring classification/orchestration rather than a single blind scan.
+The stock-family Refresh propagation is now hardware-proven through GB/GBC/GBA, and the dedicated Arcade branch has closed all four stock Arcade families (CPS1/CPS2/IGS/NeoGeo). Test28 is the golden NeoGeo closure. Preserve the family-specific Arcade catalogs (lists 7..10), canonical `.refresh-set` namespaces, compatibility gating, and the exact NeoGeo stage-fit geometry.
 
 After all eight individual operations are stable, add the explicitly requested ninth **Refresh All** row. It must never be implicit in one of the eight system commands.
 
