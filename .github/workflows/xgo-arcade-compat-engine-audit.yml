@@ -1,0 +1,140 @@
+name: XGO Arcade compat engine audit
+
+on:
+  push:
+    branches: [ research-arcade-refresh-four-family ]
+    paths:
+      - 'tools/arcade_refresh/**'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s'
+      - 'tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_entry.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stage2_start.s'
+      - 'tools/arcade_refresh/xgo_arcade_compat_stage2.ld'
+      - 'tools/arcade_refresh/xgo_arcade_compat_materializer_loader.c'
+      - 'tools/arcade_refresh/xgo_arcade_compat_materializer_hook.s'
+      - 'tools/arcade_refresh/xgo_arcade_compat_materializer_hook.ld'
+      - '.github/workflows/xgo-arcade-compat-engine-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host strict compile
+        run: |
+          set -euxo pipefail
+          gcc -std=c99 -O2 -Wall -Wextra -Werror -pedantic -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-host.o 2>&1 | tee host-compile.log
+          # xgo_reader is device-specific (recovered ALi VFS ABI) and is compiled
+          # under the exact MIPS freestanding flags below, not as host libc code.
+          # Device entry intentionally depends on XGO Reader symbols; compile it with
+          # the same freestanding flags in the MIPS step below rather than as a host TU.
+      - name: Install exact Codescape toolchain
+        run: |
+          set -euxo pipefail
+          url='https://cloud.maschath.de/s/dDrZN4DSgJ33E3w/download/Codescape.GNU.Tools.Package.2019.09-03-2.for.MIPS32.MTI.Bare.Metal.Ubuntu-18.04.5.x86_64.tar.gz'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/codescape.tar.gz
+          sudo tar -xzf /tmp/codescape.tar.gz -C /opt
+      - name: Compile and link MIPS Stage2
+        run: |
+          set -euxo pipefail
+          t=/opt/mips32-mti-elf/2019.09-03-2/bin
+          cc=$t/mips-mti-elf-gcc
+          flags='-EL -march=mips32 -mtune=mips32 -msoft-float -G0 -mno-abicalls -fno-pic -ffunction-sections -fdata-sections -fno-stack-protector -O2 -Wall -Wextra -Werror'
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_engine.c -o compat-engine.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stock_bridges.s -o compat-bridges.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_xgo_reader.c -o compat-reader.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_entry.c -o compat-entry.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_stage2_start.s -o compat-start.o
+          $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_stage2.ld -Map compat-stage2.map -o compat-stage2.elf compat-start.o compat-entry.o compat-engine.o compat-reader.o compat-bridges.o
+          $t/mips-mti-elf-objcopy -O binary compat-stage2.elf compat-safe.xgc
+          $t/mips-mti-elf-objdump -dr compat-stage2.elf > compat-stage2.dis
+          $t/mips-mti-elf-nm -n compat-stage2.elf > compat-stage2.nm
+          $t/mips-mti-elf-nm -u compat-stage2.elf > undefined.txt
+          test ! -s undefined.txt
+          grep -q '802abd58' compat-stage2.dis
+          grep -q '802ac080' compat-stage2.dis
+          grep -q '802ac150' compat-stage2.dis
+          grep -q '802ac394' compat-stage2.dis
+          grep -q '802ac4d4' compat-stage2.dis
+          grep -Eq 'lw[[:space:]].*48\(sp\)' compat-stage2.dis
+          grep -Eq 'sw[[:space:]].*16\(sp\)' compat-stage2.dis
+          grep -q '87300000' compat-stage2.nm
+          endhex=$($t/mips-mti-elf-nm -n compat-stage2.elf | awk '$3=="__stage2_end"{print $1}')
+          test -n "$endhex"
+          test $((16#$endhex)) -lt $((16#87400000))
+          # Build the CPS1 materializer-resident loader/hook at the proven zero region.
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_loader.c -o compat-hook-loader.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_materializer_hook.s -o compat-hook-entry.o
+          $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_materializer_hook.ld -Map compat-hook.map -o compat-hook.elf compat-hook-entry.o compat-hook-loader.o compat-bridges.o
+          $t/mips-mti-elf-objcopy -O binary compat-hook.elf compat-hook.bin
+          $t/mips-mti-elf-objdump -dr compat-hook.elf > compat-hook.dis
+          $t/mips-mti-elf-nm -n compat-hook.elf > compat-hook.nm
+          $t/mips-mti-elf-nm -u compat-hook.elf > compat-hook.undefined
+          test ! -s compat-hook.undefined
+          grep -q '87002600' compat-hook.nm
+          grep -q 'lui.*0x8730' compat-hook.dis
+          grep -q 'ori.*0x1f4' compat-hook.dis
+          grep -q 'ori.*0xd84' compat-hook.dis
+          grep -q 'cache' compat-hook.dis
+          hookend=$($t/mips-mti-elf-nm -n compat-hook.elf | awk '$3=="__hook_end"{print $1}')
+          test -n "$hookend"
+          test $((16#$hookend)) -lt $((16#87100000))
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_preflight_hook.s -o compat-preflight-entry.o
+          $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_preflight_hook.ld -Map compat-preflight.map -o compat-preflight.elf compat-preflight-entry.o compat-hook-loader.o compat-bridges.o
+          $t/mips-mti-elf-objcopy -O binary compat-preflight.elf compat-preflight.bin
+          $t/mips-mti-elf-objdump -dr compat-preflight.elf > compat-preflight.dis
+          $t/mips-mti-elf-nm -u compat-preflight.elf > compat-preflight.undefined
+          test ! -s compat-preflight.undefined
+          grep -q '87002600' compat-preflight.dis
+          grep -q '8730' compat-preflight.dis
+          grep -q '/mnt/sda1/ARCADE/CPS1/import/1941.zip' compat-preflight.bin
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_preflight_dynamic.c -o compat-dynamic.o
+          $cc $flags -c tools/arcade_refresh/xgo_arcade_compat_dynamic_preflight.s -o compat-dynamic-entry.o
+          $t/mips-mti-elf-ld -EL -T tools/arcade_refresh/xgo_arcade_compat_dynamic_preflight.ld -Map compat-dynamic.map -o compat-dynamic.elf compat-dynamic-entry.o compat-dynamic.o compat-hook-loader.o compat-bridges.o
+          $t/mips-mti-elf-objcopy -O binary compat-dynamic.elf compat-dynamic.bin
+          $t/mips-mti-elf-objdump -dr compat-dynamic.elf > compat-dynamic.dis
+          $t/mips-mti-elf-nm -u compat-dynamic.elf > compat-dynamic.undefined
+          test ! -s compat-dynamic.undefined
+          grep -q 'lui.*0x807d' compat-dynamic.dis
+          grep -q 'jalr' compat-dynamic.dis
+          grep -q '8730' compat-dynamic.dis
+          grep -q '/mnt/sda1/ARCADE/CPS1/import' compat-dynamic.bin
+          grep -q '/mnt/sda1/ARCADE/CPS2/import' compat-dynamic.bin
+          grep -q '/mnt/sda1/ARCADE/IGS/import' compat-dynamic.bin
+          grep -q '/mnt/sda1/ARCADE/NEOGEO/import' compat-dynamic.bin
+          sha256sum compat-safe.xgc compat-stage2.elf compat-stage2.dis compat-stage2.map compat-hook.bin compat-hook.elf compat-hook.dis compat-hook.map compat-preflight.bin compat-preflight.elf compat-preflight.dis compat-preflight.map compat-dynamic.bin compat-dynamic.elf compat-dynamic.dis compat-dynamic.map > output.sha256
+          wc -c compat-safe.xgc compat-stage2.elf | tee sizes.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xgo-arcade-compat-stage2-audit
+          path: |
+            compat-safe.xgc
+            compat-stage2.elf
+            compat-stage2.dis
+            compat-stage2.nm
+            compat-stage2.map
+            compat-hook.bin
+            compat-hook.elf
+            compat-hook.dis
+            compat-hook.nm
+            compat-hook.map
+            compat-preflight.bin
+            compat-preflight.elf
+            compat-preflight.dis
+            compat-preflight.map
+            compat-preflight.undefined
+            compat-dynamic.bin
+            compat-dynamic.elf
+            compat-dynamic.dis
+            compat-dynamic.map
+            compat-dynamic.undefined
+            compat-hook.undefined
+            undefined.txt
+            output.sha256
+            sizes.txt
+            host-compile.log
+          retention-days: 30
+
+# rebuild after RGB565 boundary cleanup

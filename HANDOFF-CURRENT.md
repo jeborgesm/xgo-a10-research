@@ -548,3 +548,182 @@ GBA HW proof: four-game batch import, corrected matching artwork, catalog listin
 Final post-test GBA catalog cleanup v3 removes six historical leaked GB records (original indices 626..631) plus obsolete first GBA test records (663..666), preserves A Sound of Thunder.zgb at original index 632, and retains the final four working GBA records. Final count 661.
 
 Next work must start from merged main. Do not reopen GBC/GBA correctness. Separate future work: (1) Refresh processing feedback/current filename or n/N progress UI; (2) standardized safe deletion/reconciliation for append-only catalogs; (3) Arcade remains separate command-6 work.
+
+
+## Active branch recovery — 2026-09-26 — Arcade Refresh / CPS1 Test04
+
+Active branch: `research-arcade-refresh-four-family`.
+
+A project-state gap was discovered: the newest CPS1 Arcade Refresh work had remained in chat while this handoff still ended at the GBC/GBA closure. The missing checkpoint is now restored in:
+
+- `findings/arcade-refresh-cps1-test01-test04-recovery-checkpoint.md`
+
+### Protected current checkpoint
+
+**Test04 is the frozen CPS1 Refresh/import/catalog HW checkpoint.**
+
+Recovered HW:
+- CPS1 Refresh discovers/imports 1941;
+- generated `1941.zfb` exists and is 59,918 bytes;
+- launcher trailer resolves to `1941.zip`;
+- 59,904-byte preview is zero-filled fallback, not presently classified as corruption;
+- catalog persistence is sufficient for the new item to appear;
+- live-list/re-entry can freeze after mutation;
+- generated/imported 1941 does not reach successful gameplay.
+
+Do not use Pac-Man/Test11 as a positive launch oracle. Use a currently working stock CPS1 title, preferably Cadillacs & Dinosaurs, for native-path comparison.
+
+BIN evidence from exact `bios/bisrv.asd` contains 1941 descriptions and internal identifiers (`1941j`, `1941`). This proves driver identity/material exists in the stock XGO FBA binary; it does **not** prove ROM-set compatibility or establish the cause of the launch failure.
+
+The earlier conversational promotion of ROM-set compatibility to "leading suspect" is retracted. It remains one OPEN hypothesis.
+
+### Current OPEN boundaries
+
+Keep these separate until evidence connects them:
+- generated wrapper equivalence to known-good stock CPS1;
+- CPS1 catalog/index/category context;
+- stock preprocessing/archive-name state;
+- any index-dependent launch metadata;
+- exact stock-XGO 1941 ROM filename/size/CRC contract;
+- compatibility of the imported 1941 ZIP with that contract;
+- live-list/cache invalidation after Refresh;
+- causal location of the launch failure.
+
+### Hardware gate
+
+**No Test05 is authorized.**
+
+Continue offline from Test04. First locate the earliest demonstrated divergence between:
+
+```text
+Cadillacs and Dinosaurs.zfb -> dino.zip -> stock CPS1/FBA -> PLAY
+1941.zfb                    -> 1941.zip -> stock CPS1/FBA -> FAIL
+```
+
+Exhaust repository/BIN/source comparison before firmware mutation. Any later candidate must follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`: source/reconstruction first, deterministic fail-closed builder, exact parent hashes, patch-site/range verification, LCFG verification, complete byte-diff manifest, then one narrow HW question.
+
+Immediate offline task: recover the exact 1941 ROM contract from stock XGO `bisrv.asd` as far as BIN evidence permits and compare it with the known-good CPS1 launch contract. Do not ask for another hardware test until this is closed or genuinely exhausted.
+
+
+## Active Arcade checkpoint — 2026-09-27 — Test05A artwork HW PASS
+
+This section supersedes the older Test04 statements above where they conflict. Full evidence is in `findings/arcade-test05a-artwork-hardware-result.md`.
+
+Current hardware facts:
+- Test04-generated CPS1 1941 launches and plays when `/ARCADE/bin/1941.zip` satisfies the stock XGO 1941 ROM contract. The earlier launch failure was ROM-set compatibility, not ZFB/launcher architecture.
+- Test05A changes only the disposable JPEG/RGB565 scratch paths to the shared Arcade root:
+  - `/mnt/sda1/ARCADE/.xgo.jpg`
+  - `/mnt/sda1/ARCADE/.xgo.rgb565`
+- Test05A materializer SHA-256: `2d6503ae20937bd9d525d68a18ee845d942667b582e71e2371450a83d8d29ad2`.
+- After forcing ZFB regeneration, hardware produced real 1941 artwork and the game remained playable. **Artwork repair = HW PASS.**
+- A Refresh Failed result during that sequence was associated with a stale incompatible import ZIP differing from the known-good runtime ZIP. After synchronizing the compatible ZIP into the import folder, Refresh returned **No New Games**, artwork persisted, and 1941 remained playable.
+- During repeated 2026-09-27 Refresh/list-entry/launch operations, the original Test04 immediate CPS1 hard freeze was **not reproduced**. Do not patch the list-7 count cache solely for that unreproduced symptom. Preserve the BIN-closed cache knowledge for use only if a reproducible stale-list failure returns.
+
+Process correction:
+- Do not reopen artwork archaeology.
+- Do not spend another pre-hardware cycle attempting to prove unrelated uncertainties.
+- Preserve the Test05A shared-scratch fix.
+- Proceed to the intended four-family Refresh + compatibility-filter implementation using the already recovered XACM/ZIP architecture.
+- Hardware tests may answer remaining controlled questions; the next candidate need only be bounded and interpretable, not preceded by exhaustive closure of every theoretical uncertainty.
+
+
+## Active Arcade checkpoint — 2026-09-27 — Test05B-COMPAT hardware candidate
+
+Test05A artwork remains HW PASS. The old Test04 freeze remains non-reproduced;
+do not add a browser-cache patch.
+
+The first CPS1 on-device compatibility publication gate is now constructed and
+offline-audited. Final Codescape workflow run 36376769603 passed.
+
+Candidate package:
+- xgo-arcade-test05B-cps1-compat-gate.zip
+- SHA-256 503e07e2f2cb2857ee584fd76605ce910ac2cb348d58f53232130235177e748d
+
+Key payloads:
+- CPS1 refresh.xgc SHA-256 6f4e4fef212e6881a6a428349a2af34a430f429d3b3e7f08da52b03797299d21
+- compat-safe.xgc size 3929 SHA-256 6cf8d8bab0a26a582111336b005c057387a0ab6a6e03ec3d0eff07b37deafc8a
+- .xgo-compat size 237921 SHA-256 86a798ab9e0c8042a84b99a37fcfacd8708706d0010e0459726420d92ab7c0f5
+
+Important hook correction: source path is live after +0x04CC, but the stem helper
+is called at +0x0524. The implemented compatibility hook is therefore at
++0x052C, not +0x04CC. Compatible flow replays the two overwritten loads and
+continues +0x0534. INCOMPATIBLE/UNSUPPORTED returns to the next-directory-entry
+path +0x01F4 before publication. Validator error uses existing failure cleanup
++0x0D84.
+
+First HW probe uses a copy of known-incompatible 1941(1).zip renamed
+ARCADE/CPS1/import/1941j.zip so the existing proven 1941 row does not obscure
+the non-publication result. Expected: responsive, no 1941j row/ZFB/runtime ZIP,
+existing 1941 unchanged. Quarantine rename is still deferred.
+
+Full construction/failure/audit record:
+findings/arcade-test05b-cps1-compatibility-gate-candidate.md
+
+
+## 2026-09-28 — Test06 ready for HW
+
+CPS1 compatibility publication gate is now built and offline-audited. Codescape run 36378065831 PASS. Test06 package SHA256 `4bfc148c866a5526ee82a6cca08a641573cc9bfbd8c1256d7e361c35495fac7f`. It preserves HW-proven Test05A artwork behavior and does not modify `bisrv.asd`. First HW probe: place known-incompatible modern 1941 archive as `/ARCADE/CPS1/import/1941j.zip`; Refresh should report No New Games and must not publish 1941j. Existing working 1941 should remain intact/playable. See `findings/arcade-test06-cps1-compat-gate-build.md`.
+
+
+## Mandatory continuity overlay — 2026-09-29
+
+This handoff is long and contains historical checkpoints. On any new/forced chat or context disruption, **do not resume from the first apparently relevant older checkpoint**. Read through the latest superseding checkpoint and follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`, especially its **Chat-disruption recovery contract**.
+
+Interaction rule: user `go` / `continue` authorizes autonomous offline investigation. Do not emit micro-progress narration or require repeated permission. Return only at a meaningful gate: an audited hardware candidate genuinely requiring HW, a substantive offline closure with no immediate offline continuation, or indispensable user-owned input unavailable from project artifacts.
+
+Project-state rule: GitHub is the notebook/source of truth. Any new HW observation, negative result, correction, exact artifact identity, or changed stopping point must be committed before subsequent reasoning depends on it. Conversation memory is supplemental, never authoritative.
+
+Experimental rule: no speculative numbered-test ladder. Recover historical solutions and exact proven ancestors first; exhaust offline evidence; mechanically audit the smallest evidence-driven delta; ask hardware one unresolved question only when offline work cannot answer it.
+
+Evidence rule: preserve HW/BIN/SRC/UP/INF/OPEN distinctions. Failed tests and disproved interpretations remain evidence. Later corrections supersede interpretations but do not erase history.
+
+Durable workflow:
+`Recover -> provenance -> offline comparison -> smallest delta -> mechanical audit -> one HW boundary -> exact HW record -> archive -> commit -> promote only after HW proof.`
+
+
+## GOLDEN CLOSURE — 2026-09-30 — Arcade four-family Refresh / Test28 HW PASS
+
+This checkpoint supersedes all earlier Arcade stopping points where they conflict.
+
+**All four stock Arcade Refresh families are now HW-proven: CPS1, CPS2, IGS and NeoGeo.**
+
+Final NeoGeo candidate:
+- `xgo-arcade-neogeo-stage-fit-test28.zip`
+- ZIP SHA-256 `8ad2f19c06194ce81f00321f90fa192fb89156b7d86b1d9f2e3c03d9b71b88f6`
+- `ARCADE/NEOGEO/refresh.xgc` SHA-256 `0f411226154475530010071bca261c4dcc52b10fb258c043d89be029ea2ebe81`
+- parent Test15/Test21 helper SHA-256 `b8d7e99637dea8f217e062040a4550283f7542b040232e20ad54526115a36a9f`
+
+HW observation reported by user:
+- **Games Added**
+- Baseball Stars Pro added to NeoGeo list
+- artwork/image present
+- game launches and runs successfully
+
+### Final defect / correction
+
+The canonical NeoGeo publication namespace remains:
+`/mnt/sda1/ARCADE/NEOGEO/.refresh-set/`
+
+The path requires 38 bytes including NUL. Earlier code relocated it to helper `+0x3000` because the nominal family slot at `+0x258C` appeared too short. Exact byte audit found the preceding `.zip\0` ends at `+0x2588`, exposing a 39-byte zero gap at `+0x2589..+0x25AF`. Test28 places the canonical path at `+0x2589`, patches only the source reference at `+0x21D8`, and clears the obsolete `+0x3000` copy. Scratch remains at `+0x25E8`; marker logic, fopen/fclose logic, catalog helper and firmware remain unchanged.
+
+The resulting marker block matches the HW-working IGS control except for the expected family-specific source pointer.
+
+### Rejected work remains rejected
+
+Tests23–27 remain negative evidence. Do not revive scratch relocation, shortened `.r` namespaces, or marker micro-patch ladders. The briefly generated `.r` Test28 draft was withdrawn before HW and is not a valid experiment.
+
+Canonical topology is protected:
+```text
+/ARCADE/CPS1/.refresh-set/
+/ARCADE/CPS2/.refresh-set/
+/ARCADE/IGS/.refresh-set/
+/ARCADE/NEOGEO/.refresh-set/
+```
+
+### Source / provenance
+
+- finding: `findings/arcade-test28-neogeo-stage-fit-hardware-pass.md`
+- deterministic patch source: `tools/arcade_refresh/build_test28_neogeo_stage_fit.py`
+- golden registry: `artifacts/golden-artifacts.json`
+
+**Promotion:** Test28 is the protected golden NeoGeo publication checkpoint. The four-family Arcade Refresh milestone is closed.

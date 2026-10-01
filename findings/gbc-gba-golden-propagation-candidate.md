@@ -221,3 +221,132 @@ Final cleanup v3 hashes:
 ## Branch closure
 
 GBC and GBA propagation are complete and HW-proven. The firmware/package identities above are promoted to the golden cumulative Refresh architecture. Normal Refresh remains append-only; standardized deletion/reconciliation remains future work. Batch-processing progress feedback remains a separate UX follow-up.
+
+
+## 2026-09-29 regression correction — GB catalog pathname terminator overwritten by GBC body
+
+A physical-card forensic snapshot taken after the user observed GB `Refresh Failed` exposed a deterministic regression in the supposedly cumulative GBC/GBA propagation.
+
+Current physical identities:
+- `GB/refresh.xgc` SHA-256 `34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238` — exact GB golden helper.
+- `GB/catalog.xgc` SHA-256 `66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb` — exact GB golden helper.
+- GB triplet remains synchronized at count 975.
+- The current firmware's GB command body at `0x80A39050` retains the correct two-stage reachability, including `0x80A3907C -> 0x80A39084`.
+
+The failure is in the firmware pathname storage.
+
+GB catalog pathname begins at `0x80A390E0`:
+
+`/mnt/sda1/GB/catalog.xgc`
+
+That string is exactly **24 bytes**, so its required NUL terminator is at **0x80A390F8**.
+
+The GBC/GBA propagation placed the new GBC command body at **0x80A390F8**. Consequently the first GBC instruction overwrote the GB pathname terminator. On the physical firmware the bytes are:
+
+`... /mnt/sda1/GB/catalog.xgc A4 80 04 3C 60 91 84 24 10 00 ...`
+
+The generic helper runner therefore receives a non-terminated/garbage-extended catalog pathname instead of `/mnt/sda1/GB/catalog.xgc\0`, fails to open the helper, returns negative, and the preserved GB dispatcher correctly reports **Refresh Failed**.
+
+This is not an Arcade/Test17 mutation and not a GB-helper defect. It is a latent cumulative regression introduced when GBC code was allocated at the exact byte required by the protected GB catalog-path terminator. The GBC/GBA finding's earlier statement that GB was byte-identical/fully preserved was therefore incomplete: the GB *code body* was preserved, but an adjacent live GB string datum was not.
+
+### Status correction
+
+The GBC/GBA implementation remains HW-proven for GBC/GBA themselves, but the cumulative-baseline preservation claim is withdrawn until GB is repaired and regression-tested. The superseding physical baseline must not be treated as fully cumulative for GB Refresh.
+
+### Repair gate
+
+Do not change either golden GB external helper. Repair must preserve the existing GB two-stage architecture and current GBC/GBA behavior. Offline work must relocate either the GB catalog pathname or the colliding GBC body into proven-owned space, patch the single corresponding reference, and mechanically audit the current firmware before any hardware request.
+
+
+## 2026-09-29 deterministic GB pathname repair candidate
+
+The physical failing firmware from the user snapshot was used as the exact repair parent. No GB external helper or catalog resource is changed.
+
+Repair:
+- preserve colliding GBC body at `0x80A390F8`;
+- relocate the complete NUL-terminated GB catalog pathname to verified zero space at `0x80A398E1`;
+- change only the GB catalog-stage pathname low immediate at `0x80A39088`: `0x248490E0 -> 0x248498E1`;
+- reseal LCFG CRC-32/MPEG-2.
+
+The destination is the 55-byte zero run `0x80A398E1..0x80A39917`, immediately after the documented GBA body ending at `0x80A398E0`. Required string is 25 bytes and remains wholly inside that verified zero run.
+
+Candidate:
+- package `xgo-gb-refresh-path-terminator-repair.zip`
+- firmware SHA-256 `3a3206279a1d18ffb6e29b3708383c56cdae11ba89227e078517335c810c3fd0`
+- package SHA-256 `6775ed6e3801ca05576fc51a7a9ae6304157e4bf18654c0fff7f3154e76404d2`
+- LCFG CRC-32/MPEG-2 `0x38F17EE5`
+
+Hardware question is intentionally narrow: with no GB input/catalog changes, does selecting GB Refresh return `No New Games` rather than `Refresh Failed`? If yes, immediately spot-check GBC and GBA Refresh still return `No New Games`. Arcade is not part of this repair test.
+
+
+## 2026-09-29 HW result — GB repair passes; GBA regression exposed
+
+Hardware result for the surgical GB pathname repair:
+- GB: `No New Games` — **PASS**, the GB `Refresh Failed` regression is repaired.
+- GBC: `No New Games` — preserved.
+- GBA: `Refresh Failed` — **regression exposed**.
+- Arcade: `Refresh Failed` — pre-existing current Arcade state; remains out of this handheld repair scope.
+- all other Refresh items tested by user: `No New Games`.
+
+Interpretation boundary: the GB repair itself changed only the GB catalog-path reference plus a relocated pathname and LCFG seal; it did not intentionally modify the GBA command/helper/catalog. Therefore GBA failure must be investigated against the current physical firmware/data before another hardware candidate. Do not reopen Arcade or validator work. Freeze further hardware changes until the GBA path, pathname storage, helper identities, and live-data ownership are mechanically audited for the same class of cumulative cave/string collision.
+
+
+## 2026-09-29 correction — first GB repair collided with GBA pathname terminator
+
+The first GB pathname repair fixed GB on hardware but caused GBA `Refresh Failed`. Offline comparison of the exact tested repair against the pre-repair physical firmware closes the cause:
+
+- GBA catalog pathname starts at `0x80A398C8`: `/mnt/sda1/GBA/catalog.xgc\0`.
+- Its required NUL terminator is exactly `0x80A398E1`.
+- The first GB repair selected the apparent zero run beginning at **0x80A398E1** for the relocated GB pathname.
+- That repeated the same ownership error: a zero byte was misclassified as free space without accounting for its role as the terminator of the preceding live string.
+- Hardware result is therefore fully explained: GB passed after relocation; GBA failed because its catalog pathname became garbage-extended.
+
+This is a repair-construction defect, not a latent GBA baseline defect. Withdraw the earlier interpretation that GBA failure was merely newly exposed. The next repair must restore `0x80A398E1..` padding exactly and place the GB pathname only in a range whose ownership is established independently, not merely because it contains zero bytes.
+
+New invariant: **NUL terminators and alignment/padding adjacent to live path strings are owned data. A zero run is not a code/data cave until predecessor-string ownership and references are audited.**
+
+
+## Repair v2 — offline closure and hardware gate
+
+The first repair's GBA regression is mechanically closed and corrected without changing any GB/GBC/GBA helper or catalog.
+
+Exact correction from the hardware-tested first repair:
+- restore `0x80A398E1..` to its original zeros, restoring the GBA catalog pathname terminator and following padding;
+- relocate the complete GB catalog pathname to `0x80A381D8`;
+- patch only the GB catalog-path `addiu a0,a0,low` at `0x80A39088` from low immediate `0x98E1` to `0x81D8`;
+- reseal LCFG.
+
+Ownership audit for `0x80A381D8..0x80A381FF`:
+- the preceding live mode string is `rb\0`, whose terminator at `0x80A381D4` is preserved;
+- `0x80A381D8..0x80A381FF` is padding before the generic helper runner beginning at aligned `0x80A38200`;
+- the range is zero in both stock firmware and the current tested lineage before repair;
+- scan of MIPS absolute jump/JAL and PC-relative branch targets found no target in `0x80A381D4..0x80A38200`;
+- the 25-byte GB pathname fits wholly inside the audited padding and cannot touch the runner.
+
+Candidate:
+- ZIP `xgo-gb-gba-refresh-path-repair-v2.zip`
+- ZIP SHA-256 `0f66812520558d5f4d4597c24418e1db786264e5b57fe9361d1d32e5673400e0`
+- firmware SHA-256 `b5f1651b146b52070f2e89d51cc2694852af565150568f78d06404e9f9f461ab`
+- LCFG CRC-32/MPEG-2 `0x4AB4C686`.
+
+Hardware gate is bounded to cumulative handheld restoration: GB, GBC, and GBA unchanged Refresh should each return `No New Games`. Arcade remains frozen and is not part of this gate.
+
+
+## 2026-09-29 HW closure — cumulative handheld Refresh restored
+
+Second repair hardware result:
+- GB: `No New Games` — PASS.
+- GBC: `No New Games` — PASS.
+- GBA: `No New Games` — PASS.
+- all other non-Arcade Refresh selectors tested by user: `No New Games` — PASS.
+- Arcade: `Refresh Failed` — expected current Arcade/IGS investigation state and explicitly outside this repair.
+
+The v2 repair therefore restores the cumulative non-Arcade Refresh baseline on hardware. The first repair is rejected evidence and must never be promoted.
+
+HW-proven v2 identities:
+- package `xgo-gb-gba-refresh-path-repair-v2.zip`
+- ZIP SHA-256 `0f66812520558d5f4d4597c24418e1db786264e5b57fe9361d1d32e5673400e0`
+- firmware SHA-256 `b5f1651b146b52070f2e89d51cc2694852af565150568f78d06404e9f9f461ab`
+- LCFG CRC-32/MPEG-2 `0x4AB4C686`
+
+Promote this exact package/firmware as the new cumulative handheld Refresh golden checkpoint. Arcade remains an independent OPEN subsystem and must resume from the protected Test15 IGS publication/runtime boundary, with validator/preflight redesign still deferred until four-family functionality is established.

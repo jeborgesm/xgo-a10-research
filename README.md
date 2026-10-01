@@ -4,7 +4,7 @@ Reverse engineering, preservation, and experimental software development for the
 
 The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardware/firmware target. This repository documents the actual XGO firmware, resources, hardware behavior, family relationships, product provenance, and custom modifications proven on physical XGO hardware.
 
-> **Current status — September 2026:** the cumulative hardware-proven baseline now includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load and metadata/JPEG artwork, Test74 SFC enrichment, Test75 FC enrichment, Test106 hardened Mega Drive Refresh, and the new first-class **REFRESH GAMES** selector through **Test123**. Test123 hardware-proves independent CLASSIC Refresh routing through the preserved native Refresh lifecycle and canonical Test72 external helper. FC/SFC/MD execution paths remain preserved, and Game Boy Refresh is now hardware-proven end-to-end as a golden two-stage materializer/catalog checkpoint. GBC/GBA and Arcade remain individually gated follow-on work.
+> **Current status — September 2026:** the cumulative hardware-proven baseline now includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load and metadata/JPEG artwork, Test74 SFC enrichment, Test75 FC enrichment, Test106 hardened Mega Drive Refresh, and the new first-class **REFRESH GAMES** selector through **Test123**. Test123 hardware-proves independent CLASSIC Refresh routing through the preserved native Refresh lifecycle and canonical Test72 external helper. FC/SFC/MD execution paths remain preserved, and Game Boy Refresh is now hardware-proven end-to-end as a golden two-stage materializer/catalog checkpoint. GBC/GBA are hardware-proven through the cumulative handheld repair baseline, and Arcade Refresh is now hardware-proven across CPS1, CPS2, IGS and NeoGeo. NeoGeo Test28 closes the final four-family publication defect.
 
 > **Regression status:** SFC Test74 and FC Test75 are both independently hardware-proven enrichment baselines. Test75 passed a real five-game FC batch, launch/play, and JPG artwork repair workflow. Test106 MD work did not directly modify the protected FC/SFC helper files, but the final Test106 cycle did not include a fresh physical FC/SFC launch regression. Therefore FC/SFC are proven historically and structurally preserved, while a post-Test106 spot-check remains the only missing cumulative regression evidence.
 
@@ -264,6 +264,22 @@ The complete positive/negative history and the reachability lesson are preserved
 
 **Propagation rule for GBC/GBA:** start from this hardware-proven architecture. Mechanically specialize the filesystem, extension, wrapper, catalog and cache contracts, and close the complete caller reachability/argument/fixture audit offline before the first SD-card test. A helper must not be diagnosed until its call path is proven reachable.
 
+## Major milestone: four-family Arcade Refresh — Test28 golden
+
+Arcade Refresh is now hardware-proven across all four stock Arcade families: **CPS1, CPS2, IGS and NeoGeo**. The final NeoGeo defect was not a new filesystem contract: the canonical `/ARCADE/NEOGEO/.refresh-set/` string is 38 bytes including NUL and had been unnecessarily relocated to helper `+0x3000`. Offline comparison against the HW-working family controls found an exact-fit 39-byte gap beginning at `+0x2589`. Test28 restores the family-local geometry by placing the canonical path there and repointing only the source reference; scratch, marker logic, catalog helper and firmware remain unchanged.
+
+Hardware result: **Games Added**; Baseball Stars Pro appeared with artwork and launched/runs successfully.
+
+```text
+xgo-arcade-neogeo-stage-fit-test28.zip
+SHA-256 8ad2f19c06194ce81f00321f90fa192fb89156b7d86b1d9f2e3c03d9b71b88f6
+
+ARCADE/NEOGEO/refresh.xgc
+SHA-256 0f411226154475530010071bca261c4dcc52b10fb258c043d89be029ea2ebe81
+```
+
+The rejected short `.r` namespace is **not** part of the architecture. All four families retain their canonical `.refresh-set` topology. See `findings/arcade-test28-neogeo-stage-fit-hardware-pass.md`.
+
 ## Physical specimen and product provenance
 
 The repository now preserves primary-source evidence from a newly purchased physical XGO specimen in addition to firmware archaeology.
@@ -323,11 +339,11 @@ Mega Drive       -> preserved MD path
 Game Boy         -> HW-proven two-stage GB Refresh golden checkpoint
 Game Boy Color   -> intentionally inert pending next branch
 Game Boy Advance -> intentionally inert pending next branch
-Arcade            -> intentionally inert pending dedicated Arcade branch
+Arcade            -> HW-proven four-family Refresh (CPS1/CPS2/IGS/NeoGeo; Test28 closes NeoGeo)
 Classic           -> HW-proven CLASSIC path (Test123)
 ```
 
-The next stock-family propagation work is **GBC, then GBA**, mechanically derived from the hardware-proven GB two-stage architecture. Complete the reachability, argument, extension/stem, catalog/cache and real-fixture audit offline before emitting either hardware candidate. Do not infer a generic Arcade list ID from that work: Arcade is a separate follow-on because the stock frontend separates shared `/ARCADE` content into CPS1, CPS2, NeoGeo and IGS catalogs (lists 7..10), requiring classification/orchestration rather than a single blind scan.
+The stock-family Refresh propagation is now hardware-proven through GB/GBC/GBA, and the dedicated Arcade branch has closed all four stock Arcade families (CPS1/CPS2/IGS/NeoGeo). Test28 is the golden NeoGeo closure. Preserve the family-specific Arcade catalogs (lists 7..10), canonical `.refresh-set` namespaces, compatibility gating, and the exact NeoGeo stage-fit geometry.
 
 After all eight individual operations are stable, add the explicitly requested ninth **Refresh All** row. It must never be implicit in one of the eight system commands.
 

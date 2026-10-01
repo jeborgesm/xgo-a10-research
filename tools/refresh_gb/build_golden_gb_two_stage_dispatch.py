@@ -85,3 +85,12 @@ def main():
 
 if __name__=="__main__":
     main()
+
+
+# NOTE 2026-09-29:
+# Later GBC/GBA propagation placed its GBC body at runtime 0x80A390F8.
+# That byte is also the required NUL terminator for the 24-byte GB catalog
+# pathname at 0x80A390E0.  The GB body itself remained byte-identical, but its
+# live pathname datum did not.  See findings/gbc-gba-golden-propagation-candidate.md.
+# Any cumulative builder must protect [0x80A390E0,0x80A390F9), not merely the
+# executable GB body.

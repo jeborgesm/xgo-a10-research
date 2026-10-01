@@ -187,3 +187,76 @@ Required comparison dimensions include at minimum: input filename/extension geom
 A new candidate must identify which proven ancestor supplies each component and enumerate the exact substitutions. If a mechanism was already solved in a closer HW-proven implementation, reuse that solution rather than reopening an older archaeology path.
 
 Example established by GB propagation: Test74/Test75 supply the enrichment/wrapper architecture, while the HW-positive MD lineage supplies the two-character native-extension geometry and later catalog/frontend lifecycle lessons. Test08 raw discovery is supporting evidence, not the architectural parent for enriched GB import.
+
+
+## Chat-disruption recovery contract — 2026-09-29
+
+This section is mandatory after any forced/new chat, context compaction, model handoff, or other conversational disruption. Conversation continuity is never allowed to become the project continuity mechanism.
+
+### Bootstrap order
+
+Before technical work resumes:
+
+1. identify the active branch;
+2. read `HANDOFF-CURRENT.md` completely, including later superseding checkpoints;
+3. read this protocol and `docs/REUSE-FIRST-ENGINEERING-INDEX.md`;
+4. inspect the applicable branch findings, deterministic builders/source, `artifacts/golden-artifacts.json`, private artifact repository, and latest HW-result commits;
+5. recover any immediately preceding chat-only HW observation or correction and commit it before building on it;
+6. establish the exact protected baseline and last HW-positive checkpoint;
+7. only then resume the current OPEN boundary.
+
+Old handoff text is historical evidence. A later explicit correction or HW checkpoint supersedes it where they conflict. Never resurrect an obsolete priority merely because it appears earlier in a long handoff.
+
+### Interaction contract
+
+When the user says **go** or **continue**, that is authorization to continue the offline investigation autonomously through ordinary searches, disassembly, comparisons, source repair, deterministic reconstruction, audits, and repository commits. It is **not** a request for incremental narration.
+
+Do not return to the user merely to report:
+- that a search or commit was performed;
+- that one hypothesis was rejected;
+- that a file was repaired;
+- what could be investigated next;
+- a short progress/status update after a few seconds;
+- a request to say `go` again.
+
+Continue until a meaningful gate is reached:
+- a fully audited hardware candidate is genuinely required and ready, with exact artifact/hash/instructions; or
+- a substantive offline closure materially changes the investigation and no immediate offline continuation remains; or
+- an indispensable user-owned artifact/input is required and cannot be recovered from repository/artifacts.
+
+### Hardware gate
+
+A new hardware request is forbidden unless all of the following are explicit in the repository:
+- the exact unresolved question;
+- the HW-proven ancestor;
+- exact recovered source/binaries and provenance;
+- relevant prior positive and negative experiments;
+- why offline evidence cannot answer the question;
+- deterministic candidate construction;
+- complete mechanical byte/file delta audit;
+- hashes/manifests and expected observations.
+
+Do not use a hardware test merely to separate hypotheses that can still be separated offline. Do not create speculative numbered-test ladders.
+
+### Evidence and archival invariants
+
+- HW outranks BIN/SRC/UP/INF.
+- BIN/SRC/UP/INF never silently become HW.
+- Failed tests and disproved interpretations remain preserved as evidence.
+- Corrections are appended/pinned; history is not silently rewritten.
+- Every important finding/status must reach GitHub; chat-only state is a workflow defect.
+- Every meaningful HW-test ZIP is archived; only HW-confirmed milestones may become golden.
+- Verify artifact identity/hashes and internals; filenames are not provenance.
+- Recover proven implementations instead of reconstructing them from memory.
+- Preserve cumulative HW-proven behavior and keep experiments subsystem-local.
+- Mechanically audit resulting binaries/packages, not merely intended source changes.
+
+### Durable maxim
+
+`Recover -> establish provenance -> compare offline -> smallest evidence-driven delta -> mechanically audit -> hardware-test one unresolved boundary -> record exact HW result -> archive -> commit -> promote only after HW proof.`
+
+Absolute prohibitions:
+1. Never reconstruct a proven implementation from memory when it can be recovered.
+2. Never ask hardware a question offline archaeology can answer.
+3. Never let an inference outrank an observation.
+4. Never allow important project state to exist only in a chat.
