@@ -1205,3 +1205,42 @@ Captured-tree simulation resolves exactly:
 Malformed historical files without a canonical `.zip` suffix are excluded. Unrelated orphan top-level ZFBs are unreachable because they have no selected-family canonical import source.
 
 The old `.refresh-set` catalog helper remains historical evidence but is no longer the implementation target. The next binary candidate must be a genuinely different architecture, not Test28 marker repair.
+
+
+## 43. Test28 candidate — combine the two previously isolated corrections
+
+Test23–27 looked stagnant because two independent defects were never corrected in the same candidate:
+
+1. Test25 shortened the NeoGeo publication pathname, but still contained the uninitialized relocated scratch bug later identified before Test27.
+2. Test27 initialized the relocated scratch correctly, but restored the long NeoGeo `.refresh-set` publication pathname.
+
+That means the short-path hypothesis was never actually tested with a valid constructed pathname.
+
+The HW-proven IGS publication path for Puzzle Star is 49 bytes:
+`/mnt/sda1/ARCADE/IGS/.refresh-set/Puzzle Star.zfb`
+
+The NeoGeo Test27 path is 59 bytes:
+`/mnt/sda1/ARCADE/NEOGEO/.refresh-set/Baseball Stars Pro.zfb`
+
+Test28 uses a family-local short publication namespace:
+`/mnt/sda1/ARCADE/NEOGEO/.r/Baseball Stars Pro.zfb`
+which is exactly 49 bytes, matching the already HW-proven IGS pathname length envelope.
+
+Test28 changes only:
+- Test27 materializer publication literal `/NEOGEO/.refresh-set/` -> `/NEOGEO/.r/`;
+- Test27 catalog-helper scan root `/NEOGEO/.refresh-set` -> `/NEOGEO/.r`;
+- package contains structural `ARCADE/NEOGEO/.r/`.
+
+It preserves the Test27 scratch relocation and, critically, its corrected initialization:
+- +0x21D8 source literal -> 0x3000
+- +0x21E0 destination scratch -> 0x3100
+- +0x21E8 NUL initialization -> 0x3100
+- +0x21FC destination scratch -> 0x3100
+- +0x2224 destination scratch -> 0x3100
+
+Hashes:
+- refresh.xgc: `6ba3a07a3a6d2282eb5ec4d9c4b25c422134714edcd758c32e3d3f92adc4aba4`
+- catalog.xgc: `2da7642100baed5778f81c1db0e464b4cd01160f6f5b293045f26242ee9235e6`
+- ZIP: `2a1d43f30f84e9eb1425778af420e7f33fe613150451301e91b2dfdc7f70bd94`
+
+This is materially different from both Test25 and Test27: it is the first candidate that simultaneously has a valid initialized scratch pathname and a publication path no longer than the HW-proven IGS success path.
