@@ -46,10 +46,10 @@ deficit = 60 output frames/s
 or:
 
 ```text
-15 lower cursor units/s
+30 lower cursor units/s
 ```
 
-because one lower cursor unit represents four stereo output frames.
+because one lower cursor unit represents two stereo output frames.
 
 ## Break-even scheduler cadence
 
@@ -110,8 +110,8 @@ Nominal 44.1-kHz drain over 9.6 s:
 Deficit:
 
 ```text
-144 lower cursor units per 9.6-s phase cycle
-= 15 units/s
+288 lower cursor units per 9.6-s phase cycle
+= 30 units/s
 ```
 
 Again this exactly matches the per-second arithmetic.
@@ -139,7 +139,7 @@ individual intervals roughly 0.143 .. 1.143 ms
 The total again equals the missing lower PCM:
 
 ```text
-144 units / 11025 units/s = 13.06122449 ms
+288 units / 22050 units/s = 13.06122449 ms
 ```
 
 This is a **conditional hardware-behavior model**, not a measured speaker waveform.
