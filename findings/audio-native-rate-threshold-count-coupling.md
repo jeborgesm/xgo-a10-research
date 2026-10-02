@@ -46,7 +46,7 @@ With the existing 482-unit threshold:
 11025 Hz -> 174.8753 ms
 ```
 
-To preserve approximately the current 43.72-ms queue time-depth, the ideal threshold would be roughly:
+To preserve approximately the current 21.86-ms admission-threshold time-depth, the ideal threshold would be roughly:
 
 ```text
 22050 -> 241 cursor units
@@ -81,7 +81,7 @@ Pros:
 
 Cons:
 
-- lower admission threshold represents much more wall-clock audio at low rates.
+- lower admission ceiling represents more wall-clock audio at low rates, although it does not force the queue to preload to that depth.
 
 ### B. Native rate plus changed sample_num
 
@@ -104,7 +104,7 @@ Architecturally cleaner for a later latency experiment, but requires an addition
 
 The stock 482 threshold is not an independent tuning constant in the current implementation.
 
-Treating it as one would accidentally alter the still-not-fully-named hardware count semantics.
+Treating it as one would accidentally alter the hardware count semantics. The ALi HLD correspondence now strongly ties `sample_num` to PCM sample-frame/count geometry, but changing it would still alter hardware configuration and software admission policy simultaneously.
 
 This prevents a tempting but poorly controlled “native rate + scaled 482” first candidate.
 
