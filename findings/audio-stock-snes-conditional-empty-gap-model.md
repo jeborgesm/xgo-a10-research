@@ -11,7 +11,7 @@ The stock SNES rate mismatch is proven:
 ```text
 43,920 output frames/s supplied
 44,100 output frames/s nominal SND drain
-deficit = 180 output frames/s = 45 lower cursor units/s
+deficit = 180 output frames/s = 90 lower cursor units/s
 ```
 
 This note asks what the lower queue must do when playback reaches the software commit cursor.
@@ -77,9 +77,9 @@ Inputs:
 producer = 183 source frames per 60-Hz emulated frame
 frontend quantum = 576 source frames
 x4 conversion
-one lower cursor unit = four output frames
-one transfer = 576 lower cursor units
-drain = 11025 cursor units/s
+one lower cursor unit = two output frames
+one transfer = 1152 lower cursor units
+drain = 22050 cursor units/s
 scheduler = 17,17,16 ms
 ```
 
@@ -126,13 +126,13 @@ That total is not coincidental.
 The proven rate deficit per 3.2-s cycle is:
 
 ```text
-144 lower cursor units
+288 lower cursor units
 ```
 
 and:
 
 ```text
-144 / 11025 s = 13.06122449 ms
+288 / 22050 s = 13.06122449 ms
 ```
 
 So the conditional empty-time model exactly accounts for the long-term missing PCM.
@@ -141,9 +141,9 @@ So the conditional empty-time model exactly accounts for the long-term missing P
 
 The 482-unit admission predicate does not synthesize audio.
 
-In the idealized deterministic simulation, the queue before the next source block is normally already below the admission threshold, so the 576-unit block can be submitted as soon as it becomes available.
+In the idealized deterministic simulation, the queue before the next source block is normally already below the admission threshold, so the 1152-unit block can be submitted as soon as it becomes available.
 
-Thus the long-term 45-unit/s deficit survives the admission policy unchanged.
+Thus the long-term 90-unit/s deficit survives the admission policy unchanged.
 
 The one-tick readiness polling granularity can add timing jitter/delay and remains OPEN, but cannot eliminate the deficit.
 
