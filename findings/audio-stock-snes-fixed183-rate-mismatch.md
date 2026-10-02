@@ -130,12 +130,12 @@ The mismatch is:
 180 output frames/s
 ```
 
-At 44.1 kHz, that is 45 lower-SND cursor units per second because one cursor unit represents four stereo output frames.
+At 44.1 kHz, that is 90 lower-SND cursor units per second because one cursor unit represents two stereo output frames.
 
 For a lower queued depth Q cursor units, the mismatch alone would reduce that depth at approximately:
 
 ```text
-45 units/s
+90 units/s
 ```
 
 unless burst submission/phase behavior replenishes it.
@@ -143,8 +143,8 @@ unless burst submission/phase behavior replenishes it.
 Examples purely as depletion arithmetic:
 
 ```text
-482-unit admission-threshold depth / 45 ~= 10.71 s
-576-unit SNES converted block / 45      ~= 12.80 s
+482-unit admission-threshold depth / 90 ~= 5.36 s
+1152-unit SNES converted block / 90     ~= 12.80 s
 ```
 
 These are **not** predicted underrun intervals, because the queue is continuously refilled in bursts and its actual phase/starting occupancy matters.
@@ -175,8 +175,8 @@ Model the exact SNES lower-queue burst recurrence:
 ```text
 183 source frames/callback
 frontend transfer whenever >=576
-each 576 source transfer -> 576 lower cursor units after x4
-hardware drains 11025 lower cursor units/s at 44.1k / 4 frames per unit
+each 576 source transfer -> 1152 lower cursor units after x4
+hardware drains 22050 lower cursor units/s at 44.1k / 2 frames per unit
 ```
 
 Combine the deterministic 183/576 frontend phase with lower drain to determine the queue's long-term sawtooth and whether the 0.408% deficit necessarily creates periodic lower underrun/restart behavior.
