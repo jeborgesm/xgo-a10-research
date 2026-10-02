@@ -1,243 +1,141 @@
-# XGO stock audio latency model — bounded queue sawtooth by source rate
+# XGO stock audio latency model — corrected bounded queue sawtooth
 
-Date: 2026-10-01  
-Branch: `research-audio-fidelity-latency`  
-Status: **BIN-DERIVED BOUNDED MODEL — NO HARDWARE CANDIDATE**
+Date: 2026-10-02
+Branch: `research-audio-fidelity-latency`
+Status: **BIN-DERIVED MODEL — TWO-FRAME CURSOR CORRECTION APPLIED**
 
-## Inputs now closed at BIN level
+## Corrected lower unit
 
-Frontend source ring:
-
-```text
-capacity: 4608 stereo S16 source frames
-consumer admission: at least 576 source frames
-consumer transfer quantum: 576 source frames
-```
-
-Low-rate conversion:
+Authoritative lower packing:
 
 ```text
-11025 -> 44100: x4 whole-stereo-frame repetition
-22050 -> 44100: x2 whole-stereo-frame repetition
-44100/48000: no low-rate repetition helper
-```
-
-Lower SND:
-
-```text
-1 cursor unit = 16 bytes = 4 stereo S16 output frames
-software commit cursor = SND +0x38
-playback/consumption cursor used by queue arithmetic = SND +0x3A
+1 cursor unit = 2 stereo S16 output frames
 queued = (+0x38 - +0x3A) mod 8208
-admit next lower transfer iff queued < 482 units
+admit next transfer iff queued < 482 units
 ```
 
-## Resulting lower-queue sawtooth
-
-The consumer submits one complete converted 576-source-frame block whenever lower backlog has fallen below 482 units.
-
-Thus lower occupancy follows a source-dependent sawtooth rather than filling the 131,328-byte backing ring.
-
-### 22.05-kHz FBA
-
-One upper quantum represents:
+Thus:
 
 ```text
-576 / 22050 = 26.122 ms
+482 units = 964 frames = 21.859 ms @44100
 ```
 
-After x2 repetition:
+The earlier 43.719-ms threshold value was based on the superseded four-frame/unit interpretation.
+
+## Source-dependent blocks
+
+### FBA 22050 -> 44100
 
 ```text
-1152 output frames
-288 lower units
-26.122 ms at 44100
+576 source frames
+x2 -> 1152 output frames
+= 576 lower units
+represented duration = 26.122 ms
 ```
 
-Admission occurs below:
-
-```text
-482 units = 43.719 ms
-```
-
-So an instantaneous admission near the threshold produces a lower queue near:
-
-```text
-481 + 288 = 769 units
-3076 frames
-69.751 ms
-```
-
-The hardware then drains it until it falls below 482 units, at which point another block may be accepted.
-
-Ignoring the short software copy/commit interval, the stock FBA lower queue therefore cycles approximately over a 26.1-ms vertical range, with the admission boundary near 43.7 ms.
-
-### 11.025-kHz SNES special path
-
-One source quantum:
-
-```text
-576 / 11025 = 52.245 ms
-```
-
-After x4 repetition:
-
-```text
-2304 output frames
-576 lower units
-52.245 ms at 44100
-```
-
-Near-threshold post-submit upper bound:
+Near-threshold arithmetic bound:
 
 ```text
 481 + 576 = 1057 units
-4228 frames
-95.873 ms
+= 2114 frames
+= 47.937 ms @44100
 ```
 
-Thus SNES has a much larger lower-queue excursion because one converted block itself exceeds the 482-unit threshold.
-
-### Native 44.1-kHz source
+### SNES 11025 -> 44100
 
 ```text
-576 frames = 144 units = 13.061 ms
-post-submit bound = 625 units = 2500 frames = 56.689 ms
+576 source
+x4 -> 2304 output
+= 1152 lower units
+represented duration = 52.245 ms
 ```
 
-### Native 48-kHz source
+Bound:
 
 ```text
-576 frames = 144 units = 12.000 ms
-threshold = 1928 frames = 40.167 ms
-post-submit bound = 2500 frames = 52.083 ms
+481 + 1152 = 1633 units
+= 3266 frames
+= 74.059 ms
 ```
 
-## Why the 744-ms lower allocation is not normal latency
-
-The lower backing store can represent 32,832 stereo frames, but the producer is throttled at a queued-distance threshold of only 1,928 frames.
-
-Therefore normal stock operation is structurally prevented from simply filling the entire lower allocation under this path.
-
-The large allocation is capacity/wrap storage, while the active backlog controller operates around the 482-unit threshold plus one accepted block.
-
-## Frontend-ring contribution
-
-The upper consumer waits until 576 source frames exist before forwarding a block.
-
-This establishes a source-time batching quantum:
+### Native 44100
 
 ```text
-11025: 52.245 ms
-22050: 26.122 ms
-44100: 13.061 ms
-48000: 12.000 ms
+576 frames = 288 units
+bound = 769 units = 1538 frames = 34.875 ms
 ```
 
-However, this quantum must **not** simply be added wholesale to lower-queue depth as "latency."
-
-A particular sample's wait in the 576-frame batch depends on where it lands in that batch:
-
-- earliest sample can wait nearly one full source quantum before the block is released;
-- latest sample waits almost none for batch completion.
-
-Therefore the batching contribution ranges approximately from zero to one source quantum, before scheduler/task timing.
-
-## Static lower+batch bounds
-
-A conservative sample-path envelope can now be expressed without pretending it is a measured fixed delay.
-
-For a sample at the earliest position of a just-started upper batch, using the largest arithmetic lower post-submit queue:
+### Native 48000
 
 ```text
-FBA 22050:
-  upper batch wait <= 26.122 ms
-  lower queue bound <= 69.751 ms
-  combined software-queue envelope <= 95.873 ms
+576 frames = 288 units
+threshold = 20.083 ms
+bound = 1538 frames = 32.042 ms
+```
 
-SNES 11025:
-  upper batch wait <= 52.245 ms
-  lower queue bound <= 95.873 ms
-  combined software-queue envelope <= 148.118 ms
+## Backing capacity is not normal latency
+
+```text
+8208 units * 2 frames = 16416 frames
+```
+
+Capacity:
+
+```text
+372.245 ms @44100
+342.000 ms @48000
+```
+
+The admission controller prevents normal producer backlog from simply filling that entire allocation.
+
+## Frontend batching remains unchanged
+
+The upper 576-source-frame batching duration is still:
+
+```text
+11025 -> 52.245 ms
+22050 -> 26.122 ms
+44100 -> 13.061 ms
+48000 -> 12.000 ms
+```
+
+A sample's actual batching residence depends on phase.
+
+Exact FBA phase analysis gives about 13.07-ms mean callback-to-consumer residence at the stock fixed-367 cadence.
+
+## Corrected conservative combined envelopes
+
+Using the earliest-sample upper-batch maximum plus the largest arithmetic lower post-submit bound:
+
+```text
+FBA:
+26.122 + 47.937 <= 74.059 ms
+
+SNES:
+52.245 + 74.059 <= 126.304 ms
 
 native 44100:
-  <= 13.061 + 56.689 = 69.750 ms
+13.061 + 34.875 <= 47.936 ms
 
 native 48000:
-  <= 12.000 + 52.083 = 64.083 ms
+12.000 + 32.042 <= 44.042 ms
 ```
 
-These are conservative queueing envelopes, not measured end-to-end latency.
+These are deliberately conservative software-queue envelopes, not measured latency and not expected typical values.
 
-They exclude:
+They exclude core generation phase, task wakeup jitter, SND/DAC internals and analog propagation.
 
-- core callback timing relative to emulation/input;
-- task scheduling and `dly_tsk(1)` granularity;
-- time consumed while memcpy/commit executes;
-- SND/DAC internal pipeline;
-- analog amplifier/speaker propagation.
+## CPS1 practical interpretation
 
-They also combine maxima that need not occur simultaneously.
+The corrected lower threshold is smaller than previously believed.
 
-## Steady-state interpretation [BIN/INF]
+For FBA, the fixed 576-source-frame frontend batching and once-per-video-frame core delivery are therefore proportionally more important latency contributors than the old four-frame cursor model suggested.
 
-Because the lower consumer is admitted only after backlog falls below the threshold and then adds a fixed block, steady occupancy is expected to oscillate around:
+That strengthens the case for:
 
-```text
-threshold .. threshold + block
-```
-
-subject to cursor granularity and task scheduling.
-
-The exact average occupancy cannot be promoted from static code alone. If the crossing phase were uniformly distributed, a midpoint estimate could be computed, but that would be a model assumption rather than recovered firmware behavior and is intentionally omitted.
-
-## Family-source corroboration [UP]
-
-The newer HC15xx `i2so_platform_device` structure explicitly contains:
-
-```text
-dma_buf
-dma_size
-wr
-rd
-avail
-params
-completion
-```
-
-This independently confirms that the family I2SO driver models playback as a DMA ring with distinct write/read positions and availability.
-
-That source is later-family ancestry, not proof of field-for-field identity with XGO, but it strongly corroborates the semantic interpretation recovered directly from XGO instructions.
-
-## Practical consequence for later experiments
-
-The dominant stock queueing mechanism differs by source rate:
-
-```text
-SNES 11025:
-large 52.245-ms batching/conversion block
-
-FBA 22050:
-26.122-ms batching/conversion block
-
-native 44.1/48:
-~12-13-ms block
-```
-
-Therefore changing only the lower SND threshold/period geometry cannot remove all SNES latency. The 576-source-frame upper quantum itself is a major independent contributor.
-
-This is why any future latency experiments must keep:
-
-1. upper consumer quantum;
-2. lower backlog threshold;
-3. source-rate/resampler policy
-
-as separately controlled variables.
-
-## Next static target
-
-Close the update granularity of SND `+0x3A` and the old driver's interrupt cadence. That will tell us how far below 482 the queue can fall before software observes the crossing and therefore tighten the sawtooth bounds.
+1. first cleaning the rate/conversion path;
+2. then testing a moderate frontend quantum reduction if needed.
 
 ## Hardware gate
 
-Not reached.
+The minimal native-22050 FBA proof remains the first isolated hardware experiment; this correction does not require adding queue changes to it.
