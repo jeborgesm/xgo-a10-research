@@ -17,20 +17,20 @@ SNES producer increment      183 source frames / emulated frame
 stock NTSC scheduler         60 frames/s (17,17,16 ms)
 frontend consumer quantum    576 source frames
 11025 -> 44100 conversion    exact x4 frame repetition
-lower cursor unit            4 stereo output frames
+lower cursor unit            2 stereo output frames
 hardware-facing rate         44100 output frames/s
 ```
 
 One 576-source-frame frontend transfer becomes:
 
 ```text
-2304 output frames = 576 lower cursor units
+2304 output frames = 1152 lower cursor units
 ```
 
 Hardware drain at nominal 44.1 kHz is:
 
 ```text
-44100 / 4 = 11025 lower cursor units/s
+44100 / 2 = 22050 lower cursor units/s
 ```
 
 ## Exact frontend transfer recurrence
@@ -65,20 +65,20 @@ Among the 60 inter-transfer gaps in one complete phase cycle:
  8 gaps are 4 emulated frames
 ```
 
-So the lower SND input is not a smooth 10.98-kHz source stream. It receives 576-unit bursts separated mostly by three game frames, with eight four-frame holes per 3.2-second phase cycle.
+So the lower SND input is not a smooth 10.98-kHz source stream. It receives 1152-unit bursts separated mostly by three game frames, with eight four-frame holes per 3.2-second phase cycle.
 
 ## Long-term balance
 
 Input offered to lower SND during the complete cycle:
 
 ```text
-61 * 576 = 35136 cursor units
+61 * 1152 = 70272 cursor units
 ```
 
 Nominal drain during 3.2 s:
 
 ```text
-11025 * 3.2 = 35280 cursor units
+22050 * 3.2 = 70560 cursor units
 ```
 
 Net deficit:
@@ -91,17 +91,17 @@ Net deficit:
 Equivalent output-frame deficit:
 
 ```text
-45 * 4 = 180 frames/s
+90 * 2 = 180 frames/s
 ```
 
 This independently reproduces the previously closed 43,920-vs-44,100 output-rate mismatch.
 
 ## Why the four-frame gaps matter
 
-At the nominal drain rate, one 576-unit burst represents:
+At the nominal drain rate, one 1152-unit burst represents:
 
 ```text
-576 / 11025 = 52.2449 ms
+1152 / 22050 = 52.2449 ms
 ```
 
 A four-frame scheduler gap spans either 66 or 67 ms depending on its alignment with the 17/17/16-ms cadence.
@@ -119,7 +119,7 @@ Whether starvation actually occurs at a particular gap depends on carried queue 
 
 ## Continuously-running illustrative model [INF]
 
-If the lower consumer is already draining continuously and begins this recurrence with only the first 576-unit transfer queued, exact simulation of the recovered burst schedule produces depletion at each of the eight four-frame gaps in the 192-frame cycle.
+If the lower consumer is already draining continuously and begins this recurrence with only the first 1152-unit transfer queued, exact simulation of the recovered burst schedule produces depletion at each of the eight four-frame gaps in the 192-frame cycle.
 
 Depending on 17/17/16 phase alignment, the uncovered portions are on the order of fractions of a millisecond to a few milliseconds.
 
@@ -135,7 +135,7 @@ The important binary/arithmetic result is stronger and safer:
 
 > Once the hardware is draining at nominal 44.1 kHz, stock SNES supplies less PCM than that drain consumes, and the deficit is deterministic rather than random.
 
-No finite initial backlog can eliminate a persistent 45-unit/s deficit forever. It can only postpone the point at which the lower driver's empty/underrun policy becomes relevant.
+No finite initial backlog can eliminate a persistent 90-unit/s deficit forever. It can only postpone the point at which the lower driver's empty/underrun policy becomes relevant.
 
 ## Interaction with the 482-unit admission threshold
 
