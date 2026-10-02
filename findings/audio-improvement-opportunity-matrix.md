@@ -25,7 +25,7 @@ The low-rate path is exact zero-order hold. There is no interpolation or filteri
 
 Replace the x2/x4 frame repetition with a better controlled conversion, or bypass conversion where native hardware rate support is proven.
 
-Family evidence demonstrates successful native 22050 I2SO operation on related HC15xx software/hardware. Subsequent exact-XGO binary recovery strengthened this substantially: the active XGO low-level SND clock programmer contains explicit 11025- and 22050-Hz cases. The remaining uncertainty is complete-board behavior when the higher-level forced 44.1-kHz normalization is bypassed, not absence of low-rate clock programming.\n\nA native-rate experiment must also account for the lower 482-unit admission threshold: unchanged cursor-unit depth represents about 87.44 ms at 22.05 kHz and 174.88 ms at 11.025 kHz, so native rate can improve fidelity while worsening wall-clock queue depth unless latency policy is handled separately.
+Family evidence demonstrates successful native 22050 I2SO operation on related HC15xx software/hardware. Subsequent exact-XGO binary recovery strengthened this substantially: the active XGO low-level SND clock programmer contains explicit 11025- and 22050-Hz cases. The remaining uncertainty is complete-board behavior when the higher-level forced 44.1-kHz normalization is bypassed, not absence of low-rate clock programming.\n\nThe corrected lower cursor unit is two stereo frames, so the 482-unit admission ceiling represents about 21.86 ms at 44.1 kHz, 43.72 ms at 22.05 kHz and 87.44 ms at 11.025 kHz. This is an admission ceiling, not a forced preload. Exact FBA burst modeling shows native 22.05-kHz operation can remain below that ceiling, so threshold surgery is not required for the first native-rate proof.
 
 ### Isolation rule
 
@@ -208,4 +208,4 @@ The next fidelity archaeology target is to close that compensation question.
 
 There are now multiple independent, code-backed improvement surfaces. The investigation is no longer asking whether XGO audio can plausibly be improved; it is determining which change gives which benefit and how to test each without confounding the others.
 
-No hardware candidate is authorized yet.
+The software-contract gate for a minimal native-22050 FBA proof is now reached, but no artifact has been built under the standing no-candidate instruction.
