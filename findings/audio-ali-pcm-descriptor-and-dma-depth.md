@@ -34,7 +34,7 @@ and its low-rate conversion doubles or quadruples `+0x08` while replacing +0x14/
 
 This identifies the XGO structure as the same ALi `pcm_output` lineage, not an ad-hoc XGO descriptor.
 
-## Cursor packing remains four stereo frames per unit
+## Cursor packing remains two stereo frames per unit
 
 The ALi descriptor match initially raises a useful question because the lower ring advances in 16-byte cursor units.
 
@@ -53,9 +53,9 @@ Therefore one 16-byte lower cursor unit represents:
 = 4 stereo S16 time frames
 ```
 
-This independently preserves the earlier unit closure:
+This corrects the earlier byte-width-only interpretation. XGO command 0x31 / `SND_GET_SAMPLES_REMAIN` independently doubles cursor units when converting lower backlog to PCM sample frames, confirming the 2:1 relationship:
 
-> **1 lower cursor unit = 4 stereo S16 frames = 16 bytes.**
+> **1 lower cursor unit = 2 stereo S16 time frames = 16 internal DMA bytes.**
 
 The public descriptor evidence does not invalidate that mapping.
 
