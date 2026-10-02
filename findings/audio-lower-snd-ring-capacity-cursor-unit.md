@@ -1,237 +1,165 @@
 # Audio lower-SND ring capacity and cursor-unit closure
 
-Date: 2026-10-01  
-Branch: `research-audio-fidelity-latency`  
-Status: **STATIC BIN ARCHAEOLOGY — NO HARDWARE CANDIDATE**
+Date: 2026-10-02
+Branch: `research-audio-fidelity-latency`
+Status: **BIN + ALi SRC CROSS-CLOSURE — CORRECTED**
 
-## Scope
+## Correction notice
 
-This pass closes two items left OPEN by `audio-lower-snd-admission-cursor-geometry.md`:
+Earlier versions correctly proved a 16-byte cursor stride but incorrectly divided those bytes by packed stereo-S16 width and concluded one cursor unit represented four stereo frames.
 
-- runtime value of private `+0x48`, the lower circular wrap modulus;
-- the byte size represented by one lower cursor step.
+Direct XGO packing code plus the identified ALi `pcm_output` structure now proves:
 
-Direct evidence is from the preserved stock XGO `bisrv.asd`, SHA-256 `869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf`.
+> **1 lower cursor unit = 16 internal bytes = 2 stereo S16 time frames.**
 
-## Global geometry constant [BIN]
+See `audio-correction-lower-cursor-two-frame-unit.md`.
 
-The lower-SND initialization path uses GP global `+0x9C08`.
+## Geometry [BIN]
 
-There is exactly one store to this GP slot in the relevant firmware image:
-
-```text
-0x8030A040  li    v0, 8
-0x8030A044  sw    v0, 0x9C08(gp)
-```
-
-The lower-buffer setup at `0x80307360...` subsequently reads this value.
-
-Therefore the active stock geometry constant is:
+The lower initialization sets:
 
 ```text
 G = 8
 ```
 
-## Lower ring allocation [BIN]
+Public ALi command correspondence independently identifies this value as the legacy PCM DMA buffer depth.
 
-The allocation size is constructed as:
+Allocation:
 
 ```text
-((G << 9) + G) << 5
-= G * 513 * 32
+G * 513 * 32 = 131,328 bytes
 ```
 
-With `G=8`:
+Wrap modulus:
 
 ```text
-allocation = 131,328 bytes
+G * 513 * 2 = 8,208 cursor units
 ```
 
-The allocated base is retained by the lower audio private state.
+Software commit cursor starts at zero and is eventually published to SND +0x38.
 
-## Wrap modulus [BIN]
+## Cursor packing [BIN]
 
-The same setup computes private halfword `+0x48` as:
+The lower writer addresses:
 
 ```text
-((G << 9) + G) << 1
-= G * 513 * 2
+lower_base + (cursor << 4)
 ```
 
-With `G=8`:
+so one cursor slot is 16 internal bytes.
+
+For the two-channel frontend path, the source offset advances by 8 packed source bytes for each cursor slot.
+
+Packed stereo S16 is 4 bytes per time frame, therefore:
 
 ```text
-+0x48 wrap modulus = 8,208 cursor units
+8 source bytes = 2 stereo frames
 ```
 
-If the result were odd the code clears its low bit; 8,208 is already even.
+The writer expands/reformats those two source frames into the 16-byte internal slot.
 
-It then initializes:
+The XGO `SND_GET_SAMPLES_REMAIN` lineage independently doubles queued cursor units when converting them to remaining PCM sample frames, confirming the same 2:1 relationship.
+
+## Correct lower capacity
 
 ```text
-+0x46 = 0   software submission cursor
-+0x44 = 0   retained hardware cursor
+8208 cursor units
+* 2 stereo frames/unit
+= 16416 stereo frames
 ```
 
-## One cursor unit is exactly 16 bytes [BIN]
-
-The post-resampler submission callback `0x802FDF54` uses the lower software cursor as a destination index.
-
-At the final lower-ring copy boundary it forms:
+Time capacity:
 
 ```text
-destination = lower_ring_base + (cursor << 4)
-copy_bytes  = cursor_count << 4
+44100 Hz -> 372.245 ms
+48000 Hz -> 342.000 ms
 ```
 
-and calls the stock memcpy routine. It then advances `+0x46` by the corresponding cursor count and wraps against `+0x48`.
+This remains backing capacity, not normal latency.
 
-Therefore:
+## Correct admission threshold
 
-```text
-1 lower cursor unit = 16 bytes
-```
-
-This is independently consistent with the allocation:
+Normal setup:
 
 ```text
-8,208 units * 16 bytes = 131,328 bytes
-```
-
-The lower circular storage geometry is therefore closed exactly.
-
-## PCM-domain interpretation [BIN]
-
-The established normal transport entering this lower path is stereo signed 16-bit PCM:
-
-```text
-4 bytes per stereo frame
-```
-
-Thus one 16-byte lower cursor unit contains:
-
-```text
-4 stereo S16 PCM frames
-```
-
-and the complete lower circular allocation can represent:
-
-```text
-131,328 / 4 = 32,832 stereo frames
-```
-
-At the normalized 44.1-kHz hardware rate this storage capacity corresponds to:
-
-```text
-32,832 / 44,100 = 744.49 ms
-```
-
-This is **storage capacity, not normal queued latency**. The firmware flow-control logic does not prove that the ring normally fills to capacity.
-
-## Admission threshold in bytes/frames [BIN]
-
-The previously closed readiness threshold is:
-
-```text
-+0xFA = (sample_num >> 1) + 2
 sample_num = 960
-threshold = 482 cursor units
+threshold = (960 >> 1) + 2 = 482 cursor units
 ```
 
-Now that the cursor unit is closed:
+With the corrected cursor unit:
 
 ```text
-482 * 16 = 7,712 bytes
-7,712 / 4 = 1,928 stereo S16 frames
-1,928 / 44,100 = 43.72 ms
+482 units = 964 stereo frames
 ```
 
-Operationally, the readiness callback waits until its modular hardware-cursor distance reaches at least 482 lower-ring units before admitting another submission.
-
-The 43.72-ms figure is therefore the **PCM duration represented by one admission-distance threshold at 44.1 kHz**, not a claim that 43.72 ms is always queued or added as latency.
-
-## Low-rate block sizes in lower cursor units [BIN]
-
-After the proven integer repetition stage:
+Time represented:
 
 ```text
-22050 source:
-  576 source frames
-  -> 1,152 frames @ 44.1 kHz
-  -> 4,608 bytes
-  -> 288 lower cursor units
-
-11025 source:
-  576 source frames
-  -> 2,304 frames @ 44.1 kHz
-  -> 9,216 bytes
-  -> 576 lower cursor units
+44100 Hz -> 21.859 ms
+48000 Hz -> 20.083 ms
+22050 Hz -> 43.719 ms
+11025 Hz -> 87.438 ms
 ```
 
-This is useful because it shows that the frontend submission size and the lower admission threshold are not identical contracts:
+The threshold is an admission ceiling, not a forced preload.
+
+The relation is now especially revealing:
 
 ```text
-admission threshold = 482 cursor units
-FBA 22.05-kHz expanded block = 288 units
-SNES 11.025-kHz expanded block = 576 units
+482 units * 2 frames/unit = 964 frames
+sample_num                         = 960 frames/count
 ```
 
-The lower driver therefore cannot be modeled as a simple one-threshold-equals-one-frontend-block system.
+so the threshold is approximately one `sample_num` plus four PCM frames.
 
-## Queue topology now closed geometrically [BIN]
+## Correct block sizes
 
 ```text
-frontend ring
-  18,432 bytes
-  4,608 source stereo frames
+FBA:
+576 source @22050
+ -> 1152 output @44100
+ -> 576 cursor units
+
+SNES:
+576 source @11025
+ -> 2304 output @44100
+ -> 1152 cursor units
+
+native 44100/48000:
+576 output
+ -> 288 cursor units
+
+native FBA 22050:
+576 output
+ -> 288 cursor units
+```
+
+The represented PCM durations themselves are unchanged.
+
+## Queue topology
+
+```text
+frontend stereo-S16 ring
   576-source-frame dequeue
        |
        v
-optional low-rate repetition
-  22.05k -> 1,152 frames / 4,608 bytes
-  11.025k -> 2,304 frames / 9,216 bytes
+optional x2/x4 low-rate repetition
        |
        v
-lower SND circular storage
-  131,328 bytes
+ALi-lineage pcm_output
+       |
+       v
+lower packed DMA ring
+  131,328 internal bytes
   8,208 cursor units
-  16 bytes / cursor unit
-  4 stereo S16 frames / unit
-  software cursor +0x46
-  hardware cursor state +0x44
-  wrap modulus +0x48 = 8,208
-  admission threshold +0xFA = 482 units
+  16 internal bytes/unit
+  2 stereo time frames/unit
+  admission ceiling 482 units
        |
        v
-SND/I2SO hardware
+SND/I2SO
 ```
-
-## Latency boundary
-
-We can now calculate the **capacity** of both software queue layers, but normal emulator-to-DAC latency remains OPEN because normal occupancy is not yet known.
-
-Do not add the 744.49-ms lower capacity to the frontend capacity and call the result latency.
-
-The next required closure is cursor semantics over time: identify which MMIO cursor is hardware consumption, establish the normal producer-to-consumer distance, and determine startup/prebuffer behavior.
-
-## 960 semantics
-
-This finding does not change the safe wording from `audio-960-hardware-count-register.md`:
-
-> 960 is the stock `sample_num` and is programmed as a lower SND hardware count-register value.
-
-Although `(960 >> 1) + 2 = 482` directly creates the admission threshold, the exact vendor/hardware meaning of the 960 register itself remains OPEN.
-
-## Next offline target
-
-Trace startup and steady-state cursor behavior:
-
-1. identify which of MMIO `+0x38/+0x3A` is the advancing hardware-consumption cursor;
-2. identify how the software cursor is committed to hardware;
-3. recover any startup/prebuffer threshold;
-4. determine whether silence, old PCM, or stopped DMA occurs when producer data runs out;
-5. derive normal lower-ring occupancy and only then calculate latency.
 
 ## Hardware gate
 
-**Not reached.** No hardware candidate is authorized.
+No new hardware candidate is created by this correction.
