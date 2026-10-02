@@ -1,12 +1,9 @@
 name: Audio fidelity latency offline archaeology
 
 on:
-  pull_request:
-    branches: [ main ]
-  push:
-    branches: [ research-audio-fidelity-latency ]
-    paths:
-      - '.github/workflows/audio-fidelity-latency-offline.yml'
+  # Manual only: the authoritative stock bisrv.asd is intentionally not Git-tracked.
+  # Automatic PR/push runs therefore cannot satisfy the firmware prerequisite and
+  # only generate false failure notifications during findings-only archaeology.
   workflow_dispatch:
 
 jobs:
