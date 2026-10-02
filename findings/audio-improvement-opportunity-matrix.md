@@ -25,7 +25,7 @@ The low-rate path is exact zero-order hold. There is no interpolation or filteri
 
 Replace the x2/x4 frame repetition with a better controlled conversion, or bypass conversion where native hardware rate support is proven.
 
-Family evidence demonstrates successful native 22050 I2SO operation on related HC15xx software/hardware. That makes native 22050 a serious lead, but it is not yet proof that this exact XGO board/configuration can use it safely.
+Family evidence demonstrates successful native 22050 I2SO operation on related HC15xx software/hardware. Subsequent exact-XGO binary recovery strengthened this substantially: the active XGO low-level SND clock programmer contains explicit 11025- and 22050-Hz cases. The remaining uncertainty is complete-board behavior when the higher-level forced 44.1-kHz normalization is bypassed, not absence of low-rate clock programming.\n\nA native-rate experiment must also account for the lower 482-unit admission threshold: unchanged cursor-unit depth represents about 87.44 ms at 22.05 kHz and 174.88 ms at 11.025 kHz, so native rate can improve fidelity while worsening wall-clock queue depth unless latency policy is handled separately.
 
 ### Isolation rule
 
