@@ -30,7 +30,7 @@ FBA producer       367 frames/callback
 scheduler          60 Hz
 frontend quantum   576 source frames
 hardware rate      22050
-lower unit         4 stereo frames
+lower unit         2 stereo frames
 admission ceiling  482 units
 ```
 
@@ -39,7 +39,7 @@ Correct the 22020->22050 producer mismatch exactly.
 One 576-source-frame frontend block then averages:
 
 ```text
-144.196... lower units
+288.392... lower units
 ```
 
 and can be represented exactly over the 367-block phase as:
@@ -52,18 +52,18 @@ and can be represented exactly over the 367-block phase as:
 The minimum ideal backlog required to bridge the deterministic burst pattern is:
 
 ```text
-239.3 lower units
+478.6 lower units
 ```
 
 At native 22050:
 
 ```text
-239.3 * 4 / 22050 ~= 43.41 ms
+478.6 * 2 / 22050 ~= 43.41 ms
 ```
 
-This is essentially the same **time** requirement as the 44.1-kHz rate-corrected model, where the equivalent backlog is 478.6 units.
+This is essentially the same **time** requirement as the 44.1-kHz rate-corrected model, where the equivalent backlog is 957.2 units.
 
-The cursor-unit count halves when the sample rate halves.
+For the same wall-clock backlog, the cursor-unit count halves when the sample rate halves because each cursor unit still represents two PCM frames.
 
 ## Admission threshold is not binding in this model
 
@@ -73,7 +73,7 @@ At native 22050 the required burst-bridging backlog remains below:
 482-unit admission ceiling
 ```
 
-Therefore the unchanged 482 threshold does not force the queue to fill to 87 ms.
+Therefore the unchanged 482 threshold does not force the queue to fill to 43.72 ms.
 
 It merely permits that much queued audio before blocking additional submissions.
 
@@ -126,7 +126,7 @@ Thus queue-latency improvement can later be pursued by reducing the frontend bat
 ## Evidence discipline
 
 - 482 semantics: **BIN**
-- cursor unit = four stereo frames: **BIN**
+- cursor unit = two stereo frames: **BIN**
 - exact FBA burst phase: **BIN/SRC + arithmetic**
 - backlog values: **deterministic ideal model**
 - physical DAC/startup occupancy: **OPEN/HW**
