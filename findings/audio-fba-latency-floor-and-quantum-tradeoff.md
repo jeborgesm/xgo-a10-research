@@ -70,18 +70,18 @@ The latency benefit continues, but task/copy/submission frequency rises correspo
 
 ## Lower-queue burst requirement with exact rate correction
 
-Using the proven 60-Hz scheduler and a rate-corrected 44.1-kHz stream, the minimum ideal initial lower backlog needed to bridge the deterministic burst schedule without emptying is approximately:
+Using the proven 60-Hz scheduler, the corrected two-frame cursor unit, and a rate-corrected 44.1-kHz stream, the minimum ideal initial lower backlog needed to bridge the deterministic burst schedule without emptying is approximately:
 
 ```text
 frontend quantum   required lower backlog
-576                478.6 units  ~= 43.41 ms
-384                382.6 units  ~= 34.70 ms
-288                334.6 units  ~= 30.35 ms
-256                318.6 units  ~= 28.90 ms
-192                286.6 units  ~= 26.00 ms
-144                262.6 units  ~= 23.82 ms
-96                 238.6 units  ~= 21.64 ms
-72                 226.6 units  ~= 20.55 ms
+576                957.2 units  ~= 43.41 ms
+384                765.2 units  ~= 34.70 ms
+288                669.2 units  ~= 30.35 ms
+256                637.2 units  ~= 28.90 ms
+192                573.2 units  ~= 26.00 ms
+144                525.2 units  ~= 23.82 ms
+96                 477.2 units  ~= 21.64 ms
+72                 453.2 units  ~= 20.55 ms
 ```
 
 This is an idealized continuous-drain model, not a measured hardware startup depth.
