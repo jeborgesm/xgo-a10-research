@@ -77,7 +77,7 @@ compare requested rate with 22050
 
 ### 44100
 
-The following branch explicitly handles 44100 with another register combination.
+The next comparison at `0x8030C4D4` uses the 44100 constant loaded in the preceding delay slot and enters the 44100 programming body at `0x8030C4DC`.\n\nThis address correction is important MIPS evidence discipline: the earlier checkpoint identified the right supported rates but attached the labels one branch too early by overlooking the comparison-chain delay slots.
 
 These are not dead family-source declarations; they are machine-code cases in the exact preserved XGO firmware and are reached from the active sound-device configuration stack.
 
