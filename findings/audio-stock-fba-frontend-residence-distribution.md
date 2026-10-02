@@ -56,7 +56,7 @@ Percentages:
 
 ```text
 0 intervals : 31.944%
-1 interval  : 57.774%
+1 interval  : 57.773%
 2 intervals : 10.282%
 ```
 
