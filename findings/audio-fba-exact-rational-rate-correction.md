@@ -94,7 +94,7 @@ For one 576-frame block, the exact rate-matched 44.1-kHz output amount is:
 = 1153.569482... output frames
 ```
 
-The lower SND cursor is quantized in groups of four stereo frames.
+The lower SND cursor is quantized in groups of two stereo frames.
 
 Therefore a practical exact long-term correction at the proven lower unit boundary can alternate between:
 
@@ -114,23 +114,23 @@ Across one complete 367-block phase:
 which exactly equals the nominal 44.1-kHz drain over the corresponding 9.6 seconds:
 
 ```text
-11025 lower units/s * 9.6 s = 105840 units
+22050 lower units/s * 9.6 s = 211680 units
 ```
 
 Stock uses 288 units for all 367 blocks:
 
 ```text
-367 * 288 = 105696 units
+367 * 576 = 211392 units
 ```
 
-hence the already-proven deficit of 144 units per phase.
+hence the corrected deficit of 288 units per phase.
 
 ## If using native 22.05-kHz hardware output
 
 Without x2 expansion, one 576-source-frame block is normally:
 
 ```text
-576 frames = 144 lower units
+576 frames = 288 lower units
 ```
 
 The exact rate correction requires:
@@ -142,7 +142,7 @@ The exact rate correction requires:
 or:
 
 ```text
-144.196185... lower units
+288.392370... lower units
 ```
 
 Across 367 frontend blocks, exact correction is:
