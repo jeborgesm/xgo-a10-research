@@ -260,3 +260,22 @@ fresh 2P session + GREEN probed -> repeated P2 jump returns
 ```
 
 Evidence class: **HW** for the repeatable gameplay behavior. Interpretation remains **INF**: the action specificity is consistent with GREEN perturbing a particular sampled state/serial position rather than producing arbitrary P2 noise. This strengthens GREEN as the P2 DATA candidate but does **not** yet prove GREEN is DATA or establish the electrical mechanism.
+
+
+### GREEN-to-RED direct-short behavioral finding
+
+An accidental manual contact test produced a stronger behavioral result than the oscilloscope-loading experiment. With the XGO running a 2-player game, physical harness GREEN was momentarily shorted/touched directly to physical harness RED. Player 2 generated game inputs. Repeated brief GREEN-to-RED contacts produced different P2 actions, including **shooting** and at times **left/right movement**.
+
+Observed sequence, as reported during the live hardware session:
+
+```text
+GREEN touched/shorted to RED -> P2 input generated
+repeated brief contacts       -> shooting and sometimes left/right movement
+continued poking              -> different P2 actions from successive contacts
+```
+
+Evidence class: **HW** for the physical contact and resulting P2 gameplay actions. Interpretation: **INF**. This substantially strengthens the conclusion that GREEN is electrically coupled to the live P2 serial-input path and is consistent with an active-low DATA conductor: asynchronous manual grounding can overlap different scanner sample windows and therefore decode as different button positions. However, this does not yet constitute timing-correlated proof that GREEN is DATA.
+
+This result also explains why the earlier oscilloscope connection could yield a repeatable jump-only disturbance while direct manual grounding yields multiple actions: the scope presents a different electrical load, whereas brief direct contacts can span arbitrary portions of the polling transaction. This explanation remains **INF** until simultaneous GREEN/YELLOW capture.
+
+**Safety gate:** do not intentionally repeat direct GREEN-to-RED shorts. The observation is already sufficient to preserve; subsequent characterization should use the passive RP2040 capture. No active RP2040 output is authorized by this finding.
