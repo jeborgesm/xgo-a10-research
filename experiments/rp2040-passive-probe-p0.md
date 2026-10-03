@@ -242,3 +242,21 @@ Before any active RP2040 drive toward XGO:
 6. design sink/release drive so the XGO host-driven load phase cannot contend with the responder.
 
 No push-pull RP2040 connection is authorized by this checkpoint.
+
+
+### GREEN phantom-input specificity follow-up
+
+A follow-up gameplay observation tightened the GREEN behavioral result. With the DSO-TC3 reference on RED and signal probe attached to GREEN in the same configuration that causes the phantom input, Player 2 was observed without intentional controller input.
+
+Result: **the phantom action was consistently jump only**. No spontaneous left/right movement, crouch, shooting, Start, or other action was observed. In the first run Player 2 eventually fell into the water, where jumping no longer produced useful movement. After rebooting the game and starting a fresh 2-player session, attaching/probing GREEN again reproduced the repeated jump-only behavior.
+
+Observed behavior across sessions:
+
+```text
+GREEN probed -> repeated P2 jump only
+no other P2 actions observed
+P2 falls into water -> jump ineffective
+fresh 2P session + GREEN probed -> repeated P2 jump returns
+```
+
+Evidence class: **HW** for the repeatable gameplay behavior. Interpretation remains **INF**: the action specificity is consistent with GREEN perturbing a particular sampled state/serial position rather than producing arbitrary P2 noise. This strengthens GREEN as the P2 DATA candidate but does **not** yet prove GREEN is DATA or establish the electrical mechanism.
