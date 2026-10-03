@@ -1,0 +1,32 @@
+name: Build XGO P0 passive capture
+
+on:
+  push:
+    branches: [ research-rp2040-controller-adapter ]
+    paths:
+      - 'tools/rp2040-xgo-p0/**'
+      - '.github/workflows/build-xgo-p0.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Get Pico SDK 2.3.1
+        run: git clone --depth 1 --branch 2.3.1 --recurse-submodules https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
+      - name: Configure
+        env:
+          PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
+        run: cmake -S tools/rp2040-xgo-p0 -B build/xgo-p0 -DPICO_BOARD=pico
+      - name: Build
+        run: cmake --build build/xgo-p0 -j2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-p0-passive-capture
+          path: |
+            build/xgo-p0/xgo_p0.uf2
+            tools/rp2040-xgo-p0/decode_capture.py
+            tools/rp2040-xgo-p0/README.md
