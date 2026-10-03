@@ -1,0 +1,7 @@
+.program xgo_sampler
+; PASSIVE-ONLY sampler.
+; GP26 and GP27 are configured as inputs by main.c.
+; This program contains no SET, OUT, SIDESET or PINDIRS operation.
+.wrap_target
+    in pins, 2
+.wrap
