@@ -6,6 +6,8 @@ The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardwa
 
 > **Current status — September 2026:** the cumulative hardware-proven baseline now includes Mapper v19, repaired CPS1 timing, Audio OSD v8, generalized on-device game-list Refresh, first-class CLASSIC/MAME2000 with Save/Load and metadata/JPEG artwork, Test74 SFC enrichment, Test75 FC enrichment, Test106 hardened Mega Drive Refresh, and the new first-class **REFRESH GAMES** selector through **Test123**. Test123 hardware-proves independent CLASSIC Refresh routing through the preserved native Refresh lifecycle and canonical Test72 external helper. FC/SFC/MD execution paths remain preserved, and Game Boy Refresh is now hardware-proven end-to-end as a golden two-stage materializer/catalog checkpoint. GBC/GBA are hardware-proven through the cumulative handheld repair baseline, and Arcade Refresh is now hardware-proven across CPS1, CPS2, IGS and NeoGeo. NeoGeo Test28 closes the final four-family publication defect.
 
+> **Audio closure — October 2026:** the cumulative baseline now also includes the hardware-proven native-22050 Test A transport repair and Test C conditional internal-speaker mono policy. Test A removes the old 22050→44100 zero-order-hold repetition for 22050-Hz sources while retaining the proven fixed FBA 367-frame producer; Test B's attempted 367/368 producer modulation is permanently rejected because it caused constant crackling. Hardware channel-isolation then proved that XGO libretro gameplay reaches the single internal speaker through digital channel 0/left. Test C therefore folds `L'=(L>>1)+(R>>1)` only in LCD/internal mode while preserving `R`; the stock L15 TV/AV detector bypasses the fold and preserves the original `L,R` stream in AV mode. SFII/Cadillacs internal audio passed with the previously missing right-channel layers restored, and AV-mode gameplay/audio smoke passed. Independent external L/R stereo remains electrically unverified because the available specimen cable exposes only one audio connector.
+
 > **Regression status:** SFC Test74 and FC Test75 are both independently hardware-proven enrichment baselines. Test75 passed a real five-game FC batch, launch/play, and JPG artwork repair workflow. Test106 MD work did not directly modify the protected FC/SFC helper files, but the final Test106 cycle did not include a fresh physical FC/SFC launch regression. Therefore FC/SFC are proven historically and structurally preserved, while a post-Test106 spot-check remains the only missing cumulative regression evidence.
 
 > **Roadmap clarification:** Pac-Man is not an open load-path defect. Pac-Man was hardware-confirmed running with Save/Load in Test52. Earlier Pac-Man/Ms. Pac-Man failures belong to superseded experimental loader history and must not be promoted into a current blocker without new hardware evidence.
@@ -57,6 +59,19 @@ See `findings/interactive-xgo-mapper-v19-v7-geometry-v14-behavior.md` and relate
 ## Major milestone: CPS1 scheduler repair
 
 Family comparison across XGO, SF2000, and GB300 showed that the critical XGO divergence was frontend pacing rather than the FBA engine itself. Restoring the family-style absolute wall-time / bounded-catchup scheduler eliminated the prolonged Street Fighter II “underwater” slowdown while retaining the stock FBA engine.
+
+## Major milestone: native-22050 audio + conditional internal mono
+
+The audio fidelity/latency investigation closed with a hardware-proven cumulative path. For sources requesting 22050 Hz, the frontend now selects native 22050-Hz hardware playback and bypasses the stock 2x zero-order-hold expansion to 44100. The fixed FBA 367-frame producer remains intentionally unchanged: a mathematically exact 367/368 modulation experiment produced constant crackling on hardware and is preserved as negative evidence.
+
+A subsequent channel-isolation diagnostic proved that stock libretro gameplay on the built-in speaker consumes digital channel 0/left; right-only SFII and Cadillacs were silent while left-only gameplay was audible. The final conditional mono policy therefore follows the maintained-family contract only for the internal/LCD route:
+
+```text
+LCD/internal: L' = (L >> 1) + (R >> 1), R' = R
+TV/AV:        L' = L,                 R' = R
+```
+
+The already-recovered GPIO L15 LCD/TV state gates this policy. Hardware testing passed internal gameplay with richer/complete channel content and AV-mode gameplay/audio. The earlier high-volume concern was clarified as additional right-channel audio layers becoming audible, not abnormal noise. The 11025-Hz/SNES path and other non-22050 source-rate handling remain unchanged.
 
 ## Major milestone: Audio OSD v8
 
