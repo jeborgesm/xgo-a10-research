@@ -36,3 +36,13 @@ UF2 SHA-256 `28bfd9c607fffa8195c13f1a689f355a51ba20def4f1739110de9e023561153a`, 
 Observed: solid Pico LED; XGO remains responsive; Contra P2 still performs only the same occasional jump seen under passive P3/P4-v1; **no RIGHT movement**.
 
 Conclusion: the DPM-as-CLOCK / DPP-as-DATA active assignment did not produce the requested non-slot-zero action. Because the passive slot-zero artifact remains unchanged, proceed to the controlled reciprocal native-PHY assignment: DPP as CLOCK input and DPM as DATA LOW-sink/Hi-Z. Do not interpret the occasional jump as active responder success.
+
+## Hardware result — P4 v3 reciprocal fixed-RIGHT [HW]
+
+UF2 SHA-256 `fe58d4811fdd557a32e9492503d40a26eedbf86d638911cef8e9811fcb763692`, size 20,992 bytes, tested through only the Pico native Micro-USB connector and ordinary cable.
+
+Observed: no RIGHT movement. XGO/P2 continues to show only the same occasional jump behavior seen in passive P3 and P4 v1/v2.
+
+Conclusion: swapping the assumed native PHY roles (DPP=CLOCK, DPM=DATA) also fails to produce active non-slot-zero input. Therefore the simple DP/DM assignment question is closed: neither direct USBPHY TX_OE assignment, as currently configured, reproduces the proven external-GPIO responder. The persistent occasional slot-0 jump is a passive/native-PHY coupling artifact and must not be counted as active transport.
+
+Next direction: investigate the RP2040 native USB PHY's direct-drive ownership/mux requirements for single-ended TX/OE. Do not continue blind DP/DM swapping and do not return to Frankenstein connector work.
