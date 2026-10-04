@@ -12,8 +12,9 @@
 static usb_hw_t *const usb_set = (usb_hw_t *)hw_set_alias_untyped(usb_hw);
 static usb_hw_t *const usb_clr = (usb_hw_t *)hw_clear_alias_untyped(usb_hw);
 
-static inline bool dm(void) {
-    return (usb_hw->phy_direct & USB_USBPHY_DIRECT_RX_DM_BITS) != 0;
+static inline bool clock_level(void) {
+    /* Reciprocal native-connector hypothesis: DPP is XGO CLOCK. */
+    return (usb_hw->phy_direct & USB_USBPHY_DIRECT_RX_DP_BITS) != 0;
 }
 static inline void data_sink(void) {
     /* TX_DM stays zero; OE=1 sinks DPM LOW. */
@@ -24,7 +25,7 @@ static inline void data_release(void) {
 }
 static bool wait_level(bool level, uint32_t timeout_us) {
     uint32_t deadline = time_us_32() + timeout_us;
-    while (dm() != level) {
+    while (clock_level() != level) {
         if ((int32_t)(deadline - time_us_32()) <= 0) return false;
     }
     return true;
@@ -55,8 +56,8 @@ int main(void) {
     gpio_put(LED_PIN, 1);
     sleep_ms(250);
 
-    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v4 PHY-POWER");
-    puts("DPP=CLOCK; DPM=DATA; explicit TX/RX powered overrides; slot 11 RIGHT");
+    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v5 CORRECTED");
+    puts("DPP=CLOCK via RX_DP; DPM=DATA via TX_DM_OE; slot 11 RIGHT");
 
     while (true) {
         data_release();
@@ -64,12 +65,12 @@ int main(void) {
         /* Qualify the long inter-transaction CLOCK-high idle. This avoids using
            DATA/load as our synchronizer, so passive slot-0 behavior cannot
            masquerade as active responder success. */
-        while (!dm()) tight_loop_contents();
+        while (!clock_level()) tight_loop_contents();
         uint32_t high_since = time_us_32();
-        while (dm()) {
+        while (clock_level()) {
             if ((uint32_t)(time_us_32() - high_since) >= IDLE_QUALIFY_US) break;
         }
-        if (!dm()) continue;
+        if (!clock_level()) continue;
 
         /* First falling edge begins position-1 setup. Count through falling
            edges 1..11. RIGHT is wire slot 11, so assert during low #11. */
