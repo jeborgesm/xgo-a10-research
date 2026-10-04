@@ -22,3 +22,7 @@ Reference from hardware-proven loose-wire capture:
 This test intentionally does not drive either signal contact. Its job is to answer whether either RP2040 receiver sees static level, GREEN-like activity, YELLOW-like activity, or other transitions. It does not assume DP/DM correspond to GREEN/YELLOW.
 
 A result of static/static despite the known XGO scanner proves the ordinary cable/native-pad path is not exposing the same proven GREEN/YELLOW activity to these RP2040 receiver inputs under this configuration; do not respond by changing controller serialization.
+
+
+## Hardware result
+HW result: repeated LED report **3 blinks -> pause -> 1 blink -> long pause**. Under this firmware's code table, the RP2040 DP receiver saw sparse/load-DATA-like activity while the RP2040 DM receiver remained static LOW. This is decisive evidence against the working assumption that the ordinary stock-Pico cable path presents the proven GREEN DATA and YELLOW 12-pulse CLOCK on the two native DP/DM receivers. In particular, no native receiver observed the YELLOW/CLOCK fingerprint. Preserve this result before any further active test.
