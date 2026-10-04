@@ -2,6 +2,7 @@
 ; TX FIFO supplies one 12-bit active-low transaction mask per host poll.
 ; Bit 0=R ... bit 11=RIGHT. A '1' means sink DATA low (pressed).
 .wrap_target
+start:
     wait 0 pin 0
     wait 1 pin 0
     pull block
@@ -10,7 +11,7 @@ bitloop:
     out pindirs, 1
     jmp x-- more
     set pindirs, 0
-    jmp wrap_target
+    jmp start
 more:
     wait 0 gpio 26
     set pindirs, 0
