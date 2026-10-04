@@ -41,7 +41,7 @@ static void usbphy_xgo_mode(void) {
         USB_USBPHY_DIRECT_OVERRIDE_DM_PULLDN_EN_OVERRIDE_EN_BITS |
         USB_USBPHY_DIRECT_OVERRIDE_TX_DP_OE_OVERRIDE_EN_BITS |
         USB_USBPHY_DIRECT_OVERRIDE_TX_DM_OE_OVERRIDE_EN_BITS |
-        USB_USBPHY_DIRECT_OVERRIDE_TX_DIFFMODE_OVERRIDE_EN_BITS;
+        USB_USBPHY_DIRECT_OVERRIDE_TX_DIFFMODE_OVERRIDE_EN_BITS |\n        USB_USBPHY_DIRECT_OVERRIDE_TX_PD_OVERRIDE_EN_BITS |\n        USB_USBPHY_DIRECT_OVERRIDE_RX_PD_OVERRIDE_EN_BITS;
     data_release();
 }
 
@@ -53,8 +53,8 @@ int main(void) {
     gpio_put(LED_PIN, 1);
     sleep_ms(250);
 
-    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v3 SWAPPED");
-    puts("DPP=CLOCK; DPM=DATA; reciprocal assignment; slot 11 RIGHT");
+    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v4 PHY-POWER");
+    puts("DPP=CLOCK; DPM=DATA; explicit TX/RX powered overrides; slot 11 RIGHT");
 
     while (true) {
         data_release();
