@@ -6,33 +6,34 @@
 #include "hardware/address_mapped.h"
 
 #define LED_PIN 25u
-#define CLOCK_TIMEOUT_US 20u
+#define EDGE_TIMEOUT_US 20u
+#define IDLE_QUALIFY_US 100u
 
 static usb_hw_t *const usb_set = (usb_hw_t *)hw_set_alias_untyped(usb_hw);
 static usb_hw_t *const usb_clr = (usb_hw_t *)hw_clear_alias_untyped(usb_hw);
 
-static inline bool dp(void) {
-    return (usb_hw->phy_direct & USB_USBPHY_DIRECT_RX_DP_BITS) != 0;
-}
 static inline bool dm(void) {
     return (usb_hw->phy_direct & USB_USBPHY_DIRECT_RX_DM_BITS) != 0;
 }
 static inline void data_sink(void) {
-    /* TX_DP remains zero. Enabling only its OE sinks DPP low. */
+    /* TX_DP stays zero; OE=1 sinks DPP LOW. */
     usb_set->phy_direct = USB_USBPHY_DIRECT_TX_DP_OE_BITS;
 }
 static inline void data_release(void) {
     usb_clr->phy_direct = USB_USBPHY_DIRECT_TX_DP_OE_BITS;
+}
+static bool wait_level(bool level, uint32_t timeout_us) {
+    uint32_t deadline = time_us_32() + timeout_us;
+    while (dm() != level) {
+        if ((int32_t)(deadline - time_us_32()) <= 0) return false;
+    }
+    return true;
 }
 
 static void usbphy_xgo_mode(void) {
     usb_hw->main_ctrl = 0;
     usb_hw->sie_ctrl = 0;
     usb_hw->muxing = USB_USB_MUXING_TO_PHY_BITS | USB_USB_MUXING_SOFTCON_BITS;
-
-    /* Single-ended, LOW data latch, both outputs initially Hi-Z, no local pulls.
-       Deliberately do not claim DM-pullup override ownership: P3-v3 proved that
-       change freezes the XGO even with a zero requested pull-up value. */
     usb_hw->phy_direct = 0;
     usb_hw->phy_direct_override =
         USB_USBPHY_DIRECT_OVERRIDE_DP_PULLUP_EN_OVERRIDE_EN_BITS |
@@ -52,33 +53,40 @@ int main(void) {
     gpio_put(LED_PIN, 1);
     sleep_ms(250);
 
-    puts("\nXGO-P4 NATIVE USBPHY FIXED-R v1");
-    puts("assumption: DPP=DATA, DPM=CLOCK; DPP sinks LOW for slot 0 only");
+    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v2");
+    puts("DPM=CLOCK; DPP=DATA; clock-only sync; slot 11 RIGHT");
 
     while (true) {
-        /* Host load/reset: DATA is driven LOW, then released HIGH. */
-        while (dp()) tight_loop_contents();
-        while (!dp()) tight_loop_contents();
-
-        /* R is slot 0 and is sampled before the first CLOCK fall. */
-        data_sink();
-
-        /* Fail-safe: never leave DATA asserted if the expected clock is absent. */
-        uint32_t deadline = time_us_32() + CLOCK_TIMEOUT_US;
-        while (dm() && (int32_t)(deadline - time_us_32()) > 0)
-            tight_loop_contents();
-
         data_release();
 
-        /* If no falling clock arrived, wait for bus recovery before re-arming.
-           Output is already Hi-Z, so this path cannot hold the XGO line down. */
-        if (dm()) {
-            sleep_us(100);
-            continue;
+        /* Qualify the long inter-transaction CLOCK-high idle. This avoids using
+           DATA/load as our synchronizer, so passive slot-0 behavior cannot
+           masquerade as active responder success. */
+        while (!dm()) tight_loop_contents();
+        uint32_t high_since = time_us_32();
+        while (dm()) {
+            if ((uint32_t)(time_us_32() - high_since) >= IDLE_QUALIFY_US) break;
+        }
+        if (!dm()) continue;
+
+        /* First falling edge begins position-1 setup. Count through falling
+           edges 1..11. RIGHT is wire slot 11, so assert during low #11. */
+        if (!wait_level(false, 20000u)) continue;
+        for (unsigned fall = 1; fall < 11; ++fall) {
+            if (!wait_level(true, EDGE_TIMEOUT_US)) goto recover;
+            if (!wait_level(false, EDGE_TIMEOUT_US)) goto recover;
         }
 
-        /* Consume the first clock low/high so the next DATA low is the next
-           host load/reset rather than anything in the current transaction. */
-        while (!dm()) tight_loop_contents();
+        data_sink();                 /* low #11: install RIGHT */
+        if (!wait_level(true, EDGE_TIMEOUT_US)) goto recover; /* sample slot 11 */
+        if (!wait_level(false, EDGE_TIMEOUT_US)) goto recover;/* trailing low #12 */
+        data_release();
+        if (!wait_level(true, EDGE_TIMEOUT_US)) goto recover;
+        continue;
+
+recover:
+        /* Hard fail-safe: output always returns Hi-Z before resynchronizing. */
+        data_release();
+        sleep_us(100);
     }
 }
