@@ -56,3 +56,9 @@ Observed through only the Pico native Micro-USB connector and ordinary cable: no
 Conclusion: explicitly overriding TX_PD=0 and RX_PD=0 does not make the USBPHY_DIRECT single-ended TX/OE path produce commanded XGO input. Reject PHY power ownership as the missing condition. The repeated unchanged slot-0 jump remains a passive/native-PHY coupling artifact, not active responder proof.
 
 Next: audit/test the separate SIE direct-bus-drive path (SIE_CTRL.DIRECT_EN/DIRECT_DP/DIRECT_DM) as a controlled electrical primitive rather than continuing USBPHY_DIRECT configuration permutations.
+
+## Offline audit correction — P4 v3/v4 reciprocal tests invalidated [SRC]
+
+Full source review found a material implementation error: v3/v4 documentation/banner claimed DPP= CLOCK and DPM=DATA, but the clock wait path still called `dm()` / read `RX_DM`. At the same time those versions drove DPM through `TX_DM_OE`. Thus v3/v4 attempted to observe CLOCK and drive DATA on the same DPM conductor. Their negative hardware results remain real observations but do **not** test the intended reciprocal DP/DM assignment and must not be used to reject DPP=CLOCK / DPM=DATA.
+
+P4 v5 commit `81c929e4af9c072771269b8ae1452825a0f6c59f` corrects the clock read to `RX_DP` while retaining DPM LOW/Hi-Z DATA drive and the slot-11 RIGHT discriminator. This is the first valid reciprocal active-native-PHY candidate.
