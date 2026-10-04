@@ -1,0 +1,14 @@
+.program xgo_fixed_r
+.wrap_target
+    wait 0 pin 0
+    wait 1 pin 0
+    set pindirs, 1
+    wait 0 gpio 26
+    set pindirs, 0
+    wait 1 gpio 26
+    set x, 10
+loop:
+    wait 0 gpio 26
+    wait 1 gpio 26
+    jmp x-- loop
+.wrap
