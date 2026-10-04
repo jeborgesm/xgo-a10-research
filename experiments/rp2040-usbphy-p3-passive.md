@@ -122,3 +122,11 @@ RP2040 SDK register definitions close an important ambiguity in the native-conne
 However, the documented workaround demonstrates the bridge in the direction **GPIO15/16 digital logic -> USB controller line-state input**, not the reverse direction **physical USB D+/D- connector -> GPIO15/16 SIO input**. Therefore it does **not** establish a passive way to sample the connector while disconnecting the analog USB receiver [INF/OPEN]. Treating GPIO15/16 function 8 as a connector-input escape hatch would currently be an unsupported direction reversal.
 
 Consequence: do not issue a hardware candidate based on `TO_DIGITAL_PAD` merely to test that assumption. The next safe research step is to establish mux directionality from RP2040 silicon/documentation or a known implementation before another XGO hardware test.
+
+## Native connector receive-path closure [SRC/INF]
+
+A further RP2040 register audit strengthens the conclusion that the direct USB-PHY receive bits are the documented physical-pad observation path: `USBPHY_DIRECT.RX_DP` is described as **DPP pin state** and `USBPHY_DIRECT.RX_DM` as **DPM pin state**, both read-only [SRC]. The same block exposes `RX_PD` specifically as an RX power-down override when its override-enable is asserted [SRC]. No SDK evidence was found for a reverse physical-USB-pad -> GPIO15/16 SIO path; the documented GPIO15/16 function-8 names are `usb_muxing_digital_dp/dm`, and Raspberry Pi's usage demonstrates digital-pad injection into USB line-state logic, not connector sampling [SRC].
+
+This makes the analog/native receiver the strongest documented route for observing physical D+/D- on RP2040 [INF]. Powering that receiver down would defeat the very `RX_DP/RX_DM` observations needed by the current classifier, so `RX_PD` is not a useful passive-sampling fix [INF].
+
+Engineering consequence: stop searching for an undocumented GPIO escape hatch unless new silicon evidence appears. The next experiment should characterize the known receive-path disturbance rather than blindly changing PHY ownership. In particular, exploit the already-proven XGO slot-0 sensitivity and compare physical bus behavior with the native PHY disconnected versus attached before authorizing active native-PHY drive.
