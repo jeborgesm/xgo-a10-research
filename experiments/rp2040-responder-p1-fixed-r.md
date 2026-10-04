@@ -148,3 +148,14 @@ There is no generated `SET PINS`, `OUT PINS`, sideset, or other pin-value write 
 ARM disassembly also confirms the initialization calls are present before SM enable: `pio_sm_set_pins_with_mask` with value 0 establishes the GP27 output latch LOW, and `pio_sm_set_pindirs_with_mask` establishes the GP26/GP27 high-Z/input state. A second pindir-high-Z call occurs immediately before enabling the state machine.
 
 Generated-code audit result: **PASS** for the intended LOW-sink/high-Z architecture. This does not itself constitute a hardware result.
+
+
+## Clock-count audit and correction
+
+The first generated P1 candidate loaded X=10 after completing clock #1. RP2040 PIO `JMP X--` branches based on the pre-decrement value, so an initial X=10 executes the loop 11 times. That would consume clocks #2 through #12 plus one extra clock before rearming.
+
+Correct requirement after clock #1 is exactly eleven remaining clocks (#2..#12). Because the loop body must execute 11 times, X must start at **9**: executions see pre-decrement X values 9,8,...,0 and the final X=0 iteration falls through after clock #12.
+
+The PIO source was corrected from `set x,10` to `set x,9` in commit `9051f405198c841095b8a027fb9cdf0242b6cb58`.
+
+The previously built UF2 SHA256 `54F640E7E8916ACD308C9840A6A1B3E27BB1B626A9F5B4D417FF6552EAF393A9` is therefore **REJECTED / DO NOT FLASH**. A new build identity and generated-header audit are required before P1 hardware use.
