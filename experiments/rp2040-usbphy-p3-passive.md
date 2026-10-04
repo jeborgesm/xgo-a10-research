@@ -106,3 +106,11 @@ Hardware observation: **XGO remained running; LED classifier repeated 3 blinks (
 This reproduces the earlier non-freezing P3 behavior and strengthens the controlled A/B result: adding the DM-pull-up override-enable caused the v3 freeze, while removing it restores operation, but the native-PHY receive configuration itself remains non-transparent enough to perturb P2 and does not yet yield a clean DP-vs-DM clock classification.
 
 Do not proceed to active native-PHY drive from this state. The next experiment should target the source of receive-path loading/first-slot disturbance rather than classifier thresholds.
+
+## Hardware result — P3-v5 explicit SIE neutralization [HW]
+
+Candidate source commit `87cb8c2010dbc4e539149e05ed824022bea780e0`, UF2 SHA-256 `412bc244dd1b9353f2a5b14c0e35f3c9004e47957e050a7c758e76057daa6872`, added an explicit `usb_hw->sie_ctrl = 0` while otherwise retaining the non-freezing v4 native-PHY configuration.
+
+Hardware observation: **XGO remained responsive; LED classifier repeated 3 blinks (ambiguous); P2 continued intermittent unsolicited jumping.** Behavior was materially unchanged from P3-v4.
+
+This falsifies the working hypothesis that residual SIE direct-drive/pull/transceiver-control state was responsible for the P2 disturbance. With SIE controls explicitly zero and the documented PHY output enables/pulls already neutralized (except the unsafe DM-pullup override experiment rejected in v3), the remaining disturbance is more likely associated with attaching/enabling the native USB PHY receive path itself or another analog/mux-side effect. Exact mechanism remains OPEN.
