@@ -114,3 +114,11 @@ Candidate source commit `87cb8c2010dbc4e539149e05ed824022bea780e0`, UF2 SHA-256 
 Hardware observation: **XGO remained responsive; LED classifier repeated 3 blinks (ambiguous); P2 continued intermittent unsolicited jumping.** Behavior was materially unchanged from P3-v4.
 
 This falsifies the working hypothesis that residual SIE direct-drive/pull/transceiver-control state was responsible for the P2 disturbance. With SIE controls explicitly zero and the documented PHY output enables/pulls already neutralized (except the unsafe DM-pullup override experiment rejected in v3), the remaining disturbance is more likely associated with attaching/enabling the native USB PHY receive path itself or another analog/mux-side effect. Exact mechanism remains OPEN.
+
+## Offline mux-path finding after P3-v5 [SRC/INF]
+
+RP2040 SDK register definitions close an important ambiguity in the native-connector escape-hatch investigation. GPIO15 function-select value 8 is explicitly named `usb_muxing_digital_dp`; GPIO16 function-select value 8 is explicitly named `usb_muxing_digital_dm`. Raspberry Pi's B0/B1 USB enumeration workaround uses GPIO15 function 8 together with `USB_MUXING_TO_DIGITAL_PAD | SOFTCON` to inject a forced DP input state while switched away from the normal PHY. This proves a digital-pad bridge exists for both DP and DM in the RP2040 mux fabric [SRC].
+
+However, the documented workaround demonstrates the bridge in the direction **GPIO15/16 digital logic -> USB controller line-state input**, not the reverse direction **physical USB D+/D- connector -> GPIO15/16 SIO input**. Therefore it does **not** establish a passive way to sample the connector while disconnecting the analog USB receiver [INF/OPEN]. Treating GPIO15/16 function 8 as a connector-input escape hatch would currently be an unsupported direction reversal.
+
+Consequence: do not issue a hardware candidate based on `TO_DIGITAL_PAD` merely to test that assumption. The next safe research step is to establish mux directionality from RP2040 silicon/documentation or a known implementation before another XGO hardware test.
