@@ -1,0 +1,23 @@
+.program xgo_scripted
+; TX FIFO supplies one 12-bit active-low transaction mask per host poll.
+; Bit 0=R ... bit 11=RIGHT. A '1' means sink DATA low (pressed).
+;
+; XGO samples position 0 immediately after DATA release, then subsequent
+; positions on CLOCK highs. Therefore each next DATA bit must be installed
+; during the preceding CLOCK-low phase, not after the rising edge.
+.wrap_target
+start:
+    wait 0 pin 0
+    wait 1 pin 0
+    pull block
+    out pindirs, 1       ; position 0 before first CLOCK fall
+    set x, 10            ; 11 remaining positions: 1..11
+nextbit:
+    wait 0 gpio 26
+    out pindirs, 1       ; install next position while CLOCK is low
+    wait 1 gpio 26       ; host samples it on/after this rise
+    jmp x-- nextbit
+    wait 0 gpio 26       ; consume final (12th) trailing CLOCK pulse
+    set pindirs, 0       ; DATA high-Z before returning to load detection
+    wait 1 gpio 26
+.wrap
