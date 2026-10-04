@@ -101,3 +101,26 @@ In a known two-player game:
 - unplugging/releasing the adapter returns P2 to neutral.
 
 Only after this fixed-R proof should the responder advance to arbitrary 12-position states / GP2040 integration.
+
+
+## Local P1 build identity — pre-hardware
+
+User locally configured and built the P1 target successfully with Pico SDK 1.5.1 / GNU Arm 10.3.1 from branch ending at `31cb3b5c900230b0e2cdfdfe162c3fa529321d10`.
+
+```text
+file:   xgo_p1_fixed_r.uf2
+size:   47,616 bytes
+SHA256: 54F640E7E8916ACD308C9840A6A1B3E27BB1B626A9F5B4D417FF6552EAF393A9
+```
+
+Source re-audit before hardware:
+- PIO has no `set pins`, `out pins`, or sideset operation.
+- the only output-control instructions are `set pindirs,1` and `set pindirs,0`;
+- SET pin base/count is GP27/1;
+- GP27 output latch is explicitly initialized LOW before the state machine is enabled;
+- GP26 is included in the explicit input/high-Z pindir mask and is never in the PIO SET range;
+- GP27 starts/re-enters high-Z while waiting for host load;
+- responder asserts GP27 only after observing host GREEN low -> high;
+- responder releases GP27 at the first YELLOW falling edge.
+
+Hardware activation remains gated pending generated-header/disassembly verification and final decision on direct-vs-protected GP27 connection.
