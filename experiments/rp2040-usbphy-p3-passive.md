@@ -76,3 +76,13 @@ Observed result: **3 blinks repeating (ambiguous/no dominant line).**
 This is a valid negative result for the simple edge-count classifier. It does **not** prove that DP/DM lack the XGO transaction. The classifier only compares total falling-edge counts across the entire 65.536 ms capture; DATA transitions and CLOCK bursts, residual PHY loading, sampling aliasing at 1 MHz versus ~2 us half-periods, or line-state behavior can defeat that coarse discriminator. Do not infer a connector mapping from this result.
 
 Next step: replace total-edge dominance with transaction-shape classification against the already hardware-proven P0 signature (12 clock pulses, ~16 ms cadence, DATA/load low preceding the burst). Keep the native PHY receive-only and perform classification only after capture.
+
+## Hardware result — P3 transaction-shape classifier [HW]
+
+Transaction-shape classifier candidate from source commit `0023e9ac73032206492f7d9be529203d819a6c4b`, UF2 SHA-256 `ae34b93f52d05df9a82af937d857e6097feb15ac6a438f6075efa8814c3ceaa0`, was tested through the Pico onboard Micro-USB connection to the XGO Handle Interface.
+
+Observed result: **3 blinks repeating (ambiguous)**. P2 also continued the previously observed intermittent unsolicited jump behavior.
+
+This is stronger evidence that the failure is not merely the first total-edge classifier. Even a classifier looking for the P0-proven ~12-pulse burst / ~16 ms cadence cannot distinguish DP from DM from the native-PHY sampled states as presently configured. The persistent P2 jump simultaneously shows that this PHY configuration is electrically perturbing the real P2 path.
+
+Do not proceed directly to active native-PHY drive. The next offline target is the PHY configuration itself: audit all RP2040 direct-PHY bias/override controls (especially DM pull-up ownership, which P3 has not explicitly overridden), SOFTCON/mux effects, and receive-state behavior. Build a quieter passive candidate before asking for another active-response hardware test.
