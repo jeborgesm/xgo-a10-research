@@ -174,3 +174,21 @@ Generated `xgo_fixed_r.pio.h` confirms instruction 6 is now `0xe029 // set x,9`.
 The previous SHA256 `54F640E7E8916ACD308C9840A6A1B3E27BB1B626A9F5B4D417FF6552EAF393A9` remains rejected.
 
 Corrected generated-header audit: **PASS**. Hardware behavior remains unproven until an explicit P1 hardware test.
+
+
+## P1 hardware result — PASS
+
+With the corrected P1 UF2 (SHA256 `74A5D33BAC1AD12E1272E98F94C9BB49224AC155E2383DE232C71BFA2B35EE22`) running on the RP2040 and the live three-wire harness actually connected:
+
+- XGO RED -> Pico GND
+- XGO YELLOW -> GP26
+- XGO GREEN -> GP27
+- BLUE/BROWN disconnected
+
+Contra was already running in 2-player mode. On reconnecting the harness, Player 2 began **constantly jumping**. The existing mapper maps XGO raw R to the FC/Contra A action, so this is the expected visible behavior for the fixed serial-position-0 R responder.
+
+An earlier no-action observation is invalid because the temporary harness had mechanically disconnected during an unnecessary XGO power cycle; it must not be treated as a protocol failure.
+
+**HW conclusion:** P1 fixed-R responder PASS. The RP2040 can electrically and temporally synthesize XGO Handle Interface Player-2 serial position 0 using the measured GREEN DATA/load and YELLOW CLOCK conductors with a LOW-sink/high-Z GP27 strategy. This proves the first active RP2040 -> XGO P2 input injection on this specimen.
+
+This proof establishes position 0 only. Arbitrary 12-button serialization remains the next experiment.
