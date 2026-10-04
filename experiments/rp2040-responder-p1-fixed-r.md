@@ -124,3 +124,27 @@ Source re-audit before hardware:
 - responder releases GP27 at the first YELLOW falling edge.
 
 Hardware activation remains gated pending generated-header/disassembly verification and final decision on direct-vs-protected GP27 connection.
+
+
+## Generated-code audit — PASS
+
+The locally generated `xgo_fixed_r.pio.h` was inspected before hardware activation. It contains exactly ten instructions:
+
+```text
+0x2020 wait 0 pin,0
+0x20a0 wait 1 pin,0
+0xe081 set pindirs,1
+0x201a wait 0 gpio,26
+0xe080 set pindirs,0
+0x209a wait 1 gpio,26
+0xe02a set x,10
+0x201a wait 0 gpio,26
+0x209a wait 1 gpio,26
+0x0047 jmp x--,7
+```
+
+There is no generated `SET PINS`, `OUT PINS`, sideset, or other pin-value write in the PIO program. The only active bus operation is changing the configured SET pin's direction.
+
+ARM disassembly also confirms the initialization calls are present before SM enable: `pio_sm_set_pins_with_mask` with value 0 establishes the GP27 output latch LOW, and `pio_sm_set_pindirs_with_mask` establishes the GP26/GP27 high-Z/input state. A second pindir-high-Z call occurs immediately before enabling the state machine.
+
+Generated-code audit result: **PASS** for the intended LOW-sink/high-Z architecture. This does not itself constitute a hardware result.
