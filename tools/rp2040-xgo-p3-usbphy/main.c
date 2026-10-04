@@ -72,7 +72,6 @@ static void usbphy_force_passive(void) {
     usb_hw->phy_direct = 0;
     usb_hw->phy_direct_override =
         USB_USBPHY_DIRECT_OVERRIDE_DP_PULLUP_EN_OVERRIDE_EN_BITS |
-        USB_USBPHY_DIRECT_OVERRIDE_DM_PULLUP_OVERRIDE_EN_BITS |
         USB_USBPHY_DIRECT_OVERRIDE_DP_PULLDN_EN_OVERRIDE_EN_BITS |
         USB_USBPHY_DIRECT_OVERRIDE_DM_PULLDN_EN_OVERRIDE_EN_BITS |
         USB_USBPHY_DIRECT_OVERRIDE_TX_DP_OE_OVERRIDE_EN_BITS |
@@ -93,8 +92,8 @@ int main(void) {
     stdio_init_all();
     sleep_ms(250);
 
-    puts("\\nXGO-P3 USBPHY PASSIVE v3");
-    puts("native USB DP/DM receive-only; all DP/DM bias explicitly overridden off");
+    puts("\\nXGO-P3 USBPHY PASSIVE v4");
+    puts("native USB DP/DM receive-only; SIE line-state telemetry, non-freezing P3-v2 PHY baseline");
     printf("rate=%uHz samples=%u duration_us=%u\\n",
            SAMPLE_HZ, CAPTURE_SAMPLES,
            (unsigned)((uint64_t)CAPTURE_SAMPLES * 1000000ull / SAMPLE_HZ));
@@ -108,7 +107,7 @@ int main(void) {
 
     unsigned dp_score = score_clock_bursts(0);
     unsigned dm_score = score_clock_bursts(1);
-    printf("clock scores: DP=%u DM=%u\\n", dp_score, dm_score);
+    uint32_t sie = usb_hw->sie_status;\n    unsigned line_state = (sie & USB_SIE_STATUS_LINE_STATE_BITS) >> USB_SIE_STATUS_LINE_STATE_LSB;\n    printf("clock scores: DP=%u DM=%u line_state=%u sie=0x%08lx\\n",\n           dp_score, dm_score, line_state, (unsigned long)sie);
 
     puts("BEGIN XGO_P3");
     for (uint32_t i = 0; i < CAPTURE_SAMPLES; i += 32) {
