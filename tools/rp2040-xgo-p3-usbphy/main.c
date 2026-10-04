@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <stdint.h>\n#include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/structs/usb.h"
 #include "hardware/regs/usb.h"
