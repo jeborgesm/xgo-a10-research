@@ -279,3 +279,61 @@ Evidence class: **HW** for the physical contact and resulting P2 gameplay action
 This result also explains why the earlier oscilloscope connection could yield a repeatable jump-only disturbance while direct manual grounding yields multiple actions: the scope presents a different electrical load, whereas brief direct contacts can span arbitrary portions of the polling transaction. This explanation remains **INF** until simultaneous GREEN/YELLOW capture.
 
 **Safety gate:** do not intentionally repeat direct GREEN-to-RED shorts. The observation is already sufficient to preserve; subsequent characterization should use the passive RP2040 capture. No active RP2040 output is authorized by this finding.
+
+
+## HW checkpoint — first passive RP2040 simultaneous capture (2026-10-03)
+
+Status: **HW PASS for passive correlation; capture file is serial-output truncated but contains a complete observed polling transaction.**
+
+P0 was locally built for Raspberry Pi Pico/RP2040 from branch head `7ad03b8` with Pico SDK 1.5.1 / GNU Arm Embedded 10.3.1. The flashed UF2 was 67,072 bytes, SHA-256:
+
+`42FD0BA6DFE6783B45FCA8C0F898E8885E46A0720B4719CC1DD0450EAAF325B8`
+
+The Pico enumerated as a USB serial device on COM5. For the first live passive capture only these XGO harness contacts were connected:
+
+```text
+RED    -> Pico GND
+YELLOW -> Pico GP26 (input only)
+GREEN  -> Pico GP27 (input only)
+```
+
+BLUE and BROWN remained disconnected. Pico power came independently from the PC USB connection. The P0 firmware contains no XGO-facing output operation.
+
+The host capture script reported a timeout before receiving `END XGO_P0`, but inspection of the saved file shows that this was an **output-transfer timeout, not a failed acquisition**. The file begins with the valid firmware header:
+
+`BEGIN XGO_P0 rate=10000000 words=16384`
+
+and contains 12,483 complete 32-bit capture words (199,728 two-bit samples, about 19.973 ms at 10 MHz) before truncating during the serial dump. At 115200 baud, dumping all 16,384 text-formatted words necessarily takes longer than the script's 10-second read timeout.
+
+Most importantly, the retained portion contains a clean simultaneous transaction:
+
+- GREEN is normally high, then has one low interval of approximately **7.2 us**.
+- GREEN returns high before the clock sequence.
+- Approximately **8.5 us after the start of the GREEN low interval**, YELLOW begins a burst.
+- YELLOW contains exactly **12 low pulses** in the observed burst.
+- Individual YELLOW low widths are approximately **2.4-3.0 us** at this fixed-rate digital sampling resolution.
+- Successive YELLOW low pulses are separated by roughly the expected microsecond-scale scanner period.
+- GREEN remains high throughout the 12 YELLOW clock pulses in this captured idle/no-P2-button transaction.
+
+Counts over the retained partial capture:
+
+```text
+complete capture words: 12483
+samples:                199728
+YELLOW low samples:     330
+YELLOW edges:           24
+YELLOW low runs:        12
+GREEN low samples:      72
+GREEN edges:            2
+GREEN low runs:         1
+```
+
+Evidence classification:
+
+- **HW:** simultaneous passive capture shows GREEN host-driven-low/release behavior followed by an exactly 12-pulse YELLOW burst.
+- **BIN/SRC correlation:** this matches the independently reconstructed XGO scanner contract in which the DATA lines are driven low for load/reset, released to input, and then sampled across 12 positions under the shared clock.
+- **Conclusion:** YELLOW is now strongly timing-correlated as the scanner CLOCK and GREEN is strongly timing-correlated as the Handle Interface / Player-2 DATA conductor. This is materially stronger than connector-convention inference or the earlier phantom-input observations.
+
+The serial truncation should be fixed before button-state captures by allowing sufficient dump time or by changing the host reader so timeout is applied only to stalled reads rather than the total transfer. It does not invalidate the transaction already present in this file.
+
+This checkpoint satisfies the core passive-correlation purpose of P0. **It does not authorize push-pull drive.** Any first active responder must still use sink/release behavior so the XGO host can own the DATA conductor during its load/reset phase without contention.
