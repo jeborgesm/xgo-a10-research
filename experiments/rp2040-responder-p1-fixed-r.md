@@ -159,3 +159,18 @@ Correct requirement after clock #1 is exactly eleven remaining clocks (#2..#12).
 The PIO source was corrected from `set x,10` to `set x,9` in commit `9051f405198c841095b8a027fb9cdf0242b6cb58`.
 
 The previously built UF2 SHA256 `54F640E7E8916ACD308C9840A6A1B3E27BB1B626A9F5B4D417FF6552EAF393A9` is therefore **REJECTED / DO NOT FLASH**. A new build identity and generated-header audit are required before P1 hardware use.
+
+
+## Corrected P1 build — generated-header audit PASS
+
+User rebuilt after the clock-count correction.
+
+```text
+SHA256: 74A5D33BAC1AD12E1272E98F94C9BB49224AC155E2383DE232C71BFA2B35EE22
+```
+
+Generated `xgo_fixed_r.pio.h` confirms instruction 6 is now `0xe029 // set x,9`. The remaining generated instruction stream is unchanged: host GREEN low/high wait, GP27 PINDIR sink, first YELLOW falling-edge wait, GP27 PINDIR release, then eleven remaining clock cycles and rearm.
+
+The previous SHA256 `54F640E7E8916ACD308C9840A6A1B3E27BB1B626A9F5B4D417FF6552EAF393A9` remains rejected.
+
+Corrected generated-header audit: **PASS**. Hardware behavior remains unproven until an explicit P1 hardware test.
