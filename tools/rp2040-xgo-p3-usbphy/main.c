@@ -61,7 +61,10 @@ static void blink_code(unsigned n) {
 
 static void usbphy_force_passive(void) {
     /* Route the native pins to the USB PHY, but keep the USB controller disabled. */
-    usb_hw->main_ctrl = 0;\n    /* Keep SIE-side direct drive, pull-up/down, and transceiver power-down off. */\n    usb_hw->sie_ctrl = 0;\n    usb_hw->muxing = USB_USB_MUXING_TO_PHY_BITS | USB_USB_MUXING_SOFTCON_BITS;
+    usb_hw->main_ctrl = 0;
+    /* Keep SIE-side direct drive, pull-up/down, and transceiver power-down off. */
+    usb_hw->sie_ctrl = 0;
+    usb_hw->muxing = USB_USB_MUXING_TO_PHY_BITS | USB_USB_MUXING_SOFTCON_BITS;
 
     /*
      * Override every local bias/output function used by this experiment.
