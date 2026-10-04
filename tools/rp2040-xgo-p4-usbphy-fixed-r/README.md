@@ -62,3 +62,11 @@ Next: audit/test the separate SIE direct-bus-drive path (SIE_CTRL.DIRECT_EN/DIRE
 Full source review found a material implementation error: v3/v4 documentation/banner claimed DPP= CLOCK and DPM=DATA, but the clock wait path still called `dm()` / read `RX_DM`. At the same time those versions drove DPM through `TX_DM_OE`. Thus v3/v4 attempted to observe CLOCK and drive DATA on the same DPM conductor. Their negative hardware results remain real observations but do **not** test the intended reciprocal DP/DM assignment and must not be used to reject DPP=CLOCK / DPM=DATA.
 
 P4 v5 commit `81c929e4af9c072771269b8ae1452825a0f6c59f` corrects the clock read to `RX_DP` while retaining DPM LOW/Hi-Z DATA drive and the slot-11 RIGHT discriminator. This is the first valid reciprocal active-native-PHY candidate.
+
+## Hardware result — P4 v5 corrected reciprocal [HW]
+
+UF2 SHA-256 `d39354b739224a49cf626791d6a97081d7bd0587f47164eaff9fd18328e9b8b7`, size 20,992 bytes. This was the first valid reciprocal native-PHY test: DPP/RX_DP observed as CLOCK, DPM/TX_DM_OE used as LOW/Hi-Z DATA, target slot 11 RIGHT.
+
+Observed: solid Pico LED; P2 still only jumps intermittently (reported somewhat more frequently), with no RIGHT movement. Therefore the corrected reciprocal assignment still does not produce commanded slot-11 input. This is a valid negative result, unlike malformed v3/v4.
+
+Process correction: stop issuing one-bit/fixed-button hardware probes. Any next hardware candidate must be a high-information diagnostic or full scripted responder that validates synchronization and multiple slots in one flash; exhaust offline architecture analysis first.
