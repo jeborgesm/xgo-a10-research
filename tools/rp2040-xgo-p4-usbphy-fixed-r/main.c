@@ -16,11 +16,11 @@ static inline bool dm(void) {
     return (usb_hw->phy_direct & USB_USBPHY_DIRECT_RX_DM_BITS) != 0;
 }
 static inline void data_sink(void) {
-    /* TX_DP stays zero; OE=1 sinks DPP LOW. */
-    usb_set->phy_direct = USB_USBPHY_DIRECT_TX_DP_OE_BITS;
+    /* TX_DM stays zero; OE=1 sinks DPM LOW. */
+    usb_set->phy_direct = USB_USBPHY_DIRECT_TX_DM_OE_BITS;
 }
 static inline void data_release(void) {
-    usb_clr->phy_direct = USB_USBPHY_DIRECT_TX_DP_OE_BITS;
+    usb_clr->phy_direct = USB_USBPHY_DIRECT_TX_DM_OE_BITS;
 }
 static bool wait_level(bool level, uint32_t timeout_us) {
     uint32_t deadline = time_us_32() + timeout_us;
@@ -53,8 +53,8 @@ int main(void) {
     gpio_put(LED_PIN, 1);
     sleep_ms(250);
 
-    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v2");
-    puts("DPM=CLOCK; DPP=DATA; clock-only sync; slot 11 RIGHT");
+    puts("\nXGO-P4 NATIVE USBPHY FIXED-RIGHT v3 SWAPPED");
+    puts("DPP=CLOCK; DPM=DATA; reciprocal assignment; slot 11 RIGHT");
 
     while (true) {
         data_release();
