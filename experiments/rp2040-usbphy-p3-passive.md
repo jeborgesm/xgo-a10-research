@@ -86,3 +86,13 @@ Observed result: **3 blinks repeating (ambiguous)**. P2 also continued the previ
 This is stronger evidence that the failure is not merely the first total-edge classifier. Even a classifier looking for the P0-proven ~12-pulse burst / ~16 ms cadence cannot distinguish DP from DM from the native-PHY sampled states as presently configured. The persistent P2 jump simultaneously shows that this PHY configuration is electrically perturbing the real P2 path.
 
 Do not proceed directly to active native-PHY drive. The next offline target is the PHY configuration itself: audit all RP2040 direct-PHY bias/override controls (especially DM pull-up ownership, which P3 has not explicitly overridden), SOFTCON/mux effects, and receive-state behavior. Build a quieter passive candidate before asking for another active-response hardware test.
+
+## Hardware result — P3-v3 explicit DM pull-up override [HW]
+
+Candidate source commit `fe5ab287e090b6b5089b411238d4cf4572a335a8`, UF2 SHA-256 `c3bf7a2fba2b800d37332fcc7c04f9661d33215bb6d8f76eb12067a8cbaafc9f`, added `USB_USBPHY_DIRECT_OVERRIDE_DM_PULLUP_OVERRIDE_EN_BITS` while leaving the requested DM pull-up value zero.
+
+**Observed on hardware: connecting this candidate through the Pico onboard Micro-USB to the XGO Handle Interface froze the XGO.** No blink-classification result is valid from this candidate because the host froze.
+
+This is a decisive regression relative to the immediately preceding P3 classifier, which left XGO running but caused intermittent P2 jumps. Therefore explicit DM-pull-up override is not a safe passive refinement in this configuration. Reject P3-v3 for further hardware use and restore the preceding non-freezing candidate/state before any additional experiment.
+
+The result also means the native USB PHY's DM pull-up ownership/override interacts materially with the XGO Handle bus. Do not infer ordinary USB semantics from that interaction; exact electrical mechanism remains OPEN.
