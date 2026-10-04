@@ -386,3 +386,32 @@ SHA256: 709CAAED3589C881A4EE90AC10F0942D98C4D855D6151F987AFB0FB13C10376F
 ```
 
 At 10 MHz this build captures 524,288 simultaneous two-bit samples, approximately 52.429 ms. The binary identity is recorded before hardware flashing/testing.
+
+
+### Extended P0 poll-period capture — HW
+
+The 52.429 ms passive build produced three complete scanner transactions with no intentional XGO input.
+
+Observed GREEN/load falling edges:
+
+```text
+ 7575.9 us
+23621.5 us
+39640.4 us
+```
+
+Start-to-start intervals:
+
+```text
+16045.6 us
+16018.9 us
+mean = 16032.25 us (~16.032 ms, ~62.37 Hz)
+```
+
+Each transaction is paired with exactly 12 YELLOW low pulses (36 low runs total). GREEN low/load widths were 7.3, 7.5, and 6.8 us. Delay from GREEN release to first YELLOW falling edge was 1.3, 1.2, and 0.9 us respectively.
+
+This establishes a repeatable approximately 16.0 ms Handle Interface scanner cadence in the tested runtime state and independently reproduces the load/release -> 12-clock structure three times in one simultaneous hardware capture.
+
+Evidence class: **HW** for the measured waveform/cadence. The interpretation as the P2 controller scanner remains correlated with the already reconstructed firmware scanner and prior P2 behavioral coupling evidence.
+
+P0 has now established enough timing information to design the first active responder without guessing clock cadence. Any P1 responder must remain sink/release only on GREEN: it may assert LOW or high-impedance, but must never actively drive the shared conductor HIGH. YELLOW remains input-only.
