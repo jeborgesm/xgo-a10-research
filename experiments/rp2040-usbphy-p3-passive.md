@@ -35,3 +35,15 @@ No active DP/DM drive is authorized by this experiment.
 PASS requires observing the P0 timing fingerprint on native RX_DP/RX_DM. If one line carries the 12-clock burst and the other carries P2 DATA/load behavior, record the assignment and proceed to a separately audited fixed-R native-PHY responder.
 
 If the fingerprint is absent, do not infer a pin assignment from connector convention.
+
+## Build audit
+
+CI run 37177156201 at branch commit `390d84109148606bbc90570bc89181da063f2dd8` completed successfully with Pico SDK 1.5.1.
+
+- configure: PASS
+- compile/link: PASS
+- linker-map negative audit for `tud_init`, `tusb_init`, and `stdio_usb_init`: PASS (none linked)
+- UF2 SHA-256: `d30c4a7a409701876cb16583d8c75f1b949d82949bb5106331d4e0fe768e089d`
+- CI artifact: `xgo-p3-usbphy-passive` (artifact id 11293663562)
+
+This promotes P3 from source-only candidate to build-audited passive hardware-test candidate. It does not promote the native USB transport hypothesis to HW proof.
