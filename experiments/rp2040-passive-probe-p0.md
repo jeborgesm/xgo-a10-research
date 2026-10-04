@@ -371,3 +371,18 @@ Evidence class: **HW**. This complete capture independently reproduces the trans
 - physical GREEN / GP27 = Handle Interface Player-2 serial DATA/load conductor.
 
 The assignment is now hardware timing-correlated rather than based on USB connector convention. The next passive discriminator is a known P2-button-state capture: hold a known external P2 serial state during acquisition and correlate GREEN low with the expected one of the 12 firmware-derived button positions. No active RP2040 drive is authorized by this result.
+
+
+### Extended-window P0 build identity
+
+For poll-period measurement, P0 `CAPTURE_WORDS` was increased from 16,384 to 32,768 while leaving the passive GPIO/PIO behavior unchanged. User rebuilt locally from branch head `4ee05637db6018a980c60ae2cb707b888f88c961`.
+
+Resulting UF2:
+
+```text
+file:   xgo_p0.uf2
+size:   67,072 bytes
+SHA256: 709CAAED3589C881A4EE90AC10F0942D98C4D855D6151F987AFB0FB13C10376F
+```
+
+At 10 MHz this build captures 524,288 simultaneous two-bit samples, approximately 52.429 ms. The binary identity is recorded before hardware flashing/testing.
