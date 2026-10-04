@@ -107,13 +107,16 @@ int main(void) {
 
     unsigned dp_score = score_clock_bursts(0);
     unsigned dm_score = score_clock_bursts(1);
-    uint32_t sie = usb_hw->sie_status;\n    unsigned line_state = (sie & USB_SIE_STATUS_LINE_STATE_BITS) >> USB_SIE_STATUS_LINE_STATE_LSB;\n    printf("clock scores: DP=%u DM=%u line_state=%u sie=0x%08lx\\n",\n           dp_score, dm_score, line_state, (unsigned long)sie);
+    uint32_t sie = usb_hw->sie_status;
+    unsigned line_state = (sie & USB_SIE_STATUS_LINE_STATE_BITS) >> USB_SIE_STATUS_LINE_STATE_LSB;
+    printf("clock scores: DP=%u DM=%u line_state=%u sie=0x%08lx\n",
+           dp_score, dm_score, line_state, (unsigned long)sie);
 
     puts("BEGIN XGO_P3");
     for (uint32_t i = 0; i < CAPTURE_SAMPLES; i += 32) {
         for (uint32_t j = 0; j < 32; ++j)
             putchar("0123"[capture[i + j] & 3u]);
-        putchar('\\n');
+        putchar('\n');
     }
     puts("END XGO_P3");
 
