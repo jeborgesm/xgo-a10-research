@@ -92,11 +92,9 @@ int main(void) {
     stdio_init_all();
     sleep_ms(250);
 
-    puts("
-XGO-P3 USBPHY PASSIVE v1");
-    puts("native USB DP/DM receive-only; local pulls and TX output enables forced off");
-    printf("rate=%uHz samples=%u duration_us=%u
-",
+    puts("\\nXGO-P3 USBPHY PASSIVE v2");
+    puts("native USB DP/DM receive-only; transaction-shape classifier");
+    printf("rate=%uHz samples=%u duration_us=%u\\n",
            SAMPLE_HZ, CAPTURE_SAMPLES,
            (unsigned)((uint64_t)CAPTURE_SAMPLES * 1000000ull / SAMPLE_HZ));
 
@@ -107,25 +105,19 @@ XGO-P3 USBPHY PASSIVE v1");
         busy_wait_until(next);
     }
 
-    /* Classification happens only after the passive capture is complete. */
-    unsigned dp_edges = count_falling_edges(0);
-    unsigned dm_edges = count_falling_edges(1);
-    printf("edges: DP=%u DM=%u\
-", dp_edges, dm_edges);
+    unsigned dp_score = score_clock_bursts(0);
+    unsigned dm_score = score_clock_bursts(1);
+    printf("clock scores: DP=%u DM=%u\\n", dp_score, dm_score);
 
     puts("BEGIN XGO_P3");
     for (uint32_t i = 0; i < CAPTURE_SAMPLES; i += 32) {
         for (uint32_t j = 0; j < 32; ++j)
             putchar("0123"[capture[i + j] & 3u]);
-        putchar('
-');
+        putchar('\\n');
     }
     puts("END XGO_P3");
 
-    /* Self-contained indication when no UART adapter is available:
-       1 blink = DP matches the 12-pulse/~16ms XGO clock signature better
-       2 blinks = DM matches the 12-pulse/~16ms XGO clock signature better
-       3 blinks = ambiguous/no credible signature. */
+    /* 1=DP clock signature, 2=DM clock signature, 3=ambiguous. */
     if (dp_score >= 30u && dp_score > dm_score + 10u) blink_code(1);
     if (dm_score >= 30u && dm_score > dp_score + 10u) blink_code(2);
     blink_code(3);
