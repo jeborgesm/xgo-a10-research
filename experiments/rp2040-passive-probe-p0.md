@@ -337,3 +337,37 @@ Evidence classification:
 The serial truncation should be fixed before button-state captures by allowing sufficient dump time or by changing the host reader so timeout is applied only to stalled reads rather than the total transfer. It does not invalidate the transaction already present in this file.
 
 This checkpoint satisfies the core passive-correlation purpose of P0. **It does not authorize push-pull drive.** Any first active responder must still use sink/release behavior so the XGO host can own the DATA conductor during its load/reset phase without contention.
+
+
+### Complete P0 idle-reference capture
+
+A subsequent host-side capture with sufficient serial-transfer allowance retained all 16,384 words / 262,144 simultaneous samples (26.214 ms at 10 MHz). No XGO input was intentionally pressed during the capture.
+
+Decoder result:
+
+```text
+YELLOW/GP26: edges=24 low_runs=12 high_runs=13
+YELLOW low widths (us):
+2.7 2.8 2.7 3.0 2.8 2.5 2.5 3.0 2.7 2.7 2.9 2.8
+
+GREEN/GP27: edges=2 low_runs=1 high_runs=2
+GREEN low width: 7.8 us
+```
+
+Transaction timing in this capture:
+
+```text
+GREEN falling edge: 13666.5 us
+GREEN rising edge:  13674.3 us
+YELLOW first fall:  13675.5 us
+YELLOW final rise:  13723.6 us
+```
+
+Thus GREEN was host-driven low for 7.8 us, released, and 1.2 us later the first YELLOW clock-low phase began. YELLOW then produced exactly 12 low pulses. GREEN remained high throughout the entire 12-position clock sequence in this no-intentional-P2-input reference transaction.
+
+Evidence class: **HW**. This complete capture independently reproduces the transaction structure already seen in the partial first capture and materially strengthens the timing-correlated assignment:
+
+- physical YELLOW / GP26 = XGO scanner CLOCK;
+- physical GREEN / GP27 = Handle Interface Player-2 serial DATA/load conductor.
+
+The assignment is now hardware timing-correlated rather than based on USB connector convention. The next passive discriminator is a known P2-button-state capture: hold a known external P2 serial state during acquisition and correlate GREEN low with the expected one of the 12 firmware-derived button positions. No active RP2040 drive is authorized by this result.
