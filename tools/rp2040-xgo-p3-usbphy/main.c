@@ -61,8 +61,7 @@ static void blink_code(unsigned n) {
 
 static void usbphy_force_passive(void) {
     /* Route the native pins to the USB PHY, but keep the USB controller disabled. */
-    usb_hw->main_ctrl = 0;
-    usb_hw->muxing = USB_USB_MUXING_TO_PHY_BITS | USB_USB_MUXING_SOFTCON_BITS;
+    usb_hw->main_ctrl = 0;\n    /* Keep SIE-side direct drive, pull-up/down, and transceiver power-down off. */\n    usb_hw->sie_ctrl = 0;\n    usb_hw->muxing = USB_USB_MUXING_TO_PHY_BITS | USB_USB_MUXING_SOFTCON_BITS;
 
     /*
      * Override every local bias/output function used by this experiment.
@@ -92,8 +91,8 @@ int main(void) {
     stdio_init_all();
     sleep_ms(250);
 
-    puts("\\nXGO-P3 USBPHY PASSIVE v4");
-    puts("native USB DP/DM receive-only; SIE line-state telemetry, non-freezing P3-v2 PHY baseline");
+    puts("\\nXGO-P3 USBPHY PASSIVE v5");
+    puts("native USB DP/DM receive-only; explicitly neutral SIE controls on non-freezing baseline");
     printf("rate=%uHz samples=%u duration_us=%u\\n",
            SAMPLE_HZ, CAPTURE_SAMPLES,
            (unsigned)((uint64_t)CAPTURE_SAMPLES * 1000000ull / SAMPLE_HZ));
