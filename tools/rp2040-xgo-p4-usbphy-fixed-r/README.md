@@ -46,3 +46,13 @@ Observed: no RIGHT movement. XGO/P2 continues to show only the same occasional j
 Conclusion: swapping the assumed native PHY roles (DPP=CLOCK, DPM=DATA) also fails to produce active non-slot-zero input. Therefore the simple DP/DM assignment question is closed: neither direct USBPHY TX_OE assignment, as currently configured, reproduces the proven external-GPIO responder. The persistent occasional slot-0 jump is a passive/native-PHY coupling artifact and must not be counted as active transport.
 
 Next direction: investigate the RP2040 native USB PHY's direct-drive ownership/mux requirements for single-ended TX/OE. Do not continue blind DP/DM swapping and do not return to Frankenstein connector work.
+
+## Hardware result — P4 v4 explicit PHY-power ownership [HW]
+
+UF2 SHA-256 `436b1e758df9e080f60afd84480eb03aa59c62bc65fdd43770531e70b92c42b5`, size 20,992 bytes. Source `0bf3dd2e053e7e4d0b669be866e0e4175bf09816`.
+
+Observed through only the Pico native Micro-USB connector and ordinary cable: no RIGHT movement; behavior remains the same occasional P2 jump seen in passive P3 and P4 v1-v3.
+
+Conclusion: explicitly overriding TX_PD=0 and RX_PD=0 does not make the USBPHY_DIRECT single-ended TX/OE path produce commanded XGO input. Reject PHY power ownership as the missing condition. The repeated unchanged slot-0 jump remains a passive/native-PHY coupling artifact, not active responder proof.
+
+Next: audit/test the separate SIE direct-bus-drive path (SIE_CTRL.DIRECT_EN/DIRECT_DP/DIRECT_DM) as a controlled electrical primitive rather than continuing USBPHY_DIRECT configuration permutations.
