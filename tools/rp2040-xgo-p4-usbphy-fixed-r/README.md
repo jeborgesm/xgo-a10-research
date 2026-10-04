@@ -28,3 +28,11 @@ UF2 SHA-256 `5de5f7a05902439f49d0ccd63df213a1547be796641bc120001bebc052cc65be` w
 Observed: Pico LED remained solid; XGO remained operational; Contra Player 2 performed the mapped jump action **intermittently, not continuously**.
 
 Interpretation: this is not the fixed-R success criterion. It also does not demonstrate that active native-PHY serialization is absent, because the symptom is indistinguishable at behavioral level from the passive P3 intermittent slot-0 jump. P4 v1 therefore remains inconclusive for active DATA control. The next candidate must make active drive distinguishable from the passive baseline rather than simply repeating slot 0.
+
+## Hardware result — P4 v2 fixed-RIGHT [HW]
+
+UF2 SHA-256 `28bfd9c607fffa8195c13f1a689f355a51ba20def4f1739110de9e023561153a`, size 20,992 bytes, was tested through only the Pico native Micro-USB connector and ordinary cable.
+
+Observed: solid Pico LED; XGO remains responsive; Contra P2 still performs only the same occasional jump seen under passive P3/P4-v1; **no RIGHT movement**.
+
+Conclusion: the DPM-as-CLOCK / DPP-as-DATA active assignment did not produce the requested non-slot-zero action. Because the passive slot-zero artifact remains unchanged, proceed to the controlled reciprocal native-PHY assignment: DPP as CLOCK input and DPM as DATA LOW-sink/Hi-Z. Do not interpret the occasional jump as active responder success.
