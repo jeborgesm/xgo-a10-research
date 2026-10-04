@@ -96,3 +96,13 @@ Candidate source commit `fe5ab287e090b6b5089b411238d4cf4572a335a8`, UF2 SHA-256 
 This is a decisive regression relative to the immediately preceding P3 classifier, which left XGO running but caused intermittent P2 jumps. Therefore explicit DM-pull-up override is not a safe passive refinement in this configuration. Reject P3-v3 for further hardware use and restore the preceding non-freezing candidate/state before any additional experiment.
 
 The result also means the native USB PHY's DM pull-up ownership/override interacts materially with the XGO Handle bus. Do not infer ordinary USB semantics from that interaction; exact electrical mechanism remains OPEN.
+
+## Hardware result — P3-v4 restored non-freezing PHY baseline [HW]
+
+Candidate source commit `cc2e2003c1d16e8558a9020f145a862f4effe345`, UF2 SHA-256 `db82e7d07a66c725b5bdc7c98df6a916eff977d0ee6f463a8aec73f4dab413bd`, restored the pre-v3 electrical configuration by removing the explicit DM-pull-up override while retaining the transaction classifier and added SIE telemetry.
+
+Hardware observation: **XGO remained running; LED classifier repeated 3 blinks (ambiguous); P2 continued intermittent unsolicited jumping.**
+
+This reproduces the earlier non-freezing P3 behavior and strengthens the controlled A/B result: adding the DM-pull-up override-enable caused the v3 freeze, while removing it restores operation, but the native-PHY receive configuration itself remains non-transparent enough to perturb P2 and does not yet yield a clean DP-vs-DM clock classification.
+
+Do not proceed to active native-PHY drive from this state. The next experiment should target the source of receive-path loading/first-slot disturbance rather than classifier thresholds.
