@@ -34,3 +34,20 @@ Generated PIO audit:
 - GP26 remains input-only.
 
 Result: generated-code audit PASS. This exact SHA is approved for the first P2 scripted hardware test. It is not yet hardware-proven.
+
+
+## Hardware result — PASS
+
+The approved P2 candidate (SHA-256 `C692A0F3DDBB76ACD0EB0E0E51C7B090C7212C17B1016ABF3D0BB7C0674E4A4F`) was flashed and tested on the physical XGO A10 with Contra in 2-player gameplay.
+
+Observed result: the Player-2 character executed the programmed autonomous sequence, including movement and jumping, and interacted normally with live gameplay. The user reported that the bot jumped over an enemy, leaving that enemy to kill Player 1, and confirmed that it was doing everything programmed.
+
+HW conclusion:
+- arbitrary multi-position 12-bit P2 serialization: PASS;
+- RIGHT/LEFT/DOWN directional injection through the Handle Interface: PASS;
+- action-button injection/jump through the current Contra mapper: PASS;
+- repeated host-synchronous scripted transactions at the measured controller poll cadence: PASS;
+- GP27 LOW-sink/high-Z electrical strategy remains stable in active gameplay: PASS;
+- full path RP2040 -> XGO Handle Interface -> P2 scanner -> mapper -> libretro/game input: HW proven.
+
+This closes the protocol proof needed before replacing the scripted state generator with live arcade/GP2040-style button state.
