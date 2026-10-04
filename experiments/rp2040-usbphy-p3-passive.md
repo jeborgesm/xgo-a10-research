@@ -66,3 +66,13 @@ Interpretation discipline:
 - [OPEN] The source of the residual loading/perturbation must be isolated before any active native-PHY responder is authorized. Possible causes include PHY analog loading/mux state, an incompletely disabled bias, or cable/receiver interaction. Do not call P3 electrically transparent merely because TX OE is disabled in firmware.
 
 Result: **PARTIAL PASS / IMPORTANT POSITIVE TRANSPORT EVIDENCE, but not yet P3 protocol PASS.** The single-cable electrical path is alive enough to affect the real P2 scanner, while the device remains stable.
+
+## Hardware result — P3 onboard-LED classifier [HW]
+
+LED-classifier candidate UF2 SHA-256 `be198f4b9ee66ac166e2f354e9c945f2f0c7b262097b3c09edf14bac708c3772` was tested through the Pico onboard Micro-USB connection to the XGO Handle Interface.
+
+Observed result: **3 blinks repeating (ambiguous/no dominant line).**
+
+This is a valid negative result for the simple edge-count classifier. It does **not** prove that DP/DM lack the XGO transaction. The classifier only compares total falling-edge counts across the entire 65.536 ms capture; DATA transitions and CLOCK bursts, residual PHY loading, sampling aliasing at 1 MHz versus ~2 us half-periods, or line-state behavior can defeat that coarse discriminator. Do not infer a connector mapping from this result.
+
+Next step: replace total-edge dominance with transaction-shape classification against the already hardware-proven P0 signature (12 clock pulses, ~16 ms cadence, DATA/load low preceding the burst). Keep the native PHY receive-only and perform classification only after capture.
