@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 add_executable(xgo_p3_usbphy main.c)
-target_link_libraries(xgo_p3_usbphy pico_stdlib hardware_usb)
+target_link_libraries(xgo_p3_usbphy pico_stdlib)
 # Deliberately no USB stdio/TinyUSB: the onboard USB PHY is the passive probe.
 pico_enable_stdio_usb(xgo_p3_usbphy 0)
 pico_enable_stdio_uart(xgo_p3_usbphy 1)
