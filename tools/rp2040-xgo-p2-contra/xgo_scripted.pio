@@ -10,10 +10,9 @@ bitloop:
     out pindirs, 1
     jmp x-- more
     set pindirs, 0
-    jmp done
+    jmp wrap_target
 more:
     wait 0 gpio 26
     set pindirs, 0
     wait 1 gpio 26
-done:
 .wrap
