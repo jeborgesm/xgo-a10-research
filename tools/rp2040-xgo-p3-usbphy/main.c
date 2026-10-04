@@ -9,12 +9,42 @@
 
 static uint8_t capture[CAPTURE_SAMPLES];
 
-static unsigned count_falling_edges(unsigned bit) {
-    unsigned n = 0;
-    uint8_t mask = (uint8_t)(1u << bit);
-    for (uint32_t i = 1; i < CAPTURE_SAMPLES; ++i)
-        if ((capture[i - 1] & mask) && !(capture[i] & mask)) ++n;
-    return n;
+static unsigned score_clock_bursts(unsigned bit) {
+    const uint8_t mask = (uint8_t)(1u << bit);
+    unsigned score = 0;
+    uint32_t last_burst = 0;
+    bool have_last = false;
+
+    for (uint32_t i = 1; i + 80 < CAPTURE_SAMPLES; ++i) {
+        if (!((capture[i - 1] & mask) && !(capture[i] & mask))) continue;
+
+        unsigned falls = 1;
+        uint32_t last_fall = i;
+        uint32_t j = i + 1;
+        for (; j < i + 80 && j < CAPTURE_SAMPLES; ++j) {
+            if ((capture[j - 1] & mask) && !(capture[j] & mask)) {
+                uint32_t dt = j - last_fall;
+                if (dt >= 2 && dt <= 7) {
+                    ++falls;
+                    last_fall = j;
+                } else if (dt > 7) {
+                    break;
+                }
+            }
+        }
+
+        if (falls >= 10 && falls <= 14) {
+            score += 10;
+            if (have_last) {
+                uint32_t cadence = i - last_burst;
+                if (cadence >= 14000 && cadence <= 18000) score += 20;
+            }
+            last_burst = i;
+            have_last = true;
+            i = j;
+        }
+    }
+    return score;
 }
 
 static void blink_code(unsigned n) {
@@ -88,10 +118,10 @@ int main(void) {
     puts("END XGO_P3");
 
     /* Self-contained indication when no UART adapter is available:
-       1 blink = DP has substantially more falling edges (clock candidate)
-       2 blinks = DM has substantially more falling edges (clock candidate)
-       3 blinks = ambiguous/no dominant line. */
-    if (dp_edges > dm_edges + 20u) blink_code(1);
-    if (dm_edges > dp_edges + 20u) blink_code(2);
+       1 blink = DP matches the 12-pulse/~16ms XGO clock signature better
+       2 blinks = DM matches the 12-pulse/~16ms XGO clock signature better
+       3 blinks = ambiguous/no credible signature. */
+    if (dp_score >= 30u && dp_score > dm_score + 10u) blink_code(1);
+    if (dm_score >= 30u && dm_score > dp_score + 10u) blink_code(2);
     blink_code(3);
 }
