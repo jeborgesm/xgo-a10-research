@@ -6,7 +6,7 @@
     wait 0 gpio 26
     set pindirs, 0
     wait 1 gpio 26
-    set x, 10
+    set x, 9
 loop:
     wait 0 gpio 26
     wait 1 gpio 26
