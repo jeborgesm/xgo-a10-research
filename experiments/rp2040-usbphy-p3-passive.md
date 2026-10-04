@@ -130,3 +130,13 @@ A further RP2040 register audit strengthens the conclusion that the direct USB-P
 This makes the analog/native receiver the strongest documented route for observing physical D+/D- on RP2040 [INF]. Powering that receiver down would defeat the very `RX_DP/RX_DM` observations needed by the current classifier, so `RX_PD` is not a useful passive-sampling fix [INF].
 
 Engineering consequence: stop searching for an undocumented GPIO escape hatch unless new silicon evidence appears. The next experiment should characterize the known receive-path disturbance rather than blindly changing PHY ownership. In particular, exploit the already-proven XGO slot-0 sensitivity and compare physical bus behavior with the native PHY disconnected versus attached before authorizing active native-PHY drive.
+
+## P3-T timing-discriminator experiment design [INF]
+
+The next hardware discriminator should test the emerging slot-0 recovery hypothesis without changing RP2040 USB-PHY register ownership again.
+
+Known timing baseline from P0 [HW]: XGO P2 DATA/load goes low for about 6.8-7.8 us, releases only about 0.9-1.3 us before the first CLOCK low, then presents exactly 12 clock positions. Known behavioral correlation [HW]: both an empty OTG adapter and the passive RP2040 native-PHY attachment preferentially produce an R/slot-0 symptom (the RP2040 case intermittently appears as Contra P2 jump through the established mapper).
+
+Proposed P3-T measurement keeps the proven non-freezing v4/v5 firmware unchanged and uses the already-proven external scope/harness only as a measurement instrument. Observe GREEN (hardware timing-correlated P2 DATA/load) relative to RED reference while the Pico remains connected through its ordinary Micro-USB cable. Capture the load-release -> first-clock region and compare it with the P0 no-native-PHY baseline. Because the DSO-TC3 is single-channel, DATA and CLOCK cannot be captured simultaneously on that instrument; use the known YELLOW CLOCK timing/cadence as the transaction locator and measure GREEN pulse/recovery shape in repeated captures. Do not short conductors and do not connect BROWN to Pico 3V3.
+
+Pass/fail logic: if Pico attachment measurably delays GREEN's return high, produces a slow/partial recovery, or adds a low-going transient specifically in the ~1 us slot-0 aperture, that directly supports receiver loading as the R/jump mechanism [HW]. If GREEN recovery remains indistinguishable from P0 despite reproducible jumping, the hypothesis is weakened and attention should shift to clock-line loading or receiver threshold/classification effects [INF].
