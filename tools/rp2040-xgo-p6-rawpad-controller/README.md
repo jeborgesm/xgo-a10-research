@@ -16,3 +16,6 @@ It also observes two independent raw receive views before driving anything: USBP
 On a valid classification it runs the hardware-proven Contra pattern: RIGHT -> jump+shoot -> LEFT -> DOWN -> jump+shoot -> idle. CLOCK is never driven. DATA TX value is permanently LOW and only OE changes.
 
 Safety: DM_PULLUP_OVERRIDE_EN remains excluded because P3-v3 froze XGO when that override was introduced. No TinyUSB, HID, USB enumeration, PCB modification, or external interface is involved.
+
+## Hardware result
+HW FAIL: P6 produced the initial diagnostic sequence ending in 4 blinks, no scripted movement, and only the familiar occasional P2 jump artifact. Therefore neither USBPHY_DIRECT RX_DP/RX_DM nor SIE_STATUS LINE_STATE observed the already-proven 12-pulse XGO clock structure, even after complete TX value/OE ownership and restoration of the proven DATA-load synchronization architecture. Do not issue another minor raw-PHY firmware variation from this design. The next work is offline reconciliation of the stock Pico connector/cable electrical path against the proven loose-wire GREEN/YELLOW conductors and RP2040 pad behavior.
