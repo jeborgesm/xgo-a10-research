@@ -1,4 +1,5 @@
-#include <stdint.h>\n#include <stdio.h>
+#include <stdint.h>
+#include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/structs/usb.h"
 #include "hardware/regs/usb.h"
@@ -91,9 +92,11 @@ int main(void) {
     stdio_init_all();
     sleep_ms(250);
 
-    puts("\nXGO-P3 USBPHY PASSIVE v1");
+    puts("
+XGO-P3 USBPHY PASSIVE v1");
     puts("native USB DP/DM receive-only; local pulls and TX output enables forced off");
-    printf("rate=%uHz samples=%u duration_us=%u\n",
+    printf("rate=%uHz samples=%u duration_us=%u
+",
            SAMPLE_HZ, CAPTURE_SAMPLES,
            (unsigned)((uint64_t)CAPTURE_SAMPLES * 1000000ull / SAMPLE_HZ));
 
@@ -107,13 +110,15 @@ int main(void) {
     /* Classification happens only after the passive capture is complete. */
     unsigned dp_edges = count_falling_edges(0);
     unsigned dm_edges = count_falling_edges(1);
-    printf("edges: DP=%u DM=%u\\n", dp_edges, dm_edges);
+    printf("edges: DP=%u DM=%u\
+", dp_edges, dm_edges);
 
     puts("BEGIN XGO_P3");
     for (uint32_t i = 0; i < CAPTURE_SAMPLES; i += 32) {
         for (uint32_t j = 0; j < 32; ++j)
             putchar("0123"[capture[i + j] & 3u]);
-        putchar('\n');
+        putchar('
+');
     }
     puts("END XGO_P3");
 
