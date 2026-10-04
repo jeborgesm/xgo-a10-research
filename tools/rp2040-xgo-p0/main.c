@@ -8,7 +8,7 @@
 #define PIN_YELLOW 26u
 #define PIN_GREEN  27u
 #define SAMPLE_HZ 10000000u
-#define CAPTURE_WORDS 16384u
+#define CAPTURE_WORDS 32768u
 
 static uint32_t capture[CAPTURE_WORDS];
 
