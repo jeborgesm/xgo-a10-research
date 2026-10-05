@@ -1,729 +1,130 @@
-# HANDOFF-CURRENT
-
-## Checkpoint — 2026-09-20 — Test106 closed
-
-The stock-catalog-enrichment cycle has reached a safe closure point. **Test106 is the hardware-proven hardened Mega Drive Refresh baseline.** Preserve all earlier cumulative features and the complete positive/negative experiment record.
-
-### Exact Test106 protected identities
-
-```text
-bios/bisrv.asd
-SHA-256 b66dbcd86ad785875a6804bb7d07c6eb1195ceedb01c0bce8107f65eee2ab66e
-UNCHANGED known-booting Test97/Test105 firmware
-
-MD/catalog.xgc
-size 2642
-SHA-256 e4c21a94055a6aec817494d2f69450f12fbba3244a91c1b74e73de2a4e91b338
-
-MD/catalog-safe.xgc
-size 7000
-SHA-256 45b3e2638b27e0d4a3ffa518e359413de619184ea9c93c4a5c83bbbc2e0ac65c
-
-Test106 hardware candidate ZIP
-SHA-256 07703312d5a331f2a35f6cc42d44d85d608f33f0cc07335679b9d03ccd46e4d7
-```
-
-### Test106 hardware closure
-
-```text
-Initial card:
-  LIVE 839/839/839 healthy
-  stale complete 788 recovery triplet
-  no .xgo-cat-state
-
-Install Test106
-  -> boot PASS
-  -> Refresh: Games Updated
-  -> responsive
-  -> newer MD game visible
-  -> artwork present
-  -> launch/gameplay PASS
-
-Passive filesystem capture:
-  .xgo-cat-state = exact ASCII "CLEAN!"
-  LIVE = coherent known-good 839/839/839
-  stale 788 recovery triplet remains physically present
-
-Second Refresh, card otherwise unchanged:
-  -> No new games
-  -> responsive
-```
-
-This proves the logical state gate prevents stale complete backups from causing repeated rollback/rebuild.
-
-### Transaction architecture
-
-```text
-              .xgo-cat-state
-                    |
-          +---------+---------+
-          |                   |
-       CLEAN!          absent/ACTIVE/
-          |               invalid
-          |                   |
- ignore stale .bak      recovery preflight
-          |                   |
-          +---------+---------+
-                    |
-             normal catalog work
-
-Before destructive LIVE commit:
-  validate OLD LIVE
-       -> create + byte-verify recovery triplet
-       -> write ACTIVE
-       -> write LIVE TAX/NEC/BVS
-       -> reopen + byte-verify NEW LIVE
-       -> write CLEAN!
-       -> return
-```
-
-Physical deletion of stale backup files is not part of correctness. Test105 proved the intended remove calls could leave the backup triplet present.
-
-### Known healthy MD generations
-
-```text
-788:
-TAX 22156 d04479d8214233d417ebf1791aa38b030a89b9ee55657c586c997257301bba01
-NEC 15984 835be147cfb05da648385667da6ad5c81467a281ecfa8f71d60bf50d01d8197c
-BVS  8160 60acca83cbcd3086a1f27c2f9c2f192474759d1711f0adf8c9b9e3419a3bf1a8
-
-839:
-TAX 23458 ca552d6c67eef499fa8d26dff532e75827947ae0230521db7d420d4237b451ee
-NEC 17082 44371b1e48c225e4d871a253b4b5c459af42f6c3bf29e269e49c299e3ccdd955
-BVS  9258 4617723c68984812d6ee116a2892ee2b845c3b202cfed0512ffb8c45938d62ac
-```
-
-### Important negative findings preserved
-
-- Test103 direct native scanner substitution: **NO BOOT**.
-- Test104 changed only helper-size immediate 2642 -> 7000: **NO BOOT**. Restoring exact Test97 firmware restored boot. Never casually patch this immediate.
-- Test105 recovery works, but stale backup cleanup is unreliable; do not use backup-file absence as transaction state.
-- Test106 first offline build had unaligned `CLEAN!` literal at `0x870004AA`; caught before hardware, corrected to aligned `0x870004B8`.
-- `0x807D40A8` is remove/unlink-like, not a persistence finalizer.
-- `0x80A38000` is **not** a standalone callable CLASSIC entry; Test92 hard-locked.
-- Do not hook `0x807DBA6C`.
-- Test90/91 guessed first-class REFRESH resource work was unsafe; Test91 demonstrated resource auto-discovery/corruption risk.
-- Do not intentionally power-cut during SD writes to prove durability.
-
-Full chronology: `findings/md-refresh-test76-test106-preservation-record.md`.
-Source/reconstruction: `tools/game_lists/md/test106/README.md`.
-
-### Source preservation rule
-
-All future generated executable helpers must have a source/reconstruction record committed alongside findings. If a helper is produced by byte patching/hand assembly rather than a conventional compiler, preserve:
-- annotated assembly/pseudocode;
-- runtime addresses;
-- patch offsets/call targets;
-- exact input/output hashes;
-- build/patch script when available;
-- positive and negative hardware outcomes.
-
-Binary-only ZIPs are not sufficient archival source.
-
-### Stock-console regression status
-
-SFC:
-- Test74 is independently hardware-proven for multi-entry enrichment, artwork, launch and idempotent Refresh.
-- Test106 MD changes do not constitute a new SFC hardware regression test.
-- therefore SFC is proven, but a quick post-Test106 launch spot-check would close cumulative regression evidence.
-
-FC:
-- Test75 is hardware-proven with a five-game batch;
-- all five generated entries launched and ran correctly;
-- supported JPG artwork was hardware-proven after correcting an accidental PNG input mistake and regenerating wrappers;
-- catalog records remained stable without duplication during the repair workflow;
-- standardized deletion/removal remains future work because Test75 merge behavior is append-only.
-- Test106 did not directly modify the protected FC helper files, but a fresh post-Test106 FC launch spot-check has not yet been recorded.
+# XGO ARCHEOLOGY — HANDOFF
+## Native RP2040 XGO controller transport CLOSED; next phase live controller input
+## Date: 2026-10-05
 
-GB/GBC/GBA:
-- retain generalized scanner history; enrichment propagation remains deferred until after CLASSIC resurface / explicit regression priorities.
-
-### Next branch: CLASSIC Refresh resurface
-
-Start from merged main after this closure.
-
-Goal:
-1. resurface CLASSIC as an independent Refresh module using its proven historical invocation contract;
-2. preserve Test106 MD transaction hardening untouched;
-3. preserve Mapper v19, CPS1 pacing, Audio OSD v8, stock consoles/Arcade, normalized MAME2000 core and CLASSIC Save/Load;
-4. do not revive obsolete Pac-Man work;
-5. do not use direct `0x80A38000` invocation;
-6. after CLASSIC module is stable, proceed toward the proper first-class `REFRESH GAMES` selector:
-   Famicom, Super Famicom, Mega Drive, Game Boy, Game Boy Color, Game Boy Advance, Arcade, Classic.
-7. No Refresh All.
-8. The old Settings-page selector was diagnostic only; do not polish it as final UX.
-
-### OPEN
+Resume from the new post-PR58 branch. DO NOT restart controller archaeology.
 
-- actual power-loss/media durability and fsync/writeback semantics;
-- hardware proof of interrupted ACTIVE transaction;
-- rollback after deliberately induced partial LIVE write.
+## CLOSED MILESTONE
 
-Leave these OPEN rather than risking SD corruption.
-
-
-
-## Checkpoint — 2026-09-20 — CLASSIC Refresh resurface / selector archaeology
-
-Active branch: `research-classic-refresh-resurface`.
-
-### Closed invocation/lifecycle contract
-
-- Native Refresh entry: `0x807DB5CC`; it creates a 0xB0 save frame and initializes scanner workspace before module dispatch.
-- CLASSIC bootstrap `0x80A38000` is a continuation under that live native frame, **not a standalone function**.
-- Correct CLASSIC-only route after workspace init: `s5=0; j 0x80A38000`.
-- Test92 direct arbitrary UI -> `0x80A38000` HARD LOCK is causally explained by missing native Refresh frame.
-- CLASSIC helper result maps back into native Games Updated / No New Games / Refresh Failed paths and common native epilogue.
-
-Primary findings:
-- `findings/classic-refresh-resurface-invocation-contract.md`
-- `findings/native-refresh-lifecycle-classic-adapter-closure.md`
-
-### Selector command ABI and UI architecture
-
-Final command IDs are ephemeral:
-```text
-0 FC
-1 SFC
-2 MD
-3 GB
-4 GBC
-5 GBA
-6 Arcade
-7 CLASSIC
-```
-
-Do not overload frontend state `0x80C33980`; 0..11 are catalog states, 12 Favorites, 13 History, 14 User Menu, 15 Search. Do not invent state 16.
-
-Use state 14 as the valid host lifecycle with a transient selector overlay. The selector uses translated frontend events:
-```text
-UP   0x0010
-DOWN 0x0040
-A    0x2000
-B    0x4000
-```
-
-Stock text renderer: `0x803528A4`.
-Stock User Menu redraw/re-entry: `0x80359ABC`.
-Framebuffer/presentation evidence:
-```text
-0x80C33364 framebuffer
-0x80C3395C width
-0x80C33958 height
-0x8035C398 run_screen_write
-```
-
-State-14 confirm seam: `0x80359E94`.
-State-14 navigation terminal sites: `0x80359AA4`, `0x80359E60`.
-
-### Why the Test106 selector is ugly
-
-Exact Test106 firmware is byte-identical to Test85/Test97 and still contains the diagnostic selector.
-
-Test106 globally expanded the stock User Menu from rows 0..2 to 0..3 and routes row dispatch through `0x80A385F0`. Row 3 sets a selector flag, resets selection, then redraws the **same User Menu**; active rows 0..2 become modules and row 3 exits. This is the hacky Settings/User Menu selector being retired.
-
-Useful inheritance: normal User Menu row 3 is already a proven entry seam. Final behavior should be:
-```text
-stock User Menu -> REFRESH GAMES -> dedicated stock-font 8-row selector
-```
-Do not retain the diagnostic active presentation.
-
-Finding: `findings/test85-test106-diagnostic-selector-mechanism-closure.md`.
-
-### Exact Test106 cave audit
-
-Exact protected firmware:
-```text
-size   12,768,452
-SHA256 b66dbcd86ad785875a6804bb7d07c6eb1195ceedb01c0bce8107f65eee2ab66e
-```
-
-Stable all-zero cave:
-```text
-0x80A389B8 .. 0x80A391F8
-length 0x840 / 2112 bytes
-region SHA256 80b67b115f8e28f3b67fddcd4cd1daac24a054603d1dd0cb13793a299a5dadfc
-```
-
-The exact region is identically zero in stock, Test75, Test85, Test92, Test97 and Test106. Reserve it as one selector/adapter module. Builder must fail closed on baseline SHA mismatch, nonzero cave byte, patch-site mismatch, or module overflow.
-
-Audit source:
-`tools/refresh_selector/audit_test106_selector_cave.py`
-
-Finding:
-`findings/test106-selector-cave-byte-audit.md`
+The XGO A10 Handle Interface has been proven end-to-end with a stock Raspberry Pi Pico RP2040 using the Pico's own Micro-USB receptacle and a custom five-conductor Micro-B-to-Micro-B cable. No Pico PCB modification is required. No GPIO-header signal wiring is required in the final transport architecture. The connector is being used as five raw electrical contacts; this is not USB HID and no TinyUSB protocol is involved.
 
-### Relevant commits on this branch
+The native scripted Contra responder hardware-passed. Candidate UF2 SHA-256:
+7b9307721f0c95649eaf67e5242c221adf6feb5e12ac5e957bb6240bbd9a94ca
 
-```text
-a42af42  CLASSIC invocation contract
-2fd8c73  native Refresh lifecycle / CLASSIC adapter closure
-8a7cff1  Test85 state + new command ABI
-53bed68  native menu grammar survey
-973d68b  selector input-loop architecture
-a9c6619  B/Back input identity closure
-a0e3df4  state-14 hosted selector architecture
-02cd28e  native text renderer contract
-4effb35  Test92 selector state / native Refresh handoff
-c92929a  state-14 confirm hook closure
-a13c6d0  navigation and repaint closure
-1c2db0f  exact Test106 cave byte audit
-9dae763  fail-closed cave audit utility
-98ea4eb  Test85/Test106 diagnostic selector mechanism closure
-```
+With the custom cable seated correctly, the Pico LED continuously toggled as successful XGO frames were emitted and Contra Player 2 autonomously moved left/right and shot. The observed scene was in water, so visible jumping was not adjudicated in that final native-connector test. Arbitrary multi-slot serialization, including jump/action positions, had already been hardware-proven by the earlier GP26/GP27 P2 Contra bot.
 
-### Next exact task
+## EXACT ELECTRICAL / PROTOCOL FACTS
 
-Construct the source-preserved replacement selector/adapter module in the verified `0x80A389B8..0x80A391F8` cave.
+HW-proven XGO scan:
+- approximately 16.032 ms transaction interval (~62.37 Hz)
+- shared CLOCK burst approximately 252.6 kHz / ~4 us period
+- DATA/load low approximately 7.8 us
+- DATA releases approximately 1.2 us before first CLOCK low
+- 12 positions, active-low semantics
+- exact slot order: 0 R, 1 Y, 2 X, 3 L, 4 A, 5 B, 6 SELECT, 7 START, 8 UP, 9 DOWN, 10 LEFT, 11 RIGHT
 
-Requirements:
-1. keep normal state-14 behavior untouched while selector inactive;
-2. normal User Menu row 3 enters REFRESH GAMES;
-3. dedicated stock-font eight-row selector, no custom raster/resource triplet;
-4. private `selector_active` + `selected_row`;
-5. UP/DOWN wrap 0..7;
-6. B cancels to stock User Menu with no Refresh mutation;
-7. A hands module ID to native Refresh entry `0x807DB5CC`;
-8. post-workspace dispatcher sends CLASSIC via `s5=0; j 0x80A38000`;
-9. preserve Test106 MD helper architecture and protected status/logging/Volume OSD;
-10. produce source/reconstruction + exact byte-diff manifest before any hardware candidate.
+Firmware architecture evidence maps built-in P1 serial data to B15, Handle Interface P2 data to L0, and shared clock to B7. P1/P2 are scanned in parallel and RF state may be ORed slot-for-slot.
 
-Do not authorize GB/GBC/GBA propagation merely because their selector rows exist; module adapters remain evidence-gated.
+Native Pico Micro-B result:
+- DP = XGO DATA/load-like line (HW)
+- DM = XGO CLOCK-like line (HW)
+- DP output policy = LOW sink when pressed, otherwise high-Z
+- DM is receive-only / never driven
+- XGO powers Pico through same cable at measured ~3.15 V
+- no USB enumeration, USB HID, TinyUSB, or DIRECT_EN dependency
 
+The marked wire identifier produced two long marker pulses, then 3 short for DP and 4 short for DM. Classification: 3=DATA/load-like, 4=CLOCK-like. This was the first unambiguous simultaneous proof that both required transport signals reach the stock Pico native receptacle.
 
-## Process correction — 2026-09-21 — source-first gate restored
+## CUSTOM FIVE-WIRE CABLE
 
-Test113 is the last positive Refresh-selector hardware checkpoint. Tests114–117 are rejected negative experiments and MUST NOT be used as development bases.
+Prototype was fabricated from two DIY Micro-USB male connectors and Ethernet cable. Current straight-through colors at Pico end:
+- ORANGE maps by continuity to Pico GND / board pin 38
+- BROWN maps by continuity to VBUS / board pin 40
+- BLUE, GREEN, WHITE/BLUE remain straight-through signal conductors
 
-Test113 HW:
-- Setup opens;
-- clean REFRESH GAMES presentation;
-- all eight rows navigate;
-- B exits Setup but selector state persists and resurfaces when Setup is reopened;
-- selecting a Refresh option closes the selector, demonstrating that a valid close/redraw mechanism already exists in the active selector/confirm lifecycle.
+With cable connected only to powered XGO and Pico disconnected, BLACK probe on Orange and RED probe on Brown measured +3.15 V. Do not cross Orange/Brown again.
 
-Rejected:
-- Test114: assumed B exit seam; no behavioral change.
-- Test115: assumed selector-exit helper; no behavioral change.
-- Test116: state clear grafted into stock/global B continuation; wrong lifecycle.
-- Test117: global interception at 0x80356C68; Setup hard-lock. This violated the documented no-custom/global-B-hook architecture.
+The handmade connector is mechanically unreliable. The first native Contra attempt showed LED off/no movement; after physically moving the cable, the SAME FIRMWARE immediately entered continuous heartbeat and controlled P2. Therefore that negative observation is not evidence of responder timing failure; it is evidence of intermittent connector contact.
 
-Mandatory protocol:
-- `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`
-- `docs/FAMILY-SOURCE-PROVENANCE.md`
+User intends to rescue the Frankenstein cable and has ordered commercial Micro-B-to-Micro-B cables (Vilqiqu listing shown/ordered Oct 5 2026). Any commercial cable must be continuity-checked for all five contacts, especially physical Micro-B pin 4, before interpreting a test. Earlier Micro-B-to-USB-A adapter-chain tests silently dropped physical pin 4 and therefore could never carry CLOCK.
 
-No Test118 is authorized until:
-1. the selector-specific B-cancel seam is closed offline from Test106 BIN + repository reconstruction + applicable family source;
-2. `selector_module_v0.S` is instruction-pinned rather than leaving the relevant continuation OPEN;
-3. `build_selector_candidate.py` becomes the deterministic emitter rather than audit-only;
-4. every emitted patch site is fail-closed and documented;
-5. a complete byte-diff manifest is reviewed;
-6. LCFG reseal is independently verified.
+## PROVEN PROGRESSION
 
-Do not rediscover behavior by mutating Test113. Test ZIPs are evidence artifacts, not source.
+P0 passive GP26/GP27: YELLOW=CLOCK and GREEN=P2 DATA/load; exact waveform captured.
+P1 fixed-R: GP27 LOW-sink/high-Z forced Contra P2 jump continuously; PASS.
+P2 scripted Contra: arbitrary 12-position serializer made P2 move, jump, shoot and execute scripted actions; PASS. Behavioral golden reference.
+Native passive wire-ID: DP DATA/load-like + DM CLOCK-like through custom five-wire cable; PASS.
+Native scripted Contra: stock Pico Micro-B receptacle, same cable, XGO-powered Pico, scripted P2 movement/shooting; PASS.
 
+Rejected/superseded experiments remain preserved as negative evidence. P3-v3 DM pull-up override froze XGO and must not be reused. P3-T was flawed and must not be executed. P4/P5/P6/Happy and earlier native tests made through USB-A adapter chains must not be interpreted as proof that pin 4 or CLOCK was unavailable; the chain dropped Micro-B pin 4.
 
+## NATIVE RESPONDER IMPLEMENTATION
 
-## HW Test118 PASS — 2026-09-21
+Canonical current source: tools/rp2040-xgo-native-contra/main.c
 
-Candidate: `xgo-test118-refresh-B-proven-close-safe-cave-MINIMAL-HARDWARE-CANDIDATE.zip`
+It reads CLOCK from USBPHY_DIRECT RX_DM and DATA/load from RX_DP. TX latch remains LOW. Only DP OE is switched: OE=1 sinks DATA low; OE=0 releases high-Z. All timeout/error paths release DATA. DM is never driven. The scripted state sequence is RIGHT, RIGHT+R+B, RIGHT, idle, LEFT, DOWN, R+B, idle.
 
-Test118 was built from HW-positive Test113, with the selector-aware B helper moved to verified free space beginning at `0x80A38FD0`; Test113's renderer epilogue through `0x80A38FC8` remained byte-identical.
+Continuous LED activity in the successful hardware run is the frame-success heartbeat. Two quick startup blinks identify the build.
 
-HW result:
-- Setup opens.
-- Refresh Games opens.
-- Pressing B closes Refresh Games and reveals normal Setup.
-- Device remains responsive.
+Earlier GPIO/PIO behavioral golden: tools/rp2040-xgo-p2-contra/. Its deterministic PIO timing remains valuable as reference.
 
-Therefore the following is now **HW-proven**:
-- selector-active B can invoke the inherited selector-close/redraw transition safely;
-- the corrected post-renderer cave allocation is viable;
-- the Test116/117 regression was caused by their bad placement/corruption, not by the close semantic itself.
+## NEXT BRANCH GOAL — LIVE CONTROLLER
 
-User additionally exercised CLASSIC beyond the intended Test118 scope:
-- selecting Classic closed Refresh Games;
-- `No New Games` appeared;
-- message disappeared after about one second;
-- afterward, selecting Refresh Games did not reopen the Refresh list.
+Do not reopen connector archaeology. Build a minimal live-input reference first:
 
-Classify that final observation as a new **HW finding**, not a Test118 failure. It indicates selector state/lifecycle after native Refresh completion is still incomplete. Do not patch it by guess. Trace the post-refresh return/redraw/state transition from the native Refresh path before another candidate.
+physical buttons -> Pico GPIO with pull-ups -> 12-bit XGO mask -> proven native responder -> Pico Micro-B -> XGO P2
 
-Test118 is now the last HW-positive checkpoint for B-cancel behavior. The next source work must also repair the already-identified Test113 command-dispatch defect where row 3/Game Boy still aliases the inherited diagnostic Back operation.
+Start small if desired (Left, Right, B/R or D-pad plus action buttons), then expose all 12 positions. This intentionally simple firmware is the “Neanderthal controller”: a minimal independent golden reference for the complete human-button-to-XGO path.
 
+After that hardware pass, investigate GP2040-CE integration. Preferred architecture is GP2040-CE normalized GamepadState -> XGO mask -> already-proven native XGO transport. Do not hijack TinyUSB or treat the XGO port as USB. GP2040-CE should provide input normalization/remapping/SOCD/configuration while the XGO backend remains a small isolated proprietary output driver.
 
-## HW Test119 PASS — 2026-09-21 — command/re-entry lifecycle closed
+## REPOSITORY / BRANCH STATE
 
-Candidate: `xgo-test119-refresh-command-reentry-MINIMAL-HARDWARE-CANDIDATE.zip`
+Closing branch: research-rp2040-controller-adapter
+Closing PR: #58 Controller research: RP2040 XGO Player-2 transport
+Branch started from main audio closure b6e014e9b8bc1f6be46e1e4f9f1ace4f5d105083.
+Native HW-pass documentation commit: bee1efb3599071c141e96bf8457b02f2963fd3a5.
+Packaging fix: a97d6af4b79294039fcdfbc14c1e7a72ecde9831.
+Successful carrier workflow run: 37381005600; artifact 11375170654. CI printed the same UF2 SHA-256 above.
 
-Firmware:
-```text
-SHA-256 d357a86a79175d7c07877026ccfaa94c352fd571ba7d54b08d1e9acf1cdf4c15
-LCFG CRC-32/MPEG-2 0x39A338DE
-```
-
-HW result reported by user: **successful test**.
-
-Test119 changes the active A dispatcher so every selector row 0..7 is an individual Refresh command, removes the inherited Test85/Test106 row-3 Back special case, and normalizes the caller's ordinary state-14 selection to row 3 before entering native Refresh.
-
-This closes the Test118 re-entry defect:
-- CLASSIC may execute and return through native Refresh status/epilogue;
-- the ordinary User Menu caller is left with a valid selection;
-- Refresh Games can be entered again;
-- Game Boy/row 3 is no longer the old diagnostic Back command.
-
-The B-active close path remains the HW-proven Test118 implementation.
-
-Authoritative source/evidence:
-- `tools/refresh_selector/build_test119_from_test106.py`
-- `tools/refresh_selector/selector_module_v0.S`
-- `findings/refresh-post-operation-reentry-selection-closure.md`
-- `findings/refresh-selector-command-and-reentry-closure.md`
-- `findings/refresh-selector-b-cancel-and-test117-root-cause.md`
-
-Important correction to older handoff text: the earlier “no Test118 authorized” gate is historical and is superseded by HW PASS Test118 and HW PASS Test119. Likewise, the older blanket prohibition on a custom/global B hook is superseded by the scoped selector-active Test118 hook whose inactive path reproduces stock behavior.
-
-### Current protected selector checkpoint
-
-**Test119 is now the protected HW-positive Refresh selector checkpoint.**
-
-Do not rebuild future work from Tests114–117. Future candidates must be deterministic derivatives of exact Test106 via the source-preserved builder/reconstruction path and must retain:
-- Test118 B behavior;
-- Test119 unified A row0..7 command semantics;
-- caller state-14 selection normalization before native Refresh;
-- renderer epilogue through `0x80A38FC8`;
-- LCFG reseal validation.
-
-### Refresh All requirement
-
-There is no implicit Refresh All behavior. Each of the eight current rows refreshes only its own system. User approved a future explicit ninth `Refresh All` row after the eight individual paths are stable/closed.
-
-
-## Current checkpoint — 2026-09-21 — Test122 + CLASSIC rescue priority
-
-Test122 is the current HW-positive selector/UI checkpoint.
-
-Test122 HW result:
-- REFRESH GAMES remains responsive;
-- all eight rows navigate;
-- B closes the selector;
-- producer-side suppression removes the underlying stock Setup blue selector border;
-- residual OPEN issue: after B, a stale `No New Games` status can remain on ordinary Setup until another option is selected.
-
-Test122 firmware SHA-256:
-`6378e4a9cbf560afa53c38836826c294c9b2316310d65eb9860894c221cb2f0d`
-LCFG CRC: `0x0EFF6110`
-ZIP SHA-256: `21c3b9e6c871e67d85e334154b7157e12597f918911a76acc5932faa0647c78d`
-
-Rejected presentation experiments:
-- Test120 HW FAIL: full-screen memset/footer approach;
-- Test121 HW FAIL: expansion of inherited repaint loop to 640x480.
-Do not reuse these approaches. Test122 instead suppresses the native state-14 172x172 selector compositor while Refresh Games is active.
-
-### Exact command-wiring correction
-
-The current Test122 UI captures commands 0..7, but the inherited Test85/Test97 execution dispatcher is only three-way:
-- 0 -> FC;
-- 1 -> SFC;
-- every other value -> MD.
-
-Therefore only FC/SFC/MD labels currently match execution. GB/GBC/GBA/Arcade/Classic currently alias MD. Earlier interpretation of Test118 Classic -> `No New Games` as proof of CLASSIC execution is retracted; command 7 fell through to MD.
-
-### Priority now
-
-1. Rescue CLASSIC first.
-2. Then wire GB/GBC/GBA.
-3. Treat Arcade separately because stock UI/catalogs are CPS1/CPS2/NeoGeo/IGS (lists 7..10) sharing /ARCADE; the single Arcade row must eventually orchestrate/classify across those pages.
-4. Explicit ninth `Refresh All` remains a later requirement after all eight individual operations are stable.
-
-CLASSIC is a restoration, not a new scanner. Protected mature lineage: Test47 generalized importer, Test60 external helper, Test64 JPEG conversion, Test72 50-game batch and unchanged second Refresh -> No New Games. Safe invocation remains native Refresh frame/workspace first, then `s5=0; j 0x80A38000`. Never call `0x80A38000` standalone.
-
-Current CLASSIC rescue gate: resolve the documented Test72 `CLASSIC/refresh.xgc` hash discrepancy against the actual artifact before packaging Test123. See:
-- `findings/test122-individual-refresh-command-wiring-audit.md`
-- `findings/refresh-wiring-priority-classic-first.md`
-- `findings/classic-rescue-pre-test123-closure.md`
-- `findings/test122-hw-pass-and-stale-status.md`
-
-
-## Branch closure — Test123 HW PASS / merge-ready
-
-The CLASSIC resurface objective is complete. Test123 is HW PASS and is the protected functional Refresh checkpoint.
-
-Authoritative deterministic source: `tools/refresh_selector/build_test123_from_test122.py`.
-
-Next work must start from merged `main`, not from an experimental ZIP:
-1. branch for GB/GBC/GBA individual Refresh wiring;
-2. preserve Test123 exactly while implementing commands 3/4/5;
-3. leave command 6 Arcade inert until a dedicated Arcade branch;
-4. dedicated Arcade branch must handle CPS1/CPS2/NeoGeo/IGS classification/orchestration;
-5. explicit ninth Refresh All only after all eight individual operations are stable.
-
-GitHub repository source/reconstruction, findings, manifests/hashes and hardware records are authoritative. Produced or modified source code must be committed before the work is considered preserved; proprietary hardware binaries belong in the companion artifact vault with repository hash/index records.
-
-
-## Branch closure — 2026-09-24 — Game Boy Refresh GOLDEN HW PASS
-
-Branch: `research-refresh-gb-gbc-gba`.
-
-Game Boy Refresh is now closed as a hardware-proven golden checkpoint. Do not begin GBC by replaying the GB trial sequence.
-
-### Golden identities
-
-```text
-xgo-gb-md-parity-complete-two-stage.zip
-SHA-256 21bcc7e18459244912469035bd3dd4a10e0f2ae6b9b1905985a126ecfe73f71d
-
-bios/bisrv.asd
-SHA-256 b4b1ffa3e92c61d042b77345a21c16d67fcf586c8af6127dbc545997942f5542
-LCFG CRC-32/MPEG-2 0xBB3E41F0
-
-GB/refresh.xgc
-size 1,056,520
-SHA-256 34f4714ecbe5affc97b7a0b87726944c253286c3baa3531e437e982174bda238
-
-GB/catalog.xgc
-size 2,642
-SHA-256 66030c93bfde3e790140265b1123b0ca6cb684efc251a9f602bad480ac7cbbfb
-```
-
-### HW-proven GB contract
-
-- `/GB/import/*.gb` discovery.
-- Correct two-character `.gb` predicate geometry.
-- Correct two-character stem derivation.
-- Metadata lookup and metadata-derived wrapper title.
-- Stock-style `.zgb` generation.
-- Explicit post-materialization GB catalog merge.
-- Existing unlisted `Tetris.zgb` propagated into the normal GB catalog/list.
-- Final native status/epilogue remains responsive.
-
-### Root causes closed
-
-Materializer inherited FC/SFC fixed-extension assumptions:
-- `GB/refresh.xgc +0x009C: 05 -> 06` fixes `.gb` dot geometry.
-- `GB/refresh.xgc +0x0DF8: FB -> FC` fixes stem arithmetic `-5 -> -4`.
-
-The decisive list-propagation defect was caller reachability:
-- catalog code existed at `0x80A39084`;
-- old materializer-only `j 0x80A38808` at `0x80A3907C` bypassed it;
-- therefore earlier `No New Games` results after wrapper creation were not catalog-helper results;
-- final firmware changes `0x80A3907C` to continue at `0x80A39084`, explicitly loads `a0=/mnt/sda1/GB/catalog.xgc`, uses `a1=2642`, invokes generic runner `0x80A382E0`, aggregates `v0`, then enters common native status.
-
-Preserved source/evidence:
-- `findings/test132-exact-gb-helper-filename-predicate-root-cause.md`
-- `findings/gb-first-materialization-hw-pass-stem-defect.md`
-- `findings/gb-two-character-materializer-hardware-pass.md`
-- `findings/gb-list-propagation-isolated-after-materializer-pass.md`
-- `findings/gb-refresh-golden-hardware-pass.md`
-- `tools/refresh_gb/build_test132_gb_predicate_repair.py`
-- `tools/refresh_gb/build_golden_gb_two_stage_dispatch.py`
-
-### Mandatory GBC/GBA propagation discipline
-
-Start from the merged GB golden checkpoint. Before any GBC hardware candidate:
-1. close raw extension/stem geometry offline;
-2. close wrapper extension and directory identity;
-3. close GBC triplet/list/cache identity;
-4. prove materializer -> catalog reachability instruction-by-instruction;
-5. prove catalog pathname and byte count are initialized at the actual call;
-6. simulate duplicate/eligibility/catalog-size behavior against the real fixture;
-7. produce a byte-diff manifest proving GB/FC/SFC/MD/CLASSIC preservation;
-8. verify LCFG reseal and final hashes.
-
-**Engineering rule: prove reachability before diagnosing a helper.**
-
-GBC is next. GBA follows only after GBC has its own hardware gate. Arcade remains separate.
-
-
-## Branch closure — 2026-09-24 — GBC + GBA Refresh GOLDEN HW PASS
-
-Branch: research-refresh-gbc-gba-golden-propagation
-
-GBC and GBA Refresh propagation is complete and hardware-proven. The cumulative firmware is ea442b74bdc07cd5e05ec2de8da5c997848a76ed3125681c1955fbcb29b66152; candidate ZIP is xgo-gbc-gba-golden-propagation-candidate.zip SHA-256 3c8c7829d2aab4fc6050d896f00335adfe40f4115db1fcfe546586404b10dbb1.
-
-GBC HW proof: import, artwork, catalog listing, launch/play, controller remapping, and unchanged second Refresh -> No New Games.
-
-GBA HW proof: four-game batch import, corrected matching artwork, catalog listing, launch/play, and unchanged second Refresh -> No New Games. Earlier missing artwork was fixture filename mismatch, not firmware failure.
-
-Final post-test GBA catalog cleanup v3 removes six historical leaked GB records (original indices 626..631) plus obsolete first GBA test records (663..666), preserves A Sound of Thunder.zgb at original index 632, and retains the final four working GBA records. Final count 661.
-
-Next work must start from merged main. Do not reopen GBC/GBA correctness. Separate future work: (1) Refresh processing feedback/current filename or n/N progress UI; (2) standardized safe deletion/reconciliation for append-only catalogs; (3) Arcade remains separate command-6 work.
-
-
-## Active branch recovery — 2026-09-26 — Arcade Refresh / CPS1 Test04
-
-Active branch: `research-arcade-refresh-four-family`.
-
-A project-state gap was discovered: the newest CPS1 Arcade Refresh work had remained in chat while this handoff still ended at the GBC/GBA closure. The missing checkpoint is now restored in:
-
-- `findings/arcade-refresh-cps1-test01-test04-recovery-checkpoint.md`
-
-### Protected current checkpoint
-
-**Test04 is the frozen CPS1 Refresh/import/catalog HW checkpoint.**
-
-Recovered HW:
-- CPS1 Refresh discovers/imports 1941;
-- generated `1941.zfb` exists and is 59,918 bytes;
-- launcher trailer resolves to `1941.zip`;
-- 59,904-byte preview is zero-filled fallback, not presently classified as corruption;
-- catalog persistence is sufficient for the new item to appear;
-- live-list/re-entry can freeze after mutation;
-- generated/imported 1941 does not reach successful gameplay.
-
-Do not use Pac-Man/Test11 as a positive launch oracle. Use a currently working stock CPS1 title, preferably Cadillacs & Dinosaurs, for native-path comparison.
-
-BIN evidence from exact `bios/bisrv.asd` contains 1941 descriptions and internal identifiers (`1941j`, `1941`). This proves driver identity/material exists in the stock XGO FBA binary; it does **not** prove ROM-set compatibility or establish the cause of the launch failure.
-
-The earlier conversational promotion of ROM-set compatibility to "leading suspect" is retracted. It remains one OPEN hypothesis.
-
-### Current OPEN boundaries
-
-Keep these separate until evidence connects them:
-- generated wrapper equivalence to known-good stock CPS1;
-- CPS1 catalog/index/category context;
-- stock preprocessing/archive-name state;
-- any index-dependent launch metadata;
-- exact stock-XGO 1941 ROM filename/size/CRC contract;
-- compatibility of the imported 1941 ZIP with that contract;
-- live-list/cache invalidation after Refresh;
-- causal location of the launch failure.
-
-### Hardware gate
-
-**No Test05 is authorized.**
-
-Continue offline from Test04. First locate the earliest demonstrated divergence between:
-
-```text
-Cadillacs and Dinosaurs.zfb -> dino.zip -> stock CPS1/FBA -> PLAY
-1941.zfb                    -> 1941.zip -> stock CPS1/FBA -> FAIL
-```
-
-Exhaust repository/BIN/source comparison before firmware mutation. Any later candidate must follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`: source/reconstruction first, deterministic fail-closed builder, exact parent hashes, patch-site/range verification, LCFG verification, complete byte-diff manifest, then one narrow HW question.
-
-Immediate offline task: recover the exact 1941 ROM contract from stock XGO `bisrv.asd` as far as BIN evidence permits and compare it with the known-good CPS1 launch contract. Do not ask for another hardware test until this is closed or genuinely exhausted.
-
-
-## Active Arcade checkpoint — 2026-09-27 — Test05A artwork HW PASS
-
-This section supersedes the older Test04 statements above where they conflict. Full evidence is in `findings/arcade-test05a-artwork-hardware-result.md`.
-
-Current hardware facts:
-- Test04-generated CPS1 1941 launches and plays when `/ARCADE/bin/1941.zip` satisfies the stock XGO 1941 ROM contract. The earlier launch failure was ROM-set compatibility, not ZFB/launcher architecture.
-- Test05A changes only the disposable JPEG/RGB565 scratch paths to the shared Arcade root:
-  - `/mnt/sda1/ARCADE/.xgo.jpg`
-  - `/mnt/sda1/ARCADE/.xgo.rgb565`
-- Test05A materializer SHA-256: `2d6503ae20937bd9d525d68a18ee845d942667b582e71e2371450a83d8d29ad2`.
-- After forcing ZFB regeneration, hardware produced real 1941 artwork and the game remained playable. **Artwork repair = HW PASS.**
-- A Refresh Failed result during that sequence was associated with a stale incompatible import ZIP differing from the known-good runtime ZIP. After synchronizing the compatible ZIP into the import folder, Refresh returned **No New Games**, artwork persisted, and 1941 remained playable.
-- During repeated 2026-09-27 Refresh/list-entry/launch operations, the original Test04 immediate CPS1 hard freeze was **not reproduced**. Do not patch the list-7 count cache solely for that unreproduced symptom. Preserve the BIN-closed cache knowledge for use only if a reproducible stale-list failure returns.
-
-Process correction:
-- Do not reopen artwork archaeology.
-- Do not spend another pre-hardware cycle attempting to prove unrelated uncertainties.
-- Preserve the Test05A shared-scratch fix.
-- Proceed to the intended four-family Refresh + compatibility-filter implementation using the already recovered XACM/ZIP architecture.
-- Hardware tests may answer remaining controlled questions; the next candidate need only be bounded and interpretable, not preceded by exhaustive closure of every theoretical uncertainty.
-
-
-## Active Arcade checkpoint — 2026-09-27 — Test05B-COMPAT hardware candidate
-
-Test05A artwork remains HW PASS. The old Test04 freeze remains non-reproduced;
-do not add a browser-cache patch.
-
-The first CPS1 on-device compatibility publication gate is now constructed and
-offline-audited. Final Codescape workflow run 36376769603 passed.
-
-Candidate package:
-- xgo-arcade-test05B-cps1-compat-gate.zip
-- SHA-256 503e07e2f2cb2857ee584fd76605ce910ac2cb348d58f53232130235177e748d
-
-Key payloads:
-- CPS1 refresh.xgc SHA-256 6f4e4fef212e6881a6a428349a2af34a430f429d3b3e7f08da52b03797299d21
-- compat-safe.xgc size 3929 SHA-256 6cf8d8bab0a26a582111336b005c057387a0ab6a6e03ec3d0eff07b37deafc8a
-- .xgo-compat size 237921 SHA-256 86a798ab9e0c8042a84b99a37fcfacd8708706d0010e0459726420d92ab7c0f5
-
-Important hook correction: source path is live after +0x04CC, but the stem helper
-is called at +0x0524. The implemented compatibility hook is therefore at
-+0x052C, not +0x04CC. Compatible flow replays the two overwritten loads and
-continues +0x0534. INCOMPATIBLE/UNSUPPORTED returns to the next-directory-entry
-path +0x01F4 before publication. Validator error uses existing failure cleanup
-+0x0D84.
-
-First HW probe uses a copy of known-incompatible 1941(1).zip renamed
-ARCADE/CPS1/import/1941j.zip so the existing proven 1941 row does not obscure
-the non-publication result. Expected: responsive, no 1941j row/ZFB/runtime ZIP,
-existing 1941 unchanged. Quarantine rename is still deferred.
-
-Full construction/failure/audit record:
-findings/arcade-test05b-cps1-compatibility-gate-candidate.md
-
-
-## 2026-09-28 — Test06 ready for HW
-
-CPS1 compatibility publication gate is now built and offline-audited. Codescape run 36378065831 PASS. Test06 package SHA256 `4bfc148c866a5526ee82a6cca08a641573cc9bfbd8c1256d7e361c35495fac7f`. It preserves HW-proven Test05A artwork behavior and does not modify `bisrv.asd`. First HW probe: place known-incompatible modern 1941 archive as `/ARCADE/CPS1/import/1941j.zip`; Refresh should report No New Games and must not publish 1941j. Existing working 1941 should remain intact/playable. See `findings/arcade-test06-cps1-compat-gate-build.md`.
-
-
-## Mandatory continuity overlay — 2026-09-29
-
-This handoff is long and contains historical checkpoints. On any new/forced chat or context disruption, **do not resume from the first apparently relevant older checkpoint**. Read through the latest superseding checkpoint and follow `docs/MODIFICATION-CONTINUITY-PROTOCOL.md`, especially its **Chat-disruption recovery contract**.
-
-Interaction rule: user `go` / `continue` authorizes autonomous offline investigation. Do not emit micro-progress narration or require repeated permission. Return only at a meaningful gate: an audited hardware candidate genuinely requiring HW, a substantive offline closure with no immediate offline continuation, or indispensable user-owned input unavailable from project artifacts.
-
-Project-state rule: GitHub is the notebook/source of truth. Any new HW observation, negative result, correction, exact artifact identity, or changed stopping point must be committed before subsequent reasoning depends on it. Conversation memory is supplemental, never authoritative.
-
-Experimental rule: no speculative numbered-test ladder. Recover historical solutions and exact proven ancestors first; exhaust offline evidence; mechanically audit the smallest evidence-driven delta; ask hardware one unresolved question only when offline work cannot answer it.
-
-Evidence rule: preserve HW/BIN/SRC/UP/INF/OPEN distinctions. Failed tests and disproved interpretations remain evidence. Later corrections supersede interpretations but do not erase history.
-
-Durable workflow:
-`Recover -> provenance -> offline comparison -> smallest delta -> mechanical audit -> one HW boundary -> exact HW record -> archive -> commit -> promote only after HW proof.`
-
-
-## GOLDEN CLOSURE — 2026-09-30 — Arcade four-family Refresh / Test28 HW PASS
-
-This checkpoint supersedes all earlier Arcade stopping points where they conflict.
-
-**All four stock Arcade Refresh families are now HW-proven: CPS1, CPS2, IGS and NeoGeo.**
-
-Final NeoGeo candidate:
-- `xgo-arcade-neogeo-stage-fit-test28.zip`
-- ZIP SHA-256 `8ad2f19c06194ce81f00321f90fa192fb89156b7d86b1d9f2e3c03d9b71b88f6`
-- `ARCADE/NEOGEO/refresh.xgc` SHA-256 `0f411226154475530010071bca261c4dcc52b10fb258c043d89be029ea2ebe81`
-- parent Test15/Test21 helper SHA-256 `b8d7e99637dea8f217e062040a4550283f7542b040232e20ad54526115a36a9f`
-
-HW observation reported by user:
-- **Games Added**
-- Baseball Stars Pro added to NeoGeo list
-- artwork/image present
-- game launches and runs successfully
-
-### Final defect / correction
-
-The canonical NeoGeo publication namespace remains:
-`/mnt/sda1/ARCADE/NEOGEO/.refresh-set/`
-
-The path requires 38 bytes including NUL. Earlier code relocated it to helper `+0x3000` because the nominal family slot at `+0x258C` appeared too short. Exact byte audit found the preceding `.zip\0` ends at `+0x2588`, exposing a 39-byte zero gap at `+0x2589..+0x25AF`. Test28 places the canonical path at `+0x2589`, patches only the source reference at `+0x21D8`, and clears the obsolete `+0x3000` copy. Scratch remains at `+0x25E8`; marker logic, fopen/fclose logic, catalog helper and firmware remain unchanged.
-
-The resulting marker block matches the HW-working IGS control except for the expected family-specific source pointer.
-
-### Rejected work remains rejected
-
-Tests23–27 remain negative evidence. Do not revive scratch relocation, shortened `.r` namespaces, or marker micro-patch ladders. The briefly generated `.r` Test28 draft was withdrawn before HW and is not a valid experiment.
-
-Canonical topology is protected:
-```text
-/ARCADE/CPS1/.refresh-set/
-/ARCADE/CPS2/.refresh-set/
-/ARCADE/IGS/.refresh-set/
-/ARCADE/NEOGEO/.refresh-set/
-```
-
-### Source / provenance
-
-- finding: `findings/arcade-test28-neogeo-stage-fit-hardware-pass.md`
-- deterministic patch source: `tools/arcade_refresh/build_test28_neogeo_stage_fit.py`
-- golden registry: `artifacts/golden-artifacts.json`
-
-**Promotion:** Test28 is the protected golden NeoGeo publication checkpoint. The four-family Arcade Refresh milestone is closed.
+Important files:
+- docs/rp2040-xgo-responder-contract.md
+- experiments/rp2040-passive-probe-p0.md
+- experiments/rp2040-responder-p1-fixed-r.md
+- experiments/rp2040-responder-p2-scripted-contra.md
+- experiments/rp2040-usbphy-p3-passive.md
+- findings/rp2040-xgo-player2-adapter-checkpoint.md
+- findings/rp2040-native-usb-phy-xgo-transport.md
+- findings/rp2040-native-connector-raw-pad-audit.md
+- findings/xgo-pico-single-cable-routing-reconciliation.md
+- tools/rp2040-xgo-p0/
+- tools/rp2040-xgo-p1-fixed-r/
+- tools/rp2040-xgo-p2-contra/
+- tools/rp2040-xgo-wire-id/
+- tools/rp2040-xgo-native-contra/
+
+## PROTECTED GLOBAL BASELINE
+
+Controller work is additive and must not disturb the merged XGO firmware baseline: Mapper v19, CPS1 scheduler repair, Audio OSD v8, generalized Refresh, CLASSIC/MAME2000, Save/Load, metadata/artwork enrichment, Test123 Refresh selector, GB/GBC/GBA propagation, four-family Arcade Refresh, and October 2026 native-22050/Test-C conditional mono audio closure. Controller experiments are Pico-side and should remain isolated from bios/bisrv.asd unless a future feature explicitly requires firmware integration.
+
+## DO NOT REPEAT
+
+- Hardware outranks static inference.
+- Do not claim generic USB HID support.
+- Do not use ordinary OTG behavior as controller proof.
+- Do not assume Micro-B pin 4 survives a USB-A adapter/cable.
+- Do not assume standard 5 V VBUS; measured XGO source here is ~3.15 V.
+- Do not cross current Orange/Brown power conductors.
+- Do not modify Pico PCB.
+- Do not route native connector signals to GP26/GP27 in final architecture; those pins were only earlier loose-wire proof.
+- Do not use permanent push-pull DATA. Preserve LOW-sink/high-Z.
+- Do not drive DM/CLOCK.
+- Do not enable USB SIE DIRECT_EN blindly.
+- Do not resurrect P3-v3 or P3-T.
+- Do not diagnose old four-wire native failures as proof against final architecture.
+- Do not disturb XGO audio/firmware baseline for Pico controller work.
+- Preserve exact hashes, source, CI/build history and negative experiments.
+
+## IMMEDIATE FIRST TASK IN NEXT CHAT
+
+Confirm the new branch is based on merged controller closure, then implement the minimal live GPIO-button source on top of the hardware-proven native responder. Change the transport layer as little as possible. First hardware goal: a human presses physical Pico-connected buttons and XGO Player 2 responds correctly. Once that passes, freeze it as the minimal golden controller before GP2040-CE integration.

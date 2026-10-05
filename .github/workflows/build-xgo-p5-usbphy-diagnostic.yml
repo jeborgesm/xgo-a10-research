@@ -1,0 +1,26 @@
+name: Build XGO P5 USBPHY diagnostic responder
+on:
+  push:
+    branches: [research-rp2040-controller-adapter]
+    paths: ['tools/rp2040-xgo-p5-usbphy-diagnostic/**','.github/workflows/build-xgo-p5-usbphy-diagnostic.yml']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - run: |
+          git clone --depth 1 --branch 1.5.1 https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
+          git -C "$RUNNER_TEMP/pico-sdk" submodule update --init --recursive
+      - name: Configure
+        env:
+          PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
+        run: cmake -S tools/rp2040-xgo-p5-usbphy-diagnostic -B build/p5 -G Ninja -DPICO_BOARD=pico -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build/p5
+      - run: "! grep -R -E 'tud_init|tusb_init|stdio_usb_init' build/p5/*.map"
+      - run: sha256sum build/p5/xgo_p5_usbphy_diagnostic.uf2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-p5-usbphy-diagnostic
+          path: build/p5/xgo_p5_usbphy_diagnostic.uf2
