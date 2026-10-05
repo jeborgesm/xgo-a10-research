@@ -1,4 +1,4 @@
-name: Build XGO P3 USBPHY passive probe
+name: Build XGO native Contra carrier
 
 on:
   push:
@@ -27,18 +27,18 @@ jobs:
       - name: Configure
         env:
           PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
-        run: cmake -S tools/rp2040-xgo-p3-usbphy -B build/xgo-p3 -G Ninja -DPICO_BOARD=pico -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S tools/rp2040-xgo-native-contra -B build/xgo-p3 -G Ninja -DPICO_BOARD=pico -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build/xgo-p3
       - name: Prove no TinyUSB/USB stdio link
         run: |
           ! grep -R -E 'tud_init|tusb_init|stdio_usb_init' build/xgo-p3/*.map
       - name: Hash candidate
-        run: sha256sum build/xgo-p3/xgo_p3_usbphy.uf2
+        run: sha256sum build/xgo-p3/xgo_native_contra.uf2
       - uses: actions/upload-artifact@v4
         with:
-          name: xgo-p3-usbphy-passive
+          name: xgo-native-microusb-contra-carrier
           path: |
             build/xgo-p3/xgo_p3_usbphy.uf2
-            build/xgo-p3/xgo_p3_usbphy.elf
-            build/xgo-p3/xgo_p3_usbphy.map
+            build/xgo-p3/xgo_native_contra.elf
+            build/xgo-p3/xgo_native_contra.map
