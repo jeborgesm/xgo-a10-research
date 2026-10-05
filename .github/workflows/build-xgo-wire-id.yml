@@ -1,24 +1,44 @@
-name: Build XGO raw wire identifier v2
+name: Build XGO raw wire identifier v3
+
 on:
   push:
-    branches: [research-rp2040-controller-adapter]
-    paths: ['tools/rp2040-xgo-wire-id/**', '.github/workflows/build-xgo-wire-id.yml']
+    branches:
+      - research-rp2040-controller-adapter
+    paths:
+      - 'tools/rp2040-xgo-wire-id/**'
+      - '.github/workflows/build-xgo-wire-id.yml'
+  pull_request:
+    paths:
+      - 'tools/rp2040-xgo-wire-id/**'
+      - '.github/workflows/build-xgo-wire-id.yml'
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
-      - run: |
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Fetch Pico SDK 1.5.1
+        run: |
           git clone --depth 1 --branch 1.5.1 https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
           git -C "$RUNNER_TEMP/pico-sdk" submodule update --init --recursive
-      - env: {PICO_SDK_PATH: "${{ runner.temp }}/pico-sdk"}
+      - name: Configure
+        env:
+          PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
         run: cmake -S tools/rp2040-xgo-wire-id -B build/wireid -G Ninja -DPICO_BOARD=pico -DCMAKE_BUILD_TYPE=Release
-      - run: cmake --build build/wireid
-      - run: "! grep -R -E 'tud_init|tusb_init|stdio_usb_init' build/wireid/*.map"
-      - run: sha256sum build/wireid/xgo_wire_id.uf2
+      - name: Build
+        run: cmake --build build/wireid
+      - name: Prove no TinyUSB/USB stdio link
+        run: |
+          ! grep -R -E 'tud_init|tusb_init|stdio_usb_init' build/wireid/*.map
+      - name: Hash candidate
+        run: sha256sum build/wireid/xgo_wire_id.uf2
       - uses: actions/upload-artifact@v4
         with:
-          name: xgo-raw-wire-identifier
-          path: build/wireid/xgo_wire_id.uf2
+          name: xgo-raw-wire-identifier-v3
+          path: |
+            build/wireid/xgo_wire_id.uf2
+            build/wireid/xgo_wire_id.elf
+            build/wireid/xgo_wire_id.map
