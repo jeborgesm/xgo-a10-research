@@ -71,12 +71,14 @@ static void blink(unsigned n){
  for(unsigned i=0;i<n;i++){gpio_put(LED,1);sleep_ms(140);gpio_put(LED,0);sleep_ms(180);}
 }
 static void report(uint8_t d,uint8_t m){
- /* Five-wire diagnostic report:
-    1 marker blink, pause, DP code, pause, DM code, long pause.
-    The marker prevents the two channel groups being confused after reset. */
- blink(1); sleep_ms(700);
- blink(d+1); sleep_ms(900);
- blink(m+1); sleep_ms(2500);
+ /* Visually unmistakable report:
+    marker = two long LED pulses; channel values remain short pulses. */
+ for(unsigned i=0;i<2;i++){
+   gpio_put(LED,1); sleep_ms(650); gpio_put(LED,0); sleep_ms(250);
+ }
+ sleep_ms(700);
+ blink(d+1); sleep_ms(1200);
+ blink(m+1); sleep_ms(4000);
 }
 int main(void){
  gpio_init(LED);gpio_set_dir(LED,GPIO_OUT);
