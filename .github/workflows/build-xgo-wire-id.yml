@@ -1,8 +1,8 @@
-name: Build XGO raw wire identifier
+name: Build XGO raw wire identifier v2
 on:
   push:
     branches: [research-rp2040-controller-adapter]
-    paths: ['tools/rp2040-xgo-wire-id/**','.github/workflows/build-xgo-wire-id.yml']
+    paths: ['tools/rp2040-xgo-wire-id/**', '.github/workflows/build-xgo-wire-id.yml']
   workflow_dispatch:
 jobs:
   build:
