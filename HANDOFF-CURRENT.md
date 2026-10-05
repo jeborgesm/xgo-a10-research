@@ -125,6 +125,39 @@ Controller work is additive and must not disturb the merged XGO firmware baselin
 - Do not disturb XGO audio/firmware baseline for Pico controller work.
 - Preserve exact hashes, source, CI/build history and negative experiments.
 
+## LIVE CONTROLLER CANDIDATE — AWAITING HARDWARE
+
+The post-PR58 branch `research-rp2040-live-controller` now contains the first minimal live-input candidate at `tools/rp2040-xgo-live-controller/`.
+
+Implementation rule: the hardware-proven native Micro-B transport was copied with no protocol redesign. DP remains DATA/load-like, DM remains receive-only CLOCK-like, and DATA remains LOW-sink/high-Z. The scripted state generator was replaced by one GPIO snapshot per XGO transaction.
+
+Initial full 12-button GPIO map:
+- GP2 R
+- GP3 Y
+- GP4 X
+- GP5 L
+- GP6 A
+- GP7 B
+- GP8 SELECT
+- GP9 START
+- GP10 UP
+- GP11 DOWN
+- GP12 LEFT
+- GP13 RIGHT
+
+Every button is a normally-open switch to GND using the RP2040 internal pull-up. Unwired inputs therefore remain released.
+
+Startup signature is three quick LED blinks, distinguishing this candidate from the two-blink native scripted responder. Successful XGO frames continue toggling the LED heartbeat.
+
+First hardware test should remain deliberately small: wire GP12 LEFT, GP13 RIGHT, GP7 B and GP2 R, all to momentary switches sharing Pico GND. Confirm P1 is unaffected, each action appears only on P2, simultaneous direction+action works, and all-released has no phantom input. Then expose/test the remaining eight positions.
+
+Candidate source commits:
+- main.c: 6290e4391bc723ec91f0aa12c0c924f1dac42e96
+- CMakeLists.txt: 784b07720f725cc5ab0157ab50f89b1e9cb5c0ef
+- README/wiring plan: 3e396529b49edcfc62f317117cfff923feeab31c
+
+This candidate is NOT yet the golden live controller. Promotion requires the hardware pass above. Do not begin GP2040-CE integration before that pass.
+
 ## IMMEDIATE FIRST TASK IN NEXT CHAT
 
-Confirm the new branch is based on merged controller closure, then implement the minimal live GPIO-button source on top of the hardware-proven native responder. Change the transport layer as little as possible. First hardware goal: a human presses physical Pico-connected buttons and XGO Player 2 responds correctly. Once that passes, freeze it as the minimal golden controller before GP2040-CE integration.
+Build/flash `tools/rp2040-xgo-live-controller/` and perform the four-button hardware test (LEFT/RIGHT/B/R). If it passes, test all 12 slots and freeze this implementation as the minimal human-input golden reference before GP2040-CE integration.
