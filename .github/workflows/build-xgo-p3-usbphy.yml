@@ -39,6 +39,6 @@ jobs:
         with:
           name: xgo-native-microusb-contra-carrier
           path: |
-            build/xgo-p3/xgo_p3_usbphy.uf2
+            build/xgo-p3/xgo_native_contra.uf2
             build/xgo-p3/xgo_native_contra.elf
             build/xgo-p3/xgo_native_contra.map
