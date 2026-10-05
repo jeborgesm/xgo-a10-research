@@ -2,9 +2,9 @@
 
 Purpose: one-flash, passive identification of what the stock Pico's two dedicated Micro-USB receiver pads actually see from the XGO. No USB protocol, TinyUSB, HID, enumeration, controller serialization, or active bus drive.
 
-The firmware observes DP for 250 ms and DM for 250 ms independently. TX values are LOW but both output enables remain OFF (Hi-Z); pulls are disabled. It then repeats two LED groups forever:
+The firmware observes DP for 250 ms and DM for 250 ms independently. TX values are LOW but both output enables remain OFF (Hi-Z); pulls are disabled. It then repeats a marked report forever:
 
-**DP group -> ~0.9 s pause -> DM group -> ~2.5 s pause -> repeat**
+**1 marker blink -> ~0.7 s pause -> DP group -> ~0.9 s pause -> DM group -> ~2.5 s pause -> repeat**
 
 The startup single blink occurs only once and is not part of the report.
 
@@ -26,3 +26,9 @@ A result of static/static despite the known XGO scanner proves the ordinary cabl
 
 ## Hardware result
 HW result: repeated LED report **3 blinks -> pause -> 1 blink -> long pause**. Under this firmware's code table, the RP2040 DP receiver saw sparse/load-DATA-like activity while the RP2040 DM receiver remained static LOW. This is decisive evidence against the working assumption that the ordinary stock-Pico cable path presents the proven GREEN DATA and YELLOW 12-pulse CLOCK on the two native DP/DM receivers. In particular, no native receiver observed the YELLOW/CLOCK fingerprint. Preserve this result before any further active test.
+
+
+## True five-conductor custom-cable checkpoint
+HW: after correcting the custom cable power pair, XGO powers the stock Pico through its native Micro-B receptacle at about 3.15 V. Direct Pico continuity established Orange -> GND and Brown -> VBUS. With the true five-conductor Micro-B-to-Micro-B cable, the pre-marker wire-id firmware reported **1 blink -> pause -> 4 blinks -> long pause**, i.e. DP static LOW and DM CLOCK-like activity. This supersedes the earlier ordinary USB-A adapter-chain interpretation: that chain omitted Micro-B physical contact 4 and therefore was not a valid test of the complete five-contact transport.
+
+The marked build does not change receiver configuration or classification. It only adds a one-blink report marker so DP and DM groups remain unambiguous during the next hardware observation.
