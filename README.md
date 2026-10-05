@@ -50,6 +50,20 @@ SHA-256: 60a62e463fd6faf92744a7be666602dd1621b9fd706f90d20e3b55ee3382bb1e
 
 Do not replace or modify this core casually.
 
+## Major milestone: RP2040 native XGO Player-2 controller transport — HW PASS
+
+The XGO Handle Interface is now hardware-proven as a proprietary five-conductor controller transport that merely uses the Micro-USB physical connector. It is **not USB HID** and the RP2040 implementation uses no TinyUSB protocol stack.
+
+The investigation progressed from passive capture through active GPIO responders and finally to the stock Raspberry Pi Pico Micro-USB receptacle. The hardware-proven XGO scan is a 12-slot, active-low synchronous transaction at approximately 62.37 Hz: host DATA/load pulse, immediate slot 0 sample, then shared CLOCK pulses for the remaining positions. Exact slot order is R,Y,X,L,A,B,SELECT,START,UP,DOWN,LEFT,RIGHT.
+
+Loose-wire GP26/GP27 tests first proved arbitrary Player-2 serialization with the scripted Contra bot. A custom straight-through five-conductor Micro-B-to-Micro-B cable then proved the clean one-cable architecture through the Pico's native connector: XGO powers the Pico at about 3.15 V, native PHY **DP carries DATA/load**, native PHY **DM carries CLOCK**, and DP is driven only as LOW-sink/high-Z. The native Contra candidate (UF2 SHA-256 7b9307721f0c95649eaf67e5242c221adf6feb5e12ac5e957bb6240bbd9a94ca) hardware-passed: Player 2 moved back and forth and fired continuously while the responder heartbeat ran.
+
+The handmade prototype cable is mechanically intermittent: an initial LED-off/no-action observation became a full pass after the cable was repositioned. This is recorded as a harness reliability issue, not a protocol failure. Commercial Micro-B-to-Micro-B cables may be evaluated only after confirming that all five contacts, especially physical pin 4, are actually continuous.
+
+**Next controller phase:** preserve the native transport unchanged and replace the scripted state source with live physical GPIO buttons (minimal “Neanderthal controller” golden reference). After that proof, integrate the transport behind GP2040-CE's normalized gamepad state rather than modifying USB protocol machinery.
+
+See docs/rp2040-xgo-responder-contract.md, findings/rp2040-xgo-player2-adapter-checkpoint.md, findings/rp2040-native-usb-phy-xgo-transport.md, and tools/rp2040-xgo-native-contra/.
+
 ## Major milestone: Mapper v19
 
 The stock in-game pause menu has a hardware-confirmed fifth `Mapper` option. Six physical controls can be remapped interactively and saved through the existing per-game `.kmp` mechanism. Mapper v19 combines the intact v7 UI geometry with the mature mapper behavior and corrected selector coordinates.
