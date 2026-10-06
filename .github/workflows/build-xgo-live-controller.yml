@@ -1,6 +1,12 @@
 name: Build XGO live GPIO controller
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tools/rp2040-xgo-live-controller/**'
+      - '.github/workflows/build-xgo-live-controller.yml'
   push:
     branches:
       - research-rp2040-live-controller
