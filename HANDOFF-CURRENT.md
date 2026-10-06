@@ -125,7 +125,7 @@ Controller work is additive and must not disturb the merged XGO firmware baselin
 - Do not disturb XGO audio/firmware baseline for Pico controller work.
 - Preserve exact hashes, source, CI/build history and negative experiments.
 
-## LIVE CONTROLLER CANDIDATE — AWAITING HARDWARE
+## LIVE CONTROLLER CANDIDATE — FOUR-BUTTON HARDWARE PASS
 
 The post-PR58 branch `research-rp2040-live-controller` now contains the first minimal live-input candidate at `tools/rp2040-xgo-live-controller/`.
 
@@ -161,3 +161,23 @@ This candidate is NOT yet the golden live controller. Promotion requires the har
 ## IMMEDIATE FIRST TASK IN NEXT CHAT
 
 Build/flash `tools/rp2040-xgo-live-controller/` and perform the four-button hardware test (LEFT/RIGHT/B/R). If it passes, test all 12 slots and freeze this implementation as the minimal human-input golden reference before GP2040-CE integration.
+
+
+### 2026-10-05 four-button live hardware proof
+
+The minimal live GPIO controller has now passed its first human-input hardware test on the physical XGO.
+
+Hardware-confirmed inputs:
+
+- GP12 LEFT — confirmed; occasional LEFT/RIGHT cross-input interference observed and provisionally attributed to the already-known unreliable handmade/frankenstein Micro-B cable/contact path. Do not change serializer timing to chase this unless the symptom survives a known-good cable.
+- GP13 RIGHT — confirmed.
+- GP7 B — confirmed. Holding the button produced continuous/repeated shooting in Contra.
+- GP2 R — confirmed. Holding the button produced continuous/repeated jumping/action in Contra.
+
+This closes the key proof chain:
+
+physical momentary button -> Pico GPIO pull-up input -> 12-bit serialization mask -> hardware-proven native USB-PHY responder -> Pico Micro-B cable -> XGO native Player-2 input.
+
+The continuous B/R behavior is recorded as controller/input semantics for later investigation, not as a transport failure. The current minimal reference intentionally reports held physical state on every XGO poll and must not be modified before the full 12-input map is tested.
+
+Status: FOUR-BUTTON HARDWARE PASS. Not yet full golden. Next task is to wire and hardware-test the remaining eight inputs (Y, X, L, A, SELECT, START, UP, DOWN), while rechecking the four proven inputs. If all 12 serialize correctly, freeze this exact minimal implementation as the golden live-controller reference before beginning GP2040-CE integration.
