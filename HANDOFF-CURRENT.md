@@ -1,6 +1,6 @@
 # XGO ARCHEOLOGY — HANDOFF
-## Native RP2040 XGO controller transport CLOSED; next phase live controller input
-## Date: 2026-10-05
+## Native RP2040 XGO transport CLOSED; live GPIO controller awaiting final 12-input golden check
+## Date: 2026-10-07
 
 Resume from the new post-PR58 branch. DO NOT restart controller archaeology.
 
@@ -211,3 +211,18 @@ Hardware result: PASS. XGO live controller works; LEFT and RIGHT GPIO buttons mo
 IMPORTANT: preserve this physical pad/orientation record exactly. Do NOT silently translate these physical pad labels into canonical USB pin numbers/colors until connector orientation/pin numbering is independently verified. Earlier assumptions mapping red/black/green/white to conventional Micro-USB numbering were not reliable enough. What is now independently proven is the physical V2 Jr wiring above and that the shared WHITE connection across physical positions 2 and 4 produces a working cable.
 
 This converts the earlier accidental Frankie behavior into a reproducible cable construction. The cable-side condition is therefore no longer supported only by Frankie V1/V3 accident evidence.
+
+
+### GOLDEN PROMOTION GATE — 2026-10-07
+
+Offline/repository checks completed before promotion:
+- branch is cleanly ahead of `main` with no behind commits at the pre-documentation comparison point;
+- reproducible live-controller workflow passed on the current branch after the V2 Jr documentation update;
+- live firmware source remains unchanged by the cable investigation;
+- candidate UF2 remains `xgo_live_controller.uf2`, 18,944 bytes, SHA-256 `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`;
+- R/GP2, B/GP7, LEFT/GP12 and RIGHT/GP13 are hardware-proven;
+- Frankie V2 Jr independently reproduces the special cable topology and LEFT/RIGHT pass.
+
+**Do not merge/promote to full golden yet:** Y/GP3, X/GP4, L/GP5, A/GP6, SELECT/GP8, START/GP9, UP/GP10 and DOWN/GP11 still need direct hardware confirmation. This is the only remaining hardware gate for the minimal 12-button golden reference. After those eight pass (plus a quick recheck of the four proven inputs), freeze the exact UF2/hash, update the artifact index/preservation record as appropriate, mark PR #59 ready, and merge before beginning GP2040-CE integration.
+
+Cable archaeology is now documented separately in `findings/rp2040-xgo-frankie-cable-contract.md`; the live-controller README contains the physical V2 Jr wiring diagram and the accidental-discovery notes.
