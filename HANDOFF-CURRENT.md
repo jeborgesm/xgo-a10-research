@@ -244,3 +244,20 @@ Status: ALL 12 INPUTS HW PASS. The live firmware itself was not changed for this
 PR-head CI run 37657217646 completed successfully at commit b4ae1f6b12fbad40898f28d3c0661152e5c074b1. Build, no-TinyUSB proof, hash step and artifact upload all passed. Artifact: xgo-live-gpio-controller, ID 11499656442.
 
 Important reproducibility finding: the fresh CI rebuild produced UF2 SHA-256 `fde724c374ae3cbabdbc58086d921d67d9643f3a6d254b2a109cc1ca51131732`, which differs from the earlier hardware-tested UF2 hash `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`. Source firmware was not intentionally changed during the hardware/cable investigation, so do NOT silently replace the hardware-tested golden hash with the new CI hash. Preserve both facts: `313d...` is the exact HW-tested binary; `fde724...` is the successful final PR-head CI rebuild. The hash mismatch is a build-reproducibility issue to investigate separately and is not evidence of a hardware regression.
+
+
+## 2026-10-07 — GP2040-CE INTEGRATION INVESTIGATION OPENED
+
+New branch: `research-gp2040ce-xgo-integration`, created from merged golden `main` after PR #59 (merge `5a133a1b2b3a72aebd1d45355a8650edea410204`).
+
+No firmware candidate has been produced and no hardware test is requested yet.
+
+Current upstream GP2040-CE architecture was inspected. Preliminary conclusion: **GO / high feasibility**. GP2040-CE already produces a processed logical `GamepadState` immediately before its selected `GPDriver::process(gamepad)`, providing a clean boundary for an XGO output backend. The proven XGO serializer should remain a protected transport and consume a 12-bit snapshot derived from logical GP2040 controls; the direct caveman GP2..GP13 input assignments should disappear from the integrated transport.
+
+Primary integration issue: GP2040-CE normally initializes/services TinyUSB on the native RP2040 USB PHY, while XGO gameplay requires direct DP/DM PHY ownership with no USB enumeration. Recommended first design is an explicit XGO mode that skips native `tusb_init()`/`tud_task()` during gameplay, while preserving ordinary GP2040-CE WebConfig/BOOTSEL as separate boot modes.
+
+First proof should keep the blocking hardware-proven XGO responder on Core0 behind a minimal `XGODriver`; do not prematurely move timing to Core1 or refactor the GPDriver hierarchy. XGO's ~16.032 ms host poll will pace Core0 near 62.37 Hz, so add-on/turbo/profile behavior must later be checked, but this is not a blocker for the first proof.
+
+Detailed evidence, risk matrix, architecture and acceptance criteria are in `findings/gp2040ce-xgo-integration-feasibility.md` (initial commit `be781530a25bdc7b940b6a89602ca7f98422dcb2`).
+
+Next offline tasks: pin an exact upstream GP2040-CE revision; close all TinyUSB/native-PHY gating points; inspect protobuf/storage/WebConfig implications of `INPUT_MODE_XGO`; determine USBHostManager requirements; then produce a build-only candidate before asking for hardware testing.
