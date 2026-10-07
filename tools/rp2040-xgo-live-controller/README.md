@@ -4,9 +4,9 @@ Minimal "Neanderthal controller" layered directly on the hardware-proven native 
 
 ## Status
 
-**Firmware candidate: hardware-proven on R / B / LEFT / RIGHT.**
+**GOLDEN HARDWARE PASS: all 12 XGO input slots confirmed using Street Fighter II.**
 
-The native transport and human-input path are proven. The current firmware exposes all 12 XGO slots, but Y, X, L, A, SELECT, START, UP and DOWN still require direct hardware confirmation before this exact build is promoted to the full 12-button golden reference.
+The native transport and complete human-input path are hardware-proven. All 12 exposed GPIO inputs were confirmed on the physical XGO using Street Fighter II.
 
 CI build is reproducible. Candidate UF2:
 
@@ -21,15 +21,15 @@ Each button is a normally-open switch from the listed Pico GPIO to GND. Firmware
 | XGO slot | Button | Pico GPIO | HW status |
 |---:|---|---:|---|
 | 0 | R | GP2 | PASS |
-| 1 | Y | GP3 | pending |
-| 2 | X | GP4 | pending |
-| 3 | L | GP5 | pending |
-| 4 | A | GP6 | pending |
+| 1 | Y | GP3 | PASS |
+| 2 | X | GP4 | PASS |
+| 3 | L | GP5 | PASS |
+| 4 | A | GP6 | PASS |
 | 5 | B | GP7 | PASS |
-| 6 | SELECT | GP8 | pending |
-| 7 | START | GP9 | pending |
-| 8 | UP | GP10 | pending |
-| 9 | DOWN | GP11 | pending |
+| 6 | SELECT | GP8 | PASS |
+| 7 | START | GP9 | PASS |
+| 8 | UP | GP10 | PASS |
+| 9 | DOWN | GP11 | PASS |
 | 10 | LEFT | GP12 | PASS |
 | 11 | RIGHT | GP13 | PASS |
 
@@ -60,7 +60,7 @@ That accident has since been reproduced deliberately with **Frankie V2 Jr**, so 
 
 ### Frankie V2 Jr — reproducible physical wiring
 
-V2 Jr uses one ordinary four-conductor Micro-B-to-USB-A cable half (USB-A end cut off) and a replacement solderable 5-pad Micro-B connector.
+V2 Jr uses one ordinary four-conductor Micro-B-to-USB-A cable half (USB-A end cut off) and a 5-pad Micro-B connector salvaged from Frankie V1.
 
 **Record this by physical solder-pad orientation, not assumed USB pin names.** With the replacement connector at the top and the three top-connector pads appearing at the bottom, the user-recorded pad positions are:
 
@@ -108,3 +108,12 @@ Before freezing this exact build as the full live-controller golden reference, h
 5. the known-working Frankie V2 Jr/Frankie 3 cable produces continuous successful-frame heartbeat.
 
 Do not modify serializer timing or native USB-PHY transport while completing this test.
+
+
+## Final hardware validation — 2026-10-07
+
+All 12 mapped GPIO inputs were confirmed on physical hardware using Street Fighter II. This closes the input-map hardware gate for the minimal live-controller golden reference.
+
+During final testing, the connector donated by Frankie V1 developed an intermittent BLACK-to-GREEN short that shut the XGO down. The connector was reinforced with conformal coating and heat-shrink tubing. Treat this as a mechanical connector fault, not a serializer/transport fault.
+
+Historical correction: one Frankie V1 connector was salvaged for Frankie V2 Jr. The other V1 connector became unusable after excessive soldering heat damaged one pad.
