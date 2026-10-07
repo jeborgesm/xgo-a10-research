@@ -321,3 +321,132 @@ Before calling any GP2040-CE candidate hardware-worthy:
 6. Determine whether a board-config-only default can select XGO before Web Config knows about the new mode.
 7. Measure/estimate consequences of the blocking serializer for turbo/macros/profile switching.
 8. Only after those close: implement a build-only Test01 candidate.
+
+
+## Investigation checkpoint 2 — upstream pinning and integration-surface closure
+
+### Pinned upstream revision
+
+The first XGO integration proof should target GP2040-CE upstream commit:
+
+`3d1f32f7d02d418826b725b60208278d3be878c3` — **Hot fix for updated tinyusb on xbone**, committed 2026-10-03.
+
+This is the current upstream `main` head observed during the 2026-10-07 investigation. Pinning is important because the immediately preceding upstream work substantially changed TinyUSB/Pico-PIO-USB behavior; the XGO proof must not float against moving USB infrastructure.
+
+### TinyUSB gating surface is smaller than feared
+
+For native **device** ownership, the decisive runtime calls are concentrated in `GP2040::run()`:
+
+- `tusb_init(TUD_OPT_RHPORT, ... TUSB_ROLE_DEVICE ...)`
+- `tud_task()`
+
+The global TinyUSB callback translation unit (`src/usbdriver.cpp`) can remain linked for the first proof as long as the native TinyUSB device stack is never initialized in XGO gameplay mode. The XGO driver's USB callback methods can remain inert stubs to satisfy the current USB-centric `GPDriver` interface.
+
+This means a first proof does **not** require deleting TinyUSB from the GP2040-CE build. It requires preventing runtime ownership of the native PHY while XGO mode is active.
+
+### USBHostManager clarified
+
+Current GP2040-CE USB host support is materially different from native device mode. `USBHostManager::start()` only initializes host operation when:
+
+1. configurable peripheral USB block 0 is enabled; and
+2. at least one USB listener exists.
+
+It configures Pico-PIO-USB and calls TinyUSB host on `BOARD_TUH_RHPORT`, not the native-device `TUD_OPT_RHPORT` path used by XGO's DP/DM pins.
+
+Therefore the earlier concern can be narrowed:
+
+- native TinyUSB **device** initialization is a proven conflict with XGO raw-PHY ownership and must be gated;
+- optional PIO USB **host** operation is not yet proven to conflict electrically, but is unnecessary complexity for Test01 and should be disabled in the first XGO board/profile configuration.
+
+Do not delete USBHostManager globally merely to obtain the first proof.
+
+### Protobuf/storage impact is modest
+
+`GamepadOptions.inputMode` is already stored as the `InputMode` enum. `BootModeOptions` also stores `InputMode` for GPIO boot mappings. Adding a new unique enum value, proposed `INPUT_MODE_XGO = 18`, is structurally compatible with the existing configuration model; no new config message field is required merely to persist XGO mode.
+
+The enum addition regenerates nanopb output as part of the normal project generation/build process. Avoid renumbering any existing enum member. Use the next value after current `INPUT_MODE_SINPUT = 17`.
+
+### Web Config impact is explicit but small
+
+The current Settings page maintains a hard-coded `INPUT_BOOT_MODES` list and validates selected values against the corresponding mode list. Therefore firmware-only support for enum 18 would not automatically become a selectable Web Config mode.
+
+For a polished fork, add an XGO entry to the Web Config input-mode lists plus localization text. However, **Test01 does not need the UI modification to prove transport integration** if XGO is selected by a board default or firmware-side test configuration and WebConfig remains reachable as a separate boot action.
+
+This is useful separation of concerns: first prove GP2040 input engine → XGO transport; then expose XGO cleanly in the configurator.
+
+### Separate WebConfig boot is supported by actual control flow
+
+Before `GP2040::run()`, setup resolves boot actions. Existing logic can select `INPUT_MODE_CONFIG` through the WebConfig boot path. Consequently `run()` knows whether it is in config mode before native TinyUSB initialization occurs.
+
+The required condition is therefore conceptually:
+
+```cpp
+const bool xgoMode = DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO;
+if (!xgoMode) {
+    tusb_init(... TUSB_ROLE_DEVICE ...);
+}
+...
+if (!xgoMode) {
+    tud_task();
+}
+```
+
+Exact implementation may use a driver capability rather than direct enum checks, but Test01 should favor the smallest auditable patch.
+
+### Core0 blocking behavior — refined
+
+The golden responder's `emit_frame()` can wait up to 20 ms for the next XGO load pulse. When connected to a normally polling XGO, measured cadence is ~16.032 ms. Placing it directly in `XGODriver::process()` therefore intentionally host-paces the main Core0 loop.
+
+This does **not** invalidate ordinary digital input processing: every successful XGO transaction obtains a newly processed GP2040 state before serialization. It may affect features whose temporal behavior assumes a substantially faster Core0 loop. Turbo, macros, save/reboot timing and some add-ons therefore remain post-Test01 validation items.
+
+The first proof should not optimize this away. Preserving the known-good blocking serializer gives us a controlled comparison against the caveman golden.
+
+### Test01 minimum patch surface
+
+At pinned upstream revision, the smallest credible implementation is now estimated as:
+
+1. `proto/enums.proto`: append `INPUT_MODE_XGO = 18`.
+2. Add `XGODriver` source/header.
+3. `src/drivermanager.cpp`: construct `XGODriver` for mode 18.
+4. `src/gp2040.cpp`: skip native TinyUSB device init/task in XGO mode.
+5. Board/test configuration: select XGO mode and map physical controls through ordinary GP2040 mappings.
+6. Build-system source registration if driver sources are explicitly enumerated.
+7. No Web Config UI changes required for the first hardware proof; document how to enter WebConfig separately.
+
+The XGO driver should contain two visibly separate layers:
+
+```text
+Gamepad* → map_state_to_xgo_mask()       NEW / GP2040-specific
+                         ↓
+                    uint16_t mask
+                         ↓
+             xgo_emit_frame(mask)        GOLDEN-derived / protected
+```
+
+The serializer should not read GPIO buttons directly. It must receive the immutable logical mask.
+
+### Recommended Test01 default logical map
+
+Use the generic GP2040 arcade convention as the initial semantic bridge:
+
+- B1 → XGO A
+- B2 → XGO B
+- B3 → XGO X
+- B4 → XGO Y
+- L1 → XGO L
+- R1 → XGO R
+- S1 → XGO SELECT
+- S2 → XGO START
+- D-pad → XGO D-pad
+
+This covers the XGO's complete 12 controls without consuming L2/R2/A1/A2. Because physical GPIO assignment occurs upstream of this mapping, the user's eventual controller layout remains configurable.
+
+### New risk discovered: GPDriver is USB-shaped, but this is not a Test01 blocker
+
+The base `GPDriver` contract includes TinyUSB descriptor and control-transfer methods. XGO has no meaningful implementation for them. For Test01, inert methods are preferable to a framework refactor. If XGO support becomes long-lived/upstream-quality, a later transport-capability abstraction would be cleaner.
+
+### Decision after checkpoint 2
+
+**Still GO, confidence increased.** No hidden architectural dependency has appeared that requires rewriting the caveman serializer or GP2040 input engine. The first integration candidate can remain small and reversible.
+
+Next step: inspect/build registration and board configuration mechanics at the pinned revision, then create an implementation-plan manifest (exact upstream files/changes) before importing or patching upstream source. No hardware test until a reproducible build artifact and static PHY-safety review both pass.
