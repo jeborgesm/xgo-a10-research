@@ -1,6 +1,6 @@
 # XGO ARCHEOLOGY — HANDOFF
-## Native RP2040 XGO controller transport CLOSED; next phase live controller input
-## Date: 2026-10-05
+## Native RP2040 XGO transport CLOSED; live GPIO controller awaiting final 12-input golden check
+## Date: 2026-10-07
 
 Resume from the new post-PR58 branch. DO NOT restart controller archaeology.
 
@@ -125,6 +125,122 @@ Controller work is additive and must not disturb the merged XGO firmware baselin
 - Do not disturb XGO audio/firmware baseline for Pico controller work.
 - Preserve exact hashes, source, CI/build history and negative experiments.
 
+## LIVE CONTROLLER CANDIDATE — FOUR-BUTTON HARDWARE PASS
+
+The post-PR58 branch `research-rp2040-live-controller` now contains the first minimal live-input candidate at `tools/rp2040-xgo-live-controller/`.
+
+Implementation rule: the hardware-proven native Micro-B transport was copied with no protocol redesign. DP remains DATA/load-like, DM remains receive-only CLOCK-like, and DATA remains LOW-sink/high-Z. The scripted state generator was replaced by one GPIO snapshot per XGO transaction.
+
+Initial full 12-button GPIO map:
+- GP2 R
+- GP3 Y
+- GP4 X
+- GP5 L
+- GP6 A
+- GP7 B
+- GP8 SELECT
+- GP9 START
+- GP10 UP
+- GP11 DOWN
+- GP12 LEFT
+- GP13 RIGHT
+
+Every button is a normally-open switch to GND using the RP2040 internal pull-up. Unwired inputs therefore remain released.
+
+Startup signature is three quick LED blinks, distinguishing this candidate from the two-blink native scripted responder. Successful XGO frames continue toggling the LED heartbeat.
+
+First hardware test should remain deliberately small: wire GP12 LEFT, GP13 RIGHT, GP7 B and GP2 R, all to momentary switches sharing Pico GND. Confirm P1 is unaffected, each action appears only on P2, simultaneous direction+action works, and all-released has no phantom input. Then expose/test the remaining eight positions.
+
+Candidate source commits:
+- main.c: 6290e4391bc723ec91f0aa12c0c924f1dac42e96
+- CMakeLists.txt: 784b07720f725cc5ab0157ab50f89b1e9cb5c0ef
+- README/wiring plan: 3e396529b49edcfc62f317117cfff923feeab31c
+
+This candidate is NOT yet the golden live controller. Promotion requires the hardware pass above. Do not begin GP2040-CE integration before that pass.
+
 ## IMMEDIATE FIRST TASK IN NEXT CHAT
 
-Confirm the new branch is based on merged controller closure, then implement the minimal live GPIO-button source on top of the hardware-proven native responder. Change the transport layer as little as possible. First hardware goal: a human presses physical Pico-connected buttons and XGO Player 2 responds correctly. Once that passes, freeze it as the minimal golden controller before GP2040-CE integration.
+Build/flash `tools/rp2040-xgo-live-controller/` and perform the four-button hardware test (LEFT/RIGHT/B/R). If it passes, test all 12 slots and freeze this implementation as the minimal human-input golden reference before GP2040-CE integration.
+
+
+### 2026-10-05 four-button live hardware proof
+
+The minimal live GPIO controller has now passed its first human-input hardware test on the physical XGO.
+
+Hardware-confirmed inputs:
+
+- GP12 LEFT — confirmed; occasional LEFT/RIGHT cross-input interference observed and provisionally attributed to the already-known unreliable handmade/frankenstein Micro-B cable/contact path. Do not change serializer timing to chase this unless the symptom survives a known-good cable.
+- GP13 RIGHT — confirmed.
+- GP7 B — confirmed. Holding the button produced continuous/repeated shooting in Contra.
+- GP2 R — confirmed. Holding the button produced continuous/repeated jumping/action in Contra.
+
+This closes the key proof chain:
+
+physical momentary button -> Pico GPIO pull-up input -> 12-bit serialization mask -> hardware-proven native USB-PHY responder -> Pico Micro-B cable -> XGO native Player-2 input.
+
+The continuous B/R behavior is recorded as controller/input semantics for later investigation, not as a transport failure. The current minimal reference intentionally reports held physical state on every XGO poll and must not be modified before the full 12-input map is tested.
+
+Status: FOUR-BUTTON HARDWARE PASS. Not yet full golden. Next task is to wire and hardware-test the remaining eight inputs (Y, X, L, A, SELECT, START, UP, DOWN), while rechecking the four proven inputs. If all 12 serialize correctly, freeze this exact minimal implementation as the golden live-controller reference before beginning GP2040-CE integration.
+
+
+### 2026-10-07 Frankie 3 cable discovery — HW PROVEN
+
+Original Frankenstein eventually failed mechanically because the stiff Ethernet conductors broke at a Micro-B solder pad. A replacement cable ("Frankie 3") was built.
+
+Critical hardware observation: at the PICO END, shorting Micro-B contacts 2 and 4 caused the live-controller firmware to transition from the three-blink startup-only behavior to continuous successful-frame LED activity, and the physical GPIO buttons then worked on XGO Player 2.
+
+This is the first direct hardware evidence for the missing cable-side condition. The earlier four-wire Frankie 2 tests (straight D+/D- and crossed D+/D-) powered and booted the Pico but did not yield valid responder polling. Do not describe the requirement merely as "five straight-through conductors" or assume conventional USB/OTG semantics. The hardware-proven condition is specifically the observed PICO-END contact 2-to-4 short in Frankie 3.
+
+Preserve this as an electrical-interface finding separate from the RP2040 responder logic: the native responder still consumes the proven DP/D+ DATA/load-like and DM/D- CLOCK-like signals, but the cable/connector state required to make the complete XGO/Pico link operate includes the Frankie 3 Pico-end 2<->4 relationship.
+
+Next archaeology task: reproduce and characterize this 2<->4 condition deliberately on a mechanically robust cable, verify whether it is required only at the Pico end, and document the exact connector-contact orientation before promoting a final cable specification. Do not alter the hardware-proven live-controller serializer to compensate for cable behavior.
+
+
+### 2026-10-07 Frankie V2 Jr — independent reproduction PASS
+
+A fresh cable was constructed from ONE of the original cut Micro-B-to-USB-A four-conductor cables plus a newly soldered 5-pad Micro-B connector. This is independent of the mechanically failed original Frankie V1 and reproduces the live-controller path successfully.
+
+User-recorded physical solder orientation: with the new connector at the top and the three upper connector pads appearing at the bottom, pads were wired:
+- physical pad position labeled/recorded 1 = BLACK
+- 3 = GREEN
+- 5 = RED
+- 2 and 4 = WHITE (shared/bridged)
+
+Hardware result: PASS. XGO live controller works; LEFT and RIGHT GPIO buttons move the character correctly.
+
+IMPORTANT: preserve this physical pad/orientation record exactly. Do NOT silently translate these physical pad labels into canonical USB pin numbers/colors until connector orientation/pin numbering is independently verified. Earlier assumptions mapping red/black/green/white to conventional Micro-USB numbering were not reliable enough. What is now independently proven is the physical V2 Jr wiring above and that the shared WHITE connection across physical positions 2 and 4 produces a working cable.
+
+This converts the earlier accidental Frankie behavior into a reproducible cable construction. The cable-side condition is therefore no longer supported only by Frankie V1/V3 accident evidence.
+
+
+### GOLDEN PROMOTION GATE — 2026-10-07
+
+Offline/repository checks completed before promotion:
+- branch is cleanly ahead of `main` with no behind commits at the pre-documentation comparison point;
+- reproducible live-controller workflow passed on the current branch after the V2 Jr documentation update;
+- live firmware source remains unchanged by the cable investigation;
+- candidate UF2 remains `xgo_live_controller.uf2`, 18,944 bytes, SHA-256 `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`;
+- R/GP2, B/GP7, LEFT/GP12 and RIGHT/GP13 are hardware-proven;
+- Frankie V2 Jr independently reproduces the special cable topology and LEFT/RIGHT pass.
+
+**Do not merge/promote to full golden yet:** Y/GP3, X/GP4, L/GP5, A/GP6, SELECT/GP8, START/GP9, UP/GP10 and DOWN/GP11 still need direct hardware confirmation. This is the only remaining hardware gate for the minimal 12-button golden reference. After those eight pass (plus a quick recheck of the four proven inputs), freeze the exact UF2/hash, update the artifact index/preservation record as appropriate, mark PR #59 ready, and merge before beginning GP2040-CE integration.
+
+Cable archaeology is now documented separately in `findings/rp2040-xgo-frankie-cable-contract.md`; the live-controller README contains the physical V2 Jr wiring diagram and the accidental-discovery notes.
+
+
+### 2026-10-07 FULL 12-BUTTON HARDWARE PASS — STREET FIGHTER II
+
+The minimal live GPIO controller has now completed its golden hardware gate. All 12 mapped inputs were confirmed on the physical XGO using Street Fighter II: R/GP2, Y/GP3, X/GP4, L/GP5, A/GP6, B/GP7, SELECT/GP8, START/GP9, UP/GP10, DOWN/GP11, LEFT/GP12 and RIGHT/GP13.
+
+Cable/mechanical note: the connector donated from Frankie V1 to Frankie V2 Jr developed an intermittent BLACK-to-GREEN short that shut the XGO down. The connector was reinforced with conformal coating and heat-shrink tubing. Preserve this as a mechanical construction failure, not a responder/serializer failure.
+
+Frankie V1 parts-donor correction: one V1 connector was successfully salvaged for Frankie Jr.; the other became unusable after excessive soldering heat damaged/lifted one pad. Earlier wording describing the Jr. connector as fresh/new should be considered superseded.
+
+Status: ALL 12 INPUTS HW PASS. The live firmware itself was not changed for this result. Candidate remains `xgo_live_controller.uf2`, 18,944 bytes, SHA-256 `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`. The remaining golden-promotion work is repository/preservation closure and PR #59 merge before GP2040-CE integration.
+
+
+### 2026-10-07 FINAL CI REBUILD / GOLDEN PRESERVATION NOTE
+
+PR-head CI run 37657217646 completed successfully at commit b4ae1f6b12fbad40898f28d3c0661152e5c074b1. Build, no-TinyUSB proof, hash step and artifact upload all passed. Artifact: xgo-live-gpio-controller, ID 11499656442.
+
+Important reproducibility finding: the fresh CI rebuild produced UF2 SHA-256 `fde724c374ae3cbabdbc58086d921d67d9643f3a6d254b2a109cc1ca51131732`, which differs from the earlier hardware-tested UF2 hash `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`. Source firmware was not intentionally changed during the hardware/cable investigation, so do NOT silently replace the hardware-tested golden hash with the new CI hash. Preserve both facts: `313d...` is the exact HW-tested binary; `fde724...` is the successful final PR-head CI rebuild. The hash mismatch is a build-reproducibility issue to investigate separately and is not evidence of a hardware regression.

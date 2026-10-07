@@ -1,0 +1,46 @@
+name: Build XGO live GPIO controller
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tools/rp2040-xgo-live-controller/**'
+      - '.github/workflows/build-xgo-live-controller.yml'
+  push:
+    branches:
+      - research-rp2040-live-controller
+    paths:
+      - 'tools/rp2040-xgo-live-controller/**'
+      - '.github/workflows/build-xgo-live-controller.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Fetch Pico SDK 1.5.1
+        run: |
+          git clone --depth 1 --branch 1.5.1 https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
+          git -C "$RUNNER_TEMP/pico-sdk" submodule update --init --recursive
+      - name: Configure
+        env:
+          PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
+        run: cmake -S tools/rp2040-xgo-live-controller -B build/live-controller -G Ninja -DPICO_BOARD=pico -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build/live-controller
+      - name: Prove no TinyUSB/USB stdio link
+        run: |
+          ! grep -R -E 'tud_init|tusb_init|stdio_usb_init' build/live-controller/*.map
+      - name: Hash candidate
+        run: sha256sum build/live-controller/xgo_live_controller.uf2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-live-gpio-controller
+          path: |
+            build/live-controller/xgo_live_controller.uf2
+            build/live-controller/xgo_live_controller.elf
+            build/live-controller/xgo_live_controller.map
