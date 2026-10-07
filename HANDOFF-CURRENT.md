@@ -237,3 +237,10 @@ Cable/mechanical note: the connector donated from Frankie V1 to Frankie V2 Jr de
 Frankie V1 parts-donor correction: one V1 connector was successfully salvaged for Frankie Jr.; the other became unusable after excessive soldering heat damaged/lifted one pad. Earlier wording describing the Jr. connector as fresh/new should be considered superseded.
 
 Status: ALL 12 INPUTS HW PASS. The live firmware itself was not changed for this result. Candidate remains `xgo_live_controller.uf2`, 18,944 bytes, SHA-256 `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`. The remaining golden-promotion work is repository/preservation closure and PR #59 merge before GP2040-CE integration.
+
+
+### 2026-10-07 FINAL CI REBUILD / GOLDEN PRESERVATION NOTE
+
+PR-head CI run 37657217646 completed successfully at commit b4ae1f6b12fbad40898f28d3c0661152e5c074b1. Build, no-TinyUSB proof, hash step and artifact upload all passed. Artifact: xgo-live-gpio-controller, ID 11499656442.
+
+Important reproducibility finding: the fresh CI rebuild produced UF2 SHA-256 `fde724c374ae3cbabdbc58086d921d67d9643f3a6d254b2a109cc1ca51131732`, which differs from the earlier hardware-tested UF2 hash `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`. Source firmware was not intentionally changed during the hardware/cable investigation, so do NOT silently replace the hardware-tested golden hash with the new CI hash. Preserve both facts: `313d...` is the exact HW-tested binary; `fde724...` is the successful final PR-head CI rebuild. The hash mismatch is a build-reproducibility issue to investigate separately and is not evidence of a hardware regression.
