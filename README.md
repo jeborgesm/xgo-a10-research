@@ -64,6 +64,8 @@ The handmade prototype cable is mechanically intermittent: an initial LED-off/no
 
 See docs/rp2040-xgo-responder-contract.md, findings/rp2040-xgo-player2-adapter-checkpoint.md, findings/rp2040-native-usb-phy-xgo-transport.md, and tools/rp2040-xgo-native-contra/.
 
+The follow-on live GPIO controller is hardware-proven on R/B/LEFT/RIGHT and uses the same native transport. Cable reconstruction also established a reproducible nonstandard physical connector topology: the original accidental Frankie V1 behavior was isolated during Frankie 3 reconstruction and independently reproduced by Frankie V2 Jr. Preserve the observed solder-pad wiring before assigning conventional USB pin names. See `tools/rp2040-xgo-live-controller/README.md` and `findings/rp2040-xgo-frankie-cable-contract.md`. Full golden promotion remains gated only on direct hardware confirmation of the remaining eight GPIO inputs.
+
 ## Major milestone: Mapper v19
 
 The stock in-game pause menu has a hardware-confirmed fifth `Mapper` option. Six physical controls can be remapped interactively and saved through the existing per-game `.kmp` mechanism. Mapper v19 combines the intact v7 UI geometry with the mature mapper behavior and corrected selector coordinates.
