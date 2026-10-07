@@ -194,3 +194,20 @@ This is the first direct hardware evidence for the missing cable-side condition.
 Preserve this as an electrical-interface finding separate from the RP2040 responder logic: the native responder still consumes the proven DP/D+ DATA/load-like and DM/D- CLOCK-like signals, but the cable/connector state required to make the complete XGO/Pico link operate includes the Frankie 3 Pico-end 2<->4 relationship.
 
 Next archaeology task: reproduce and characterize this 2<->4 condition deliberately on a mechanically robust cable, verify whether it is required only at the Pico end, and document the exact connector-contact orientation before promoting a final cable specification. Do not alter the hardware-proven live-controller serializer to compensate for cable behavior.
+
+
+### 2026-10-07 Frankie V2 Jr — independent reproduction PASS
+
+A fresh cable was constructed from ONE of the original cut Micro-B-to-USB-A four-conductor cables plus a newly soldered 5-pad Micro-B connector. This is independent of the mechanically failed original Frankie V1 and reproduces the live-controller path successfully.
+
+User-recorded physical solder orientation: with the new connector at the top and the three upper connector pads appearing at the bottom, pads were wired:
+- physical pad position labeled/recorded 1 = BLACK
+- 3 = GREEN
+- 5 = RED
+- 2 and 4 = WHITE (shared/bridged)
+
+Hardware result: PASS. XGO live controller works; LEFT and RIGHT GPIO buttons move the character correctly.
+
+IMPORTANT: preserve this physical pad/orientation record exactly. Do NOT silently translate these physical pad labels into canonical USB pin numbers/colors until connector orientation/pin numbering is independently verified. Earlier assumptions mapping red/black/green/white to conventional Micro-USB numbering were not reliable enough. What is now independently proven is the physical V2 Jr wiring above and that the shared WHITE connection across physical positions 2 and 4 produces a working cable.
+
+This converts the earlier accidental Frankie behavior into a reproducible cable construction. The cable-side condition is therefore no longer supported only by Frankie V1/V3 accident evidence.
