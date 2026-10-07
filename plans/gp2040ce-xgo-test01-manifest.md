@@ -105,7 +105,7 @@ Goals:
 - avoid claiming GPIO25 heartbeat ownership from caveman build;
 - preserve a documented WebConfig boot route.
 
-If board config cannot directly set default mode at this revision, use the least invasive storage/default configuration mechanism and document it. Do not hardcode physical button GPIOs inside XGODriver.
+Board config **can** set the default mode at this revision: `src/config_utils.cpp` uses `DEFAULT_INPUT_MODE` when supplied by `BoardConfig.h`, otherwise falling back to XInput. Therefore the dedicated XGO Test01 board config should define `DEFAULT_INPUT_MODE INPUT_MODE_XGO`. Do not hardcode physical button GPIOs inside XGODriver.
 
 ## Web Config
 
@@ -161,3 +161,18 @@ Keep it intentionally boring:
 The purpose of Test01 is one question only:
 
 > Can stock GP2040-CE input processing feed the already-proven XGO native transport without corrupting its electrical/timing contract?
+
+
+## Board-default mechanism confirmed
+
+Pinned upstream `src/config_utils.cpp` explicitly provides:
+
+```cpp
+#ifndef DEFAULT_INPUT_MODE
+#define DEFAULT_INPUT_MODE INPUT_MODE_XINPUT
+#endif
+```
+
+and consumes board configuration through `BoardConfig.h`. Therefore Test01 can boot XGO by default from its dedicated board configuration without altering generic storage semantics or requiring the Web Config UI to understand XGO before the first proof.
+
+This closes manifest open item #6 from the feasibility document.
