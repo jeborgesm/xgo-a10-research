@@ -181,3 +181,16 @@ physical momentary button -> Pico GPIO pull-up input -> 12-bit serialization mas
 The continuous B/R behavior is recorded as controller/input semantics for later investigation, not as a transport failure. The current minimal reference intentionally reports held physical state on every XGO poll and must not be modified before the full 12-input map is tested.
 
 Status: FOUR-BUTTON HARDWARE PASS. Not yet full golden. Next task is to wire and hardware-test the remaining eight inputs (Y, X, L, A, SELECT, START, UP, DOWN), while rechecking the four proven inputs. If all 12 serialize correctly, freeze this exact minimal implementation as the golden live-controller reference before beginning GP2040-CE integration.
+
+
+### 2026-10-07 Frankie 3 cable discovery — HW PROVEN
+
+Original Frankenstein eventually failed mechanically because the stiff Ethernet conductors broke at a Micro-B solder pad. A replacement cable ("Frankie 3") was built.
+
+Critical hardware observation: at the PICO END, shorting Micro-B contacts 2 and 4 caused the live-controller firmware to transition from the three-blink startup-only behavior to continuous successful-frame LED activity, and the physical GPIO buttons then worked on XGO Player 2.
+
+This is the first direct hardware evidence for the missing cable-side condition. The earlier four-wire Frankie 2 tests (straight D+/D- and crossed D+/D-) powered and booted the Pico but did not yield valid responder polling. Do not describe the requirement merely as "five straight-through conductors" or assume conventional USB/OTG semantics. The hardware-proven condition is specifically the observed PICO-END contact 2-to-4 short in Frankie 3.
+
+Preserve this as an electrical-interface finding separate from the RP2040 responder logic: the native responder still consumes the proven DP/D+ DATA/load-like and DM/D- CLOCK-like signals, but the cable/connector state required to make the complete XGO/Pico link operate includes the Frankie 3 Pico-end 2<->4 relationship.
+
+Next archaeology task: reproduce and characterize this 2<->4 condition deliberately on a mechanically robust cable, verify whether it is required only at the Pico end, and document the exact connector-contact orientation before promoting a final cable specification. Do not alter the hardware-proven live-controller serializer to compensate for cable behavior.
