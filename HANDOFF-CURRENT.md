@@ -226,3 +226,14 @@ Offline/repository checks completed before promotion:
 **Do not merge/promote to full golden yet:** Y/GP3, X/GP4, L/GP5, A/GP6, SELECT/GP8, START/GP9, UP/GP10 and DOWN/GP11 still need direct hardware confirmation. This is the only remaining hardware gate for the minimal 12-button golden reference. After those eight pass (plus a quick recheck of the four proven inputs), freeze the exact UF2/hash, update the artifact index/preservation record as appropriate, mark PR #59 ready, and merge before beginning GP2040-CE integration.
 
 Cable archaeology is now documented separately in `findings/rp2040-xgo-frankie-cable-contract.md`; the live-controller README contains the physical V2 Jr wiring diagram and the accidental-discovery notes.
+
+
+### 2026-10-07 FULL 12-BUTTON HARDWARE PASS — STREET FIGHTER II
+
+The minimal live GPIO controller has now completed its golden hardware gate. All 12 mapped inputs were confirmed on the physical XGO using Street Fighter II: R/GP2, Y/GP3, X/GP4, L/GP5, A/GP6, B/GP7, SELECT/GP8, START/GP9, UP/GP10, DOWN/GP11, LEFT/GP12 and RIGHT/GP13.
+
+Cable/mechanical note: the connector donated from Frankie V1 to Frankie V2 Jr developed an intermittent BLACK-to-GREEN short that shut the XGO down. The connector was reinforced with conformal coating and heat-shrink tubing. Preserve this as a mechanical construction failure, not a responder/serializer failure.
+
+Frankie V1 parts-donor correction: one V1 connector was successfully salvaged for Frankie Jr.; the other became unusable after excessive soldering heat damaged/lifted one pad. Earlier wording describing the Jr. connector as fresh/new should be considered superseded.
+
+Status: ALL 12 INPUTS HW PASS. The live firmware itself was not changed for this result. Candidate remains `xgo_live_controller.uf2`, 18,944 bytes, SHA-256 `313d9aefc078c09ffa363f6357b6a78f1c2582c5fce5333d88ec5a102a2ad503`. The remaining golden-promotion work is repository/preservation closure and PR #59 merge before GP2040-CE integration.
