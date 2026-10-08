@@ -176,3 +176,18 @@ Pinned upstream `src/config_utils.cpp` explicitly provides:
 and consumes board configuration through `BoardConfig.h`. Therefore Test01 can boot XGO by default from its dedicated board configuration without altering generic storage semantics or requiring the Web Config UI to understand XGO before the first proof.
 
 This closes manifest open item #6 from the feasibility document.
+
+
+## User requirement update — display and Web Config preservation (2026-10-08)
+
+The user regularly uses displays on their GP2040-CE controllers and frequently uses the web configuration interface. These are **first-class requirements**, not expendable optional features.
+
+Test01 may isolate transport variables temporarily, but must not be presented as the final feature target. Preserve the GP2040-CE display/add-on architecture and keep a reliable boot/reboot path into the standard Web Config server. XGO gameplay owns the native USB PHY; Web Config owns it only in a separate boot mode. Do not claim simultaneous native-USB gameplay and USB Web Config access.
+
+Implementation stages:
+1. Prove XGO transport with GP2040 input processing while leaving display subsystem code intact.
+2. Validate existing I2C/SPI display initialization and Core1 rendering during XGO host-paced gameplay; do not assume success without tests.
+3. Validate reliable entry into Web Config, setting persistence, return to XGO mode, and continued display operation.
+4. Only disable specific display or add-on features if a measured conflict is established and documented.
+
+Review previous minimal-board advice: a dedicated board configuration should retain usable display wiring/options (or a display-capable variant), rather than permanently omit display support. Document how Web Config is entered without assuming the XGO cable can act as a USB data connection at the same time.
