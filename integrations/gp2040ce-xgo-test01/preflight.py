@@ -32,6 +32,9 @@ checks = {
         "#define I2C0_PIN_SDA 0",
         "#define I2C0_PIN_SCL 1",
     ],
+    "headers/display/ui/screens/MainMenuScreen.h": [
+        '#define INPUT_MODE_SINPUT_NAME "SInput"',
+    ],
     "headers/gpdriver.h": [
         "virtual void initialize() = 0;",
         "virtual bool process(Gamepad * gamepad) = 0;",
