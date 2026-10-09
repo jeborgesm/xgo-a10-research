@@ -1,10 +1,6 @@
 name: SF2000 1.71 stock FBA lineage compare
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/sf2000-171-stock-fba-compare.yml'
   workflow_dispatch:
 
 jobs:
