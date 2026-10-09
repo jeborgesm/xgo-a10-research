@@ -19,10 +19,19 @@ jobs:
     steps:
       - name: Checkout XGO research overlay
         uses: actions/checkout@v4
+      # Cache the downloaded APT archives; dpkg still installs the packages on each fresh runner.
+      # Pin the cache key to the runner image and package list, not to changing overlay sources.
+      - name: Cache ARM toolchain APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-arm-gp2040ce-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu2404
+
       - name: Install ARM and build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+          sudo apt-get install -y --download-only cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+          sudo apt-get install -y --no-download cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
       - name: Clone pinned upstream with submodules
         run: |
           git clone https://github.com/OpenStickCommunity/GP2040-CE.git upstream
