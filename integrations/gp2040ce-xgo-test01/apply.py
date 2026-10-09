@@ -49,7 +49,7 @@ replace_once("configs/Pico/BoardConfig.h",
 # Without a matching XGO label, protobuf compilation succeeds but gp2040aux.cpp fails.
 replace_once("headers/display/ui/screens/MainMenuScreen.h",
              '#define INPUT_MODE_SINPUT_NAME "SInput"',
-             '#define INPUT_MODE_SINPUT_NAME "SInput"\\n#define INPUT_MODE_XGO_NAME "XGO"')
+             '#define INPUT_MODE_SINPUT_NAME "SInput"\n#define INPUT_MODE_XGO_NAME "XGO"')
 
 # Protobuf: keep CONFIG=255 unchanged.
 replace_once("proto/enums.proto", "    INPUT_MODE_SINPUT = 17;", "    INPUT_MODE_SINPUT = 17;\n    INPUT_MODE_XGO = 18;")
