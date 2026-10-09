@@ -49,3 +49,7 @@ The backup contains a 1024-byte `splash.splashImage` (SHA256 `04d3c72322118fb98e
 - [ ] Verify Web Config, display, remapping, add-ons and XGO transport on hardware.
 
 No integrated UF2 or hardware validation yet.
+
+## Pinned upstream default initialization (UP, verified)
+
+In `src/config_utils.cpp`, `config.displayOptions` uses `INIT_UNSET_PROPERTY` for `buttonLayout`, `buttonLayoutRight`, `splashMode`, `splashChoice`, `splashDuration`, `size`, `flip`, `invert`, `displaySaverTimeout`, and `displaySaverMode`. Custom left/right layout `common` parameters already default to `startX=8`, `startY=28`, `buttonRadius=8`, `buttonPadding=2`, matching the supplied backup. This means custom coordinate defaults need no override; the remaining numeric layout and splash enum mappings still require compatibility verification.
