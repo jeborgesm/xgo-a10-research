@@ -45,6 +45,7 @@ jobs:
         run: |
           python3 integrations/gp2040ce-xgo-test01/preflight.py upstream
           python3 integrations/gp2040ce-xgo-test01/apply.py upstream
+          python3 integrations/gp2040ce-xgo-test01/validate_generated_headers.py upstream
       - name: Configure Pico firmware with Web Config enabled
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
