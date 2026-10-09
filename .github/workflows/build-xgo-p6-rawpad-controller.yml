@@ -1,8 +1,5 @@
 name: Build XGO P6 raw-pad controller
 on:
-  push:
-    branches: [research-rp2040-controller-adapter]
-    paths: ['tools/rp2040-xgo-p6-rawpad-controller/**','.github/workflows/build-xgo-p6-rawpad-controller.yml']
   workflow_dispatch:
 jobs:
   build:
