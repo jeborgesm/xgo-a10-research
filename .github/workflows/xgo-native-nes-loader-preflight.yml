@@ -2,17 +2,6 @@ name: XGO native NES loader preflight
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/xgo-native-nes-loader-preflight.yml
-      - tools/multicore/native_nes/xgo_nes_loader.c
-      - tools/multicore/native_nes/build_native_nes_asd.py
-      - tools/multicore/native_nes/stage_native_nes_test.py
-      - tools/multicore/probe/xgo_probe_init.s
-      - tools/multicore/probe/xgo_probe_loader.ld
-
 jobs:
   build-native-loader:
     runs-on: ubuntu-22.04

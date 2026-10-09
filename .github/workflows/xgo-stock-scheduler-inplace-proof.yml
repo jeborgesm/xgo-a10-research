@@ -1,13 +1,6 @@
 name: XGO stock scheduler inplace proof
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-stock-scheduler-inplace-proof.yml'
-      - 'tools/cps1/xgo_stock_scheduler_v1.S'
-      - 'tools/cps1/xgo_stock_scheduler_v1.ld'
-      - 'tools/cps1/patch_mapper_v19_stock_scheduler.py'
   workflow_dispatch:
 
 jobs:

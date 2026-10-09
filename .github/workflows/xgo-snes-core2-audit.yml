@@ -1,10 +1,6 @@
 name: XGO SNES Core #2 audit
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-snes-core2-audit.yml'
   workflow_dispatch:
 
 jobs:

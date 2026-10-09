@@ -2,18 +2,6 @@ name: XGO native FCEUmm full link
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/xgo-native-fceumm-full-link.yml
-      - tools/multicore/native_nes/**
-      - tools/multicore/xgo_minimal_environment_shim.c
-      - tools/multicore/xgo_preloaded_rom_sbrk.c
-      - tools/multicore/include/dirent.h
-      - tools/multicore/probe/pack_xgoc.py
-      - tools/multicore/probe/inspect_xgoc.py
-
 jobs:
   full-link:
     runs-on: ubuntu-22.04
