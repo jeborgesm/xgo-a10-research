@@ -53,3 +53,9 @@ No integrated UF2 or hardware validation yet.
 ## Pinned upstream default initialization (UP, verified)
 
 In `src/config_utils.cpp`, `config.displayOptions` uses `INIT_UNSET_PROPERTY` for `buttonLayout`, `buttonLayoutRight`, `splashMode`, `splashChoice`, `splashDuration`, `size`, `flip`, `invert`, `displaySaverTimeout`, and `displaySaverMode`. Custom left/right layout `common` parameters already default to `startX=8`, `startY=28`, `buttonRadius=8`, `buttonPadding=2`, matching the supplied backup. This means custom coordinate defaults need no override; the remaining numeric layout and splash enum mappings still require compatibility verification.
+
+## 2026-10-09 implementation checkpoint
+
+Verified pinned `proto/enums.proto`: `ButtonLayout.BUTTON_LAYOUT_STICK=0`; `ButtonLayoutRight.BUTTON_LAYOUT_FIGHTBOARD=14`. Verified both stock Pico macro anchors each occur once in pinned `configs/Pico/BoardConfig.h`. Integration `apply.py` now substitutes these two **default layout macros** without changing GPIO or persistent settings. Also verified the `BOARD_CONFIG_LABEL` insertion anchor occurs once. This is an offline source-contract check, not an executed overlay or build.
+
+The target upstream `SplashMode` enum uses `SPLASH_MODE_RESERVED_01=1`; do **not** assume the old backup's `splashMode=1` still has equivalent runtime behavior. The user wants stock splash for Test01; leave the splash defaults untouched until semantics are established.
