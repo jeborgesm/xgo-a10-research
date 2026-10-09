@@ -1,14 +1,6 @@
 name: XGO mapper-v19 safe SNES loader
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-native-snes-v19-loader.yml'
-      - 'tools/multicore/native_snes/xgo_snes_loader.c'
-      - 'tools/multicore/native_snes/xgo_snes_loader_v19.ld'
-      - 'tools/multicore/native_snes/build_native_snes_v19_loader.sh'
-      - 'tools/multicore/probe/xgo_probe_init.s'
   workflow_dispatch:
 
 jobs:

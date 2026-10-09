@@ -1,12 +1,6 @@
 name: XGO FCEUmm frontend compile diagnostic
 
 on:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/xgo-fceumm-compile-diagnostic.yml
-      - tools/multicore/**
   workflow_dispatch:
 
 jobs:

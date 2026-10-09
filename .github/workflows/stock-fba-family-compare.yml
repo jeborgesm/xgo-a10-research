@@ -1,10 +1,6 @@
 name: Stock FBA family compare
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/stock-fba-family-compare.yml'
   workflow_dispatch:
 
 jobs:

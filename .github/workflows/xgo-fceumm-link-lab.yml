@@ -12,15 +12,6 @@ name: XGO FCEUmm link lab
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - '.github/workflows/xgo-fceumm-link-lab.yml'
-      - 'tools/multicore/xgo_fceumm_support.c'
-      - 'tools/multicore/xgo_newlib_stubs.c'
-      - 'tools/multicore/analyze_archive_symbols.py'
-      - 'tools/multicore/xgo_stockfw_symbols.ld'
   pull_request:
     branches:
       - main

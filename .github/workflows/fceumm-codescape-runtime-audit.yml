@@ -2,15 +2,6 @@ name: FCEUmm Codescape runtime audit
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/fceumm-codescape-runtime-audit.yml
-      - tools/multicore/native_nes/**
-      - tools/multicore/xgo_minimal_environment_shim.c
-      - tools/multicore/xgo_preloaded_rom_sbrk.c
-
 jobs:
   audit:
     runs-on: ubuntu-22.04

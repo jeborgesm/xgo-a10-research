@@ -2,24 +2,6 @@ name: XGO native FCEUmm return ladder
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/xgo-native-fceumm-return-ladder.yml
-      - tools/multicore/native_nes/xgo_nes_native_frontend.c
-      - tools/multicore/native_nes/xgo_core_entry.s
-      - tools/multicore/native_nes/xgo_gp_bridges.s
-      - tools/multicore/native_nes/xgo_core.ld
-      - tools/multicore/native_nes/xgo_external_stock_services.ld
-      - tools/multicore/native_nes/xgo_newlib_syscalls.c
-      - tools/multicore/native_nes/xgo_stock_gp_redirects.h
-      - tools/multicore/xgo_minimal_environment_shim.c
-      - tools/multicore/xgo_preloaded_rom_sbrk.c
-      - tools/multicore/include/dirent.h
-      - tools/multicore/probe/pack_xgoc.py
-      - tools/multicore/probe/inspect_xgoc.py
-
 jobs:
   stage:
     strategy:

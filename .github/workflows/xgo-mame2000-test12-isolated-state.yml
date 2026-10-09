@@ -1,14 +1,6 @@
 name: XGO MAME2000 Test12 isolated state
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-mame2000-test12-isolated-state.yml'
-      - 'tools/multicore/native_mame2000/**'
-      - 'tools/multicore/native_nes/**'
-      - 'tools/multicore/xgo_minimal_environment_shim.c'
-      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
   workflow_dispatch:
 
 jobs:

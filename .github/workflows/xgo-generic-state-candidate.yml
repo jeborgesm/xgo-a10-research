@@ -2,18 +2,6 @@ name: XGO generic state candidate
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-generic-libretro-runtime
-    paths:
-      - .github/workflows/xgo-generic-state-candidate.yml
-      - tools/multicore/native_nes/**
-      - tools/multicore/xgo_minimal_environment_shim.c
-      - tools/multicore/xgo_preloaded_rom_sbrk.c
-      - tools/multicore/include/dirent.h
-      - tools/multicore/probe/pack_xgoc.py
-      - tools/multicore/probe/inspect_xgoc.py
-
 jobs:
   build:
     runs-on: ubuntu-22.04

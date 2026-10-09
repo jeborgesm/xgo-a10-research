@@ -2,15 +2,6 @@ name: XGO entry return probe
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/xgo-entry-return-probe.yml
-      - tools/multicore/native_nes/xgo_entry_return_probe.s
-      - tools/multicore/probe/pack_xgoc.py
-      - tools/multicore/probe/inspect_xgoc.py
-
 jobs:
   build:
     runs-on: ubuntu-22.04
