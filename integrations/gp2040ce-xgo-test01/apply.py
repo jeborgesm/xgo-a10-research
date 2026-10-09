@@ -66,6 +66,14 @@ replace_once("src/gp2040.cpp", "const tusb_rhport_init_t dev_init = { .role = TU
 \t}""")
 replace_once("src/gp2040.cpp", "\t\ttud_task();", "\t\tif (DriverManager::getInstance().getInputMode() != INPUT_MODE_XGO) tud_task();")
 
+# Test02 isolation: XGO does not consume PIO USB-host input.
+# Avoid invoking USB host processing between time-critical native PHY polls.
+# All ordinary GP2040-CE output modes retain the upstream host behavior.
+replace_once("src/gp2040.cpp",
+             "\t\tUSBHostManager::getInstance().process();",
+             "\t\tif (DriverManager::getInstance().getInputMode() != INPUT_MODE_XGO) USBHostManager::getInstance().process();")
+
+
 for part in ["headers/drivers/xgo/XGODriver.h", "src/drivers/xgo/XGODriver.cpp"]:
     dest = root / part
     dest.parent.mkdir(parents=True, exist_ok=True)
