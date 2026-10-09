@@ -46,4 +46,10 @@ for part in ["headers/drivers/xgo/XGODriver.h", "src/drivers/xgo/XGODriver.cpp"]
     require(not dest.exists(), f"refusing to overwrite {dest}")
     shutil.copy2(overlay / part, dest)
 
+
+# Board-config decision: retain the stock Pico mapping, display and Web Config.
+# GP2040_BOARDCONFIG=Pico is the correct first target; no stripped board overlay.
+# USBHostManager uses PIO USB and is not the native TinyUSB device stack.
+# Its compatibility with XGO and peripheral pin allocation remains an audit gate.
+
 print("Overlay applied. NOT BUILT. Audit USB host, display and boot recovery before flashing.")
