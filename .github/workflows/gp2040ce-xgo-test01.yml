@@ -2,6 +2,12 @@ name: GP2040-CE XGO Test01 experimental build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/gp2040ce-xgo-test01.yml'
+      - 'integrations/gp2040ce-xgo-test01/**'
 
 permissions:
   contents: read
