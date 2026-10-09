@@ -1,0 +1,36 @@
+name: XGO timing probe compile only
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/xgo-timing-probe-compile.yml'
+      - 'tools/rp2040-xgo-timing-probe/**'
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Clone Pico SDK 2.3.1
+        run: |
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git pico-sdk
+          git -C pico-sdk submodule update --init --recursive
+      - name: Configure probe
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+        run: cmake -S tools/rp2040-xgo-timing-probe -B build-timing-probe -G Ninja -DPICO_BOARD=pico -DCMAKE_BUILD_TYPE=Release
+      - name: Compile only, no UF2 published
+        run: cmake --build build-timing-probe --parallel 2
+      - name: Verify executable exists
+        run: test -s build-timing-probe/xgo_timing_probe.elf
