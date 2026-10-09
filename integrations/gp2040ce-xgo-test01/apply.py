@@ -45,6 +45,12 @@ replace_once("configs/Pico/BoardConfig.h",
              "#define BUTTON_LAYOUT_RIGHT BUTTON_LAYOUT_STICKLESSB",
              "#define BUTTON_LAYOUT_RIGHT BUTTON_LAYOUT_FIGHTBOARD")
 
+# The OLED mini-menu references INPUT_MODE_<enum>_NAME macros for every mode.
+# Without a matching XGO label, protobuf compilation succeeds but gp2040aux.cpp fails.
+replace_once("headers/display/ui/screens/MainMenuScreen.h",
+             '#define INPUT_MODE_SINPUT_NAME "SInput"',
+             '#define INPUT_MODE_SINPUT_NAME "SInput"\\n#define INPUT_MODE_XGO_NAME "XGO"')
+
 # Protobuf: keep CONFIG=255 unchanged.
 replace_once("proto/enums.proto", "    INPUT_MODE_SINPUT = 17;", "    INPUT_MODE_SINPUT = 17;\n    INPUT_MODE_XGO = 18;")
 replace_once("src/drivermanager.cpp", '#include "drivers/sinput/SInputDriver.h"', '#include "drivers/sinput/SInputDriver.h"\n#include "drivers/xgo/XGODriver.h"')
