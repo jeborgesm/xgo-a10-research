@@ -1,12 +1,6 @@
 name: Build XGO native Contra carrier
 
 on:
-  push:
-    branches:
-      - research-rp2040-controller-adapter
-    paths:
-      - 'tools/rp2040-xgo-p3-usbphy/**'
-      - '.github/workflows/build-xgo-p3-usbphy.yml'
   pull_request:
     paths:
       - 'tools/rp2040-xgo-p3-usbphy/**'
