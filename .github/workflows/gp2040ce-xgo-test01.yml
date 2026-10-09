@@ -1,0 +1,52 @@
+name: GP2040-CE XGO Test01 experimental build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout XGO research overlay
+        uses: actions/checkout@v4
+      - name: Install ARM and build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+      - name: Clone pinned upstream with submodules
+        run: |
+          git clone https://github.com/OpenStickCommunity/GP2040-CE.git upstream
+          git -C upstream checkout 3d1f32f7d02d418826b725b60208278d3be878c3
+          git -C upstream submodule update --init --recursive
+      - name: Clone Pico SDK 2.3.1
+        run: |
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git pico-sdk
+          git -C pico-sdk submodule update --init --recursive
+      - name: Preflight and apply XGO overlay
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/preflight.py upstream
+          python3 integrations/gp2040ce-xgo-test01/apply.py upstream
+      - name: Configure Pico firmware with Web Config enabled
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          GP2040_BOARDCONFIG: Pico
+        run: cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Compile firmware
+        run: cmake --build upstream/build --parallel 2
+      - name: Collect candidate artifacts (not hardware validated)
+        if: success()
+        run: |
+          mkdir -p artifacts
+          find upstream/build -name '*.uf2' -type f -exec cp {} artifacts/ \;
+          test -n "$(find artifacts -name '*.uf2' -print -quit)"
+          sha256sum artifacts/*.uf2 | tee artifacts/SHA256SUMS.txt
+      - name: Upload experimental UF2
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-gp2040ce-test01-UNTESTED
+          path: artifacts/
