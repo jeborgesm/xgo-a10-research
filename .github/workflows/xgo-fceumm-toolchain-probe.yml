@@ -1,11 +1,6 @@
 name: XGO FCEUmm toolchain probe
 
 on:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - .github/workflows/xgo-fceumm-toolchain-probe.yml
   workflow_dispatch:
 
 jobs:

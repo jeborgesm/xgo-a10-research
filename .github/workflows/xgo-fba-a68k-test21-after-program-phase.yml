@@ -1,15 +1,6 @@
 name: XGO FBA2012 A68K Test21 post-program-ROM probe
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-fba-a68k-test21-after-program-phase.yml'
-      - 'tools/multicore/native_cps1/patch_a68k_mips32_audit.py'
-      - 'tools/multicore/native_cps1/**'
-      - 'tools/multicore/native_nes/**'
-      - 'tools/multicore/xgo_minimal_environment_shim.c'
-      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
   workflow_dispatch:
 
 jobs:

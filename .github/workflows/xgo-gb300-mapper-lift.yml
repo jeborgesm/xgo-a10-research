@@ -1,10 +1,6 @@
 name: XGO GB300 mapper lift
 
 on:
-  push:
-    branches: [ research-gb300-mapper-lift ]
-    paths:
-      - '.github/workflows/xgo-gb300-mapper-lift.yml'
   pull_request:
     branches: [ main ]
   workflow_dispatch:

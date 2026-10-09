@@ -2,15 +2,6 @@ name: XGO loader preflight
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-external-core-integration
-    paths:
-      - '.github/workflows/xgo-loader-preflight.yml'
-      - 'tools/multicore/probe/xgo_probe_loader.c'
-      - 'tools/multicore/probe/xgo_probe_init.s'
-      - 'tools/multicore/probe/xgo_probe_loader.ld'
-      - 'tools/multicore/probe/build_probe_asd.py'
   pull_request:
     branches:
       - main

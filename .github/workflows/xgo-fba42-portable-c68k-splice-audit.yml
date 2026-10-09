@@ -1,10 +1,6 @@
 name: Exact FBA42 portable C68K splice audit
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-fba42-portable-c68k-splice-audit.yml'
   workflow_dispatch:
 
 jobs:
