@@ -1,12 +1,6 @@
 name: Build XGO P4 USBPHY fixed-R responder
 
 on:
-  push:
-    branches:
-      - research-rp2040-controller-adapter
-    paths:
-      - 'tools/rp2040-xgo-p4-usbphy-fixed-r/**'
-      - '.github/workflows/build-xgo-p4-usbphy-fixed-r.yml'
   pull_request:
     paths:
       - 'tools/rp2040-xgo-p4-usbphy-fixed-r/**'
