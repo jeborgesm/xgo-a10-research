@@ -19,6 +19,9 @@ sha = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], tex
 require(sha == PIN, f"upstream revision mismatch: {sha}")
 require(not subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True).strip(), "checkout is dirty")
 
+# Validate all known upstream contracts BEFORE writing any file.
+subprocess.run([sys.executable, str(overlay / "preflight.py"), str(root)], check=True)
+
 def replace_once(path, old, new):
     p = root / path
     s = p.read_text()
