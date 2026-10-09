@@ -28,15 +28,15 @@ for rel, expected in checks.items():
         continue
     source = path.read_text()
     for number, line in enumerate(source.splitlines(), 1):
-        if re.search(r"\\[nr](?=\\s*#)", line):
+        if re.search(r"\[nr](?=\s*#)", line):
             problems.append(f"{rel}:{number}: literal escaped newline before directive")
-        if re.search(r"#define\\s+\\w+.*#define", line):
+        if re.search(r"#define\s+\w+.*#define", line):
             problems.append(f"{rel}:{number}: multiple defines on one line")
     for macro, value in expected.items():
-        pattern = rf"^\\s*#define\\s+{re.escape(macro)}\\s+{re.escape(value)}\\s*$"
+        pattern = rf"^\s*#define\s+{re.escape(macro)}\s+{re.escape(value)}\s*$"
         if len(re.findall(pattern, source, flags=re.MULTILINE)) != 1:
             problems.append(f"{rel}: expected exactly one standalone #define {macro} {value}")
 
 if problems:
-    raise SystemExit("XGO generated-header validation FAILED:\\n" + "\\n".join(problems))
+    raise SystemExit("XGO generated-header validation FAILED:\n" + "\n".join(problems))
 print("XGO generated-header validation passed.")
