@@ -33,7 +33,7 @@ def replace_once(path, old, new):
 # Web Config recovery/entry still requires a separate validation gate.
 replace_once("configs/Pico/BoardConfig.h",
              '#define BOARD_CONFIG_LABEL "Pico"',
-             '#define BOARD_CONFIG_LABEL "Pico"\\n#define DEFAULT_INPUT_MODE INPUT_MODE_XGO')
+             '#define BOARD_CONFIG_LABEL "Pico"\n#define DEFAULT_INPUT_MODE INPUT_MODE_XGO')
 
 # Backup display layout (0.7.12): left 0 = STICK, right 14 = FIGHTBOARD.
 # Both enum names and numeric values match the pinned upstream proto/enums.proto.
