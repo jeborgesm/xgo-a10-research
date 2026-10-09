@@ -1,8 +1,5 @@
 name: Build XGO P5 USBPHY diagnostic responder
 on:
-  push:
-    branches: [research-rp2040-controller-adapter]
-    paths: ['tools/rp2040-xgo-p5-usbphy-diagnostic/**','.github/workflows/build-xgo-p5-usbphy-diagnostic.yml']
   workflow_dispatch:
 jobs:
   build:
