@@ -25,6 +25,13 @@ def replace_once(path, old, new):
     require(s.count(old) == 1, f"expected exactly one anchor in {path}: {old!r}")
     p.write_text(s.replace(old, new, 1))
 
+# Retain stock Pico display, I2C and all arcade GPIO assignments.
+# New installations default to XGO; existing saved inputMode settings may override it.
+# Web Config recovery/entry still requires a separate validation gate.
+replace_once("configs/Pico/BoardConfig.h",
+             '#define BOARD_CONFIG_LABEL "Pico"',
+             '#define BOARD_CONFIG_LABEL "Pico"\\n#define DEFAULT_INPUT_MODE INPUT_MODE_XGO')
+
 # Protobuf: keep CONFIG=255 unchanged.
 replace_once("proto/enums.proto", "    INPUT_MODE_SINPUT = 17;", "    INPUT_MODE_SINPUT = 17;\n    INPUT_MODE_XGO = 18;")
 replace_once("src/drivermanager.cpp", '#include "drivers/sinput/SInputDriver.h"', '#include "drivers/sinput/SInputDriver.h"\n#include "drivers/xgo/XGODriver.h"')
