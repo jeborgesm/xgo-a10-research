@@ -73,6 +73,24 @@ for part in ["headers/drivers/xgo/XGODriver.h", "src/drivers/xgo/XGODriver.cpp"]
     shutil.copy2(overlay / part, dest)
 
 
+# The Web Config frontend maintains its own mode list and translations.
+# The firmware enum/driver alone cannot make XGO selectable in the browser.
+replace_once("www/src/Data/InputBootModes.ts",
+             "export const INPUT_MODE_OPTIONS: InputModeOptions[] = [",
+             """export const INPUT_MODE_OPTIONS: InputModeOptions[] = [
+    {
+        labelKey: 'input-mode-options.xgo',
+        value: InputMode.INPUT_MODE_XGO,
+        group: 'primary',
+        required: [],
+        optional: [],
+        authentication: [],
+        deviceTypes: [],
+    },""")
+replace_once("www/src/Locales/en/SettingsPage.jsx",
+             "\t\tps3: 'PS3',",
+             "\t\tps3: 'PS3',\n\t\txgo: 'XGO (Caveman)',")
+
 # Board-config decision: retain the stock Pico mapping, display and Web Config.
 # GP2040_BOARDCONFIG=Pico is the correct first target; no stripped board overlay.
 # USBHostManager uses PIO USB and is not the native TinyUSB device stack.
