@@ -56,10 +56,12 @@ jobs:
       - name: Collect candidate artifacts (not hardware validated)
         if: success()
         run: |
-          mkdir -p artifacts
-          find upstream/build -name '*.uf2' -type f -exec cp {} artifacts/ \;
-          test -n "$(find artifacts -name '*.uf2' -print -quit)"
-          sha256sum artifacts/*.uf2 | tee artifacts/SHA256SUMS.txt
+          # The research repository already tracks artifacts/; use a fresh isolated folder.
+          rm -rf xgo-gp2040ce-output
+          mkdir -p xgo-gp2040ce-output
+          find upstream/build -name '*.uf2' -type f -exec cp {} xgo-gp2040ce-output/ \\;
+          test "$(find xgo-gp2040ce-output -maxdepth 1 -name '*.uf2' -type f | wc -l)" -eq 1
+          (cd xgo-gp2040ce-output && sha256sum ./*.uf2 > SHA256SUMS.txt)
       - name: Upload experimental UF2
         if: success()
         uses: actions/upload-artifact@v4
