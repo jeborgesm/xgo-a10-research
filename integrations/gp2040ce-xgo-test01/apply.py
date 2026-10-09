@@ -32,6 +32,16 @@ replace_once("configs/Pico/BoardConfig.h",
              '#define BOARD_CONFIG_LABEL "Pico"',
              '#define BOARD_CONFIG_LABEL "Pico"\\n#define DEFAULT_INPUT_MODE INPUT_MODE_XGO')
 
+# Backup display layout (0.7.12): left 0 = STICK, right 14 = FIGHTBOARD.
+# Both enum names and numeric values match the pinned upstream proto/enums.proto.
+# Override only default macros, never stored settings or the stock Pico GPIO map.
+replace_once("configs/Pico/BoardConfig.h",
+             "#define BUTTON_LAYOUT BUTTON_LAYOUT_STICKLESS",
+             "#define BUTTON_LAYOUT BUTTON_LAYOUT_STICK")
+replace_once("configs/Pico/BoardConfig.h",
+             "#define BUTTON_LAYOUT_RIGHT BUTTON_LAYOUT_STICKLESSB",
+             "#define BUTTON_LAYOUT_RIGHT BUTTON_LAYOUT_FIGHTBOARD")
+
 # Protobuf: keep CONFIG=255 unchanged.
 replace_once("proto/enums.proto", "    INPUT_MODE_SINPUT = 17;", "    INPUT_MODE_SINPUT = 17;\n    INPUT_MODE_XGO = 18;")
 replace_once("src/drivermanager.cpp", '#include "drivers/sinput/SInputDriver.h"', '#include "drivers/sinput/SInputDriver.h"\n#include "drivers/xgo/XGODriver.h"')
