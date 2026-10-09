@@ -1,14 +1,6 @@
 name: XGO CPS1 Test11 no speedhacks
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-cps1-test11-no-speedhacks.yml'
-      - 'tools/multicore/native_cps1/**'
-      - 'tools/multicore/native_nes/**'
-      - 'tools/multicore/xgo_minimal_environment_shim.c'
-      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
   workflow_dispatch:
 
 jobs:

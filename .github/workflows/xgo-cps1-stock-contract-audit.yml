@@ -1,16 +1,6 @@
 name: XGO CPS1 stock-contract build audit
 
 on:
-  push:
-    branches: [ research-post-mapper-runtime ]
-    paths:
-      - '.github/workflows/xgo-cps1-stock-contract-audit.yml'
-      - 'tools/multicore/native_cps1/patch_stock_fba_contract.py'
-      - 'tools/multicore/native_cps1/xgo_cps1_native_frontend.c'
-      - 'tools/multicore/native_cps1/xgo_cps1_environment.c'
-      - 'tools/multicore/native_nes/**'
-      - 'tools/multicore/xgo_minimal_environment_shim.c'
-      - 'tools/multicore/xgo_preloaded_rom_sbrk.c'
   workflow_dispatch:
 
 jobs:
