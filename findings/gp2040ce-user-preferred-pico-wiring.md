@@ -29,7 +29,7 @@ Source: user-provided `picowiring-BIG-V4.png`. This is the requested physical-co
 | GP20 | A1 | Home/PS/XB |
 | GP21 | A2 | Touchpad/Select Back |
 
-The OLED diagram labels its pins VCC/GND/SCL/SDA and connects SDA→GP0, SCL→GP1. The diagram draws VCC from VBUS and ground from Pico ground; **electrical suitability of a particular OLED module at that supply voltage must be checked before wiring**. Diagram also shows an additional indicator LED with a 4.7V annotation; do not infer an adequate resistor/current-limiting circuit from this drawing.
+The OLED diagram labels its pins VCC/GND/SCL/SDA and connects SDA→GP0, SCL→GP1. The diagram draws VCC from VBUS and ground from Pico ground; **HW (user-confirmed): this exact VBUS-powered OLED arrangement already works across the user's existing controllers; do not reopen voltage compatibility for these modules**. Diagram also shows an additional indicator LED with a 4.7V annotation; do not infer an adequate resistor/current-limiting circuit from this drawing.
 
 ## User-selected target
 
@@ -49,4 +49,4 @@ Earlier manifest advice to use a minimal board configuration was a *transport-is
 
 ## Status
 
-User reference and upstream source comparison documented. Integrated firmware not compiled or hardware tested. OLED voltage compatibility, Web Config boot chords, Turbo behavior and Core1 display responsiveness remain OPEN.
+User reference and upstream source comparison documented. Integrated firmware not compiled or hardware tested. OLED VBUS power and existing GP0/GP1 display wiring are HW (user-confirmed). Web Config boot chords, Turbo behavior and Core1 display responsiveness in the *integrated XGO firmware* remain OPEN.
