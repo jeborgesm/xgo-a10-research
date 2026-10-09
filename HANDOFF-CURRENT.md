@@ -1,3 +1,13 @@
+## 2026-10-09 XGO GP2040-CE build checkpoint
+
+Branch: `research-gp2040ce-xgo-integration`. Latest build infrastructure: `.github/workflows/gp2040ce-xgo-test01.yml` (manual `workflow_dispatch` only). It checks out GP2040-CE at `3d1f32f7d02d418826b725b60208278d3be878c3`, runs `integrations/gp2040ce-xgo-test01/preflight.py` then `apply.py`, builds Pico with Web Config enabled, and uploads an explicitly UNTESTED UF2 only if compilation succeeds. **No successful integrated compile or hardware test is established.** A user or authorized workflow trigger must execute it; do not imply a successful build from the existence of this YAML.
+
+User's 0.7.12 Pico backup display layout is left `BUTTON_LAYOUT_STICK` (0) and right `BUTTON_LAYOUT_FIGHTBOARD` (14); the overlay now defaults to these layouts, preserving stock GP0/GP1 I2C and full buttons. Existing VBUS OLED wiring is user-proven. Stock splash retained; future XGO-branded splash deferred. The standalone Caveman golden source and firmware remain protected.
+
+Next: trigger CI, inspect logs and fix actual compiler errors; audit runtime XGO/Web Config mode switching, then hardware-test only a successfully built candidate.
+
+---
+
 # XGO ARCHEOLOGY — HANDOFF
 ## Native RP2040 XGO transport CLOSED; live GPIO controller awaiting final 12-input golden check
 ## Date: 2026-10-07
