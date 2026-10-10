@@ -76,13 +76,13 @@ for part in ["headers/drivers/xgo/XGODriver.h", "headers/drivers/xgo/XGODiagnost
 
 # Test05: capture raw state before processing, then processed state before output.
 # Pack dpad in bits 16..23 and buttons in bits 0..15.
-replace_once("src/gp2040.cpp", '#include "gamepad.h"', '#include "gamepad.h"\\n#include "drivers/xgo/XGODiagnostics.h"'.replace('\\n', '\\n'))
-replace_once("src/gp2040.cpp", '\\t\\tgamepad->read();', '\\t\\tgamepad->read();\\n\\t\\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\\n\\t\\t\\txgo_diag_raw.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);')
-replace_once("src/gp2040.cpp", '\\t\\tbool processed = inputDriver->process(gamepad);', '\\t\\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\\n\\t\\t\\txgo_diag_processed.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);\\n\\t\\tbool processed = inputDriver->process(gamepad);')
+replace_once("src/gp2040.cpp", '#include "gamepad.h"', '#include "gamepad.h"\n#include "drivers/xgo/XGODiagnostics.h"')
+replace_once("src/gp2040.cpp", '\t\tgamepad->read();', '\t\tgamepad->read();\n\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_raw.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);')
+replace_once("src/gp2040.cpp", '\t\tbool processed = inputDriver->process(gamepad);', '\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_processed.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);\n\t\tbool processed = inputDriver->process(gamepad);')
 
 # Draw a compact three-line hex readout on the existing button-layout screen.
-replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '#include "ButtonLayoutScreen.h"', '#include "ButtonLayoutScreen.h"\\n#include "drivers/xgo/XGODiagnostics.h"\\n#include <cstdio>\\n#include "drivermanager.h"')
-replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '    getRenderer()->drawText(0, 7, footer);\\n}', '''    getRenderer()->drawText(0, 7, footer);
+replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '#include "ButtonLayoutScreen.h"', '#include "ButtonLayoutScreen.h"\n#include "drivers/xgo/XGODiagnostics.h"\n#include <cstdio>\n#include "drivermanager.h"')
+replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '    getRenderer()->drawText(0, 7, footer);\n}', '''    getRenderer()->drawText(0, 7, footer);
     if (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO) {
         char line[24];
         const uint32_t raw = xgo_diag_raw.load(std::memory_order_relaxed);
