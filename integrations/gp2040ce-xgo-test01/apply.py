@@ -80,21 +80,15 @@ replace_once("src/gp2040.cpp", '#include "gp2040.h"', '#include "gp2040.h"\n#inc
 replace_once("src/gp2040.cpp", '\t\tgamepad->read();', '\t\tgamepad->read();\n\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_raw.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);')
 replace_once("src/gp2040.cpp", '\t\tbool processed = inputDriver->process(gamepad);', '\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_processed.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);\n\t\tbool processed = inputDriver->process(gamepad);')
 
-# Test06: use the existing GP2040-CE screen lifecycle, not an overlay on input history.
-replace_once("headers/display/GPGFX_UI_screens.h",
-             '#include "ui/screens/ButtonLayoutScreen.h"',
-             '#include "ui/screens/ButtonLayoutScreen.h"\n#include "ui/screens/XGODiagnosticScreen.h"')
-replace_once("src/addons/display.cpp",
-             'gpScreen = new ButtonLayoutScreen(gpDisplay);',
-             'gpScreen = DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO\n                ? static_cast<GPScreen*>(new XGODiagnosticScreen(gpDisplay))\n                : static_cast<GPScreen*>(new ButtonLayoutScreen(gpDisplay));')
-replace_once("CMakeLists.txt",
-             "src/display/ui/screens/StatsScreen.cpp",
-             "src/display/ui/screens/StatsScreen.cpp\nsrc/display/ui/screens/XGODiagnosticScreen.cpp")
-for part in ["headers/display/ui/screens/XGODiagnosticScreen.h", "src/display/ui/screens/XGODiagnosticScreen.cpp"]:
-    dest = root / part
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    require(not dest.exists(), f"refusing to overwrite {dest}")
-    shutil.copy2(overlay / part, dest)
+# Test13: restore GP2040-CE's normal button layout and Input History.
+# Keep diagnostics in the driver, but do not replace the user-facing OLED screen.
+# XGO uses Xbox/XInput history labels (A/B/X/Y, LB/RB, LT/RT).
+replace_once("headers/display/ui/screens/ButtonLayoutScreen.h",
+             "            {INPUT_MODE_XINPUT, 2},",
+             "            {INPUT_MODE_XINPUT, 2},\n            {INPUT_MODE_XGO, 2},")
+replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp",
+             "            case INPUT_MODE_SINPUT: statusBar += \"SINPUT\"; break;",
+             "            case INPUT_MODE_SINPUT: statusBar += \"SINPUT\"; break;\n            case INPUT_MODE_XGO: statusBar += \"XGO\"; break;")
 
 # The Web Config frontend maintains its own mode list and translations.
 # The firmware enum/driver alone cannot make XGO selectable in the browser.
