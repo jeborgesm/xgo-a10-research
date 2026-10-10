@@ -80,22 +80,21 @@ replace_once("src/gp2040.cpp", '#include "gp2040.h"', '#include "gp2040.h"\n#inc
 replace_once("src/gp2040.cpp", '\t\tgamepad->read();', '\t\tgamepad->read();\n\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_raw.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);')
 replace_once("src/gp2040.cpp", '\t\tbool processed = inputDriver->process(gamepad);', '\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_processed.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);\n\t\tbool processed = inputDriver->process(gamepad);')
 
-# Draw a compact three-line hex readout on the existing button-layout screen.
-replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '#include "ButtonLayoutScreen.h"', '#include "ButtonLayoutScreen.h"\n#include "drivers/xgo/XGODiagnostics.h"\n#include <cstdio>\n#include "drivermanager.h"')
-replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '    getRenderer()->drawText(0, 7, footer);\n}', '''    getRenderer()->drawText(0, 7, footer);
-    if (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO) {
-        char line[24];
-        const uint32_t raw = xgo_diag_raw.load(std::memory_order_relaxed);
-        const uint32_t proc = xgo_diag_processed.load(std::memory_order_relaxed);
-        const uint32_t out = xgo_diag_output.load(std::memory_order_relaxed);
-        std::snprintf(line, sizeof(line), "R:%02X/%04X", unsigned(raw >> 16) & 255u, unsigned(raw & 65535u));
-        getRenderer()->drawText(0, 40, line);
-        std::snprintf(line, sizeof(line), "P:%02X/%04X", unsigned(proc >> 16) & 255u, unsigned(proc & 65535u));
-        getRenderer()->drawText(0, 48, line);
-        std::snprintf(line, sizeof(line), "XGO:%03X", unsigned(out & 4095u));
-        getRenderer()->drawText(0, 56, line);
-    }
-}''')
+# Test06: use the existing GP2040-CE screen lifecycle, not an overlay on input history.
+replace_once("headers/display/GPGFX_UI_screens.h",
+             '#include "ui/screens/ButtonLayoutScreen.h"',
+             '#include "ui/screens/ButtonLayoutScreen.h"\n#include "ui/screens/XGODiagnosticScreen.h"')
+replace_once("src/addons/display.cpp",
+             'gpScreen = new ButtonLayoutScreen(gpDisplay);',
+             'gpScreen = DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO\n                ? static_cast<GPScreen*>(new XGODiagnosticScreen(gpDisplay))\n                : static_cast<GPScreen*>(new ButtonLayoutScreen(gpDisplay));')
+replace_once("CMakeLists.txt",
+             "src/display/ui/screens/StatsScreen.cpp",
+             "src/display/ui/screens/StatsScreen.cpp\nsrc/display/ui/screens/XGODiagnosticScreen.cpp")
+for part in ["headers/display/ui/screens/XGODiagnosticScreen.h", "src/display/ui/screens/XGODiagnosticScreen.cpp"]:
+    dest = root / part
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    require(not dest.exists(), f"refusing to overwrite {dest}")
+    shutil.copy2(overlay / part, dest)
 
 # The Web Config frontend maintains its own mode list and translations.
 # The firmware enum/driver alone cannot make XGO selectable in the browser.
