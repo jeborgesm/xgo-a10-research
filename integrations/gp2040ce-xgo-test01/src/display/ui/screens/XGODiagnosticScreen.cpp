@@ -17,4 +17,8 @@ void XGODiagnosticScreen::drawScreen() {
     getRenderer()->drawText(0, 3, line);
     std::snprintf(line, sizeof(line), "XGO MASK %03X", unsigned(output & 4095u));
     getRenderer()->drawText(0, 4, line);
+    std::snprintf(line, sizeof(line), "OK %lu FAIL %lu", (unsigned long)xgo_diag_frames_ok.load(std::memory_order_relaxed), (unsigned long)xgo_diag_frames_failed.load(std::memory_order_relaxed));
+    getRenderer()->drawText(0, 5, line);
+    std::snprintf(line, sizeof(line), "LOAD TO %lu", (unsigned long)xgo_diag_load_timeouts.load(std::memory_order_relaxed));
+    getRenderer()->drawText(0, 6, line);
 }
