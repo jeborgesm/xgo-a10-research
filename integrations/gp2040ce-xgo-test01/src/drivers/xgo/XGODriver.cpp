@@ -91,6 +91,18 @@ uint16_t map_mask(Gamepad *g) {
 // Core1 (OLED/add-ons) remains untouched.
 bool emit_frame(uint16_t mask) {
  data_release();
+ // Test12 recovery: after a failed active transaction, do not interpret
+ // the same host LOAD-low interval as another new frame. Require DATA
+ // high before rearming. This only affects the failure path.
+ static bool require_idle_high = false;
+ if (require_idle_high) {
+  if (!wait_data(true, LOAD_TIMEOUT_US)) {
+   xgo_diag_load_timeouts.fetch_add(1, std::memory_order_relaxed);
+   return false;
+  }
+  require_idle_high = false;
+ }
+
  if (!wait_data(false, LOAD_TIMEOUT_US)) { xgo_diag_load_timeouts.fetch_add(1, std::memory_order_relaxed); data_release(); return false; }
 
  xgo_diag_active_attempts.fetch_add(1, std::memory_order_relaxed);
@@ -119,6 +131,7 @@ bool emit_frame(uint16_t mask) {
  xgo_diag_load_low_last_us.store(low_duration, std::memory_order_relaxed);
  uint32_t maximum = xgo_diag_load_low_max_us.load(std::memory_order_relaxed);
  if (low_duration > maximum) xgo_diag_load_low_max_us.store(low_duration, std::memory_order_relaxed);
+ if (!complete) require_idle_high = true;
  if (complete) {
   previous_active_success = true;
   active_failure_streak = 0;
