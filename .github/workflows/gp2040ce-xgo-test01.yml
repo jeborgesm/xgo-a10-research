@@ -1,4 +1,4 @@
-name: GP2040-CE XGO Test08 experimental build
+name: GP2040-CE XGO Test09 experimental build
 
 on:
   workflow_dispatch:
@@ -66,5 +66,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: xgo-gp2040ce-test08-UNTESTED
+          name: xgo-gp2040ce-test09-UNTESTED
           path: xgo-gp2040ce-output/
