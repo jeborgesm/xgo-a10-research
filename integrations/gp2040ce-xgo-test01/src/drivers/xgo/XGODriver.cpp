@@ -12,6 +12,9 @@
 std::atomic<uint32_t> xgo_diag_raw{0};
 std::atomic<uint32_t> xgo_diag_processed{0};
 std::atomic<uint32_t> xgo_diag_output{0};
+std::atomic<uint32_t> xgo_diag_frames_ok{0};
+std::atomic<uint32_t> xgo_diag_frames_failed{0};
+std::atomic<uint32_t> xgo_diag_load_timeouts{0};
 namespace {
 constexpr uint32_t EDGE_TIMEOUT_US = 12;
 constexpr uint32_t LOAD_TIMEOUT_US = 20000;
@@ -70,7 +73,7 @@ uint16_t map_mask(Gamepad *g) {
 // Core1 (OLED/add-ons) remains untouched.
 bool emit_frame(uint16_t mask) {
  data_release();
- if (!wait_data(false, LOAD_TIMEOUT_US)) { data_release(); return false; }
+ if (!wait_data(false, LOAD_TIMEOUT_US)) { xgo_diag_load_timeouts.fetch_add(1, std::memory_order_relaxed); data_release(); return false; }
 
  // Test04: the host's LOAD release-to-slot-0 interval is only 12us.
  // Test03 left this critical edge vulnerable to interrupt preemption.
@@ -100,5 +103,8 @@ void XGODriver::initialize() { raw_init(); }
 bool XGODriver::process(Gamepad *gamepad) {
  const uint16_t snapshot = map_mask(gamepad);
  xgo_diag_output.store(snapshot, std::memory_order_relaxed);
- return emit_frame(snapshot);
+ const bool complete = emit_frame(snapshot);
+ if (complete) xgo_diag_frames_ok.fetch_add(1, std::memory_order_relaxed);
+ else xgo_diag_frames_failed.fetch_add(1, std::memory_order_relaxed);
+ return complete;
 }
