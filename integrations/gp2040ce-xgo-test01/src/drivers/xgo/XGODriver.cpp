@@ -30,6 +30,7 @@ std::atomic<uint32_t> xgo_diag_active_failures{0};
 std::atomic<uint32_t> xgo_diag_fail_after_success{0};
 std::atomic<uint32_t> xgo_diag_consecutive_active_failures{0};
 std::atomic<uint32_t> xgo_diag_max_active_failure_streak{0};
+namespace { std::atomic<uint16_t> published_mask{0}; }
 namespace { bool previous_active_success = false; uint32_t active_failure_streak = 0; }
 namespace { uint16_t previous_snapshot = 0; }
 
@@ -150,7 +151,16 @@ bool emit_frame(uint16_t mask) {
 
 } // namespace
 
-void XGODriver::initialize() { raw_init(); }
+void XGODriver::initialize() { /* USB PHY belongs exclusively to Core1 responder. */ }
+void XGODriver::runResponder() {
+ raw_init();
+ while (true) {
+  const uint16_t snapshot = published_mask.load(std::memory_order_acquire);
+  const bool complete = emit_frame(snapshot);
+  if (complete) xgo_diag_frames_ok.fetch_add(1, std::memory_order_relaxed);
+  else xgo_diag_frames_failed.fetch_add(1, std::memory_order_relaxed);
+ }
+}
 bool XGODriver::process(Gamepad *gamepad) {
  const uint16_t snapshot = map_mask(gamepad);
  if (snapshot != previous_snapshot) {
@@ -161,8 +171,6 @@ bool XGODriver::process(Gamepad *gamepad) {
  if (snapshot == 0) xgo_diag_zero_frames.fetch_add(1, std::memory_order_relaxed);
  else xgo_diag_last_nonzero_mask.store(snapshot, std::memory_order_relaxed);
  xgo_diag_output.store(snapshot, std::memory_order_relaxed);
- const bool complete = emit_frame(snapshot);
- if (complete) xgo_diag_frames_ok.fetch_add(1, std::memory_order_relaxed);
- else xgo_diag_frames_failed.fetch_add(1, std::memory_order_relaxed);
- return complete;
+ published_mask.store(snapshot, std::memory_order_release);
+ return true;
 }
