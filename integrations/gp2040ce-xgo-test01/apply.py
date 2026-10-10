@@ -76,7 +76,7 @@ for part in ["headers/drivers/xgo/XGODriver.h", "headers/drivers/xgo/XGODiagnost
 
 # Test05: capture raw state before processing, then processed state before output.
 # Pack dpad in bits 16..23 and buttons in bits 0..15.
-replace_once("src/gp2040.cpp", '#include "gamepad.h"', '#include "gamepad.h"\n#include "drivers/xgo/XGODiagnostics.h"')
+replace_once("src/gp2040.cpp", '#include "gp2040.h"', '#include "gp2040.h"\n#include "drivers/xgo/XGODiagnostics.h"')
 replace_once("src/gp2040.cpp", '\t\tgamepad->read();', '\t\tgamepad->read();\n\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_raw.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);')
 replace_once("src/gp2040.cpp", '\t\tbool processed = inputDriver->process(gamepad);', '\t\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\n\t\t\txgo_diag_processed.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);\n\t\tbool processed = inputDriver->process(gamepad);')
 
