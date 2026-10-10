@@ -67,12 +67,16 @@ uint16_t map_mask(Gamepad *g) {
 bool emit_frame(uint16_t mask) {
  data_release();
  if (!wait_data(false, LOAD_TIMEOUT_US)) { data_release(); return false; }
- if (!wait_data(true, EDGE_TIMEOUT_US)) { data_release(); return false; }
 
+ // Test04: the host's LOAD release-to-slot-0 interval is only 12us.
+ // Test03 left this critical edge vulnerable to interrupt preemption.
+ // Never mask interrupts during the potentially 20ms LOAD acquisition.
  const uint32_t irq_state = save_and_disable_interrupts();
- bool complete = true;
- if (mask & 1u) data_sink(); else data_release();
- for (unsigned slot = 1; slot < 12; ++slot) {
+ bool complete = wait_data(true, EDGE_TIMEOUT_US);
+ if (complete) {
+  if (mask & 1u) data_sink(); else data_release();
+ }
+ for (unsigned slot = 1; complete && slot < 12; ++slot) {
   if (!wait_clock(false, EDGE_TIMEOUT_US)) { complete = false; break; }
   if (mask & (1u << slot)) data_sink(); else data_release();
   if (!wait_clock(true, EDGE_TIMEOUT_US)) { complete = false; break; }
