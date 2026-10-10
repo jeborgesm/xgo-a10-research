@@ -21,3 +21,10 @@ extern std::atomic<uint32_t> xgo_diag_mask_changes;
 extern std::atomic<uint32_t> xgo_diag_zero_frames;
 extern std::atomic<uint32_t> xgo_diag_last_nonzero_mask;
 extern std::atomic<uint32_t> xgo_diag_nonzero_to_zero;
+// Test11: distinguish missed LOAD acquisition from active-frame failures.
+// A frame attempt starts only after DATA LOW is detected.
+extern std::atomic<uint32_t> xgo_diag_active_attempts;
+extern std::atomic<uint32_t> xgo_diag_active_failures;
+extern std::atomic<uint32_t> xgo_diag_fail_after_success;
+extern std::atomic<uint32_t> xgo_diag_consecutive_active_failures;
+extern std::atomic<uint32_t> xgo_diag_max_active_failure_streak;
