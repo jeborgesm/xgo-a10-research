@@ -21,6 +21,12 @@ std::atomic<uint32_t> xgo_diag_last_failure_slot{0};
 std::atomic<uint32_t> xgo_diag_load_low_last_us{0};
 std::atomic<uint32_t> xgo_diag_load_low_max_us{0};
 std::atomic<uint32_t> xgo_diag_clock_failure_slots[13]{};
+std::atomic<uint32_t> xgo_diag_mask_changes{0};
+std::atomic<uint32_t> xgo_diag_zero_frames{0};
+std::atomic<uint32_t> xgo_diag_last_nonzero_mask{0};
+std::atomic<uint32_t> xgo_diag_nonzero_to_zero{0};
+namespace { uint16_t previous_snapshot = 0; }
+
 namespace {
 constexpr uint32_t EDGE_TIMEOUT_US = 12;
 constexpr uint32_t LOAD_TIMEOUT_US = 20000;
@@ -114,6 +120,13 @@ bool emit_frame(uint16_t mask) {
 void XGODriver::initialize() { raw_init(); }
 bool XGODriver::process(Gamepad *gamepad) {
  const uint16_t snapshot = map_mask(gamepad);
+ if (snapshot != previous_snapshot) {
+  xgo_diag_mask_changes.fetch_add(1, std::memory_order_relaxed);
+  if (snapshot == 0 && previous_snapshot != 0) xgo_diag_nonzero_to_zero.fetch_add(1, std::memory_order_relaxed);
+  previous_snapshot = snapshot;
+ }
+ if (snapshot == 0) xgo_diag_zero_frames.fetch_add(1, std::memory_order_relaxed);
+ else xgo_diag_last_nonzero_mask.store(snapshot, std::memory_order_relaxed);
  xgo_diag_output.store(snapshot, std::memory_order_relaxed);
  const bool complete = emit_frame(snapshot);
  if (complete) xgo_diag_frames_ok.fetch_add(1, std::memory_order_relaxed);
