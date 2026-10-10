@@ -12,3 +12,7 @@ extern std::atomic<uint32_t> xgo_diag_load_timeouts;
 extern std::atomic<uint32_t> xgo_diag_release_timeouts;
 extern std::atomic<uint32_t> xgo_diag_clock_timeouts;
 extern std::atomic<uint32_t> xgo_diag_last_failure_slot;
+// Test09: coarse microsecond observations; no changes to serial thresholds.
+extern std::atomic<uint32_t> xgo_diag_load_low_last_us;
+extern std::atomic<uint32_t> xgo_diag_load_low_max_us;
+extern std::atomic<uint32_t> xgo_diag_clock_failure_slots[13];
