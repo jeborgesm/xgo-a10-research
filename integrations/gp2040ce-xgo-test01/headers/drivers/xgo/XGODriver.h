@@ -4,6 +4,8 @@
 class XGODriver final : public GPDriver {
 public:
  void initialize() override;
+ // Core1-only, dedicated USB PHY transaction loop in XGO mode.
+ static void runResponder();
  void initializeAux() override {}
  bool process(Gamepad *gamepad) override;
  void processAux() override {}
