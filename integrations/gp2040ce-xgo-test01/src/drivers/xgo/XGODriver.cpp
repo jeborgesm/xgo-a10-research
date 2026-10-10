@@ -25,6 +25,12 @@ std::atomic<uint32_t> xgo_diag_mask_changes{0};
 std::atomic<uint32_t> xgo_diag_zero_frames{0};
 std::atomic<uint32_t> xgo_diag_last_nonzero_mask{0};
 std::atomic<uint32_t> xgo_diag_nonzero_to_zero{0};
+std::atomic<uint32_t> xgo_diag_active_attempts{0};
+std::atomic<uint32_t> xgo_diag_active_failures{0};
+std::atomic<uint32_t> xgo_diag_fail_after_success{0};
+std::atomic<uint32_t> xgo_diag_consecutive_active_failures{0};
+std::atomic<uint32_t> xgo_diag_max_active_failure_streak{0};
+namespace { bool previous_active_success = false; uint32_t active_failure_streak = 0; }
 namespace { uint16_t previous_snapshot = 0; }
 
 namespace {
@@ -87,6 +93,7 @@ bool emit_frame(uint16_t mask) {
  data_release();
  if (!wait_data(false, LOAD_TIMEOUT_US)) { xgo_diag_load_timeouts.fetch_add(1, std::memory_order_relaxed); data_release(); return false; }
 
+ xgo_diag_active_attempts.fetch_add(1, std::memory_order_relaxed);
  // Test04: the host's LOAD release-to-slot-0 interval is only 12us.
  // Test03 left this critical edge vulnerable to interrupt preemption.
  // Never mask interrupts during the potentially 20ms LOAD acquisition.
@@ -112,6 +119,19 @@ bool emit_frame(uint16_t mask) {
  xgo_diag_load_low_last_us.store(low_duration, std::memory_order_relaxed);
  uint32_t maximum = xgo_diag_load_low_max_us.load(std::memory_order_relaxed);
  if (low_duration > maximum) xgo_diag_load_low_max_us.store(low_duration, std::memory_order_relaxed);
+ if (complete) {
+  previous_active_success = true;
+  active_failure_streak = 0;
+  xgo_diag_consecutive_active_failures.store(0, std::memory_order_relaxed);
+ } else {
+  xgo_diag_active_failures.fetch_add(1, std::memory_order_relaxed);
+  if (previous_active_success) xgo_diag_fail_after_success.fetch_add(1, std::memory_order_relaxed);
+  previous_active_success = false;
+  ++active_failure_streak;
+  xgo_diag_consecutive_active_failures.store(active_failure_streak, std::memory_order_relaxed);
+  const uint32_t peak = xgo_diag_max_active_failure_streak.load(std::memory_order_relaxed);
+  if (active_failure_streak > peak) xgo_diag_max_active_failure_streak.store(active_failure_streak, std::memory_order_relaxed);
+ }
  return complete;
 }
 
