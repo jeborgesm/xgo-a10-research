@@ -67,12 +67,35 @@ replace_once("src/gp2040.cpp", "const tusb_rhport_init_t dev_init = { .role = TU
 replace_once("src/gp2040.cpp", "\t\ttud_task();", "\t\tif (DriverManager::getInstance().getInputMode() != INPUT_MODE_XGO) tud_task();")
 
 
-for part in ["headers/drivers/xgo/XGODriver.h", "src/drivers/xgo/XGODriver.cpp"]:
+for part in ["headers/drivers/xgo/XGODriver.h", "headers/drivers/xgo/XGODiagnostics.h", "src/drivers/xgo/XGODriver.cpp"]:
     dest = root / part
     dest.parent.mkdir(parents=True, exist_ok=True)
     require(not dest.exists(), f"refusing to overwrite {dest}")
     shutil.copy2(overlay / part, dest)
 
+
+# Test05: capture raw state before processing, then processed state before output.
+# Pack dpad in bits 16..23 and buttons in bits 0..15.
+replace_once("src/gp2040.cpp", '#include "gamepad.h"', '#include "gamepad.h"\\n#include "drivers/xgo/XGODiagnostics.h"'.replace('\\n', '\\n'))
+replace_once("src/gp2040.cpp", '\\t\\tgamepad->read();', '\\t\\tgamepad->read();\\n\\t\\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\\n\\t\\t\\txgo_diag_raw.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);')
+replace_once("src/gp2040.cpp", '\\t\\tbool processed = inputDriver->process(gamepad);', '\\t\\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO)\\n\\t\\t\\txgo_diag_processed.store((uint32_t(gamepad->state.dpad) << 16) | (uint32_t(gamepad->state.buttons) & 0xffffu), std::memory_order_relaxed);\\n\\t\\tbool processed = inputDriver->process(gamepad);')
+
+# Draw a compact three-line hex readout on the existing button-layout screen.
+replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '#include "ButtonLayoutScreen.h"', '#include "ButtonLayoutScreen.h"\\n#include "drivers/xgo/XGODiagnostics.h"\\n#include <cstdio>\\n#include "drivermanager.h"')
+replace_once("src/display/ui/screens/ButtonLayoutScreen.cpp", '    getRenderer()->drawText(0, 7, footer);\\n}', '''    getRenderer()->drawText(0, 7, footer);
+    if (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO) {
+        char line[24];
+        const uint32_t raw = xgo_diag_raw.load(std::memory_order_relaxed);
+        const uint32_t proc = xgo_diag_processed.load(std::memory_order_relaxed);
+        const uint32_t out = xgo_diag_output.load(std::memory_order_relaxed);
+        std::snprintf(line, sizeof(line), "R:%02X/%04X", unsigned(raw >> 16) & 255u, unsigned(raw & 65535u));
+        getRenderer()->drawText(0, 40, line);
+        std::snprintf(line, sizeof(line), "P:%02X/%04X", unsigned(proc >> 16) & 255u, unsigned(proc & 65535u));
+        getRenderer()->drawText(0, 48, line);
+        std::snprintf(line, sizeof(line), "XGO:%03X", unsigned(out & 4095u));
+        getRenderer()->drawText(0, 56, line);
+    }
+}''')
 
 # The Web Config frontend maintains its own mode list and translations.
 # The firmware enum/driver alone cannot make XGO selectable in the browser.
