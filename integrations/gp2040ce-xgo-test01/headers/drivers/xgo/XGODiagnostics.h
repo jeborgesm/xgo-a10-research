@@ -16,3 +16,8 @@ extern std::atomic<uint32_t> xgo_diag_last_failure_slot;
 extern std::atomic<uint32_t> xgo_diag_load_low_last_us;
 extern std::atomic<uint32_t> xgo_diag_load_low_max_us;
 extern std::atomic<uint32_t> xgo_diag_clock_failure_slots[13];
+// Test10: per-transaction mask transitions; zero frames are not automatically faults.
+extern std::atomic<uint32_t> xgo_diag_mask_changes;
+extern std::atomic<uint32_t> xgo_diag_zero_frames;
+extern std::atomic<uint32_t> xgo_diag_last_nonzero_mask;
+extern std::atomic<uint32_t> xgo_diag_nonzero_to_zero;
