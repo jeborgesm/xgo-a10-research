@@ -21,4 +21,6 @@ void XGODiagnosticScreen::drawScreen() {
     getRenderer()->drawText(0, 5, line);
     std::snprintf(line, sizeof(line), "LOAD TO %lu", (unsigned long)xgo_diag_load_timeouts.load(std::memory_order_relaxed));
     getRenderer()->drawText(0, 6, line);
+    std::snprintf(line, sizeof(line), "REL %lu CLK %lu", (unsigned long)xgo_diag_release_timeouts.load(std::memory_order_relaxed), (unsigned long)xgo_diag_clock_timeouts.load(std::memory_order_relaxed));
+    getRenderer()->drawText(0, 7, line);
 }
