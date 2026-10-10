@@ -1,6 +1,7 @@
 // Experimental GP2040-CE XGO output: derived from hardware-proven Caveman.
 // Preserve USB PHY signaling; no USB device stack in XGO mode.
 #include "drivers/xgo/XGODriver.h"
+#include "drivers/xgo/XGODiagnostics.h"
 #include "hardware/structs/usb.h"
 #include "hardware/regs/usb.h"
 #include "hardware/address_mapped.h"
@@ -8,6 +9,9 @@
 #include "hardware/sync.h"
 #include <cstdint>
 
+std::atomic<uint32_t> xgo_diag_raw{0};
+std::atomic<uint32_t> xgo_diag_processed{0};
+std::atomic<uint32_t> xgo_diag_output{0};
 namespace {
 constexpr uint32_t EDGE_TIMEOUT_US = 12;
 constexpr uint32_t LOAD_TIMEOUT_US = 20000;
@@ -95,5 +99,6 @@ bool emit_frame(uint16_t mask) {
 void XGODriver::initialize() { raw_init(); }
 bool XGODriver::process(Gamepad *gamepad) {
  const uint16_t snapshot = map_mask(gamepad);
+ xgo_diag_output.store(snapshot, std::memory_order_relaxed);
  return emit_frame(snapshot);
 }
