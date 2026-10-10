@@ -18,6 +18,9 @@ std::atomic<uint32_t> xgo_diag_load_timeouts{0};
 std::atomic<uint32_t> xgo_diag_release_timeouts{0};
 std::atomic<uint32_t> xgo_diag_clock_timeouts{0};
 std::atomic<uint32_t> xgo_diag_last_failure_slot{0};
+std::atomic<uint32_t> xgo_diag_load_low_last_us{0};
+std::atomic<uint32_t> xgo_diag_load_low_max_us{0};
+std::atomic<uint32_t> xgo_diag_clock_failure_slots[13]{};
 namespace {
 constexpr uint32_t EDGE_TIMEOUT_US = 12;
 constexpr uint32_t LOAD_TIMEOUT_US = 20000;
@@ -82,22 +85,27 @@ bool emit_frame(uint16_t mask) {
  // Test03 left this critical edge vulnerable to interrupt preemption.
  // Never mask interrupts during the potentially 20ms LOAD acquisition.
  const uint32_t irq_state = save_and_disable_interrupts();
+ const uint32_t low_start = time_us_32();
  bool complete = wait_data(true, EDGE_TIMEOUT_US);
+ const uint32_t low_duration = (uint32_t)(time_us_32() - low_start);
  if (!complete) xgo_diag_release_timeouts.fetch_add(1, std::memory_order_relaxed);
  if (complete) {
   if (mask & 1u) data_sink(); else data_release();
  }
  for (unsigned slot = 1; complete && slot < 12; ++slot) {
-  if (!wait_clock(false, EDGE_TIMEOUT_US)) { xgo_diag_clock_timeouts.fetch_add(1, std::memory_order_relaxed); xgo_diag_last_failure_slot.store(slot, std::memory_order_relaxed); complete = false; break; }
+  if (!wait_clock(false, EDGE_TIMEOUT_US)) { xgo_diag_clock_timeouts.fetch_add(1, std::memory_order_relaxed); xgo_diag_last_failure_slot.store(slot, std::memory_order_relaxed); xgo_diag_clock_failure_slots[slot].fetch_add(1, std::memory_order_relaxed); complete = false; break; }
   if (mask & (1u << slot)) data_sink(); else data_release();
   if (!wait_clock(true, EDGE_TIMEOUT_US)) { xgo_diag_clock_timeouts.fetch_add(1, std::memory_order_relaxed); xgo_diag_last_failure_slot.store(slot, std::memory_order_relaxed); complete = false; break; }
  }
  if (complete) {
-  if (!wait_clock(false, EDGE_TIMEOUT_US)) { xgo_diag_clock_timeouts.fetch_add(1, std::memory_order_relaxed); xgo_diag_last_failure_slot.store(12, std::memory_order_relaxed); complete = false; }
+  if (!wait_clock(false, EDGE_TIMEOUT_US)) { xgo_diag_clock_timeouts.fetch_add(1, std::memory_order_relaxed); xgo_diag_last_failure_slot.store(12, std::memory_order_relaxed); xgo_diag_clock_failure_slots[12].fetch_add(1, std::memory_order_relaxed); complete = false; }
  }
  data_release();
  if (complete) (void)wait_clock(true, EDGE_TIMEOUT_US);
  restore_interrupts(irq_state);
+ xgo_diag_load_low_last_us.store(low_duration, std::memory_order_relaxed);
+ uint32_t maximum = xgo_diag_load_low_max_us.load(std::memory_order_relaxed);
+ if (low_duration > maximum) xgo_diag_load_low_max_us.store(low_duration, std::memory_order_relaxed);
  return complete;
 }
 
