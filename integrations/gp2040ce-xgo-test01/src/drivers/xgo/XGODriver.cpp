@@ -5,6 +5,7 @@
 #include "hardware/regs/usb.h"
 #include "hardware/address_mapped.h"
 #include "pico/time.h"
+#include "hardware/sync.h"
 #include <cstdint>
 
 namespace {
@@ -60,21 +61,31 @@ uint16_t map_mask(Gamepad *g) {
   | (g->pressedLeft() ? 1u << 10 : 0u)
   | (g->pressedRight() ? 1u << 11 : 0u);
 }
+// Test03: keep the long host-load wait interruptible; protect only the
+// microsecond-scale 12-slot clock train against Core0 IRQ preemption.
+// Core1 (OLED/add-ons) remains untouched.
 bool emit_frame(uint16_t mask) {
  data_release();
  if (!wait_data(false, LOAD_TIMEOUT_US)) { data_release(); return false; }
  if (!wait_data(true, EDGE_TIMEOUT_US)) { data_release(); return false; }
+
+ const uint32_t irq_state = save_and_disable_interrupts();
+ bool complete = true;
  if (mask & 1u) data_sink(); else data_release();
  for (unsigned slot = 1; slot < 12; ++slot) {
-  if (!wait_clock(false, EDGE_TIMEOUT_US)) { data_release(); return false; }
+  if (!wait_clock(false, EDGE_TIMEOUT_US)) { complete = false; break; }
   if (mask & (1u << slot)) data_sink(); else data_release();
-  if (!wait_clock(true, EDGE_TIMEOUT_US)) { data_release(); return false; }
+  if (!wait_clock(true, EDGE_TIMEOUT_US)) { complete = false; break; }
  }
- if (!wait_clock(false, EDGE_TIMEOUT_US)) { data_release(); return false; }
+ if (complete) {
+  if (!wait_clock(false, EDGE_TIMEOUT_US)) complete = false;
+ }
  data_release();
- (void)wait_clock(true, EDGE_TIMEOUT_US);
- return true;
+ if (complete) (void)wait_clock(true, EDGE_TIMEOUT_US);
+ restore_interrupts(irq_state);
+ return complete;
 }
+
 } // namespace
 
 void XGODriver::initialize() { raw_init(); }
