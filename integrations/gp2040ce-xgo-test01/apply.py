@@ -74,6 +74,34 @@ for part in ["headers/drivers/xgo/XGODriver.h", "headers/drivers/xgo/XGODiagnost
     shutil.copy2(overlay / part, dest)
 
 
+# XGO scheduler isolation: Core1 exclusively services the USB PHY. Core0
+# continues GP2040 input processing AND runs auxiliary display/add-ons after
+# publishing a coherent button mask. Non-XGO startup and Core1 remain stock.
+replace_once("headers/gp2040aux.h",
+             "    void run();             // loop core1",
+             "    void run();             // loop core1\\n    void processOnce();     // XGO: cooperative Core0 aux tick")
+replace_once("src/gp2040aux.cpp",
+             "void GP2040Aux::run() {\\n\\twhile (1) {",
+             "void GP2040Aux::run() {\\n\\twhile (1) {\\n        processOnce();\\n    }\\n}\\n\\nvoid GP2040Aux::processOnce() {\\n    {")
+replace_once("src/main.cpp",
+             '#include "gp2040aux.h"',
+             '#include "gp2040aux.h"\\n#include "drivermanager.h"\\n#include "drivers/xgo/XGODriver.h"')
+replace_once("src/main.cpp",
+             "static GP2040Aux * gp2040Core1 = nullptr;",
+             "static GP2040Aux * gp2040Core1 = nullptr;\\nstatic bool xgoMode = false;\\nvoid xgo_aux_tick() { if (xgoMode) gp2040Core1->processOnce(); }")
+replace_once("src/main.cpp",
+             "\\t// Create GP2040 w/ Additional Modules for Core 1\\n\\tgp2040Core1->setup();\\n\\tgp2040Core1->run();",
+             "\\tif (xgoMode) {\\n\\t\\tXGODriver::runResponder();\\n\\t} else {\\n\\t\\tgp2040Core1->setup();\\n\\t\\tgp2040Core1->run();\\n\\t}")
+replace_once("src/main.cpp",
+             "\\t// Create GP2040 Thread for Core1\\n\\tmulticore_launch_core1(core1);",
+             "\\t// XGO Core1 is reserved for the serial responder; move auxiliary\\n\\t// setup to Core0 so its OLED/add-ons never run on the responder.\\n\\txgoMode = DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO;\\n\\tif (xgoMode) gp2040Core1->setup();\\n\\t// Create GP2040 Thread for Core1\\n\\tmulticore_launch_core1(core1);")
+replace_once("src/gp2040.cpp",
+             "#include \"gp2040.h\"",
+             "#include \"gp2040.h\"\\nextern void xgo_aux_tick();")
+replace_once("src/gp2040.cpp",
+             "\\t\\taddons.PostprocessAddons(processed);",
+             "\\t\\taddons.PostprocessAddons(processed);\\n\\t\\tif (DriverManager::getInstance().getInputMode() == INPUT_MODE_XGO) xgo_aux_tick();")
+
 # Test05: capture raw state before processing, then processed state before output.
 # Pack dpad in bits 16..23 and buttons in bits 0..15.
 replace_once("src/gp2040.cpp", '#include "gp2040.h"', '#include "gp2040.h"\n#include "drivers/xgo/XGODiagnostics.h"')
