@@ -32,3 +32,13 @@ D. Dedicated core1 XGO responder with cooperative auxiliary scheduling: would ne
 ## Immediate next step
 
 Identify XGO host polling cadence and supported native PHY interrupt signals using existing firmware evidence and RP2040 SDK register contracts (offline). No hardware probe requested. Only build Test03 after a bounded and reversible responder ownership model is established.
+
+## 2026-10-09 SDK interrupt register audit
+
+Source: Raspberry Pi pico-sdk tag 2.3.1, `src/rp2040/hardware_regs/include/hardware/regs/usb.h` (pinned header).
+
+- `USB_USBPHY_DIRECT_RX_DP_BITS` (bit 17) and `USB_USBPHY_DIRECT_RX_DM_BITS` (bit 18) are **read-only PHY sample bits**.
+- `USB_INTE` and `USB_INTS` expose 20 controller event categories: EP_STALL_NAK, ABORT_DONE, DEV_SOF, SETUP_REQ, DEV_RESUME_FROM_HOST, DEV_SUSPEND, DEV_CONN_DIS, BUS_RESET, VBUS_DETECT, STALL, ERROR_CRC, ERROR_BIT_STUFF, ERROR_RX_OVERFLOW, ERROR_RX_TIMEOUT, ERROR_DATA_SEQ, BUFF_STATUS, TRANS_COMPLETE, HOST_SOF, HOST_RESUME, HOST_CONN_DIS.
+- **No documented native USB interrupt source corresponds to PHY RX_DP/RX_DM transitions.** Consequently option C (USB-PHY edge IRQ) is not implementable using the documented USB interrupt block; do not fabricate one.
+- The direct-PHY bit-bang implementation must continue polling the RX bits, or an independently validated alternative must be found.
+- This register audit does **not** establish host poll cadence, IRQ latency, or a safe Core1 scheduling mechanism. No Test03 UF2 is authorized by this finding alone.
