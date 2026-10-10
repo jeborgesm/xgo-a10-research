@@ -6,3 +6,6 @@
 extern std::atomic<uint32_t> xgo_diag_raw;
 extern std::atomic<uint32_t> xgo_diag_processed;
 extern std::atomic<uint32_t> xgo_diag_output;
+extern std::atomic<uint32_t> xgo_diag_frames_ok;
+extern std::atomic<uint32_t> xgo_diag_frames_failed;
+extern std::atomic<uint32_t> xgo_diag_load_timeouts;
