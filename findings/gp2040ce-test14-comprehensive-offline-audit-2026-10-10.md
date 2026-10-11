@@ -135,6 +135,16 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **High-priority next investigation:** map UF2 flash address coverage versus FlashPROM reserved config `0x101F8000..0x101FFFFF`, identify the exact stock config-reset path and its behavior under a saved invalid input mode, and produce a hardware-testable but non-destructive recovery checklist. No golden modification.
 
+## Flash reset mechanism and Frankie reconstruction evidence — 2026-10-11
+
+**UP** `lib/FlashPROM/src/FlashPROM.h` pins `EEPROM_ADDRESS_START=0x101F8000`, `EEPROM_SIZE_BYTES=0x8000`. End-exclusive address `0x10200000`. `FlashPROM.cpp` writes exactly this offset (`EEPROM_ADDRESS_START-XIP_BASE=0x1F8000`) and length using `flash_range_erase` followed by `flash_range_program`. **Not proven:** the exact golden UF2's last written address, so firmware/config overlap remains OPEN until UF2 records are parsed.
+- `FlashPROM::reset()` zeros the 32-KiB RAM cache and calls `commit()`; `commit()` schedules a deferred write. `Storage::ResetSettings()` invokes `EEPROM.reset()`. This is an existing config-reset primitive, but entry points, USB-host interactions, and reset timing require tracing. Do not recommend executing it without a preserved backup and validated procedure.
+- The 32-KiB storage location at the end of a nominal 2-MiB RP2040 flash map is source-defined, **not** a guarantee that arbitrary Pico-compatible hardware uses a 2-MiB chip or that the golden UF2 excludes the sector.
+- **HW documented in** `findings/rp2040-xgo-frankie-cable-contract.md`: Frankie V2 Jr succeeded with physical connector pads 2 and 4 sharing the WHITE conductor; pad 1 BLACK, pad 3 GREEN, pad 5 RED, in the user's recorded connector orientation. These are **observed solder pad numbers, not canonical USB pins**. LEFT/RIGHT control and successful-frame heartbeat observed. Standard four-wire and simple crossover cables failed. Do not rewrite this as generic OTG ID-ground wiring.
+- **HW documented in** `findings/gp2040ce-xgo-test14-hardware-validation.md`: Test14 boots and displays Xbox-style input history without observed mixed/rapid-fire inputs. Config restore and firmware upgrade remain untested.
+
+**Preservation implications:** Archive exact Test14 UF2 SHA-256 and UF2 address range, saved known-good configuration export, board identity and physical Frankie continuity map. Any future GP2040-CE migration must be a new candidate branch with separate validation, not a direct update to golden.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
