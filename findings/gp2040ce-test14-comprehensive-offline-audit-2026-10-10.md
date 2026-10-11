@@ -202,6 +202,22 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **Explicit non-findings / limits:** atomic release/acquire mask publication is present, and preserved `multicore_lockout_victim_init()` is already source-verified. No claim of a new gameplay defect. A full audit still needs applied-tree compile/disassembly, static whole-repo callgraph, 4096-state mask tests, malformed protocol host simulation, Web Config generated-asset tests, USB host GPIO/peripheral review, and factory reset failure injection. Findings are prioritized for persistent loss/recovery rather than transient missed frames.
 
+## Working Igor Web Config backup — offline source/config cross-check (2026-10-11)
+
+**USER/BIN** provided `gp2040ce_backup_20261011165601680.gp2040`, JSON backup. Treat as a sensitive device configuration: do not publish entire backup to a public repository without user approval. Findings below are minimal excerpts.
+
+- Saved `gamepad.inputMode=18` (XGO), `profileNumber=1`, `inputModeL1=-1`, `inputModeL2=-1`. Traditional boot mappings for B1/B2/B3/B4/R1/R2 are assigned non-XGO modes. **No saved traditional button returns to XGO.**
+- `display.buttonLayout=0`, `buttonLayoutRight=14`, `inputHistoryEnabled=1`, `inputHistoryLength=21`.
+- `addons.TurboInputEnabled=1`, `pins.pin14.action=32`, `addons.turboPinLED=15`, `addons.turboShotCount=10`. **UP** `proto/enums.proto`: action 32 is `BUTTON_PRESS_TURBO`. **UP** `src/addons/turbo.cpp`: Turbo is only available if enabled **and** a GPIO maps to BUTTON_PRESS_TURBO; here GPIO14 satisfies that condition. Therefore Turbo is not merely a dormant enabled flag: it is eligible for initialization. It mutates `gamepad->state.buttons` in its input processing path. Verify Turbo-on/off and release state against XGO output before signoff.
+- `pins.pin15.action=0` (not a standard button) while Turbo LED is assigned GPIO15; no immediate standard button collision evident in backup. Confirm any other peripheral claim on GPIO15 in full pin-owner matrix.
+- `addons.I2CAnalog1115InputEnabled=1`; **UP** `src/addons/i2canalog1115.cpp` scans for an ADS1115 I²C address in `available()`, only configures/samples if a device is found. Saved enable does **not** prove physical ADS1115 present. If found, `process()` periodically samples one channel (nominal 8-ms interval), uses shared I²C and writes analog stick axes; XGO 12-bit mask mapping does not include analog axes. Evaluate bus timeout/CPU overhead and absence behavior; do not presume XGO analog support.
+- **UP potential separate addon defect:** `I2CAnalog1115Input::process()` converts a potentially negative signed conversion to `uint32_t` before clamping; this can map negative readings to maximum rather than minimum. Relevant only if ADS1115 is present and signed negative results occur. Not an XGO regression proof; test upstream behavior separately.
+- `GamepadUSBHostAddonEnabled=0`, `KeyboardHostAddonEnabled=0`, so their addon logic should be unavailable; GP2040 Core0 still invokes `USBHostManager::start/process` independently. Do not equate disabled host addons with USB host manager completely inert.
+- Saved GPIO0/1 action 0 aligns with stock Pico I²C reservation; GPIO22–27/29 reserved action -10; GPIO28 action 0. Verify complete Pico pin ownership against peripheral config and board wiring.
+- Backup lacks top-level `bootModeOptions` key. This is an **export schema limitation**, not evidence that GPIO boot mapping is disabled. The normal config's boot-mode fields may exist in flash but not be exported.
+
+**New tracking:** A26 P1 real Turbo path GPIO14 -> processed button mask; A27 P2 ADS1115 optional I²C path/analog-only effect; A28 P1 backup omission of bootModeOptions requires independent readback; A29 P2 pin15 LED ownership and I²C owner matrix. **No golden firmware/config modified.**
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
