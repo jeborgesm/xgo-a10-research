@@ -154,3 +154,11 @@ Independently opened `bios/bisrv.asd` (12,768,452 bytes) from `XGoAnalisis.zip` 
 ```
 
 This verifies the earlier repository address map against the supplied stock binary. A literal byte search for direct JAL encodings targeting `0x8035d770` and `0x8035d4c4` returned **no matches** in this binary. This is not proof that the functions are unused: possible causes include indirect calls, a different effective load base, and address-mapping conventions. **Do not claim call ordering is closed.** Next analyze surrounding task dispatch, pointer tables, and the firmware's actual virtual/file address mapping. No patch or hardware test.
+
+## 2026-10-11 — Direct binary cross-reference check
+
+Re-read original `bios/bisrv.asd` from the supplied `XGoAnalisis.zip` and scanned for little-endian MIPS `JAL` encodings. Exact direct-call targets `0x8035d770` (scanner) and `0x8035d4c4` (normalizer) have **zero matches** in this image. This does not mean the routines are unreachable; examine indirect dispatch, function-pointer tables, and potential alternative entry points.
+
+In contrast, direct `JAL 0x8035e360` (state snapshot) appears at file offsets `0x3526b4` and `0x35f14c`. Within the normalizer entry, `0x35d4f0` is `JAL 0x8035c6e8`, and the verified per-player pressed-mask merge remains at `0x35d52c` (serial load), `0x35d530` (RF load), `0x35d53c` (OR), and `0x35d544` (store).
+
+**Implication:** do not assert scan-to-normalizer ordering or choose a hook until the task/dispatcher control flow is reconstructed. In particular, absence of a direct `JAL` is not evidence of a safe unused routine. Original image only; not yet a candidate for patching.
