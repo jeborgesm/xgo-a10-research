@@ -1,3 +1,21 @@
+## 2026-10-10 PRIVATE ARTIFACT VAULT HOUSEKEEPING (LATEST)
+
+The user uploaded controller tests, native PHY experiments, Frankie construction images and additional firmware to the private `jeborgesm/xgo-a10-artifacts` repository. **Completed** root-intake relocation of 62 binary/image files, reusing original Git blob SHAs (no binary rewrite), commit `f4f13df6645148f4f1940b3044f83afe3d228131`. Root README updated at `53eeea40ddd23de559b3bd0a870d8989307f2ea1`.
+
+Permanent locations:
+- **Test14 uploaded ZIP**: `golden/rp2040-gp2040ce/test14/xgo-gp2040ce-test14-UNTESTED.zip`; dedicated README includes build run `38098786893`, artifact `11687143460`, HW observations and caveats.
+- Older GP2040-CE ZIPs: `archive/rp2040-controller/gp2040ce/`.
+- Standalone native PHY/Contra/P3/P4/P5/wire-ID experiments: `archive/rp2040-controller/native-phy/`.
+- Frankie photos: `archive/rp2040-controller/frankie/photos/`; illustrative diagrams: `archive/rp2040-controller/frankie/reference-diagrams/`. Illustrations are not verified electrical wiring evidence.
+- Native-22050 audio candidates: `archive/audio-native22050/`.
+- Arcade/NeoGeo uploads: `archive/classic-arcade/arcade-refresh/`.
+
+Vault manifests: `records/controller-intake-2026-10-10.md` contains sizes, paths and original **Git blob SHA-1** identities. It is **not** a SHA-256 content manifest. The Test14 uploaded ZIP size (1,018,276 bytes) matches the original Actions artifact's reported size, but **exact ZIP and embedded UF2 byte-for-byte equality remains OPEN** pending SHA-256 comparison. Never represent size-only match as cryptographic validation. The original artifact was reported to expire 2027-01-09. Preserve the uploaded ZIP pending verification; don't recompile/relabel the golden build.
+
+No firmware-source changes were made by archive housekeeping. Earlier handoff paragraphs that say the artifacts are not yet archived are superseded by this update, but the cryptographic identity check remains outstanding.
+
+---
+
 # CURRENT HANDOFF — GP2040-CE XGO Test14 hardware-success checkpoint
 ## Updated 2026-10-10 — read this section before older handoffs
 
