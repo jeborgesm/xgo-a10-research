@@ -101,3 +101,26 @@ Promotion requires explicit hardware evidence and a deliberate decision to carry
 **Still OPEN:** exact binary instructions/addresses of the post-scan routing/merge; whether P2 has other independent sources; settings persistence; game/menu input consumers; and safe bisrv.asd modification/boot-integrity rules. No firmware has been changed, and no hardware candidate is authorized by this note.
 
 **Next offline action:** inspect disassembly and address maps for the scanner's two output stores and the consumer(s) of those stores, then specify a minimal conditional redirect that preserves stock P2 behavior by default. Keep this branch separate from ongoing RP2040 live-controller integration.
+
+## 2026-10-11 — Pinned input addresses and candidate interception point
+
+Offline review of repository findings `player2-end-to-end-libretro-path.md` and `player2-revisit-and-handle-interface.md` yields these [BIN] addresses (original stock image):
+
+| Function/state | Address |
+|---|---|
+| Scanner | `0x8035d770` |
+| Raw serial P1 / P2 | `0x80c33a48` / `0x80c33a4c` |
+| Per-player normalization, serial + RF merge | `0x8035d4c4` |
+| Final P1 / P2 | `0x80c33a40` / `0x80c33a44` |
+| Snapshot copier | `0x8035e360` |
+| Keymap compiler | `0x8035ea38` |
+| Libretro callback | `0x8035eb20` |
+| Frontend player-index accessor | `0x803526a0` |
+
+The normalizer merges serial and RF per player using OR of *pressed-button* masks. The scanner first converts active-low wire samples into set bits, so post-scan OR is appropriate; the wire-level active-low convention does not imply AND at this stage.
+
+**Preferred hypothesis [INF]:** after scanning but before per-player RF merge, logically redirect `serial_p2` into `serial_p1` under an optional setting: `serial_p1 |= serial_p2; serial_p2 = 0`. The original RF P2 word must remain untouched. Default setting bypasses this transformation. If the UI reads P1 from the shared state snapshot, this could enable frontend navigation as well as gameplay. However, we must inspect call ordering and exact stores to verify a safe interception point and avoid mutating the raw scanner outputs prematurely.
+
+**Artifact check [BIN]:** The available `XGoAnalisis.zip` includes `bios/bisrv.asd` (12,768,452 bytes); bytes at file offsets `0x35d770`, `0x35d4c4`, `0x35e360`, `0x35ea38` match the expected MIPS instruction regions, and the scanner's first 16 bytes match the pinned signature. This establishes that the archive is suitable for deeper offline static inspection; it does not establish boot-safe patching or whether the archive matches the latest protected hardware baseline.
+
+**Next tasks:** disassemble `0x8035d4c4` with the actual MIPS calling convention and identify exact raw/RF loads and writes; inspect the caller sequence to choose a reversible intercept; assess menu setting persistence separately; resolve post-Test100 `bisrv.asd` boot-integrity problem before proposing a firmware candidate. No binary modified.
