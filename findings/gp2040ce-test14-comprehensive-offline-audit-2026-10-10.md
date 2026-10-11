@@ -51,6 +51,13 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 6. Add regression assertions or read-only test harnesses only on the research branch, and rerun CI.
 7. Classify every finding as closed, mitigation needed, or hardware-only. Any firmware change gets a separately named Test15 candidate, never an overwrite of Test14.
 
+## Additional pinned-upstream execution trace (2026-10-10)
+
+- `src/config_utils.cpp:2256-2263`: `ConfigUtils::save` asserts and enforces Core0-only saves; lines 2291-2299 call `EEPROM.commit()`. FlashPROM implementation and lockout wait duration remain **OPEN**.
+- `src/gp2040aux.cpp:27-51`: setup creates Display, NeoPicoLED, PlayerLED, BoardLED, Buzzer, Rumble and ReactiveLED addons, then sets `isReady=true`. Test14 moves setup to Core0 before launching Core1; main's wait for ready is already satisfied.
+- `src/gp2040.cpp:265-315`: ordinary loop runs USBHost process, input addons, driver, TinyUSB, PostprocessAddons and save check. Test14 Core0 auxiliary tick executes after PostprocessAddons; save occurs afterward.
+- `src/gp2040.cpp:519-525`: Web Config and BOOTSEL hotkeys call `System::reboot`, rather than directly switching USB PHY in place. Full reset implementation remains **OPEN**.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
