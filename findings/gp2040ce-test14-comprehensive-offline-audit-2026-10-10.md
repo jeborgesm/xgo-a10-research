@@ -183,6 +183,25 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **Candidate change only (NOT golden Test14):** extend `INPUT_BOOT_MODES` with XGO enum 18 and localized label, add source-level preflight assertions, verify Web Config assets are regenerated/embedded, confirm enum 18 round-trip, then test XGO->XInput->XGO and persistent reboot. Keep exact Test14 artifact as rollback. Do not direct user to switch modes before a verified return path exists.
 
+## Whole-integration offline sweep — 2026-10-11 (pass 1, not final signoff)
+
+Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `XGODriver.cpp`, build workflow and pinned upstream `gp2040.cpp`, `webconfig.cpp`, `SettingsPage.jsx`, `InputBootModes.ts`. **No changes to Test14.**
+
+**New findings requiring explicit closure:**
+
+- **A16 P0 — Missing XGO boot return selector (HW+SRC+UP, confirmed):** `www/src/Pages/SettingsPage.jsx` has separate hardcoded `INPUT_BOOT_MODES` and Yup `.oneOf` validation, neither extended by `apply.py`. Main `InputBootModes.ts` XGO entry does not cover boot mappings. Correct in a separately built candidate, validate compiled Web UI and mode-18 API persistence; Test14 cannot configure an XGO button return through normal Boot Input Modes UI.
+- **A17 P1 — Web asset regression coverage absent (SRC):** `audit_test14.py` tests PHY/core and literal source anchors but never checks `INPUT_BOOT_MODES` nor validates Web Config's saved mode round trip. The CI compile can succeed with a functionally incomplete UI. Add independent test coverage for both mode lists, enum parity and UI validation.
+- **A18 P1 — GPIO boot mapping precedence (UP):** when `bootModeOptions.enabled`, startup selects `getGpioMappedBootAction()` instead of the legacy button mapping. Thus simply configuring LB in traditional Boot Input Modes does not ensure it will work. Audit the saved `bootModeOptions.enabled` and GPIO pin ownership before claiming recovery.
+- **A19 P1 — Mode transition reset assumption (SRC+UP):** `xgoMode` scheduler is latched once at boot in patched `main.cpp`; TinyUSB gating consults current driver mode. All supported mode changes must reboot; any in-place `setInputMode`/driver switch can create PHY/Core1 ownership mismatch. Enumerate all runtime callers and verify each uses reset, or guard mode changes.
+- **A20 P1 — Flash lockout and reset race (UP+INF):** `Storage::ResetSettings()` zeroes the cache, schedules a deferred flash write, then calls `watchdog_reboot(...,2000)`. Nominal 50-ms alarm delay is not a completion barrier; assess whether a stalled flash callback, active responder IRQ masking or reboot could interrupt erase/program. Do not label reset power-fail safe.
+- **A21 P2 — Ignored final clock high (SRC):** `emit_frame` explicitly ignores result of `wait_clock(true,EDGE_TIMEOUT_US)` after the 12th slot. Frame is counted successful even if CLOCK never returns high at end. May be harmless protocol tolerance, but requires host-model test and classification.
+- **A22 P2 — Diagnostics in time-critical IRQ-off path (SRC):** multiple atomic fetch_add/store operations execute with Core1 IRQs masked and edge timeouts of 12us; successful gameplay does not establish worst-case budget. Disassembly/timing closure needed.
+- **A23 P2 — Build reproducibility (SRC):** CI pins GP2040 upstream commit and Pico SDK release tag but obtains apt compiler packages and submodules at build time, and `actions/checkout@v4` by mutable tag. Exact Test14 UF2 hash now known; record compiler versions and submodule commit manifest for a reproducible rebuild, compare binary hash, not merely build success.
+- **A24 P2 — Overlay partial application (SRC):** `apply.py` edits sequentially and may fail after partial mutation; `preflight.py` checks only subset of later anchors. Safe future refactor: stage edits in memory and commit only if all checks pass; do not modify golden.
+- **A25 P2 — Web Config modes require independent functional testing (HW+OPEN):** user screenshot proves current mode 18 visible and Web Config accessible on their device, but does not establish switching out to another USB mode, reboot persistence or return to XGO. Do not equate browser visibility with end-to-end recovery.
+
+**Explicit non-findings / limits:** atomic release/acquire mask publication is present, and preserved `multicore_lockout_victim_init()` is already source-verified. No claim of a new gameplay defect. A full audit still needs applied-tree compile/disassembly, static whole-repo callgraph, 4096-state mask tests, malformed protocol host simulation, Web Config generated-asset tests, USB host GPIO/peripheral review, and factory reset failure injection. Findings are prioritized for persistent loss/recovery rather than transient missed frames.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
