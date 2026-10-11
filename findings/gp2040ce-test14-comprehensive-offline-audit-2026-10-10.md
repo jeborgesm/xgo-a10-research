@@ -118,6 +118,23 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **New priority finding:** XGO-mode persistence/lockout is a **P0 product robustness requirement**. Proposed future Test15+ protections include an explicit XGO identity/config profile, safe mode selection policy, config export/restore, and a validated recovery procedure; none is yet implemented or hardware verified. Golden Test14 unchanged.
 
+## Recovery-path decision trace — 2026-10-10
+
+**UP** `src/gp2040.cpp:60-160,350-485` and `src/main.cpp` pinned upstream:
+- Core0 initializes Storage, peripheral USB/I2C/SPI, gamepad GPIO and addons **before** resolving the legacy S1+S2+Up / S2 boot chord. Thus the software chord is not independent of successful configuration parsing and startup; a bad pin map or early startup failure may prevent detection.
+- When `bootModeOptions.enabled` is true, `getGpioMappedBootAction()` chooses the startup action using **saved boot-mode GPIO mappings** and bypasses the legacy button action for selection. This means the documented S2 chord cannot be assumed universally available even without `forcedSetupOptions`.
+- For `BootActionType::ENTER_USB_MODE`, `GP2040::setup()` calls `reset_usb_boot(0,0)` before setting up an input driver. This enters RP2040 ROM USB boot mode if the code reaches that branch. The physical Pico BOOTSEL-at-power-on route is a more independent recovery candidate because it does not rely on executing GP2040-CE application firmware, but must be verified with the actual Igor board/cable/PC.
+- When selecting `INPUT_MODE_CONFIG`, `DriverManager::setup` selects config rather than XGO; Test14's startup `xgoMode` then follows the selected driver. **Inference:** recovery via Web Config is possible if that mode boots, but is not yet tested for the customized USB-PHY initialization and saved setting restoration.
+- `ConfigUtils::load` validates protobuf CRC/length/magic and falls back to legacy/default. **Remaining risk:** a syntactically valid, incompatible configuration can survive integrity checks, and power-loss behavior during the single-sector erase/program is not proven atomic.
+
+**Recovery hierarchy proposed, NOT hardware-verified:**
+1. Export and preserve a known-good XGO config plus exact Test14 UF2.
+2. Attempt Web Config entry if normal firmware startup works and boot configuration permits it.
+3. Use Pico's physical BOOTSEL ROM path and reflash the exact golden UF2, not an upstream release. **Caution:** reflashing the same firmware may preserve incompatible settings stored in flash; inspect UF2 coverage and reset-config path before claiming this alone restores XGO.
+4. Restore/reset configuration only through a documented, verified method; never assume firmware reflash clears config.
+
+**High-priority next investigation:** map UF2 flash address coverage versus FlashPROM reserved config `0x101F8000..0x101FFFFF`, identify the exact stock config-reset path and its behavior under a saved invalid input mode, and produce a hardware-testable but non-destructive recovery checklist. No golden modification.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
