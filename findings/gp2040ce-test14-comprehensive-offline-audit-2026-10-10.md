@@ -77,6 +77,19 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **Recommended mitigation design only, not a change to golden:** establish whether the host tolerates missed frames during saves and whether the responder reliably re-arms after lockout. If not, a future separately versioned candidate may need a deliberate quiesce/recovery protocol or save restriction. Do not edit Test14 without offline proof.
 
+## Pico SDK 2.3.1 lockout IRQ analysis — 2026-10-10
+
+**Pinned SDK:** `raspberrypi/pico-sdk@2.3.1`, `src/rp2_common/pico_multicore/multicore.c:232-267,282-314`.
+
+- `multicore_lockout_victim_init()` installs `multicore_lockout_handler` on Core1's SIO FIFO IRQ and enables it.
+- The handler is explicitly placed in RAM with `__not_in_flash_func`, acknowledges the request through the FIFO, disables interrupts, and waits for the release request.
+- Core0's `multicore_lockout_handshake` pushes the request and waits for Core1 acknowledgement. Thus a request arriving while Core1 has interrupts disabled in `emit_frame` is **deferred until Core1 restores interrupts**, rather than serviced mid-critical-section. This avoids mid-slot lockout preemption, subject to correct interrupt restore.
+- After lockout begins, the responder is suspended while flash is erased/programmed. Host frames may be missed. After release, execution resumes from its interrupted instruction, potentially with an obsolete snapshot or a stale LOAD/CLOCK phase.
+- A particularly relevant race: lockout can arrive immediately after `emit_frame` restores interrupts, while the responder is about to update counters/re-arm. On return, `wait_data(false)` can detect a currently low DATA line and interpret it as a new LOAD without observing a prior high-to-low transition. Whether the protocol tolerates this remains **OPEN**.
+- Lockout handshake is blocking in `FlashPROM::writeToFlash`. **No deadlock is demonstrated** by this trace. Flash timing and IRQ execution latency are still unmeasured.
+
+**Classification:** A01 victim-registration CLOSED; SDK handshake semantics SOURCE-CLOSED; XGO frame loss and phase recovery after lockout **P1 OPEN**. No Test14 source/binary changes.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
