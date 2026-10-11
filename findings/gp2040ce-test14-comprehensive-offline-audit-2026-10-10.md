@@ -104,6 +104,20 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **Evidence discipline:** SRC/UP evidence establishes mechanisms; configuration recovery, corrupted-storage behavior, wiring correctness and byte-for-byte reproduction remain OPEN until demonstrated. Do not claim permanent safety or guaranteed recovery without proof.
 
+## Config persistence and recovery source trace — 2026-10-10
+
+**UP verified** `src/config_utils.cpp:2109-2195,2256-2301` at pinned GP2040-CE revision:
+- Compile-time `Config_size + sizeof(ConfigFooter) <= EEPROM_SIZE_BYTES` assertion; saved protobuf includes footer magic `0xd2f1e365`, bounded data size and CRC32. Invalid protobuf attempts legacy storage, then default config; migration and default initialization follow. `ConfigUtils::load()` calls `save(config)` at the end (a write occurs only when serialized footer differs).
+- `ConfigUtils::save()` is Core0-only, checks protobuf encode success, compares CRC/length/magic footer to avoid unchanged writes, then calls deferred `EEPROM.commit()`. This proves basic corruption detection and storage bounds; **not** power-loss atomicity, schema compatibility across future releases, or an immutable XGO mode.
+- **Important:** CRC32 detects corruption but does not prevent valid-yet-incompatible saved settings. Existing `gamepadOptions.inputMode` may override Test14's `DEFAULT_INPUT_MODE INPUT_MODE_XGO` default.
+
+**UP verified** `src/gp2040.cpp:350-430`:
+- Boot action initially uses persisted `gamepadOptions.inputMode`; watchdog boot-mode `WEBCONFIG` overrides it to `INPUT_MODE_CONFIG`.
+- Physical boot chord `S1+S2+Up` selects USB mode before the `webConfigLocked` check. Holding `S2` enters config only when `forcedSetupOptions` does not lock Web Config. Saved boot-mode mappings can also select non-XGO modes.
+- Therefore the ordinary S2-to-Web-Config path is **conditionally available**, not a guaranteed recovery method under all saved configurations. The separate USB-mode chord and hardware BOOTSEL/UF2 restoration should be investigated and documented as independent recovery paths. Actual button electrical availability and restore behavior are not hardware-proven.
+
+**New priority finding:** XGO-mode persistence/lockout is a **P0 product robustness requirement**. Proposed future Test15+ protections include an explicit XGO identity/config profile, safe mode selection policy, config export/restore, and a validated recovery procedure; none is yet implemented or hardware verified. Golden Test14 unchanged.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
