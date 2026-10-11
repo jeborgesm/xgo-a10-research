@@ -1,3 +1,47 @@
+# CURRENT HANDOFF — GP2040-CE XGO Test14 hardware-success checkpoint
+## Updated 2026-10-10 — read this section before older handoffs
+
+**ACTIVE BRANCH:** `research-gp2040ce-xgo-integration`
+**PROTECTED WORKING FIRMWARE:** Test14 from commit `fb911825123f07ea8fe12e4bdf881583a76de146`, CI run [38098786893](https://github.com/jeborgesm/xgo-a10-research/actions/runs/38098786893), artifact **11687143460**, name `xgo-gp2040ce-test14-UNTESTED`. The artifact's name is historical and predates the successful hardware test. **Do not substitute a later rebuilt UF2 without separately validating it.** GitHub Actions artifact retention may expire; preserve the original binary separately before expiry.
+
+### Current HW evidence — 2026-10-10
+User's exact feedback: **"That one is good, booted showed the inputs (xbox style) no rapid fire or mixed. I like it! :D"** Follow-up: **"after all these failed tests it is even responsive and quick on inputs."**
+
+HW PASS as reported: Pico boot, normal Xbox-style OLED input indication, console input reception, no observed rapid-fire or mixed actions, subjectively quick response. **Do not inflate** this to long-duration, every-button, save/config, USB host or non-XGO regression coverage.
+
+### Why Test14 matters
+Tests 10/11 were playable but diagnostic-oriented. Test13 restored the full OLED and Input History but could show the correct physical button while the console saw repeated/mixed actions (Start triggering repeated jumps; Punch causing mixed attacks). Test12 idle-high guard did not solve it. Test14 isolates the XGO serial responder on RP2040 Core1 and moves auxiliary GP2040-CE processing to Core0 in XGO mode, publishing button state as an atomic release/acquire 12-bit snapshot. It preserves the native USB PHY DP DATA / DM CLOCK electrical protocol, including low-sink/high-Z output. The hardware result supports scheduler interference as the cause; **OLED as sole root cause remains inference**.
+
+### Exact implementation
+- Overlay: `integrations/gp2040ce-xgo-test01/`; overlay directory name is historical.
+- Pinned upstream GP2040-CE: `3d1f32f7d02d418826b725b60208278d3be878c3`.
+- Pico SDK: 2.3.1; Pico board config, I2C OLED and full normal GP2040-CE UI retained.
+- XGO driver: `src/drivers/xgo/XGODriver.cpp` in overlay; Core0 `process(Gamepad*)` maps R1/B4/B3/L1/B1/B2/S1/S2/Up/Down/Left/Right into slots 0–11 and stores `published_mask` with release ordering. Core1 `runResponder()` initializes USB PHY and repeatedly acquires the snapshot and calls `emit_frame`. No serial waiting on Core0.
+- `apply.py` patches `src/main.cpp`, `src/gp2040.cpp`, `src/gp2040aux.cpp`, `headers/gp2040aux.h`, enum, driver manager, display and Web Config mode list. Non-XGO mode retains stock Core1 auxiliary loop. Native TinyUSB device init/task are skipped in XGO mode; Web Config requires separate boot mode.
+- Original CI build initially failed on a whitespace-sensitive `src/main.cpp` patch anchor; commit `fb911825` fixed it. Build then succeeded; hardware then passed.
+- Test10 fallback CI run [38029804281](https://github.com/jeborgesm/xgo-a10-research/actions/runs/38029804281), artifact **11661542008**.
+
+### Documentation and offline checks (after protected build)
+- HW checkpoint: `findings/gp2040ce-xgo-test14-hardware-validation.md`
+- Risk audit: `findings/gp2040ce-xgo-test14-offline-audit.md`
+- Read-only structural checker: `integrations/gp2040ce-xgo-test01/audit_test14.py`
+- CI: `.github/workflows/gp2040ce-xgo-test01.yml` now calls audit after applying overlay.
+- Checkpoints committed separately after the original Test14 hardware-success build. Their later CI builds are **not** the same binary as the protected run; the original source/overlay remained unchanged.
+- At documentation time, audit-enabled runs **38104732134** and **38104726875** were in progress; inspect their final status/logs before claiming the new checks passed. The unrelated `build-xgo-p0.yml` job has previously failed and must not be conflated with the GP2040-CE build.
+
+### Remaining OPEN verification — not reasons to rewrite the working responder
+1. Flash save/reboot/core lockout: Core1 calls `multicore_lockout_victim_init()`; verify flash writes and responder recovery.
+2. Web Config entry, setting changes, return to XGO mode and recovery; cannot use native TinyUSB concurrently with direct PHY.
+3. Extended held and simultaneous inputs, prolonged gameplay and input history.
+4. Auxiliary display and optional USB host scheduling, non-XGO modes, possible latency/jitter.
+5. Critical-path diagnostic counters and edge timing: inspect and measure before making any change.
+6. Preserve original UF2 SHA-256 in durable repository evidence; CI artifact page alone may expire. If retrieving hash, compute from **original run 38098786893 artifact**, not a later rebuild.
+
+### Rules for next chat
+**DO NOT restart controller archaeology, revert to Test13, adjust timeouts/debounce blindly, or modify the hardware-proven Test14 driver.** No new firmware candidate is needed now. First close offline regression checks, preserve hashes and provenance, inspect CI outcomes, and only then plan bounded hardware regression checks. All changes must be additive and independently testable. Keep the original working Test14 artifact available.
+
+---
+
 ## 2026-10-09 XGO GP2040-CE build checkpoint
 
 Branch: `research-gp2040ce-xgo-integration`. Latest build infrastructure: `.github/workflows/gp2040ce-xgo-test01.yml` (manual `workflow_dispatch` only). It checks out GP2040-CE at `3d1f32f7d02d418826b725b60208278d3be878c3`, runs `integrations/gp2040ce-xgo-test01/preflight.py` then `apply.py`, builds Pico with Web Config enabled, and uploads an explicitly UNTESTED UF2 only if compilation succeeds. **No successful integrated compile or hardware test is established.** A user or authorized workflow trigger must execute it; do not imply a successful build from the existence of this YAML.
