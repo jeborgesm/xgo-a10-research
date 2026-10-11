@@ -162,3 +162,11 @@ Re-read original `bios/bisrv.asd` from the supplied `XGoAnalisis.zip` and scanne
 In contrast, direct `JAL 0x8035e360` (state snapshot) appears at file offsets `0x3526b4` and `0x35f14c`. Within the normalizer entry, `0x35d4f0` is `JAL 0x8035c6e8`, and the verified per-player pressed-mask merge remains at `0x35d52c` (serial load), `0x35d530` (RF load), `0x35d53c` (OR), and `0x35d544` (store).
 
 **Implication:** do not assert scan-to-normalizer ordering or choose a hook until the task/dispatcher control flow is reconstructed. In particular, absence of a direct `JAL` is not evidence of a safe unused routine. Original image only; not yet a candidate for patching.
+
+## 2026-10-11 — Control-flow correction: scanner reached by branch, not JAL
+
+Direct verification against the supplied original `bios/bisrv.asd` found an important control-flow edge overlooked by the earlier JAL-only search. At `0x8035d514`, instruction word `0x11000096` decodes as `beq t0,zero,+0x96`, targeting `0x8035d770` (the scanner entry). The branch delay-slot instruction at `0x8035d518` must be accounted for. Therefore **the absence of a direct JAL to the scanner is explained at least in part by a conditional branch from the normalization routine to the scanner address**. This is not an indirect-call mystery alone. Other entry/caller relationships still need tracing.
+
+Within the player loop, `0x8035d54c` (`0xac800000`) is `sw zero,0(a0)` and clears the current player's raw serial word after its mask was read and combined with RF. The preceding `0x8035d548` is a conditional branch to `0x8035d558`; `0x8035d54c` is its delay slot and **executes regardless of branch direction** on standard MIPS delay-slot semantics. This makes the scanner-word lifetime explicit: scan populates, normalizer consumes and clears. Do not place a redirect after consumption.
+
+Another branch at `0x8035d504` targets `0x8035d6e0`; inspect both paths and return edges before choosing any patch location. No firmware changes made.
