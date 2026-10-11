@@ -228,6 +228,18 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **Specific next tests:** (1) offline GPIO ownership assertion from backup and board config; (2) enumerate `gamepad->hotkey()` action types and saved combinations; (3) inspect `USBHostManager::start/process` native-vs-PIO PHY ownership; (4) add Turbo press/release + idle host-frame simulator and XGO return-mode UI validation. No firmware change.
 
+## Working-config hotkey and USB host audit — 2026-10-11
+
+**USER CONFIG** seven active hotkeys: 01 mask 0x10300 action 4 HOME_BUTTON; 02 0x20300 action 1 DPAD_DIGITAL; 03 0x40300 action 2 DPAD_LEFT_ANALOG; 04 0x80300 action 3 DPAD_RIGHT_ANALOG; 05 0x11200 action 6 SOCD_UP_PRIORITY; 06 0x21200 action 7 SOCD_NEUTRAL; 07 0x41200 action 8 SOCD_LAST_INPUT. 08–16 inactive, `lockHotkeys=0`. Values resolved from pinned `proto/enums.proto:383+`; no active reboot/profile-switch hotkey.
+
+**UP** `src/gamepad.cpp:420+` hotkey processing iterates 16 entries and applies actions; `processHotkeyAction` sets `reqSave=true` for D-pad and SOCD mode changes when action differs from `lastAction`, then triggers `GPStorageSaveEvent(true)`. **Confirmed reachable P1 risk**: these ordinary configured hotkeys can request persistent flash saves while the XGO responder is servicing console polls. Multicore lockout stops Core1 during erase/program. Assess save coalescing, deferred flash callback, and resume timing; avoid treating lockout as transparent.
+
+**UP** `src/usbhostmanager.cpp:14-43`: `start()` initializes PIO USB host only if `PeripheralManager::isUSBEnabled(0)` AND `listeners.size()>0`; `process()` invokes `tuh_task()` only when `tuh_ready`. Both host addons are disabled in backup; `AddonManager::LoadUSBAddon` registers listeners only when `available()` succeeds. This strongly supports no PIO USB host initialization for current config, **conditional on complete listener inventory**. Non-XGO and alternate configurations remain OPEN.
+
+**Additional semantic concern:** `HOTKEY_DPAD_LEFT_ANALOG` and `HOTKEY_DPAD_RIGHT_ANALOG` change gamepad D-pad processing, while XGO's `map_mask` reads only `pressedUp/Down/Left/Right` and not analog axes. Whether D-pad-to-analog modes intentionally result in no XGO directional output requires independent method-level trace and regression tests. Do not classify as defect until tested.
+
+**Audit tracking:** A30 P1 reachable flash-save via configured D-pad/SOCD hotkeys; A31 P2 PIO USB host conditional initialization; A32 P1 XGO digital-direction semantics under configured analog D-pad hotkeys. No golden artifact modified.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
