@@ -145,6 +145,18 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **Preservation implications:** Archive exact Test14 UF2 SHA-256 and UF2 address range, saved known-good configuration export, board identity and physical Frankie continuity map. Any future GP2040-CE migration must be a new candidate branch with separate validation, not a direct update to golden.
 
+## Original Test14 binary: exact UF2 configuration overlap closure — 2026-10-11
+
+**BIN (offline parsing of recovered original GitHub Actions artifact ID 11687143460; run 38098786893):**
+- Artifact archive `test14-original.zip`: **1,018,276 bytes**, SHA-256 `05122fa15035392e41ab0c0eb361d1d91acebe871c8e4b55399e6b5b2f5476ec`.
+- ZIP member `GP2040-CE_0.7.12_Pico.uf2`: **2,514,944 bytes**, SHA-256 `ac2d948c4d3e246787988bc8a3fc91bfc3bd773a333ddafc2778c45bc823c97e`. Embedded `SHA256SUMS.txt` agrees with UF2 SHA-256.
+- Parsed all **4,912** UF2 blocks (512 bytes each), validated UF2 start/end magic, target addresses, 256-byte payload lengths, block indices and absence of duplicate address/size records. The UF2 writes contiguous target range **`0x10000000` through `0x10132FFF` inclusive** (end exclusive `0x10133000`); family ID is uniform across records.
+- Reserved GP2040-CE FlashPROM config: **`0x101F8000` through `0x101FFFFF` inclusive** (end exclusive `0x10200000`). **ZERO UF2 records overlap this region.** Gap between end of UF2 payload and start of config region is `0xC5000` bytes (806,912 bytes).
+- **Conclusion (BIN + UP):** the exact Test14 UF2 contains no writes targeting GP2040-CE's 32-KiB configuration sector. A normal address-respecting UF2 flash operation therefore does not itself reset saved configuration. This does **not** prove how any particular bootloader erases sectors beyond those addressed, nor prove that application startup won't migrate/write configuration afterward.
+- The filename `GP2040-CE_0.7.12_Pico.uf2` is the Test14 archive member name, **not evidence that it is an unmodified stock GP2040-CE release**. Preserve hashes to avoid dangerous confusion.
+
+**Acceptance impact:** UF2/config address-overlap question **CLOSED (BIN)**. Complete recovery path still **OPEN** pending validated reset and post-flash XGO-mode restoration. Golden remains untouched.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
