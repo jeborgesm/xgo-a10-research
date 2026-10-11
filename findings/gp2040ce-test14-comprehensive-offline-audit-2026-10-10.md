@@ -58,6 +58,25 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 - `src/gp2040.cpp:265-315`: ordinary loop runs USBHost process, input addons, driver, TinyUSB, PostprocessAddons and save check. Test14 Core0 auxiliary tick executes after PostprocessAddons; save occurs afterward.
 - `src/gp2040.cpp:519-525`: Web Config and BOOTSEL hotkeys call `System::reboot`, rather than directly switching USB PHY in place. Full reset implementation remains **OPEN**.
 
+## FlashPROM and reboot implementation — pinned-upstream closure (2026-10-10)
+
+**UP verified** from `lib/FlashPROM/src/FlashPROM.cpp` and `FlashPROM.h`:
+
+- `EEPROM_WRITE_WAIT=50` milliseconds. `FlashPROM::commit()` cancels a pending alarm and schedules `writeToFlash` using `add_alarm_in_ms(..., true)`. Configuration save is therefore **deferred**, not an immediate flash write.
+- Alarm callback `writeToFlash` executes `multicore_lockout_start_blocking()`, then `spin_lock_blocking(flashLock)`, `flash_range_erase` and `flash_range_program` of `EEPROM_SIZE_BYTES=0x8000` (32 KiB), followed by `multicore_lockout_end_blocking()`. The callback uses an alarm IRQ context; inspect SDK callback and lockout constraints before claiming full safety.
+- **A confirmed functional limitation, not necessarily a firmware defect:** a flash write necessarily suspends the Core1 XGO responder while lockout is active, so XGO console polls cannot be serviced during the write. Exact pause and recovery remain unmeasured. Even if flash lockout is deadlock-free, it is not transparent to the console.
+- Lockout registration in upstream `src/main.cpp` is preserved by Test14 `apply.py`. Potential lockout wait until Core1 exits its interrupt-disabled transaction segment remains; inspect SDK lockout IRQ handling and timing.
+- The `FlashPROM` implementation calls `multicore_lockout_start_blocking` *before* taking `flashLock`, and `end_blocking` before `spin_unlock`; do not infer deadlock without a specific conflicting caller.
+
+**UP verified** from `src/system.cpp`:
+
+- `System::reboot` shuts down USB host, attempts multicore lockout, writes requested boot mode to watchdog scratch[5], then triggers watchdog reboot. This supports **reset-based** Web Config and BOOTSEL transitions rather than live PHY reassignment.
+- `System::takeBootMode` validates and consumes the watchdog scratch mode, resetting it to DEFAULT. The full startup-mode selection logic still needs applied-tree review.
+
+**Reclassified:** A01 missing victim-registration hypothesis **CLOSED**; deferred flash-save timing and responder interruption **OPEN**. A05 reset-based transition supported by UP, but end-to-end Web Config access/persistence **OPEN**.
+
+**Recommended mitigation design only, not a change to golden:** establish whether the host tolerates missed frames during saves and whether the responder reliably re-arms after lockout. If not, a future separately versioned candidate may need a deliberate quiesce/recovery protocol or save restriction. Do not edit Test14 without offline proof.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
