@@ -89,3 +89,15 @@ Given the recent history of boot-sensitive `bios/bisrv.asd` modifications, do no
 This branch is intentionally playful and experimental. Nothing here becomes part of the protected RP2040 integration line or cumulative XGO baseline merely because it works offline.
 
 Promotion requires explicit hardware evidence and a deliberate decision to carry the feature forward.
+
+## 2026-10-11 — SF900/SF2000 comparison and offline routing analysis
+
+**New user hardware observation [HW, SF2000 comparator, not XGO]:** two eBay SF900 controllers work on the SF2000; the switch on each controller permits controlling P1 or P2. The switch mechanism (wireless pairing identity, receiver routing, or firmware mapping) has **not** been established. This is proof of user-facing controller-role selection on the comparator, not proof that stock XGO already supports that selection.
+
+**XGO evidence [BIN/HW]:** GPIO B15 is the local P1 serial stream; L0 is P2; B7 is shared clock. Both channels serialize the same 12-button encoding. RP2040 native Handle Interface responder already hardware-passed as P2. Thus the safest candidate design is a post-scan logical routing change, not GPIO reassignment or RP2040 protocol changes.
+
+**Candidate routing [INF; not implemented]:** preserve the independent scanner outputs, normalize active-low state to a pressed-button representation, and choose: default P2 = handle, P1 = local; optional P1 = local merged with handle, P2 = no handle contribution. If P2 has other input sources, retain those sources unchanged. Confirm whether local/handle masks are active-low or normalized before choosing AND/OR. Do not confuse the SF900 physical P1/P2 switch with the XGO's proposed software setting.
+
+**Still OPEN:** exact binary instructions/addresses of the post-scan routing/merge; whether P2 has other independent sources; settings persistence; game/menu input consumers; and safe bisrv.asd modification/boot-integrity rules. No firmware has been changed, and no hardware candidate is authorized by this note.
+
+**Next offline action:** inspect disassembly and address maps for the scanner's two output stores and the consumer(s) of those stores, then specify a minimal conditional redirect that preserves stock P2 behavior by default. Keep this branch separate from ongoing RP2040 live-controller integration.
