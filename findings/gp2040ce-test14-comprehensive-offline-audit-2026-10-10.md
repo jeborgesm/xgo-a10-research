@@ -171,6 +171,18 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **OPEN:** Verify reset UI access with Test14's TinyUSB XGO mode gating, USB config-mode initialization, and whether `INPUT_MODE_XGO` is reselected from defaults after a reset. No guarantee of full recovery yet.
 
+## Test14 boot-mode return-path UI omission — 2026-10-11
+
+**HW (user screenshots):** Test14 Web Config at `192.168.7.1/settings` shows `XGO (Caveman)` selected and selectable in Current Input Mode. In Settings > Boot Input Modes, XGO is absent; LB and LT show `No Mode Selected`. User correctly identifies inability to configure an XGO return boot chord from UI.
+
+**UP** `www/src/Pages/SettingsPage.jsx:133+` defines a distinct hardcoded `INPUT_BOOT_MODES` list, omitting XGO enum 18. Lines 412–450 validate each boot-mapping field with `.oneOf(INPUT_BOOT_MODES.map(o => o.value))`. Adding only the label in the main mode dropdown is insufficient. `www/src/Data/InputBootModes.ts` separately provides main mode metadata; integration already appends XGO there.
+
+**UP** `src/webconfig.cpp:683-705,768-775` serializes/deserializes the eight `inputModeB1..R2` fields; no whitelist is evident in these assignments. `src/gp2040.cpp:355-430` maps the processed single-button mask to saved mode, subject to `forcedSetupOptions` mode-switch lock. `src/gp2040.cpp:150-157` persists a selected boot mode when it differs from saved mode. **INF:** XGO enum 18 is likely usable through the existing firmware path once Web UI list/validation is extended; end-to-end test remains OPEN.
+
+**Additional boundary:** `bootModeOptions.enabled` selects GPIO boot mappings instead of the legacy button mapping; an LB mapping in Settings > Boot Input Modes is not authoritative if the newer GPIO boot-mode mechanism is enabled. Physical LB-to-L1 pin mapping must also be verified, and saved forced mode-switch locks checked.
+
+**Candidate change only (NOT golden Test14):** extend `INPUT_BOOT_MODES` with XGO enum 18 and localized label, add source-level preflight assertions, verify Web Config assets are regenerated/embedded, confirm enum 18 round-trip, then test XGO->XInput->XGO and persistent reboot. Keep exact Test14 artifact as rollback. Do not direct user to switch modes before a verified return path exists.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
