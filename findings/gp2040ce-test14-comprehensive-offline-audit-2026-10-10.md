@@ -218,6 +218,16 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **New tracking:** A26 P1 real Turbo path GPIO14 -> processed button mask; A27 P2 ADS1115 optional I²C path/analog-only effect; A28 P1 backup omission of bootModeOptions requires independent readback; A29 P2 pin15 LED ownership and I²C owner matrix. **No golden firmware/config modified.**
 
+## Working-config GPIO ownership and input publication ordering — 2026-10-11
+
+**USER CONFIG** `gp2040ce_backup_20261011165601680.gp2040`, read-only offline analysis. Saved mapping: GPIO2–13 D-pad/face/shoulders; GPIO14 action 32 Turbo; GPIO15 action 0 reserved/addon and Turbo LED; GPIO16–21 S1/S2/L3/R3/A1/A2; GPIO0/1 action 0 I2C peripheral; GPIO28 action 0 LED/addon. **UP** pinned `configs/Pico/BoardConfig.h` agrees with these functions, including `I2C0_PIN_SDA=0`, `I2C0_PIN_SCL=1`, `TURBO_LED_PIN=15`, `BOARD_LEDS_PIN=28`. **SRC** XGO raw USB PHY accesses DP/DM USB registers, not GPIO0/1. No standard GPIO mapping collision observed. Electrical ownership and runtime peripheral interactions remain OPEN.
+
+**UP** `src/gp2040.cpp:290–311` orders normal input loop: `addons.PreprocessAddons()`, `gamepad->process()`, `addons.ProcessAddons()`, `gamepad->hotkey()`, `checkProcessedState()`, copy processed state, `inputDriver->process(gamepad)`, TinyUSB task, `addons.PostprocessAddons()`. **SRC** Test14 injects diagnostics and `XGODriver::process` publishes `map_mask(gamepad)` after Turbo and hotkeys. Thus intentional Turbo flicker reaches XGO output; no evidence that the Core1 responder can receive a partly updated 12-bit mask because publication is atomic. However, input hotkeys can mutate mode/profile or initiate save/reboot; audit hotkey semantics and Core1 lifecycle on those paths.
+
+**UP** `src/addons/i2canalog1115.cpp`: `available()` scans I2C and only loads add-on on device detection; `process()` updates analog axes, not XGO 12-bit digital map. ADS1115 reads may affect Core0 scheduling only if a device is present. OLED and ADS1115 share I2C manager resources but runtime arbitration/timeout not yet audited.
+
+**Specific next tests:** (1) offline GPIO ownership assertion from backup and board config; (2) enumerate `gamepad->hotkey()` action types and saved combinations; (3) inspect `USBHostManager::start/process` native-vs-PIO PHY ownership; (4) add Turbo press/release + idle host-frame simulator and XGO return-mode UI validation. No firmware change.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
