@@ -157,6 +157,20 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **Acceptance impact:** UF2/config address-overlap question **CLOSED (BIN)**. Complete recovery path still **OPEN** pending validated reset and post-flash XGO-mode restoration. Golden remains untouched.
 
+## Web Config factory reset trace — 2026-10-11
+
+**UP** `src/webconfig.cpp:3099-3105,3299` registers `/api/resetSettings`, whose handler calls `Storage::getInstance().ResetSettings()`. `src/storagemanager.cpp:56-60` implements `ResetSettings()` as `EEPROM.reset(); watchdog_reboot(0, SRAM_END, 2000);`. `lib/FlashPROM/src/FlashPROM.cpp:49-53` implements `EEPROM.reset()` by zeroing the 32-KiB cache then scheduling deferred `commit()`; the alarm callback erases/programs the reserved region.
+
+**Conclusion:** An existing Web Config factory-reset mechanism is SOURCE-CONFIRMED, not hypothetical. The two-second watchdog reboot permits time for the nominal 50-ms delayed write, but does not prove write completion under all failure states; no Test14 hardware reset has been performed.
+
+**Recovery procedure (PROVISIONAL, NOT USER-INSTRUCTION TO EXECUTE):**
+1. Preserve known-good Test14 UF2 and export current config before changing anything.
+2. When Web Config is accessible, use its normal configuration UI to restore `INPUT_MODE_XGO`, then reboot and verify XGO communication. Avoid factory reset when targeted correction works.
+3. If config is unusable but Web Config remains accessible, invoke its documented Reset Settings UI only after backup, then reboot; verify XGO default, OLED and mappings. Factory reset loses custom config.
+4. If app won't boot or config UI unavailable, physical BOOTSEL can reflash known-good firmware, but the exact UF2 doesn't touch config sector; therefore this step alone may not repair bad saved settings. A separate **config-only** rescue image/operation could be designed and verified in a future candidate, but **must not** be used on golden hardware without offline checks and explicit approval.
+
+**OPEN:** Verify reset UI access with Test14's TinyUSB XGO mode gating, USB config-mode initialization, and whether `INPUT_MODE_XGO` is reselected from defaults after a reset. No guarantee of full recovery yet.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
