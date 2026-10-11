@@ -90,7 +90,7 @@ replace_once("src/main.cpp",
              "static GP2040Aux * gp2040Core1 = nullptr;",
              "static GP2040Aux * gp2040Core1 = nullptr;\nstatic bool xgoMode = false;\nvoid xgo_aux_tick() { if (xgoMode) gp2040Core1->processOnce(); }")
 replace_once("src/main.cpp",
-             "\t// Create GP2040 w/ Additional Modules for Core 1\n\tgp2040Core1->setup();\n\tgp2040Core1->run();",
+             "\t// Create GP2040 w/ Additional Modules for Core 1\t\n\tgp2040Core1->setup();\n\tgp2040Core1->run();",
              "\tif (xgoMode) {\n\t\tXGODriver::runResponder();\n\t} else {\n\t\tgp2040Core1->setup();\n\t\tgp2040Core1->run();\n\t}")
 replace_once("src/main.cpp",
              "\t// Create GP2040 Thread for Core1\n\tmulticore_launch_core1(core1);",
