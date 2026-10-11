@@ -90,6 +90,20 @@ The pinned upstream `src/main.cpp` contains `multicore_lockout_victim_init();` a
 
 **Classification:** A01 victim-registration CLOSED; SDK handshake semantics SOURCE-CLOSED; XGO frame loss and phase recovery after lockout **P1 OPEN**. No Test14 source/binary changes.
 
+## User-directed priority shift: integrity, persistence, recovery and reproducibility (2026-10-10)
+
+**User acceptance criteria:** missed input polls during an infrequent PC-connected configuration save are acceptable. Primary failure to prevent: a saved setting, firmware change, or future upstream update causes persistent loss of XGO communication or makes the known-good setup unrecoverable.
+
+**Priority order (supersedes earlier timing-first order):**
+1. **P0 recovery and configuration contract:** enumerate stored `inputMode`, boot-mode, GPIO/USB-PHY, display and addon settings; determine which can invalidate XGO transport or Core1 scheduler. In particular, `DEFAULT_INPUT_MODE INPUT_MODE_XGO` applies to new defaults but existing saved settings can override it. Verify saved mode versus startup `xgoMode`, Web Config entry, BOOTSEL recovery, and a reproducible restore procedure.
+2. **P0 persistent storage integrity:** validate config layout, bounds, flash erase/write region `0x101F8000` of length `0x8000`, binary image size/partition compatibility, interrupted writes and corrupt-config fallback. Source-derived addresses do not prove actual deployed flash partition safety.
+3. **P0 reproducible preservation:** pin upstream `3d1f32f7d02d418826b725b60208278d3be878c3`, overlay commit `fb911825123f07ea8fe12e4bdf881583a76de146`, exact toolchain/dependencies, CI recipe, original golden UF2/ZIP hashes and a fresh-Pico reconstruction procedure. Keep Test14 immutable.
+4. **P0 Frankie physical interface dossier:** verified connector orientation, wire-by-wire pinout, Pico GPIO to XGO pins, power/ground/voltage constraints, cable photos and continuity evidence. Never treat illustrative wiring as measured hardware.
+5. **P1 future-upstream migration policy:** no in-place upstream upgrade; branch new port, diff config schemas and startup/USB/multicore changes, run automated and hardware regression, retain rollback to golden.
+6. **P2 transient flash pause and missed poll timing:** only elevate if evidence indicates persistent desynchronization after saving.
+
+**Evidence discipline:** SRC/UP evidence establishes mechanisms; configuration recovery, corrupted-storage behavior, wiring correctness and byte-for-byte reproduction remain OPEN until demonstrated. Do not claim permanent safety or guaranteed recovery without proof.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
