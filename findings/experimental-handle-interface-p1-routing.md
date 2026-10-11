@@ -134,3 +134,23 @@ The two-player normalization function at `0x8035d4c4` uses the serial base `gp-0
 **Implementation hypothesis [INF]:** in optional Handle-as-P1 mode, transform the two serial words after scanning and before normalization so P1 receives the union of built-in and Handle presses and P2 no longer receives the Handle presses. Do not alter either RF word; default mode must remain byte-for-byte equivalent in behavior. This is not yet a patch or hardware proof.
 
 **Open:** verify scan-to-normalizer call ordering, source-word lifetime, hook space, settings persistence, and boot integrity of any modified `bisrv.asd`. No hardware candidate until those are addressed.
+
+## Offline binary verification — scanner/normalizer call-site caution
+
+Independently opened `bios/bisrv.asd` (12,768,452 bytes) from `XGoAnalisis.zip` and decoded little-endian MIPS words around `0x35d4c4`. Confirmed:
+
+```text
+0x35d4f4  2797f2f4  addiu s7,gp,-0xd0c   RF base
+0x35d4fc  2795f2d4  addiu s5,gp,-0xd2c   serial base
+0x35d508  279ef2e8  addiu fp,gp,-0xd18   logical base
+0x35d51c  00003821  move a3,zero         player index
+0x35d520  00074080  sll t0,a3,2
+0x35d524  01152021  addu a0,t0,s5
+0x35d528  01174821  addu t1,t0,s7
+0x35d52c  8c940000  lw s4,0(a0)        serial[player]
+0x35d530  8d260000  lw a2,0(t1)        RF[player]
+0x35d53c  00d43025  or a2,a2,s4       merged pressed mask
+0x35d544  ae660000  sw a2,0(s3)       scratch combined
+```
+
+This verifies the earlier repository address map against the supplied stock binary. A literal byte search for direct JAL encodings targeting `0x8035d770` and `0x8035d4c4` returned **no matches** in this binary. This is not proof that the functions are unused: possible causes include indirect calls, a different effective load base, and address-mapping conventions. **Do not claim call ordering is closed.** Next analyze surrounding task dispatch, pointer tables, and the firmware's actual virtual/file address mapping. No patch or hardware test.
