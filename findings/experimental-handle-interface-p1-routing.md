@@ -124,3 +124,13 @@ The normalizer merges serial and RF per player using OR of *pressed-button* mask
 **Artifact check [BIN]:** The available `XGoAnalisis.zip` includes `bios/bisrv.asd` (12,768,452 bytes); bytes at file offsets `0x35d770`, `0x35d4c4`, `0x35e360`, `0x35ea38` match the expected MIPS instruction regions, and the scanner's first 16 bytes match the pinned signature. This establishes that the archive is suitable for deeper offline static inspection; it does not establish boot-safe patching or whether the archive matches the latest protected hardware baseline.
 
 **Next tasks:** disassemble `0x8035d4c4` with the actual MIPS calling convention and identify exact raw/RF loads and writes; inspect the caller sequence to choose a reversible intercept; assess menu setting persistence separately; resolve post-Test100 `bisrv.asd` boot-integrity problem before proposing a firmware candidate. No binary modified.
+
+## Instruction-level checkpoint — 2026-10-11
+
+Source: preserved XGO `bios/bisrv.asd` in the analysis archive; these are stock-image MIPS addresses, not verified offsets in the latest modified firmware.
+
+The two-player normalization function at `0x8035d4c4` uses the serial base `gp-0xd2c`, RF/auxiliary base `gp-0xd0c`, and logical output base `gp-0xd18`. In the player-indexed loop, `0x8035d52c` loads the serial word, `0x8035d530` loads the corresponding RF word, `0x8035d53c` ORs the pressed-button masks, and `0x8035d544` stores the combined state to scratch for translation. Raw serial P1/P2 words are at `0x80c33a48` and `0x80c33a4c` using the documented stock `gp` value.
+
+**Implementation hypothesis [INF]:** in optional Handle-as-P1 mode, transform the two serial words after scanning and before normalization so P1 receives the union of built-in and Handle presses and P2 no longer receives the Handle presses. Do not alter either RF word; default mode must remain byte-for-byte equivalent in behavior. This is not yet a patch or hardware proof.
+
+**Open:** verify scan-to-normalizer call ordering, source-word lifetime, hook space, settings persistence, and boot integrity of any modified `bisrv.asd`. No hardware candidate until those are addressed.
