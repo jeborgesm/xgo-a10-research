@@ -123,7 +123,7 @@ bool emit_frame() {
  for (unsigned slot = 1; complete && slot < 12; ++slot) {
   if (!wait_clock(false, EDGE_TIMEOUT_US)) { clock_timeout = true; failed_slot = slot; complete = false; break; }
   if (mask & (1u << slot)) data_sink(); else data_release();
-  if (!wait_clock(true, EDGE_TIMEOUT_US)) { xgo_diag_clock_timeouts.fetch_add(1, std::memory_order_relaxed); xgo_diag_last_failure_slot.store(slot, std::memory_order_relaxed); complete = false; break; }
+  if (!wait_clock(true, EDGE_TIMEOUT_US)) { clock_timeout = true; failed_slot = slot; complete = false; break; }
  }
  if (complete) {
   if (!wait_clock(false, EDGE_TIMEOUT_US)) { clock_timeout = true; failed_slot = 12; complete = false; }
