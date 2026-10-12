@@ -170,3 +170,20 @@ Direct verification against the supplied original `bios/bisrv.asd` found an impo
 Within the player loop, `0x8035d54c` (`0xac800000`) is `sw zero,0(a0)` and clears the current player's raw serial word after its mask was read and combined with RF. The preceding `0x8035d548` is a conditional branch to `0x8035d558`; `0x8035d54c` is its delay slot and **executes regardless of branch direction** on standard MIPS delay-slot semantics. This makes the scanner-word lifetime explicit: scan populates, normalizer consumes and clears. Do not place a redirect after consumption.
 
 Another branch at `0x8035d504` targets `0x8035d6e0`; inspect both paths and return edges before choosing any patch location. No firmware changes made.
+
+## 2026-10-11 — Controller task state-machine edges (offline verified)
+
+Fresh decoding of the original `XGoAnalisis.zip/bios/bisrv.asd` confirms that the controller code is not a simple linear scan-then-normalize function. Relevant little-endian MIPS branches (file offsets; runtime mapping per prior notes) are:
+
+| Branch site | Opcode | Target | Meaning / caution |
+|---|---|---|---|
+| `0x35d504` | `bne v0,zero` | `0x35d6e0` | bypasses early normalizer entry |
+| `0x35d514` | `beq t0,zero` | `0x35d770` | reaches scanner entry |
+| `0x35d6d8` | `beq v0,zero` | `0x35d510` | returns to state check |
+| `0x35d6fc` | `beq s0,zero` | `0x35d514` | scanner gate re-evaluation |
+| `0x35d758` | `bne a0,zero` | `0x35d510` | state check re-evaluation |
+| `0x35d764` | `bne t0,zero` | `0x35d51c` | enters player normalization loop without scanner entry |
+
+Branch delay slots must be modeled, especially `0x35d768: sw zero,gp-0xd08`, which executes on either branch outcome at `0x35d764`. The normalization loop also clears consumed raw serial state in a branch delay slot (`0x35d54c`).
+
+**Design implication [INF]:** no safe pre-normalizer injection point is established yet. There are paths that enter normalization without entering scanner immediately beforehand. Before implementing, construct a control-flow graph across `0x35d4c4..0x35de34`, identify loop invariants and serial-word writes, and check the effect on the RF P2 state. Do not modify the active firmware baseline.
