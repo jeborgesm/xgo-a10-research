@@ -267,3 +267,10 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **SRC** Test14 `map_mask` slots R1=0, B4=1, B3=2, L1=3, B1=4, B2=5, S1=6, S2=7, directions 8–11; L2/R2 omitted. Do not infer which slot LP occupies from Street Fighter attack label; obtain in-game assignments and Web Config physical-to-logical mapping first. Specifically compare HK slot to LP slot and examine whether unwanted LP appears in processed mask or only host decoding. No confirmed timing root cause. No firmware changes.
 
+
+## HW correction: held attacks repeat unexpectedly — 2026-10-12
+
+**HW/user expected behavior:** in the tested Street Fighter title, holding an attack should produce a single attack until release and re-press. User observed repeated HP/HK attacks at roughly one-second gaps while physically held. Previous characterization as ordinary game repeat is **withdrawn**. Together with missed short HK taps and unintended LP after HK, this elevates investigation of false release/reassert transitions across XGO host polls. **INF**, not yet proven: intermittent failed/stale frames or Turbo state mutation may cause effective release pulses despite continuous GPIO input.
+
+**Discriminator:** independently log Core0 `published_mask` transitions and Core1 frame completion/slot results for a sustained held input, then compare with a synthetic host's decoded stream. A stable mask with intermittent host-decoded release implicates PHY/protocol; a toggling mask implicates processing/configuration (including enabled Turbo). Avoid changing 12us timeout before determining which layer toggles. User should not need to repeat gameplay tests to establish source-level contract. Test14 remains protected.
+
