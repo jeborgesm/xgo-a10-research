@@ -1,3 +1,9 @@
+## CRITICAL HW RESULT — Test15 REJECTED (2026-10-12)
+
+User tested Test15: HK short taps FAIL; HK/HP hold repetitions FAIL; unintended LP from HK FAIL; unintended LK from HP FAIL; rapid tap/hold mixed attacks FAIL. OLED input display PASS; Web Config PASS. **No actual improvement over Test14.** Source: `findings/gp2040ce-test15-hardware-failure-2026-10-12.md` (commit `6ae5564`). The Test15 candidate's fresh snapshot and reduced IRQ-off diagnostics **are not a demonstrated fix**. Do not suggest Test15 again as resolved. Golden Test14 protected. Pivot to independent end-to-end processed mask/PHY/host decode and game binding evidence before Test16. Do not ask for repeat of these same tests.
+
+---
+
 ## Test15 offline candidate compile result — 2026-10-12
 
 **CI PASS:** [run 38274789992](https://github.com/jeborgesm/xgo-a10-research/actions/runs/38274789992); artifact `11757969447` named `xgo-gp2040ce-test15-OFFLINE-UNVALIDATED-DO-NOT-FLASH`. **Golden Test14 unchanged.** Candidate source `integrations/gp2040ce-xgo-test01/candidates/test15-offline/XGODriver.cpp`. Validation record `findings/gp2040ce-test15-offline-candidate-build-validation-2026-10-12.md`. Local deterministic 100k schedule stress passed; no hardware validation. Artifact archive digest `sha256:97223dd2da56142e40dc673c073b00d5ea1d1dc28e8436815397b7adaa62c693` (archive, not UF2). Core0 producer byte-for-byte preserved. Next meaningful dependency is explicit user approval for controlled hardware test, or further independent timing analysis; do not imply all cross-button issues fixed.
