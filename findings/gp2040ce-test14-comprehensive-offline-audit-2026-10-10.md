@@ -260,3 +260,10 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **Next offline proof:** add a model with a synthetic host LOAD/CLOCK waveform and per-slot sampled bits, including short presses; separately instrument simulated `published_mask` history versus console-decoded slots. Require independent Caveman source/ELF disassembly before claiming slot parity. Do not tune edge timeouts or claim confirmed bit corruption. Golden Test14 preserved.
 
+
+## CORRECTION: HK produces unintended LP, not MP — 2026-10-12
+
+**HW correction from user:** after additional Street Fighter play, intermittent extra attack following HK is **LP (jab)**, **not MP**. Earlier MP reports and MP-specific hypothesis are superseded; preserve them as historical observations, not current confirmed attack identification. HP taps and holds work; HK short taps often fail, HK hold works and sometimes generates LP. OLED consistently recognizes the logical press. **Critical audit-process miss:** prior comprehensive audit did not verify every logical button against each transmitted serial slot under short taps, holds, simultaneous presses, release and malformed frame timing. This is a required behavioral coverage gate, not merely a firmware integrity check.
+
+**SRC** Test14 `map_mask` slots R1=0, B4=1, B3=2, L1=3, B1=4, B2=5, S1=6, S2=7, directions 8–11; L2/R2 omitted. Do not infer which slot LP occupies from Street Fighter attack label; obtain in-game assignments and Web Config physical-to-logical mapping first. Specifically compare HK slot to LP slot and examine whether unwanted LP appears in processed mask or only host decoding. No confirmed timing root cause. No firmware changes.
+
