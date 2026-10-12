@@ -1,3 +1,19 @@
+## 2026-10-12 OFFLINE FIX CANDIDATE CHECKPOINT (latest)
+
+**User direction:** execute work, avoid frequent status-only stops. A narrowly scoped **Test15 offline candidate** now exists, but golden Test14 overlay and artifact remain unchanged. **Do not ask for a hardware test yet.**
+
+- Candidate file: `integrations/gp2040ce-xgo-test01/candidates/test15-offline/XGODriver.cpp` (commit `e52160a`).
+- Structural gates: `integrations/gp2040ce-xgo-test01/tests/test15_candidate_static_gates.py` (commit `9750b04`).
+- Isolated CI workflow: `.github/workflows/gp2040ce-xgo-test15-offline.yml` (commit `66d9bab`), [Actions run 38274789992](https://github.com/jeborgesm/xgo-a10-research/actions/runs/38274789992), queued when created. **Do not claim compile success until run completes.**
+- Mechanism corrected: Core1 now reads the atomic published mask **after** observing LOAD low (rather than before a possible 20ms wait); Core1 masks interrupts immediately after LOAD detection, then samples the mask and waits for LOAD release; atomics for diagnostic counters moved **outside** IRQ-disabled slot transfer. Clock polarity, 12-slot order, final clock handling, and failure-only rearm remain as Test14.
+- This is a **source-grounded fix candidate for stale snapshots and IRQ-critical diagnostics**, not proof of the reported Street Fighter HK/HP issues. The original Caveman upstream source and physical host waveform remain open. Do not promote MODEL/INF to HW.
+- Hardware-proven loose-wire reference: `tools/rp2040-xgo-native-contra/main.c`. It shares the ignored final CLOCK high and level-based acquisition with Test14; neither is an identified GP2040-specific regression.
+- Additional classification tests `tests/test14_multiframe_fault_classifier.py` (commit `7425407`) and findings `findings/gp2040ce-test14-caveman-source-comparison-fault-classification-2026-10-12.md` (commit `2351d90`).
+
+### Next: validate CI outcome, fix any compiler/test failures, then review cycle timing and candidate residual risks. Do not flash automatically. Golden Test14 must remain byte-identical.
+
+---
+
 # XGO ARCHEOLOGY — HANDOFF CURRENT
 ## GP2040-CE XGO serial responder / Street Fighter six-button fault
 **Date:** 2026-10-12  
