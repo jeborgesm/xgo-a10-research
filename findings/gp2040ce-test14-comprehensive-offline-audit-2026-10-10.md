@@ -274,3 +274,7 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **Discriminator:** independently log Core0 `published_mask` transitions and Core1 frame completion/slot results for a sustained held input, then compare with a synthetic host's decoded stream. A stable mask with intermittent host-decoded release implicates PHY/protocol; a toggling mask implicates processing/configuration (including enabled Turbo). Avoid changing 12us timeout before determining which layer toggles. User should not need to repeat gameplay tests to establish source-level contract. Test14 remains protected.
 
+
+## HW discriminator: OLED does not show Turbo pulses — 2026-10-12
+
+User reports that when Turbo is active Igor's OLED visibly marks the button and shows multiple taps of that same button. During the current Street Fighter issue, **no such repeated OLED button events occur** despite held-button attack repetition and occasional unintended LP. This materially lowers Turbo as a cause; prior suggestion to treat it as equally likely is withdrawn. OLED rendering may not be a byte-for-byte trace of the Core0 published mask, so Turbo is not mathematically ruled out without an internal mask trace. Prioritize layer-boundary diagnosis: GPIO/OLED state vs `published_mask` vs Core1 serial decoded output. No further physical tests requested and no Test14 changes.
