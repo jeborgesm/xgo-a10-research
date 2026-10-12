@@ -251,3 +251,12 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
+
+## SF HK/MP investigation: differential diagnosis — 2026-10-12
+
+**HW** HP reliable on tap/hold; HK tap often missed, hold works, sometimes MP appears after HK. **SRC** R1=slot0, L1=slot3, B3=slot2, B4=slot1, B1=slot4, B2=slot5; L2/R2 absent. **Crucial qualification:** screenshot maps GP8=RB/R1, GP9=RT/R2, GP12=LB/L1, GP13=LT/L2. The exact in-game logical HK/MP mappings are not recorded, so cannot yet assign HK or MP to particular serial slots. A source-level Caveman reference was not located in the accessible research tree/search; no claim of independent lineage validation.
+
+**SRC** Snapshot taken before up-to-20ms LOAD wait explains a possible missed short pulse (temporal aliasing), **but cannot by itself synthesize a different button bit**: atomic published 12-bit mask is read as a whole, and `map_mask` maps individual buttons to distinct bits. Therefore unexpected MP requires an additional mechanism: GP2040 processing/Turbo/hotkey state mutation, physical remapping overlap, host decoding/frame alignment, or game behavior. No observed MP mask or host waveform yet. The ignored final clock-high timeout may misclassify frame success but is not demonstrated to shift bits. Similarly a level-based next LOAD acceptance could re-enter on an already-low level, but only if console LOAD behavior and timing permit it.
+
+**Next offline proof:** add a model with a synthetic host LOAD/CLOCK waveform and per-slot sampled bits, including short presses; separately instrument simulated `published_mask` history versus console-decoded slots. Require independent Caveman source/ELF disassembly before claiming slot parity. Do not tune edge timeouts or claim confirmed bit corruption. Golden Test14 preserved.
+
