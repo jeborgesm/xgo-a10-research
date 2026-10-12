@@ -1,3 +1,9 @@
+## Test15 offline candidate compile result — 2026-10-12
+
+**CI PASS:** [run 38274789992](https://github.com/jeborgesm/xgo-a10-research/actions/runs/38274789992); artifact `11757969447` named `xgo-gp2040ce-test15-OFFLINE-UNVALIDATED-DO-NOT-FLASH`. **Golden Test14 unchanged.** Candidate source `integrations/gp2040ce-xgo-test01/candidates/test15-offline/XGODriver.cpp`. Validation record `findings/gp2040ce-test15-offline-candidate-build-validation-2026-10-12.md`. Local deterministic 100k schedule stress passed; no hardware validation. Artifact archive digest `sha256:97223dd2da56142e40dc673c073b00d5ea1d1dc28e8436815397b7adaa62c693` (archive, not UF2). Core0 producer byte-for-byte preserved. Next meaningful dependency is explicit user approval for controlled hardware test, or further independent timing analysis; do not imply all cross-button issues fixed.
+
+---
+
 ## 2026-10-12 OFFLINE FIX CANDIDATE CHECKPOINT (latest)
 
 **User direction:** execute work, avoid frequent status-only stops. A narrowly scoped **Test15 offline candidate** now exists, but golden Test14 overlay and artifact remain unchanged. **Do not ask for a hardware test yet.**
