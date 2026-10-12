@@ -240,6 +240,14 @@ Reviewed full research overlay `apply.py`, `preflight.py`, `audit_test14.py`, `X
 
 **Audit tracking:** A30 P1 reachable flash-save via configured D-pad/SOCD hotkeys; A31 P2 PIO USB host conditional initialization; A32 P1 XGO digital-direction semantics under configured analog D-pad hotkeys. No golden artifact modified.
 
+## Street Fighter six-button hardware observation and serial hypothesis — 2026-10-12
+
+**HW** user reports fully wired controller; OLED reliably reports the pressed logical button. With Web Config remapping, HP works on taps and holds; HK often fails on taps, works on holds, and occasionally produces an unexpected MP after HK. Repeated held attacks ~1 second apart are game behavior until demonstrated otherwise. Screenshot Web Config mapping shows GP8=RB/R1, GP9=RT/R2, GP12=LB/L1, GP13=LT/L2. **SRC** Test14 maps R1 slot 0, L1 slot 3; R2/L2 are absent from `map_mask`. Avoid conflating screenshot mapping with the exact post-test in-game HK mapping unless verified.
+
+**SRC** `runResponder()` loads atomic `published_mask` before calling `emit_frame`; `emit_frame` may wait up to 20ms for LOAD. This can deliver stale samples and miss brief taps; does not independently explain an unexpected MP bit. The 12-slot IRQ-disabled train sets data at LOAD release for slot 0, then each falling CLOCK edge for slots 1–11, and releases after slot-12 falling edge. The final `wait_clock(true,12)` is ignored for success classification. This is a real diagnostic blind spot but no evidence yet it produces neighboring-bit corruption. On successful transactions there is no explicit LOAD high-to-low edge arm; the next call waits for DATA low level, so a new invocation during an already-low LOAD could be mistaken for a fresh transaction. No host trace yet.
+
+**P1 priority** compare original Caveman slot ordering and edge polarity using actual source or pinned binary; do not assume same merely because Test14 says derived from Caveman. Build offline host-waveform model for isolated slot0 (R1), slot3 (L1), and MP's identified slot, with variable press duration, LOAD pulse widths, and early/late clock edges. Record expected vs observed mask and frame status. The physical slot of HK/MP must be identified from game mappings, not inferred from attack names. No timing tweak without evidence. Preserve Test14; potential Test15 only after offline reproduction.
+
 ## Current conclusion
 
 **Not audit-closed.** Test14 is hardware-proven for observed gameplay, and the structural CI passed, but P1 flash lockout, timing and malformed-transaction recovery remain open. This is a documented risk inventory and initial source review, not a claim of exhaustive upstream tracing or simulated timing validation.
