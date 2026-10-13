@@ -57,7 +57,12 @@ jobs:
         run: |
           cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build upstream/build --parallel 2
-          arm-none-eabi-objdump -d upstream/build/GP2040-CE_0.7.12_Pico.elf > xgo-test17-disassembly.txt || true
+          find upstream/build -name '*.elf' -type f -print > xgo-test17-elf-list.txt
+          test "$(wc -l < xgo-test17-elf-list.txt)" -eq 1
+          ELF="$(cat xgo-test17-elf-list.txt)"
+          arm-none-eabi-objdump -d "$ELF" > xgo-test17-disassembly.txt
+          arm-none-eabi-nm -C "$ELF" > xgo-test17-symbols.txt
+          grep -q 'XGODriver::runResponder()' xgo-test17-symbols.txt
       - name: Package clearly labeled offline-only artifact
         run: |
           mkdir -p xgo-test17-offline
@@ -65,6 +70,8 @@ jobs:
           test "$(find xgo-test17-offline -maxdepth 1 -name '*.uf2' -type f | wc -l)" -eq 1
           (cd xgo-test17-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
           printf 'UNVALIDATED TEST17 OFFLINE CANDIDATE - DO NOT FLASH WITHOUT REVIEW\n' > xgo-test17-offline/README-DO-NOT-FLASH.txt
+          cp xgo-test17-disassembly.txt xgo-test17-symbols.txt xgo-test17-elf-list.txt xgo-test17-offline/
+          sha256sum integrations/gp2040ce-xgo-test01/candidates/test17-direct-gpio-offline/XGODriver.cpp > xgo-test17-offline/DRIVER-SOURCE-SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: xgo-gp2040ce-test17-OFFLINE-UNVALIDATED-DO-NOT-FLASH
