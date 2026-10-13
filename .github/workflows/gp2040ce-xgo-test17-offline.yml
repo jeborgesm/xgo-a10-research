@@ -57,7 +57,7 @@ jobs:
           GP2040_BOARDCONFIG: Pico
         run: |
           cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build upstream/build --parallel 2 --verbose > xgo-test17-build.log 2>&1 || { grep -E '(^| )(/[^ ]*ld:|collect2:|undefined reference|error:|FAILED:|region |overflowed|No space|not found)' xgo-test17-build.log | cut -c 1-350 | tail -n 60; tail -n 8 xgo-test17-build.log | cut -c 1-350; exit 1; }
+          cmake --build upstream/build --parallel 2 --verbose > xgo-test17-build.log 2>&1 || { awk 'length($0)<2500 && /undefined reference|error:|FAILED:|region |overflowed|collect2:|ld:|No space|not found|Memory region/ {print}' xgo-test17-build.log | tail -n 70; tail -n 8 xgo-test17-build.log | cut -c 1-350; exit 1; }
           tail -n 12 xgo-test17-build.log
           find upstream/build -name '*.elf' -type f -print > xgo-test17-elf-list.txt
           test "$(wc -l < xgo-test17-elf-list.txt)" -eq 1
@@ -65,6 +65,12 @@ jobs:
           arm-none-eabi-objdump -d "$ELF" > xgo-test17-disassembly.txt
           arm-none-eabi-nm -C "$ELF" > xgo-test17-symbols.txt
           grep -q 'XGODriver::runResponder()' xgo-test17-symbols.txt
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-test17-build-failure-log
+          path: xgo-test17-build.log
       - name: Package clearly labeled offline-only artifact
         run: |
           mkdir -p xgo-test17-offline
