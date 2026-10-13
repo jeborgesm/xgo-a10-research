@@ -1,0 +1,71 @@
+name: GP2040-CE XGO Test17 offline validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/gp2040ce-xgo-test17-offline.yml'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test17-direct-gpio-offline/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test17_*'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test realtime input contract and candidate invariants
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/tests/test17_direct_gpio_contract.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_snapshot_contract_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_phy_transaction_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_consecutive_load_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_temporal_rearm_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_host_waveform_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_multiframe_fault_classifier.py
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+      - name: Clone pinned firmware and SDK
+        run: |
+          git clone https://github.com/OpenStickCommunity/GP2040-CE.git upstream
+          git -C upstream checkout 3d1f32f7d02d418826b725b60208278d3be878c3
+          git -C upstream submodule update --init --recursive
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git pico-sdk
+          git -C pico-sdk submodule update --init --recursive
+      - name: Apply and audit protected Test14 overlay
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/preflight.py upstream
+          python3 integrations/gp2040ce-xgo-test01/apply.py upstream
+          python3 integrations/gp2040ce-xgo-test01/validate_generated_headers.py upstream
+          python3 integrations/gp2040ce-xgo-test01/audit_test14.py upstream
+          cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Substitute isolated Test17 only in temporary checkout
+        run: |
+          cp integrations/gp2040ce-xgo-test01/candidates/test17-direct-gpio-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/test17-direct-gpio-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Compile candidate
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          GP2040_BOARDCONFIG: Pico
+        run: |
+          cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build upstream/build --parallel 2
+          arm-none-eabi-objdump -d upstream/build/GP2040-CE_0.7.12_Pico.elf > xgo-test17-disassembly.txt || true
+      - name: Package clearly labeled offline-only artifact
+        run: |
+          mkdir -p xgo-test17-offline
+          find upstream/build -name '*.uf2' -type f -exec cp -t xgo-test17-offline/ {} +
+          test "$(find xgo-test17-offline -maxdepth 1 -name '*.uf2' -type f | wc -l)" -eq 1
+          (cd xgo-test17-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
+          printf 'UNVALIDATED TEST17 OFFLINE CANDIDATE - DO NOT FLASH WITHOUT REVIEW\n' > xgo-test17-offline/README-DO-NOT-FLASH.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-gp2040ce-test17-OFFLINE-UNVALIDATED-DO-NOT-FLASH
+          path: xgo-test17-offline/
