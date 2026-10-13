@@ -29,8 +29,8 @@ def convert(raw: bytes) -> bytes:
         header = struct.pack("<8I", MAGIC_START0, MAGIC_START1, FLAG_FAMILY_ID,
                              FLASH_BASE + index * PAYLOAD_SIZE, PAYLOAD_SIZE,
                              index, count, RP2040_FAMILY)
-        block = header + payload.ljust(PAYLOAD_SIZE, b"\\x00")
-        out.extend(block.ljust(BLOCK_SIZE - 4, b"\\x00") + struct.pack("<I", MAGIC_END))
+        block = header + payload.ljust(PAYLOAD_SIZE, bytes([0]))
+        out.extend(block.ljust(BLOCK_SIZE - 4, bytes([0])) + struct.pack("<I", MAGIC_END))
     return bytes(out)
 
 if __name__ == "__main__":
