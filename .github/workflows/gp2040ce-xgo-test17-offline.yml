@@ -22,6 +22,7 @@ jobs:
       - name: Test realtime input contract and candidate invariants
         run: |
           python3 integrations/gp2040ce-xgo-test01/tests/test17_direct_gpio_contract.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test17_source_release_gates.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_snapshot_contract_model.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_phy_transaction_model.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_consecutive_load_model.py
