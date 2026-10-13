@@ -8,6 +8,7 @@
 #include "pico/time.h"
 #include "hardware/sync.h"
 #include "hardware/structs/sio.h"
+#include "hardware/gpio.h"
 #include <cstdint>
 
 std::atomic<uint32_t> xgo_diag_raw{0};
@@ -172,7 +173,15 @@ bool emit_frame() {
 
 } // namespace
 
-void XGODriver::initialize() { /* USB PHY belongs exclusively to Core1 responder. */ }
+void XGODriver::initialize() {
+ constexpr uint8_t pins[12] = {12,11,10,13,6,7,16,17,2,3,5,4};
+ for (uint8_t pin : pins) {
+  gpio_init(pin);
+  gpio_set_dir(pin, GPIO_IN);
+  gpio_pull_up(pin);
+ }
+ // Native USB PHY belongs exclusively to Core1 responder.
+}
 void XGODriver::runResponder() {
  raw_init();
  while (true) {
