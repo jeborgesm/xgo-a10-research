@@ -57,7 +57,8 @@ jobs:
           GP2040_BOARDCONFIG: Pico
         run: |
           cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build upstream/build --parallel 2 > xgo-test17-build.log 2>&1 || { awk 'length($0)<2500 && /undefined reference|error:|FAILED:|region |overflowed|collect2:|ld:|No space|not found|Memory region/ {print}' xgo-test17-build.log | tail -n 70; tail -n 8 xgo-test17-build.log | cut -c 1-350; ls -lh upstream/build/*.elf upstream/build/*.uf2 upstream/build/*.bin upstream/build/*.hex 2>&1 || true; exit 1; }
+          cmake --build upstream/build --parallel 2 > xgo-test17-build.log 2>&1 || { awk 'length($0)<2500 && /undefined reference|error:|FAILED:|region |overflowed|collect2:|ld:|No space|not found|Memory region/ {print}' xgo-test17-build.log | tail -n 70; tail -n 8 xgo-test17-build.log | cut -c 1-350; ls -lh upstream/build/*.elf upstream/build/*.uf2 upstream/build/*.bin upstream/build/*.hex 2>&1 || true; test -s upstream/build/GP2040-CE_0.7.12_Pico.elf && test -s upstream/build/GP2040-CE_0.7.12_Pico.bin && test -s upstream/build/GP2040-CE_0.7.12_Pico.hex || exit 1; echo 'Linked ELF/BIN/HEX exist: recovering UF2 from raw flash binary'; } }
+          python3 integrations/gp2040ce-xgo-test01/uf2_from_bin.py upstream/build/GP2040-CE_0.7.12_Pico.bin upstream/build/GP2040-CE_0.7.12_Pico.uf2
           tail -n 12 xgo-test17-build.log
           find upstream/build -name '*.elf' -type f -print > xgo-test17-elf-list.txt
           test "$(wc -l < xgo-test17-elf-list.txt)" -eq 1
