@@ -57,7 +57,8 @@ jobs:
           GP2040_BOARDCONFIG: Pico
         run: |
           cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build upstream/build --parallel 2
+          cmake --build upstream/build --parallel 2 --verbose > xgo-test17-build.log 2>&1 || { tail -n 180 xgo-test17-build.log; exit 1; }
+          tail -n 12 xgo-test17-build.log
           find upstream/build -name '*.elf' -type f -print > xgo-test17-elf-list.txt
           test "$(wc -l < xgo-test17-elf-list.txt)" -eq 1
           ELF="$(cat xgo-test17-elf-list.txt)"
