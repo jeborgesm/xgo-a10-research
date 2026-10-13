@@ -7,7 +7,7 @@ on:
       - research-gp2040ce-xgo-integration
     paths:
       - '.github/workflows/gp2040ce-xgo-test18-offline.yml'
-      - 'integrations/gp2040ce-xgo-test01/candidates/test18-direct-gpio-offline/**'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test18-processed-timing/**'
       - 'integrations/gp2040ce-xgo-test01/tests/test18_*'
 
 permissions:
@@ -48,8 +48,8 @@ jobs:
           cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Substitute isolated Test18 only in temporary checkout
         run: |
-          cp integrations/gp2040ce-xgo-test01/candidates/test18-direct-gpio-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
-          cmp integrations/gp2040ce-xgo-test01/candidates/test18-direct-gpio-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/test18-processed-timing/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/test18-processed-timing/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Compile candidate
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
@@ -85,7 +85,7 @@ jobs:
           (cd xgo-test18-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
           printf 'UNVALIDATED TEST18 OFFLINE CANDIDATE - DO NOT FLASH WITHOUT REVIEW\n' > xgo-test18-offline/README-DO-NOT-FLASH.txt
           cp xgo-test18-disassembly.txt xgo-test18-symbols.txt xgo-test18-elf-list.txt xgo-test18-offline/
-          sha256sum integrations/gp2040ce-xgo-test01/candidates/test18-direct-gpio-offline/XGODriver.cpp > xgo-test18-offline/DRIVER-SOURCE-SHA256.txt
+          sha256sum integrations/gp2040ce-xgo-test01/candidates/test18-processed-timing/XGODriver.cpp > xgo-test18-offline/DRIVER-SOURCE-SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: xgo-gp2040ce-test18-OFFLINE-UNVALIDATED-DO-NOT-FLASH
