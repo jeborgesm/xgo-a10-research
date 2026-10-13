@@ -7,8 +7,8 @@ on:
       - research-gp2040ce-xgo-integration
     paths:
       - '.github/workflows/gp2040ce-xgo-test20-offline.yml'
-      - 'integrations/gp2040ce-xgo-test01/candidates/test20-processed-timing/**'
-      - 'integrations/gp2040ce-xgo-test01/tests/test20_*'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test20-deferred-serial-diagnostics/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test19_hold_level_contract.py'
 
 permissions:
   contents: read
@@ -48,8 +48,8 @@ jobs:
           cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Substitute isolated Test20 only in temporary checkout
         run: |
-          cp integrations/gp2040ce-xgo-test01/candidates/test20-processed-timing/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
-          cmp integrations/gp2040ce-xgo-test01/candidates/test20-processed-timing/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/test20-deferred-serial-diagnostics/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/test20-deferred-serial-diagnostics/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Compile candidate
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
@@ -85,7 +85,7 @@ jobs:
           (cd xgo-test20-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
           printf 'UNVALIDATED TEST20 CANDIDATE - HOLD-BUTTON HARDWARE TEST REQUIRED\n' > xgo-test20-offline/README-HARDWARE-TEST-REQUIRED.txt
           cp xgo-test20-disassembly.txt xgo-test20-symbols.txt xgo-test20-elf-list.txt xgo-test20-offline/
-          sha256sum integrations/gp2040ce-xgo-test01/candidates/test20-processed-timing/XGODriver.cpp > xgo-test20-offline/DRIVER-SOURCE-SHA256.txt
+          sha256sum integrations/gp2040ce-xgo-test01/candidates/test20-deferred-serial-diagnostics/XGODriver.cpp > xgo-test20-offline/DRIVER-SOURCE-SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: xgo-gp2040ce-test20-HOLD-TEST-UNVALIDATED
