@@ -7,7 +7,7 @@ on:
       - research-gp2040ce-xgo-integration
     paths:
       - '.github/workflows/gp2040ce-xgo-test21-offline.yml'
-      - 'integrations/gp2040ce-xgo-test01/candidates/test21-deferred-serial-diagnostics/**'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test21-serial-isolation/**'
       - 'integrations/gp2040ce-xgo-test01/tests/test19_hold_level_contract.py'
 
 permissions:
@@ -48,8 +48,8 @@ jobs:
           cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Substitute isolated Test21 only in temporary checkout
         run: |
-          cp integrations/gp2040ce-xgo-test01/candidates/test21-deferred-serial-diagnostics/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
-          cmp integrations/gp2040ce-xgo-test01/candidates/test21-deferred-serial-diagnostics/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/test21-serial-isolation/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/test21-serial-isolation/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Compile candidate
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
@@ -85,7 +85,7 @@ jobs:
           (cd xgo-test21-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
           printf 'TEST21 DIAGNOSTIC ONLY: R1-only press latches R1 output for 10 seconds; NOT a normal controller build\n' > xgo-test21-offline/README-HARDWARE-TEST-REQUIRED.txt
           cp xgo-test21-disassembly.txt xgo-test21-symbols.txt xgo-test21-elf-list.txt xgo-test21-offline/
-          sha256sum integrations/gp2040ce-xgo-test01/candidates/test21-deferred-serial-diagnostics/XGODriver.cpp > xgo-test21-offline/DRIVER-SOURCE-SHA256.txt
+          sha256sum integrations/gp2040ce-xgo-test01/candidates/test21-serial-isolation/XGODriver.cpp > xgo-test21-offline/DRIVER-SOURCE-SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: xgo-gp2040ce-test21-SERIAL-ISOLATION-UNVALIDATED
