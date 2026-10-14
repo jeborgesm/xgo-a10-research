@@ -63,17 +63,15 @@ jobs:
         run: |
           cp integrations/gp2040ce-xgo-test01/candidates/test28-hk-slot0-early-sink/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmp integrations/gp2040ce-xgo-test01/candidates/test28-hk-slot0-early-sink/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
-      - name: Prevent XGO SELECT START R1 from triggering LED shortcut
+      - name: Verify original LED shortcut remains intact
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('upstream/src/addons/neopicoleds.cpp')
-          s = p.read_text()
-          needle = 'else if (gamepad->pressedR1())'
-          assert s.count(needle) == 1, 'LED hotkey branch changed upstream'
-          s = s.replace(needle, 'else if (gamepad->getOptions().inputMode != INPUT_MODE_XGO && gamepad->pressedR1())')
-          p.write_text(s)
-          assert s.count('inputMode != INPUT_MODE_XGO && gamepad->pressedR1()') == 1
+          p=Path('upstream/src/addons/neopicoleds.cpp')
+          s=p.read_text()
+          assert s.count('else if (gamepad->pressedR1())') == 1, 'original LED shortcut missing'
+          assert 'inputMode != INPUT_MODE_XGO && gamepad->pressedR1()' not in s
+          print('Original SELECT+START+R1 LED shortcut retained in XGO mode')
           PY
       - name: Compile candidate
         env:
