@@ -1,4 +1,4 @@
-name: GP2040-CE XGO Test28 offline validation
+name: GP2040-CE XGO Test28 clean build
 
 on:
   workflow_dispatch:
@@ -73,6 +73,7 @@ jobs:
           assert 'inputMode != INPUT_MODE_XGO && gamepad->pressedR1()' not in s
           print('Original SELECT+START+R1 LED shortcut retained in XGO mode')
           PY
+      # Dedicated clean-controller CI; push to this workflow triggers validation.
       - name: Compile candidate
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
