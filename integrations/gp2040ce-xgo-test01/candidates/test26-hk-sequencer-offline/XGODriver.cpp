@@ -224,12 +224,15 @@ void XGODriver::runResponder() {
  }
 }
 // Test26: Core0-only diagnostic controls. No change to Core1 serial responder.
+std::atomic<uint32_t> xgo_hk_phase_state{0}; // 0=idle, 1=armed, 2..7=phases 0..5
+std::atomic<uint32_t> xgo_hk_repeat_state{0};
 bool XGODriver::process(Gamepad *gamepad) {
  static xgo_hk_diag::Sequencer hk_sequence;
  static bool armed = false;
  static bool prev_chord = false;
  static bool prev_abort = false;
  static bool trigger_released = true;
+ static bool swallow_chord_until_release = false;
  const uint16_t physical = map_mask(gamepad);
  const bool select = (physical & (1u << 6)) != 0;
  const bool start = (physical & (1u << 7)) != 0;
@@ -241,17 +244,19 @@ bool XGODriver::process(Gamepad *gamepad) {
  prev_chord = chord;
  prev_abort = abort;
  if (abort_edge && (armed || hk_sequence.running())) {
+  swallow_chord_until_release = true;
   hk_sequence.reset();
   armed = false;
   trigger_released = true;
  }
- if (chord_edge && !hk_sequence.running()) {
+ if (chord_edge && !hk_sequence.running() && !swallow_chord_until_release) {
   hk_sequence.reset();
   armed = true;
   trigger_released = false;
  }
  // The arming chord never leaks into the XGO host as SELECT/START/HK.
  // Release the entire chord, then press HK alone to trigger the sequence.
+ if (!select && !start && !hk) swallow_chord_until_release = false;
  if (armed && !hk && !select && !start) trigger_released = true;
  uint16_t snapshot = physical;
  if (armed || hk_sequence.running()) {
@@ -263,7 +268,9 @@ bool XGODriver::process(Gamepad *gamepad) {
   // Armed but not yet triggered: remain neutral.
   if (!hk_sequence.running() && !armed) trigger_released = false;
  }
- if (chord || abort) snapshot = 0;
+ if (chord || abort || swallow_chord_until_release) snapshot = 0;
+ xgo_hk_phase_state.store(hk_sequence.running() ? (2u + hk_sequence.phase()) : (armed ? 1u : 0u), std::memory_order_relaxed);
+ xgo_hk_repeat_state.store(hk_sequence.running() ? (1u + hk_sequence.repetition()) : 0u, std::memory_order_relaxed);
  if (snapshot != previous_snapshot) {
   xgo_diag_mask_changes.fetch_add(1, std::memory_order_relaxed);
   if (snapshot == 0 && previous_snapshot != 0) xgo_diag_nonzero_to_zero.fetch_add(1, std::memory_order_relaxed);
