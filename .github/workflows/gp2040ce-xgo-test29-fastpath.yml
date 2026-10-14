@@ -29,7 +29,7 @@ jobs:
           s=p.read_text()
           assert 'const bool hk_slot0 = (mask & 1u) != 0;' in s
           assert 'while ((uint32_t)(time_us_32() - low_start) < 3u) {}' in s
-          assert 'if (!wait_clock(false, EDGE_TIMEOUT_US))' in s
+          assert 'const uint32_t fall_start = time_us_32();' in s
           assert 'const uint16_t snapshot = map_mask(gamepad);' in s
           for forbidden in ('hk_sequence','Sequencer','xgo_hk_phase_state','xgo_hk_repeat_state','swallow_trigger_until_release'):
               assert forbidden not in s, forbidden
