@@ -9,6 +9,7 @@ on:
       - '.github/workflows/gp2040ce-xgo-test26-offline.yml'
       - 'integrations/gp2040ce-xgo-test01/candidates/test26-hk-sequencer-offline/**'
       - 'integrations/gp2040ce-xgo-test01/diagnostics/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py'
 
 permissions:
   contents: read
@@ -22,6 +23,7 @@ jobs:
       - name: Test realtime input contract and candidate invariants
         run: |
           g++ -std=c++17 -Wall -Wextra -pedantic integrations/gp2040ce-xgo-test01/diagnostics/test_hk_sequencer.cpp -o /tmp/test_hk && /tmp/test_hk
+          python3 integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py
           python3 integrations/gp2040ce-xgo-test01/tests/test16_candidate_static_gates.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_snapshot_contract_model.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_phy_transaction_model.py
