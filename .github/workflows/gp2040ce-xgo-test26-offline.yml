@@ -51,6 +51,25 @@ jobs:
         run: |
           cp integrations/gp2040ce-xgo-test01/candidates/test26-hk-sequencer-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmp integrations/gp2040ce-xgo-test01/candidates/test26-hk-sequencer-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Show diagnostic phase on XGO OLED status bar
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('upstream/src/display/ui/screens/ButtonLayoutScreen.cpp')
+          s = p.read_text()
+          anchor = 'case INPUT_MODE_XGO: statusBar += "XGO"; break;'
+          assert s.count(anchor) == 1, 'OLED status bar anchor mismatch'
+          s = '#include <atomic>\nextern std::atomic<uint32_t> xgo_hk_phase_state;\nextern std::atomic<uint32_t> xgo_hk_repeat_state;\n' + s
+          replacement = '''case INPUT_MODE_XGO: {
+              const unsigned phase = xgo_hk_phase_state.load(std::memory_order_relaxed);
+              const unsigned repeat = xgo_hk_repeat_state.load(std::memory_order_relaxed);
+              if (phase == 0) statusBar += "XGO";
+              else if (phase == 1) statusBar += "HK ARMED";
+              else statusBar += "HK P" + std::to_string(phase - 1) + " R" + std::to_string(repeat);
+              break;
+          }'''
+          p.write_text(s.replace(anchor, replacement))
+          PY
       - name: Compile candidate
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
