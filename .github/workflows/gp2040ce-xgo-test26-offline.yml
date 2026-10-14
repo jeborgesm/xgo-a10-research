@@ -55,6 +55,18 @@ jobs:
         run: |
           cp integrations/gp2040ce-xgo-test01/candidates/test26-hk-sequencer-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmp integrations/gp2040ce-xgo-test01/candidates/test26-hk-sequencer-offline/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Reserve SELECT START R1 for XGO diagnostic only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('upstream/src/addons/neopicoleds.cpp')
+          s = p.read_text()
+          needle = 'else if (gamepad->pressedR1())'
+          assert s.count(needle) == 1, 'LED hotkey branch changed upstream'
+          s = s.replace(needle, 'else if (gamepad->getOptions().inputMode != INPUT_MODE_XGO && gamepad->pressedR1())')
+          p.write_text(s)
+          assert s.count('inputMode != INPUT_MODE_XGO && gamepad->pressedR1()') == 1
+          PY
       - name: Show diagnostic phase on XGO OLED status bar
         run: |
           python3 - <<'PY'
