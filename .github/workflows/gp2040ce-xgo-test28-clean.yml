@@ -61,8 +61,8 @@ jobs:
           cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Substitute isolated Test28 only in temporary checkout
         run: |
-          cp integrations/gp2040ce-xgo-test01/candidates/test28-hk-slot0-early-sink/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
-          cmp integrations/gp2040ce-xgo-test01/candidates/test28-hk-slot0-early-sink/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/test28-hk-clean-no-bot/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/test28-hk-clean-no-bot/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
       - name: Verify original LED shortcut remains intact
         run: |
           python3 - <<'PY'
