@@ -6,8 +6,8 @@ on:
     branches:
       - research-gp2040ce-xgo-integration
     paths:
-      - '.github/workflows/gp2040ce-xgo-test28-offline.yml'
-      - 'integrations/gp2040ce-xgo-test01/candidates/test28-hk-slot0-early-sink/**'
+      - '.github/workflows/gp2040ce-xgo-test28-clean.yml'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test28-hk-clean-no-bot/**'
       - 'integrations/gp2040ce-xgo-test01/diagnostics/**'
       - 'integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test26_process_behavior.cpp'
