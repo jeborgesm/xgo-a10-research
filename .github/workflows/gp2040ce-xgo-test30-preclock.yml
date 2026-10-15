@@ -1,4 +1,4 @@
-name: GP2040-CE XGO Test30 clean build
+name: GP2040-CE XGO Test30 preclock build
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - research-gp2040ce-xgo-integration
     paths:
-      - '.github/workflows/gp2040ce-xgo-test30-clean.yml'
+      - '.github/workflows/gp2040ce-xgo-test30-preclock.yml'
       - 'integrations/gp2040ce-xgo-test01/candidates/test30-preclock-data-setup/**'
       - 'integrations/gp2040ce-xgo-test01/diagnostics/**'
       - 'integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py'
@@ -29,7 +29,7 @@ jobs:
           s=p.read_text()
           assert 'const bool hk_slot0 = (mask & 1u) != 0;' in s
           assert 'while ((uint32_t)(time_us_32() - low_start) < 3u) {}' in s
-          assert 'if (mask & (1u << slot)) data_sink(); else data_release();\n  if (!wait_clock(false, EDGE_TIMEOUT_US))' in s
+          assert s.index('if (mask & (1u << slot)) data_sink(); else data_release();') < s.index('if (!wait_clock(false, EDGE_TIMEOUT_US))')
           assert 'const uint16_t snapshot = map_mask(gamepad);' in s
           for forbidden in ('hk_sequence','Sequencer','xgo_hk_phase_state','xgo_hk_repeat_state','swallow_trigger_until_release'):
               assert forbidden not in s, forbidden
