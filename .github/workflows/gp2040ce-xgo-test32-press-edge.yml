@@ -6,7 +6,7 @@ on:
     branches:
       - research-gp2040ce-xgo-integration
     paths:
-      - '.github/workflows/gp2040ce-xgo-test32-single-read.yml'
+      - '.github/workflows/gp2040ce-xgo-test32-press-edge.yml'
       - 'integrations/gp2040ce-xgo-test01/candidates/test32-press-edge-one-frame/**'
       - 'integrations/gp2040ce-xgo-test01/diagnostics/**'
       - 'integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py'
