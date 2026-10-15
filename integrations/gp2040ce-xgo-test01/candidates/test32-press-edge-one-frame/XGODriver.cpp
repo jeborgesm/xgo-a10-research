@@ -35,6 +35,9 @@ std::atomic<uint32_t> xgo_diag_max_active_failure_streak{0};
 namespace { std::atomic<uint16_t> published_mask{0}; }
 // Core0 observes physical transitions; Core1 acknowledges consumption once per host scan.
 namespace { std::atomic<uint16_t> pending_press_edges{0}; }
+// Core1 owns the output pulse window, measured in host scan time.
+namespace { uint16_t attack_pulse_mask = 0; uint32_t attack_pulse_start_us = 0; }
+constexpr uint32_t ATTACK_PULSE_US = 24000;
 namespace { uint16_t previous_physical_attacks = 0; }
 constexpr uint16_t ATTACK_BITS = 0x003fu;
 namespace { bool previous_active_success = false; uint32_t active_failure_streak = 0; }
@@ -117,10 +120,21 @@ bool emit_frame() {
  // Never mask interrupts during the potentially 20ms LOAD acquisition.
  const uint32_t irq_state = save_and_disable_interrupts();
  const uint16_t physical = published_mask.load(std::memory_order_acquire);
- // Present a pending attack for one completed serial transaction only.
- // Other buttons retain their original held-state behavior.
+ // Retain an attack across host polls for >= one 12ms game-poll period.
+ // This is a bounded output pulse, NOT a repeated pulse while held.
+ const uint32_t now = time_us_32();
+ if (attack_pulse_mask && (uint32_t)(now - attack_pulse_start_us) >= ATTACK_PULSE_US)
+  attack_pulse_mask = 0;
  const uint16_t pending = pending_press_edges.exchange(0, std::memory_order_acq_rel);
- const uint16_t mask = (physical & ~ATTACK_BITS) | (pending & ATTACK_BITS);
+ // Queue any new edge after the current window; do not erase other edges.
+ // Physical release is tracked on Core0, not inferred from the output pulse.
+ if (pending && !attack_pulse_mask) {
+  attack_pulse_mask = pending;
+  attack_pulse_start_us = now;
+ } else if (pending) {
+  pending_press_edges.fetch_or(pending, std::memory_order_release);
+ }
+ const uint16_t mask = (physical & ~ATTACK_BITS) | attack_pulse_mask;
  const uint32_t low_start = time_us_32();
  // Test27 experimental: slot 0 has no preceding CLOCK edge. When R/HK
  // is pressed, waiting for DATA to rise before asserting it is inherently
@@ -159,7 +173,8 @@ bool emit_frame() {
  restore_interrupts(irq_state);
  // A failed serial transaction cannot acknowledge the physical press.
  // Retry the event on the next host transaction instead of losing it.
- if (!complete && pending) pending_press_edges.fetch_or(pending, std::memory_order_release);
+ // An unsuccessful transaction does not end the time-bounded pulse.
+ // It remains active for subsequent host polls within its window.
  xgo_diag_active_attempts.fetch_add(1, std::memory_order_relaxed);
  if (release_timeout) xgo_diag_release_timeouts.fetch_add(1, std::memory_order_relaxed);
  if (clock_timeout) {
