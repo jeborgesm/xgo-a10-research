@@ -1,0 +1,94 @@
+name: GP2040-CE XGO Test30 clean build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/gp2040ce-xgo-test30-clean.yml'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test30-preclock-data-setup/**'
+      - 'integrations/gp2040ce-xgo-test01/diagnostics/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test26_process_behavior.cpp'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate clean physical-button candidate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('integrations/gp2040ce-xgo-test01/candidates/test30-preclock-data-setup/XGODriver.cpp')
+          s=p.read_text()
+          assert 'const bool hk_slot0 = (mask & 1u) != 0;' in s
+          assert 'while ((uint32_t)(time_us_32() - low_start) < 3u) {}' in s
+          assert 'if (mask & (1u << slot)) data_sink(); else data_release();\n  if (!wait_clock(false, EDGE_TIMEOUT_US))' in s
+          assert 'const uint16_t snapshot = map_mask(gamepad);' in s
+          for forbidden in ('hk_sequence','Sequencer','xgo_hk_phase_state','xgo_hk_repeat_state','swallow_trigger_until_release'):
+              assert forbidden not in s, forbidden
+          print('Test30 pre-clock DATA setup, preserved HK and no-Ken-bot checks passed')
+          PY
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_snapshot_contract_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_phy_transaction_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_consecutive_load_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_temporal_rearm_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_host_waveform_model.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test14_multiframe_fault_classifier.py
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+      - name: Clone pinned firmware and SDK
+        run: |
+          git clone https://github.com/OpenStickCommunity/GP2040-CE.git upstream
+          git -C upstream checkout 3d1f32f7d02d418826b725b60208278d3be878c3
+          git -C upstream submodule update --init --recursive
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git pico-sdk
+          git -C pico-sdk submodule update --init --recursive
+      - name: Apply and audit protected Test14 overlay
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/preflight.py upstream
+          python3 integrations/gp2040ce-xgo-test01/apply.py upstream
+          python3 integrations/gp2040ce-xgo-test01/validate_generated_headers.py upstream
+          python3 integrations/gp2040ce-xgo-test01/audit_test14.py upstream
+          cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Substitute isolated Test30 only in temporary checkout
+        run: |
+          cp integrations/gp2040ce-xgo-test01/candidates/test30-preclock-data-setup/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/test30-preclock-data-setup/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Verify original LED shortcut remains intact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('upstream/src/addons/neopicoleds.cpp')
+          s=p.read_text()
+          assert s.count('else if (gamepad->pressedR1())') == 1, 'original LED shortcut missing'
+          assert 'inputMode != INPUT_MODE_XGO && gamepad->pressedR1()' not in s
+          print('Original SELECT+START+R1 LED shortcut retained in XGO mode')
+          PY
+      # Dedicated clean-controller CI; push to this workflow triggers validation.
+      - name: Compile candidate
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          GP2040_BOARDCONFIG: Pico
+        run: |
+          cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build upstream/build --parallel 2
+      - name: Package clearly labeled offline-only artifact
+        run: |
+          mkdir -p xgo-test30-offline
+          find upstream/build -name '*.uf2' -type f -exec cp -t xgo-test30-offline/ {} +
+          test "$(find xgo-test30-offline -maxdepth 1 -name '*.uf2' -type f | wc -l)" -eq 1
+          (cd xgo-test30-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
+          printf 'UNVALIDATED TEST30 OFFLINE CANDIDATE - DO NOT FLASH WITHOUT REVIEW\n' > xgo-test30-offline/README-DO-NOT-FLASH.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgo-gp2040ce-test30-OFFLINE-UNVALIDATED-DO-NOT-FLASH
+          path: xgo-test30-offline/
