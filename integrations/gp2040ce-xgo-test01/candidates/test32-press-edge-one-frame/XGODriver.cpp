@@ -157,6 +157,9 @@ bool emit_frame() {
  data_release();
  if (complete && !wait_clock(true, EDGE_TIMEOUT_US)) { complete = false; }
  restore_interrupts(irq_state);
+ // A failed serial transaction cannot acknowledge the physical press.
+ // Retry the event on the next host transaction instead of losing it.
+ if (!complete && pending) pending_press_edges.fetch_or(pending, std::memory_order_release);
  xgo_diag_active_attempts.fetch_add(1, std::memory_order_relaxed);
  if (release_timeout) xgo_diag_release_timeouts.fetch_add(1, std::memory_order_relaxed);
  if (clock_timeout) {
