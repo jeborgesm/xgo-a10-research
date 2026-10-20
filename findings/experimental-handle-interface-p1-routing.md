@@ -187,3 +187,9 @@ Fresh decoding of the original `XGoAnalisis.zip/bios/bisrv.asd` confirms that th
 Branch delay slots must be modeled, especially `0x35d768: sw zero,gp-0xd08`, which executes on either branch outcome at `0x35d764`. The normalization loop also clears consumed raw serial state in a branch delay slot (`0x35d54c`).
 
 **Design implication [INF]:** no safe pre-normalizer injection point is established yet. There are paths that enter normalization without entering scanner immediately beforehand. Before implementing, construct a control-flow graph across `0x35d4c4..0x35de34`, identify loop invariants and serial-word writes, and check the effect on the RF P2 state. Do not modify the active firmware baseline.
+
+## 2026-10-20: scanner return path verified
+
+Original XGO image verification: the scanner tail at file offset `0x35de10` contains an unconditional MIPS branch back to `0x35d520`, with its delay slot resetting the player index to zero. This establishes a concrete scanner-to-normalization control-flow edge, resolving an important part of the prior call-site uncertainty. A separate path at `0x35d764` can re-enter normalization without executing the scanner first. Its delay slot clears an auxiliary/RF state word, distinct from the per-player serial state clearing in the normalization loop.
+
+The optional Handle-as-P1 transformation remains an inference, not an implemented or hardware-proven feature. Neither the full control-flow graph nor a boot-safe patch location is established. Preserve the protected firmware and active RP2040 work.
