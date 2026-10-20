@@ -193,3 +193,13 @@ Branch delay slots must be modeled, especially `0x35d768: sw zero,gp-0xd08`, whi
 Original XGO image verification: the scanner tail at file offset `0x35de10` contains an unconditional MIPS branch back to `0x35d520`, with its delay slot resetting the player index to zero. This establishes a concrete scanner-to-normalization control-flow edge, resolving an important part of the prior call-site uncertainty. A separate path at `0x35d764` can re-enter normalization without executing the scanner first. Its delay slot clears an auxiliary/RF state word, distinct from the per-player serial state clearing in the normalization loop.
 
 The optional Handle-as-P1 transformation remains an inference, not an implemented or hardware-proven feature. Neither the full control-flow graph nor a boot-safe patch location is established. Preserve the protected firmware and active RP2040 work.
+
+## 2026-10-20 — Branch-target audit of full controller region
+
+A fresh offline sweep decoded all MIPS conditional branch targets in the original `bios/bisrv.asd` between file offsets `0x35d4c4` and `0x35de34`. This independently confirms the scanner tail at `0x35de10 -> 0x35d520` and the alternate loop entry `0x35d764 -> 0x35d51c`. The latter bypasses the scanner on that particular edge; therefore a scanner-tail-only hook would not necessarily cover every normalization pass.
+
+**Additional important edges:** `0x35d65c -> 0x35de18`, `0x35d6b8 -> 0x35de24`, `0x35d6ec -> 0x35de34`, `0x35de1c -> 0x35d6c0`, and `0x35de2c -> 0x35d6c0`. These demonstrate several exits and re-entries around the scanner and controller-task state machine. The 12-button serial sampling body contains many short conditional branches, so a raw linear disassembly alone is not a sufficient hook-safety argument.
+
+**Architectural refinement [INF]:** rather than permanently rewriting the scanner's two raw state words, consider a selector-aware adjustment at the normalization consumption boundary. That could handle both scanner and alternate entries, but requires proving the second player's raw mask is still available when processing the first player and that both words are cleared exactly once. It may require a small out-of-line helper, so boot-integrity and available code space remain blockers.
+
+**No firmware was modified.** The analysis is from the archived original image, not a verified Test106 firmware image. Next: derive the per-player loop's exact index increment, branch delay slot and state clearing, then evaluate whether read-only P2 access during P1 processing can avoid double consumption.
