@@ -44,6 +44,7 @@ jobs:
               assert forbidden not in s, forbidden
           print('Test45 press-edge 18ms window DATA setup, preserved HK and no-Ken-bot checks passed')
           PY
+          python3 integrations/gp2040ce-xgo-test01/tests/test45_failure_aware_delivery_model.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_snapshot_contract_model.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_phy_transaction_model.py
           python3 integrations/gp2040ce-xgo-test01/tests/test14_consecutive_load_model.py
