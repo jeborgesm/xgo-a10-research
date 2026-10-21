@@ -79,6 +79,7 @@ def test_repress_during_active_pulse_is_coalesced():
     d=Delivery();d.physical(1)
     assert d.frame(0,True)==1
     d.physical(0);d.physical(1)
+    d.physical(0);d.physical(1)  # two extra taps become one pending bit
     assert d.frame(5000,True)==1
     assert d.frame(18000,True)==1
     assert d.frame(36000,True)==0
