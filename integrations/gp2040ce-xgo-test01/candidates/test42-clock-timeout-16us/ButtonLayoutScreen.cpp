@@ -385,9 +385,9 @@ void ButtonLayoutScreen::drawScreen() {
         // No elements or input history are added for XGO in init().
         char line[28];
         getRenderer()->drawText(0, 0, "XGO42 SERIAL DIAG");
-        std::snprintf(line, sizeof(line), "DIR:%X CHG:%lu",
+        std::snprintf(line, sizeof(line), "DIR:%X OK:%lu",
             unsigned((xgo_diag_output.load(std::memory_order_relaxed) >> 8) & 15u),
-            (unsigned long)xgo_diag_direction_transitions.load(std::memory_order_relaxed));
+            (unsigned long)xgo_diag_frames_ok.load(std::memory_order_relaxed));
         getRenderer()->drawText(0, 1, line);
         std::snprintf(line, sizeof(line), "OK:%lu",
             (unsigned long)xgo_diag_frames_ok.load(std::memory_order_relaxed));
@@ -406,9 +406,9 @@ void ButtonLayoutScreen::drawScreen() {
         std::snprintf(line, sizeof(line), "S%u FAIL:%lu", slot,
             (unsigned long)(slot < 13 ? xgo_diag_clock_failure_slots[slot].load(std::memory_order_relaxed) : 0));
         getRenderer()->drawText(0, 6, line);
-        std::snprintf(line, sizeof(line), "FAST:%lu OPP:%lu",
-            (unsigned long)xgo_diag_direction_short_pulses.load(std::memory_order_relaxed),
-            (unsigned long)xgo_diag_direction_opposites.load(std::memory_order_relaxed));
+        std::snprintf(line, sizeof(line), "CLK:%lu REL:%lu",
+            (unsigned long)xgo_diag_clock_timeouts.load(std::memory_order_relaxed),
+            (unsigned long)xgo_diag_release_timeouts.load(std::memory_order_relaxed));
         getRenderer()->drawText(0, 7, line);
         return;
     }
