@@ -54,3 +54,13 @@ The P2 raw word exists before the P1 loop iteration. A conditional read of P2 wh
 6. First hardware proof should use the existing working RP2040 responder, with a reversible firmware build and protected recovery image.
 
 No firmware image modified; no test requested.
+
+## 2026-10-20 — Physical XGO constraint and corrected acceptance criteria
+
+**User hardware clarification [HW]:** The physical XGO has only one usable external-controller connection, the Handle Interface. There is no available RF controller input on this specimen. In Handle-as-P1 mode, P2 is intentionally uncontrolled; do not require a second controller or preservation of a functional RF P2 path.
+
+**Updated user-visible behavior:** default: built-in controls P1 and Handle controls P2. Experimental: built-in controls and Handle both control P1; P2 receives no user-operable input. A theoretical RF state remains visible in stock firmware analysis [BIN], but it is not an available physical input on this XGO [HW].
+
+**Engineering caveat:** avoid gratuitous writes to legacy RF state or changing its initialization, even though RF P2 is not an acceptance requirement. The design may leave that dormant state unchanged internally. The P2 zero-input expectation assumes the unavailable RF path is inactive; verify actual effective P2 state during the eventual hardware test.
+
+**Revised tests:** P1 mode must allow built-in and Handle controls simultaneously, P2 must not respond to Handle, and default mode must restore proven Handle-as-P2 gameplay. No requirement to test or attach RF controllers.
