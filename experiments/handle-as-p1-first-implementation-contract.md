@@ -93,3 +93,17 @@ Fresh direct word-level inspection of the archived original `bisrv.asd` resolves
 **Design implication [INF]:** the most relevant interception boundary is before or at the combined-mask calculation, while the normalizer still has the raw serial and RF masks. A Handle-as-P1 helper must merge P2 serial into the P1 combined mask and suppress its contribution to P2 while retaining the built-in P1 mask. This remains an unimplemented hypothesis; the full scratch/output state machine, alternate entry paths, register preservation, and post-Test100 boot integrity remain to be established.
 
 **Evidence correction:** the old phrase 'the two raw serial words are consumed and cleared by the normalization loop' is not established by the cited stores. Scanner-entry clears at `0x35d780` and `0x35d788` are separately verified. Do not base routing on presumed per-iteration serial clearing.
+
+## 2026-10-20 — Minimal routing arithmetic and interception candidate [BIN/INF]
+
+Directly rechecked original firmware words at offsets `0x35d520–0x35d554`: the loop computes `t0 = player_index*4`, reads serial into `s4` (`0x35d52c`) and legacy RF into `a2` (`0x35d530`), switches `a0` to logical output (`0x35d534`), computes scratch pointer `s3` (`0x35d538`), then merges with `or a2,a2,s4` (`0x35d53c`) and writes the resulting mask to scratch (`0x35d544`). These are verified stock operations, not an installed modification.
+
+**Fixed Handle-as-P1 algorithm [INF], evaluated at the pre-merge boundary:**
+
+- P1 (`a3 == 0`): substitute `s4 := raw_serial_P1 | raw_serial_P2`; keep `a2` as current-player legacy RF state; original OR instruction then combines them.
+- P2 (`a3 == 1`): substitute `s4 := 0`; keep `a2` unchanged; original OR then emits only dormant legacy RF state. On the physical XGO the user confirms there is no usable RF controller, so P2 is expected to be inactive.
+- Default: leave `s4` unchanged and execute the stock OR.
+
+This formulation avoids modifying the serial scanner, existing input translation, scratch/output pointers, or the existing RF merge. It is also independent of presumed serial-state clearing: raw P2 is only read while processing P1. The scanner independently zeroes both serial raw words at `0x35d780` and `0x35d788` before filling them; this does not prove when other writers run.
+
+**Hook engineering gate:** a single replacement of `0x35d53c` is insufficient to implement the conditional logic. Any branch/trampoline would displace adjacent instructions, so its delay slot, register clobbers, exact re-entry, available executable code space, and the protected Test106 `bisrv.asd` boot integrity must all be established first. No code patch or firmware candidate authorized by this note.
