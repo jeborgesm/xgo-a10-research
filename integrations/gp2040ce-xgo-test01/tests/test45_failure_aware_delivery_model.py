@@ -73,6 +73,31 @@ def test_simultaneous():
     assert d.frame(0,True)==0x3f
     assert d.frame(18000,True)==0
 
+
+def test_repress_during_active_pulse_is_coalesced():
+    """Document current bitmask limitation: repeated same-button edges merge."""
+    d=Delivery();d.physical(1)
+    assert d.frame(0,True)==1
+    d.physical(0);d.physical(1)
+    assert d.frame(5000,True)==1
+    assert d.frame(18000,True)==1
+    assert d.frame(36000,True)==0
+
+def test_new_press_during_undelivered_retry():
+    d=Delivery();d.physical(1)
+    assert d.frame(0,False)==1
+    d.physical(0);d.physical(2)
+    assert d.frame(50000,False)==1
+    assert d.frame(100000,True)==2
+
+def test_no_idle_gap_between_distinct_attacks():
+    """Known behavior: different queued attacks can be contiguous in host frames."""
+    d=Delivery();d.physical(1)
+    assert d.frame(0,True)==1
+    d.physical(3)
+    assert d.frame(17999,True)==1
+    assert d.frame(18000,True)==2
+
 if __name__=='__main__':
-    for f in (test_failure_then_success,test_hold_no_repeat,test_expiry_and_rearm,test_queue_other_button,test_wraparound,test_simultaneous):
+    for f in (test_failure_then_success,test_hold_no_repeat,test_expiry_and_rearm,test_queue_other_button,test_wraparound,test_simultaneous,test_repress_during_active_pulse_is_coalesced,test_new_press_during_undelivered_retry,test_no_idle_gap_between_distinct_attacks):
         f();print('PASS',f.__name__)
