@@ -129,3 +129,13 @@ The executable MIPS instructions at `0x35d53c` remain present as previously veri
 Direct offline inspection of uploaded `XGoAnalisis.zip/bios/bisrv.asd` (original archived image) shows header bytes `LCFG` at 0, `End` at `0x17d`, a word at `0x184` equal to file size minus `0x200`, and a candidate word at `0x18c` equal to `0x5ee51f11`. Standard Python/zlib CRC-32 gives `0xdd70c40b` over the entire file, `0xfb60945b` over bytes starting at `0x200`, and `0x16f1f940` over bytes before `0x184`. None equal the `0x18c` word. This only falsifies these three CRC-32 coverage choices; it does not prove absence of a checksum, signature, or integrity gate.
 
 The currently uploaded `XGoAnalisis.zip` has one `bios/bisrv.asd` and no named Test106/Test107/Test108 firmware snapshots. A decisive protected-baseline versus failed-build binary comparison cannot be claimed from these inputs. Before a firmware patch, obtain the actual image files or trace their exact repository artifacts and compare full bytes, header fields, and patch locations. Do not flash any experimental image on the basis of this CRC check.
+
+## 2026-10-21 — BOOT INTEGRITY RESOLVED: reuse existing LCFG reseal contract [BIN/INF]
+
+**Correction to earlier open investigation:** Existing repository research `findings/post100-bisrv-no-boot-lcfg-reseal-root-cause.md` already closed the LCFG format question on 2026-09-21. The repository provides `tools/reseal_lcfg.py`. LCFG payload size is little-endian at 0x184; CRC-32/MPEG-2 of payload bytes `0x200:EOF` is little-endian at 0x18c. This is NOT zlib's reflected CRC-32.
+
+Independent reproduction on the original uploaded `XGoAnalisis.zip/bios/bisrv.asd`: non-reflected CRC-32/MPEG-2 (poly 0x04C11DB7, init 0xffffffff, xorout 0, no reflection) computes `0x5EE51F11`, exactly matching stored 0x18c. Stored size 0xC2D2C4 equals file size minus 0x200. Thus the format check is now independently verified [BIN].
+
+Prior Test104/Test107/Test108 payload modifications did not reseal the CRC, explaining the recurring NO BOOT as strong inference from hardware recovery and the validated container contract. Exact bootloader validation code remains undumped, so distinguish inference from direct bootloader proof. Existing repository documentation already explains this; avoid presenting it as a newly invented discovery.
+
+**Mandatory Handle-as-P1 build gate:** exact protected baseline hash; approved instruction patch manifest; invoke existing `tools/reseal_lcfg.py`; independent size/CRC verification; byte-diff audit (payload changes only approved sites, header CRC update); only then consider a new numbered test. The protected baseline must not be modified in place. Routing hook/register-safety analysis is still OPEN. No test image emitted.
