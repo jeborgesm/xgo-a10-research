@@ -77,3 +77,19 @@ Direct inspection of original archived firmware:
 - `0x35d638`: `andi a3,s2,0xff` (index for next pass); `0x35d63c`: `sltiu a0,a3,2`; `0x35d640`: if true, branch to `0x35d524`; `0x35d644`: delay slot recalculates `t0=a3*4`.
 
 This establishes the concrete second-player pass and shows why a routing helper must not disturb `a3`, `s2`, `t0`, the special bit-0x20 state, or the branch delay slots. The XGO hardware constraint remains: one Handle Interface, no available RF controller; default external P2, experimental external P1 with built-in P1 retained. No patch or test image produced.
+
+## 2026-10-20 — Exact mask-to-logical translation boundary [BIN]
+
+Fresh direct word-level inspection of the archived original `bisrv.asd` resolves a useful distinction:
+
+- `0x35d52c`: `lw s4,0(a0)` reads the current player's raw serial mask.
+- `0x35d530`: `lw a2,0(t1)` reads the corresponding legacy RF mask.
+- `0x35d534`: `addu a0,t0,fp` changes `a0` to the per-player logical-output pointer; `0x35d538` sets `s3` to the per-player scratch pointer.
+- `0x35d53c`: `or a2,a2,s4` produces the combined pressed mask. `0x35d544` stores that mask into scratch.
+- `0x35d540–0x35d620` tests the combined mask's bits and writes logical output flags through `a0`.
+- Therefore the `0x35d54c` and `0x35d554` stores are **to the logical-output word pointed to by a0, not to the raw serial word**. Earlier notes describing these stores as serial-state clearing were incorrect and must not be relied on.
+- The `0x20` special case writes 1 to the logical-output word after an unconditional zero write. It is not proof that a raw serial word persists.
+
+**Design implication [INF]:** the most relevant interception boundary is before or at the combined-mask calculation, while the normalizer still has the raw serial and RF masks. A Handle-as-P1 helper must merge P2 serial into the P1 combined mask and suppress its contribution to P2 while retaining the built-in P1 mask. This remains an unimplemented hypothesis; the full scratch/output state machine, alternate entry paths, register preservation, and post-Test100 boot integrity remain to be established.
+
+**Evidence correction:** the old phrase 'the two raw serial words are consumed and cleared by the normalization loop' is not established by the cited stores. Scanner-entry clears at `0x35d780` and `0x35d788` are separately verified. Do not base routing on presumed per-iteration serial clearing.
