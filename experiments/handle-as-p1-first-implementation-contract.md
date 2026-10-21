@@ -107,3 +107,11 @@ Directly rechecked original firmware words at offsets `0x35d520–0x35d554`: the
 This formulation avoids modifying the serial scanner, existing input translation, scratch/output pointers, or the existing RF merge. It is also independent of presumed serial-state clearing: raw P2 is only read while processing P1. The scanner independently zeroes both serial raw words at `0x35d780` and `0x35d788` before filling them; this does not prove when other writers run.
 
 **Hook engineering gate:** a single replacement of `0x35d53c` is insufficient to implement the conditional logic. Any branch/trampoline would displace adjacent instructions, so its delay slot, register clobbers, exact re-entry, available executable code space, and the protected Test106 `bisrv.asd` boot integrity must all be established first. No code patch or firmware candidate authorized by this note.
+
+## 2026-10-20 — Original image byte verification and container gate [BIN]
+
+Independently reopened the supplied `XGoAnalisis.zip`, reading `bios/bisrv.asd` (12,768,452 bytes). Its first four bytes are ASCII `LCFG` (`4c 43 46 47`); the first 64 bytes also contain `logo.m2v` at file offset `0x18`. Thus the `.asd` is not demonstrably a bare MIPS text blob beginning at offset zero. **Do not infer a particular checksum or integrity algorithm from this header alone.**
+
+The candidate region was checked directly as little-endian 32-bit words: `0x35d52c=8c940000` (load serial), `0x35d530=8d260000` (load RF), `0x35d534=011e2021` (logical output pointer), `0x35d538=01169821` (scratch pointer), `0x35d53c=00d43025` (OR), `0x35d540=30d20020` (bit test), and `0x35d544=ae660000` (scratch store). The proposed pre-merge hook boundary is consistent with these bytes.
+
+**New mandatory gate:** map `LCFG` container layout and executable mapping, compare the exact protected Test106 image and post-Test100 failures byte-for-byte, and establish image-validation requirements before writing a trampoline or test ZIP. The archived original firmware alone cannot resolve the Test106 boot failures. No firmware modified.
