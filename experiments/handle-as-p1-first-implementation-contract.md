@@ -115,3 +115,11 @@ Independently reopened the supplied `XGoAnalisis.zip`, reading `bios/bisrv.asd` 
 The candidate region was checked directly as little-endian 32-bit words: `0x35d52c=8c940000` (load serial), `0x35d530=8d260000` (load RF), `0x35d534=011e2021` (logical output pointer), `0x35d538=01169821` (scratch pointer), `0x35d53c=00d43025` (OR), `0x35d540=30d20020` (bit test), and `0x35d544=ae660000` (scratch store). The proposed pre-merge hook boundary is consistent with these bytes.
 
 **New mandatory gate:** map `LCFG` container layout and executable mapping, compare the exact protected Test106 image and post-Test100 failures byte-for-byte, and establish image-validation requirements before writing a trampoline or test ZIP. The archived original firmware alone cannot resolve the Test106 boot failures. No firmware modified.
+
+## 2026-10-21 — LCFG header boundary and length relationship [BIN]
+
+Reopened the actual supplied archive, not an assumed Test106 build. `bios/bisrv.asd` has 12,768,452 bytes (`0xC2D4C4`), SHA-256 `869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf`.
+
+The first 0x1000 bytes are overwhelmingly zero (57 nonzero bytes), except for header fields near the start and a small record at `0x17d–0x18f`. Notable values: `LCFG` at `0x0`, `logo.m2v` at `0x18`, ASCII `End` at `0x17d`, little-endian word `0x00C2D2C4` at `0x184`, `0x00030000` at `0x188`, and `0x5EE51F11` at `0x18c`. **The length word at `0x184` is exactly the total file length minus `0x200`** (`0xC2D4C4 - 0x200 = 0xC2D2C4`). This is a strong structural relationship, not proof of what the field means. The word at `0x18c` could be integrity-related, but its meaning is not established; do not call it a CRC or checksum without testing.
+
+The executable MIPS instructions at `0x35d53c` remain present as previously verified. No bytes were changed. A future comparison with Test106 and failing Test107/108 should include these header words and any trailer or metadata differences, as well as the actual code patch bytes. **Do not rebuild an image or assume the bootloader rejects edits based only on these header observations.**
