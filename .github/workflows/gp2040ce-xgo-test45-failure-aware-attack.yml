@@ -1,4 +1,4 @@
-name: GP2040-CE XGO Test45 press-edge 18ms window build
+name: GP2040-CE XGO Test45 failure-aware attack build
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
       - '.github/workflows/gp2040ce-xgo-test45-failure-aware-attack.yml'
       - 'integrations/gp2040ce-xgo-test01/candidates/test45-failure-aware-attack/**'
       - 'integrations/gp2040ce-xgo-test01/diagnostics/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test45_failure_aware_delivery_model.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test26_controls_static.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test26_process_behavior.cpp'
 
