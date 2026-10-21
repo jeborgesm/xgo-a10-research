@@ -64,3 +64,16 @@ No firmware image modified; no test requested.
 **Engineering caveat:** avoid gratuitous writes to legacy RF state or changing its initialization, even though RF P2 is not an acceptance requirement. The design may leave that dormant state unchanged internally. The P2 zero-input expectation assumes the unavailable RF path is inactive; verify actual effective P2 state during the eventual hardware test.
 
 **Revised tests:** P1 mode must allow built-in and Handle controls simultaneously, P2 must not respond to Handle, and default mode must restore proven Handle-as-P2 gameplay. No requirement to test or attach RF controllers.
+
+## 2026-10-20 — Verified two-player iteration and serial-clearing exception [BIN]
+
+Direct inspection of original archived firmware:
+
+- `0x35d51c`: `move a3,zero`; `0x35d520`: compute index*4 in `t0`; `0x35d524`: serial word address = `s5+t0`.
+- `0x35d52c`: load serial word to `s4`; `0x35d530`: load same-player RF word to `a2`; `0x35d53c`: OR into `a2`.
+- `0x35d540`: test pressed bit `0x20`; `0x35d548`: branch if not set; `0x35d54c`: delay slot always stores zero to current serial word.
+- When bit `0x20` is set, `0x35d550` loads 1 and `0x35d554` stores it back to the current serial word, overriding the zero store. Thus the raw-state lifetime has a deliberate special case; **do not claim every iteration always ends with a zero raw word**.
+- `0x35d624`: branch to `0x35d638` if `a1==0`; **delay slot** `0x35d628` always executes `addiu s2,a3,1`.
+- `0x35d638`: `andi a3,s2,0xff` (index for next pass); `0x35d63c`: `sltiu a0,a3,2`; `0x35d640`: if true, branch to `0x35d524`; `0x35d644`: delay slot recalculates `t0=a3*4`.
+
+This establishes the concrete second-player pass and shows why a routing helper must not disturb `a3`, `s2`, `t0`, the special bit-0x20 state, or the branch delay slots. The XGO hardware constraint remains: one Handle Interface, no available RF controller; default external P2, experimental external P1 with built-in P1 retained. No patch or test image produced.
