@@ -18,8 +18,8 @@ class Delivery:
         self.pending |= bits & ~self.previous
         self.previous = bits
     def frame(self, now, complete):
-        if self.active and ((self.delivered and (now-self.start)&0xffffffff >= PULSE) or
-                            (not self.delivered and (now-self.retry_start)&0xffffffff >= RETRY)):
+        if self.active and ((self.delivered and ((now-self.start)&0xffffffff) >= PULSE) or
+                            (not self.delivered and ((now-self.retry_start)&0xffffffff) >= RETRY)):
             self.active = 0
             self.delivered = False
         if not self.active and self.pending:
