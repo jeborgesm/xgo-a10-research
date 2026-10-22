@@ -14,6 +14,17 @@ The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardwa
 
 > Do **not** flash stock SF2000 firmware onto an XGO based only on family similarity.
 
+
+## Handle Interface → Player 1: hardware PASS (2026-10-21)
+
+The physical XGO has **one** external Handle Interface (proprietary synchronous GPIO, not USB HID); the RP2040 responder was previously hardware-proven as Player 2. On 2026-10-21, the user installed the fixed Handle-as-P1 experimental firmware and **hardware-confirmed Street Fighter gameplay (Ryu defeated Blanka) and native-menu navigation using the external controller**. This validates interception at the shared input normalizer, not just an emulator mapping. It does not independently prove every game's behavior or simultaneous controller combinations.
+
+- **HW golden fixed-P1 firmware SHA-256:** `8a8cf7a84f7771b0fc116b80521e13d3dfbd5aace73e6053fb7494eaa7d44c4a`.
+- **Input firmware SHA-256:** `f5e2a91dced95b60ab7988952ea3a7aa1c2460c97b3644e2ea815b77b58d07aa`.
+- **Patch:** normalizer hook file offset `0x35D53C`; helper at `0xA398E4`; LCFG CRC-32/MPEG-2 resealed.
+- **Reproducibility:** `tools/build_handle_p1.py`; full HW report `findings/handle-interface-p1-hardware-pass-20261021.md`.
+- **NEXT:** optional native P1/P2 routing toggle. Default P2 means stock local P1 + external P2; P1 mode merges local P1 + external Handle into P1. No usable physical RF controller exists on this XGO. Preserve the tested fixed-P1 image untouched as rollback. Runtime toggle, mode storage, frontend action and UI are **not yet HW-proven**.
+
 ## Project goals
 
 1. **Archaeology and preservation** — document the original machine, firmware, SD layout, interfaces, addresses, resource formats, emulator contracts, product lineage, packaging/manual evidence, and hardware behavior with reproducible evidence.
