@@ -1,0 +1,3 @@
+# Handle mode selector prototype
+
+Offline test build assembled on October 22, 2026. Firmware SHA256: cce4ff4f5cbbd1b3efb59202e0e7cc1eaf21f6e65ab5b1bb534d549f140571b8. ZIP SHA256: 1d04e2709bcdcf475878919a0cf9e2e00abead1da3a309cf127f0e42de34ac4e. Mode defaults to Player 2 and can be changed using a new fifth Setup tile. This is a hardware-test candidate, not a hardware-proven release. Exact fixed-P1 recovery image is included. Independent offline behavioral checks passed.
