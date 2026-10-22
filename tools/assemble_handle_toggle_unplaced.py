@@ -25,7 +25,7 @@ def assemble(*, mode_address, code_address, resume=0x8035d544):
     code = [
         ins(0x0f, 0, 25, upper),       # lui t9,hi
         ins(0x23, 25, 25, lower),      # lw t9,lo(t9)
-        ins(0x04, 25, 0, 11),         # beq t9,zero,stock
+        ins(0x04, 25, 0, 12),         # beq t9,zero,stock
         0,                             # delay slot
         ins(0x05, 7, 0, 5),           # bne a3,zero,p2
         0,
