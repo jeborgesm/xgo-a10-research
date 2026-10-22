@@ -33,3 +33,10 @@ User provided screenshots of an otherwise missing mobile exchange. They show:
 
 ## User workflow directive
 User expects engineering execution, not repetitive step-by-step narration, speculative assurances, or premature completion claims. Deliver concrete artifacts or documented verified blockers. User explicitly requested latest findings saved to GitHub to prevent loss across app/browser divergence.
+
+## Independent reconstruction performed in recovered browser session
+- Original native Setup ZIP independently located and hash-verified: `aa45f549eca9c58aad93b5804aa44b40857c87418cf0d80ccc81e169b5f058a2`.
+- In that ZIP, instruction at firmware offset `0xA38AB4` was `0x1120FD3B`; the bundled fixed-P1 recovery firmware contains original `0x1120012E` at the same offset.
+- Reconstructed a new experimental ZIP by restoring only that instruction and updating LCFG CRC at `0x18C`. Byte comparison confirms only these eight bytes changed in the firmware. Resources, P1/P2 routing and recovery firmware were copied unchanged.
+- Reconstructed artifact: `XGO_PAL_Render_Isolation_Reconstructed_UNTESTED.zip`, SHA-256 `69519ea23d508b7a54b39bf1392bc609bb95c4033e34df9c25fb1b15b8a2b444`; firmware SHA-256 `d2dbea6fd1f0afd8204b80bf480b71c9b47894ac080b4b3c888bf28e266a2edc`; CRC32/MPEG2 `0x7322755e`.
+- **This reconstruction is not the missing original mobile ZIP**, whose reported SHA-256 differs. The original is not recoverable from screenshots alone. Both the reconstruction and PAL fix remain hardware-unverified.
