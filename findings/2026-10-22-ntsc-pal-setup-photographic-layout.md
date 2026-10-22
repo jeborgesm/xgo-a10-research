@@ -14,3 +14,6 @@
 
 ## Provenance
 HW = two user-supplied NTSC/PAL photographs in conversation, not yet committed as image binaries. INF = inferred old-layout coordinate mismatch from observed overlay and modified 3×2 resources. Exact framebuffer pixel positions require rectification or direct framebuffer capture.
+
+## Explicit HW correction from user
+**CONFIRMED FAILURE:** After entering PAL, **both Refresh and Handle submenus do NOT render correctly**. This is a direct user hardware observation, not an untested possibility. Previous statement that their behavior was not established is superseded. Main Setup icons can remain visible while submenu screens fail to display. Do not conflate working controller-mode switching with working Handle submenu display. Investigate PAL-specific submenu framebuffer/display-state handling, independent of TV label placement and P1/P2 underline.
