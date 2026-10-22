@@ -102,6 +102,20 @@ jobs:
           mkdir -p xgo-test45-offline
           find upstream/build -name '*.uf2' -type f -exec cp -t xgo-test45-offline/ {} +
           test "$(find xgo-test45-offline -maxdepth 1 -name '*.uf2' -type f | wc -l)" -eq 1
+          python3 - <<'PY'
+          from pathlib import Path
+          files=list(Path('xgo-test45-offline').glob('*.uf2'))
+          assert len(files)==1, f'Expected one UF2, got {len(files)}'
+          raw=files[0].read_bytes()
+          assert len(raw)>=512 and len(raw)%512==0, 'Invalid UF2 block alignment'
+          for offset in range(0,len(raw),512):
+              block=raw[offset:offset+512]
+              assert int.from_bytes(block[0:4],'little')==0x0A324655, f'UF2 magic0 at {offset}'
+              assert int.from_bytes(block[4:8],'little')==0x9E5D5157, f'UF2 magic1 at {offset}'
+              assert int.from_bytes(block[508:512],'little')==0x0AB16F30, f'UF2 trailing magic at {offset}'
+          print(f'UF2 structural check OK: {files[0].name}, {len(raw)//512} blocks')
+          PY
+          git rev-parse HEAD > xgo-test45-offline/SOURCE-COMMIT.txt
           (cd xgo-test45-offline && sha256sum ./*.uf2 > SHA256SUMS.txt)
           printf 'UNVALIDATED TEST45 OLED DIAGNOSTIC CANDIDATE - DO NOT FLASH WITHOUT REVIEW\n' > xgo-test45-offline/README-DO-NOT-FLASH.txt
       - uses: actions/upload-artifact@v4
