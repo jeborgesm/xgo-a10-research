@@ -9,6 +9,7 @@ on:
       - '.github/workflows/gp2040ce-xgo-fast-serial-offline.yml'
       - 'integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_responder_compiled_mock.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py'
       - 'integrations/gp2040ce-xgo-test01/candidates/offline-terminal-postamble/**'
@@ -32,6 +33,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_responder_compiled_mock.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py
       - name: Report fast regression result for downstream review
         if: always()
