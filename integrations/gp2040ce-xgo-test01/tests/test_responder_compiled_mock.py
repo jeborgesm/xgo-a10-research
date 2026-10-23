@@ -65,6 +65,9 @@ uint32_t tick = 10;
 bool sinking = false;
 unsigned slot_seen = 0;
 uint16_t sampled_mask = 0;
+bool saw_load_low = false;
+bool sampled_slot0 = false;
+bool model_host_sampled_release_too_early = false;
 
 uint32_t time_us_32() { return tick++; }
 uint32_t save_and_disable_interrupts() { return 0; }
@@ -79,14 +82,28 @@ bool next(char kind, bool level) {
     ++tick;
     return s.outcome;
 }
-bool wait_data(bool level, uint32_t) { return next('D', level); }
+bool wait_data(bool level, uint32_t) {
+    const bool ok = next('D', level);
+    if (ok && !level) saw_load_low = true;
+    if (ok && level && saw_load_low && !sampled_slot0) {
+        // XGO samples slot0 immediately at host LOAD release, before CLOCK.
+        // Fault-injection simulates a slow DATA rise relative to that sample,
+        // even though the firmware later observes DATA high.
+        if (sinking || model_host_sampled_release_too_early) sampled_mask |= 1u;
+        sampled_slot0 = true;
+    }
+    return ok;
+}
 bool wait_clock(bool level, uint32_t) {
     const bool ok = next('C', level);
-    // Idealized observation: first falling edge samples bit0; each ordinary
-    // rising edge samples the slot already driven after its falling edge.
-    // This does not model host electrical setup/hold timing.
+    // For the special pre-driven R/slot0 path, the firmware never calls
+    // wait_data(true). Fold that earlier host release event into this first
+    // clock transition in the idealized mock (not a measured timestamp).
     if (ok && !level) {
-        if (slot_seen == 0 && sinking) sampled_mask |= 1u;
+        if (slot_seen == 0 && !sampled_slot0) {
+            if (sinking) sampled_mask |= 1u;
+            sampled_slot0 = true;
+        }
         ++slot_seen;
     } else if (ok && level && slot_seen >= 1 && slot_seen < 12) {
         if (sinking) sampled_mask |= 1u << slot_seen;
@@ -116,8 +133,11 @@ void check(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
 void run_frame(uint16_t mask, bool rearm, bool expected_success,
-               int failure_slot = -1, bool fail_rise = false, bool final_high = true) {
+               int failure_slot = -1, bool fail_rise = false, bool final_high = true,
+               bool inject_slot0_false_low = false) {
     script.clear(); cursor = 0; slot_seen = 0; sampled_mask = 0;
+    saw_load_low = false; sampled_slot0 = false;
+    model_host_sampled_release_too_early = inject_slot0_false_low;
     sinking = false;
     published_mask.store(mask);
     pending_press_edges.store(mask & ATTACK_BITS);
@@ -128,7 +148,8 @@ void run_frame(uint16_t mask, bool rearm, bool expected_success,
     check(cursor == script.size(), "Unconsumed scripted host event");
     check(!sinking, "DATA must be released after every attempt");
     if (failure_slot == -1) {
-        check(sampled_mask == mask, "Ideal synchronized host saw wrong button bits");
+        const uint16_t expected = mask | (inject_slot0_false_low ? 1u : 0u);
+        check(sampled_mask == expected, "Unexpected decoded bits in ideal or injected release");
     } else {
         // Successful slots seen by the mock cannot invent a foreign bit.
         check(!(sampled_mask & ~mask), "Partial serial output invented another pressed bit");
@@ -143,7 +164,7 @@ int main() {
     constexpr bool gp_treats_terminal_high_failure_as_error = POSTAMBLE_FAILS;
     const uint16_t RIGHT = 1u << 11;
     const uint16_t FIRE = 1u << 5;
-    const uint16_t JUMP = 1u << 4;
+    const uint16_t JUMP = 1u << 0;  // HW fixed-R Contra jump proof.
     const uint16_t START = 1u << 7;
 
     // Exhaustive ideal-slot test over every twelve-bit mask.
@@ -154,6 +175,10 @@ int main() {
     // Nominal RIGHT+FIRE never emits JUMP or START in source-level serialization.
     check(((RIGHT | FIRE) & (JUMP | START)) == 0, "Invalid bit identities");
     run_frame(RIGHT | FIRE, false, true);
+    // Hypothetical DATA threshold recovery lag: host samples slot0 low during
+    // LOAD release, despite firmware having no R press and later seeing high.
+    // This is a modeled electrical boundary case, NOT a measured failure.
+    run_frame(RIGHT | FIRE, false, true, -1, false, true, true);
 
     // Final high fails AFTER all 12 slots were sent. Real source policy differs.
     run_frame(RIGHT | FIRE, false,
@@ -171,7 +196,7 @@ int main() {
         }
     }
     std::printf("PASS exact extracted C++ responder: 4096 ideal masks,"
-                " 22 mid-frame abort/recovery pairs, final postamble policy\n");
+                " 22 mid-frame abort/recovery pairs, slot0 early-sample injection, final postamble policy\n");
 }
 """
 
