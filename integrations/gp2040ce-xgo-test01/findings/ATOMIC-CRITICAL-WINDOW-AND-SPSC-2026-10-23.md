@@ -72,3 +72,39 @@ The outcome of this full linked-build gate must be recorded from CI, not inferre
 - No user hardware test, equipment purchase, PIO rewrite, XGO BIOS edit, or large unrelated controller feature change.
 
 **Status rule:** CI results and actual hardware observations retain separate BIN/SRC/MODEL/HW/OPEN evidence labels. Avoid declaring a simulated false START a proven hardware root cause.
+
+## 6. Full linked Cortex-M0+ comparison — verified result
+
+**BIN VERIFIED PASS:** [GP2040-CE SPSC/IRQ-window build, run 39985794456](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39985794456) at commit `6cd5acd4a7faa54638e80eb18a6ea175353c538f`. CI status `xgo-spsc-ram/offline-irq-audit = success`, with both baseline and candidate compiled from the same pinned GP2040-CE and Pico SDK checkout.
+
+This build extracted two complete *linked* ELF disassemblies and nm tables into artifact **`xgo-gp2040ce-SPSC-IRQ-ELF-EVIDENCE-NOT-FLASHABLE`** (artifact ID **12516859458**, no UF2).
+
+| Linked `emit_frame()` property | SRAM-only Test49 | Isolated SPSC + SRAM |
+|---|---:|---:|
+| Function SRAM entry | `0x200000F0` | `0x200000F0` |
+| Function size | 1028 bytes (`0x404`) | 1148 bytes (`0x47C`) |
+| IRQ-masked CFG reachable instructions* | 220 | 281 |
+| IRQ restores reached in CFG | `0x2000029A`, `0x2000032E` | `0x20000324`, `0x200003AC` |
+| Call sites reachable before IRQ restoration | **2** | **0** |
+| XIP FLASH call targets before IRQ restoration | **2** | **0** |
+
+\*Reachable unique code locations, **NOT instructions executed in one transaction** and not a cycle/timing measurement. SPSC's six-counter loop executes some locations repeatedly, so its runtime must not be estimated from the 281 count. The 120-byte size increase likewise does not prove a fixed-time delta.
+
+The baseline CFG confirms `__atomic_exchange_2` and conditional `__atomic_fetch_or_2` target FLASH through RAM veneers. The candidate CFG confirms neither exchange/requeue nor any other subroutine call occurs while Core1 is interrupt-masked. The compiler inlines the six aligned 32-bit generation loads; the generated loop includes a `dmb ish` per acquire load. Thus the candidate replaces an unpredictable XIP/spinlock path with bounded source-level SRAM loop work, **but** we have not measured worst-case SRAM contention or the elapsed time before slot0 is presented.
+
+**The compiler-check now definitively closes the originally stated *code-path* problem. It does NOT verify firmware/host behavior on hardware.**
+
+### Further source-guided fast tests
+
+At [fast regression 39986453935](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39986453935), the actual SPSC C++ `emit_frame()`, extracted from the candidate, passed 4096/4096 ideal 12-bit masks, 22 mid-frame abort/recovery pairs, and the R/slot0 false-low injection, in addition to the original Test49 and postamble versions.
+
+At [free-running-clock regression 39991908964](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39991908964), actual extracted SPSC C++ also passed 4096 nominal masks under an independently advancing virtual XGO clock. The deliberately injected late-FIRE-to-START and DATA-rise-to-false-R failures are still reproducible for SPSC under **artificial timing faults**—the SPSC transformation does not modify the host electrical protocol.
+
+At [preamble timing-sensitivity regression 39992215627](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39992215627), all three source variants remained green. With the representative P0 LOAD/clock timing and **hypothetical** setup/CPU overhead, a +4.75µs injected delay after LOAD detection first caused an intentional R/slot0 to be missed. This is a **MODEL threshold**, not measured SPSC code runtime, and does not establish that its six-counter snapshot exceeds that limit. The test makes the remaining real-time constraint visible.
+
+### Engineering disposition
+
+- **Confirmed solved in linked code:** flash-resident spinlock-taking helper calls reachable between `cpsid i` and PRIMASK restore are eliminated.
+- **Not yet proven:** absolute timing margin at the immediate host R/slot0 sample; absence of spontaneous JUMP or PAUSE under live Contra; whether the legacy S12 failures diminish.
+- **Protected:** Test44, Test49 hardware witness, 18ms input pulse, all mappings, Frankie, and XGO firmware.
+- **Candidate status:** source and binary offline verified; no UF2 distributed and no hardware validation. Do not represent the result as a fixed controller until a single targeted hardware session is justified and executed.
