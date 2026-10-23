@@ -122,3 +122,11 @@ New regression `tests/test_responder_free_running_clock.py` extracts the product
 - Continue relying on the short CI suite; it does not require a spare Pico, logic analyzer, Frankie wiring changes, modified console BIOS, or another user gameplay run.
 
 **Verified class:** CI/SRC for compiling/running actual responder functions, HW for existing P0 and Test49 separately, MODEL for host clock and injected failures, OPEN for actual causal link.
+
+### Native versus GP2040-CE USB-PHY register initialization comparison (SRC)
+
+An additional direct source comparison of `tools/rp2040-xgo-live-controller/main.c` and `candidates/test49-attack-edge-provenance/XGODriver.cpp` found that `raw_init()` uses the **same ordered list of twelve USB mux/PHY override register constants**, the same `main_ctrl=0`, `sie_ctrl=0`, `phy_direct=0`, and the same final `data_release()`. The code formatting differs but the register-init expressions agree. Both consume RX_DM CLOCK and RX_DP DATA and use LOW-sink/high-Z DATA drive.
+
+Consequently, **the GP2040-CE XGO-mode responder does not exhibit an obvious differing PHY initialization constant versus the native live-controller reference**. We cannot attribute the Test49 phantom R/slot0 solely to a new PHY override value without further evidence. This does NOT prove identical real-world analog loading: other GP2040-CE subsystems, boot state, board timing, and cable conditions may differ. It also does not establish that the minimal live-controller underwent the same extended simultaneous-press Contra stress test.
+
+This strengthens the rationale to concentrate on software timing and frame phase semantics first, while retaining native-PHY electrical recovery as an open hypothesis rather than assuming it can be fixed by rewriting `raw_init()`.
