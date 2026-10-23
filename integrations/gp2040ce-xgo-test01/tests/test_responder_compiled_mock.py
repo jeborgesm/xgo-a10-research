@@ -18,6 +18,7 @@ ROOT = Path("integrations/gp2040ce-xgo-test01/candidates")
 SOURCES = (
     ("Test49", ROOT / "test49-attack-edge-provenance/XGODriver.cpp", True),
     ("native-postamble-candidate", ROOT / "offline-terminal-postamble/XGODriver.cpp", False),
+    ("SPSC-RAM-candidate", ROOT / "offline-spsc-ram-hotpath/XGODriver.cpp", True),
 )
 
 PRELUDE = r"""
@@ -49,6 +50,8 @@ std::atomic<uint32_t> xgo_diag_consecutive_active_failures{0};
 std::atomic<uint32_t> xgo_diag_max_active_failure_streak{0};
 std::atomic<uint16_t> published_mask{0};
 std::atomic<uint16_t> pending_press_edges{0};
+std::atomic<uint32_t> attack_edge_generation[6]{};
+uint32_t consumed_attack_edge_generation[6]{};
 uint16_t attack_pulse_mask = 0;
 uint32_t attack_pulse_start_us = 0;
 bool previous_active_success = false;
@@ -141,6 +144,10 @@ void run_frame(uint16_t mask, bool rearm, bool expected_success,
     sinking = false;
     published_mask.store(mask);
     pending_press_edges.store(mask & ATTACK_BITS);
+    for (unsigned bit = 0; bit < 6; ++bit) {
+        attack_edge_generation[bit].store((mask >> bit) & 1u);
+        consumed_attack_edge_generation[bit] = 0;
+    }
     attack_pulse_mask = 0;
     frame_script(mask, rearm, failure_slot, fail_rise, final_high);
     const bool complete = emit_frame();
@@ -201,11 +208,16 @@ int main() {
 """
 
 def extract(source):
+    # The SRAM attribute is stripped only in the host-native mock compilation,
+    # never in the actual pinned RP2040 candidate or its ELF audit.
+    source = source.replace("bool __no_inline_not_in_flash_func(emit_frame)() {",
+                            "bool emit_frame() {")
     start = source.index("bool emit_frame() {")
     end = source.index("\n}\n\n} // namespace", start) + 2
     function = source[start:end]
     assert function.count("bool emit_frame()") == 1
-    assert "pending_press_edges.exchange(0, std::memory_order_acq_rel)" in function
+    assert ("pending_press_edges.exchange(0, std::memory_order_acq_rel)" in function
+            or "attack_edge_generation[bit].load(std::memory_order_acquire)" in function)
     assert "if (!complete) require_idle_high = true;" in function
     return function
 
