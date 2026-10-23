@@ -2,6 +2,19 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 NEWEST — CHORD-COHERENT TEST44 SPSC; FULL ARM GATE OPEN
+
+**Protected baseline unchanged.** Test44 hardware-proven, Test49 diagnostic witness preserved, no controller/UFP/XGO console flash, Frankie unchanged. Do NOT request physical hardware testing at this point.
+
+**First lean Test44/SPSC candidate fully verified offline:** `candidates/offline-test44-spsc-ram-playable/XGODriver.cpp` is exactly the earlier verified SPSC minus Test49-only diagnostics. Full pinned RP2040 [run 40033843466](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40033843466) **SUCCESS**: same original Test44 OLED/header, candidate `emit_frame()` SRAM address `0x200000F0`, 952 bytes, zero reachable BL/BLX calls while IRQ-masked, no UF2 distributed. Fast exact source/compiled C++ 4096-mask and fault simulations PASS [40033843426](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40033843426). Its remaining issue: six per-bit generation counters are published/read independently and may admit only part of a simultaneous attack chord if Core0 publishes while Core1 takes its snapshot.
+
+**New concurrency proof and guarded correction:** `tests/test_spsc_chord_atomicity.py` enumerates **130,680** sequentially consistent producer/consumer schedules across **all 63 nonempty attack combinations**. Unguarded per-bit snapshot admits incomplete chords in **67,426 MODEL schedules**; the coherent variant admits **zero** incomplete chords. These numbers do NOT imply live hardware event rates. Source `candidates/offline-test44-spsc-coherent-ram/XGODriver.cpp` uses a Core0-owned odd/even `seq_cst` commit marker around all per-button generation updates, and Core1 uses before/after sequence loads to either accept the full stable batch or defer the entire batch to a subsequent host scan. No Core1 exchange/fetch-or, no serial mapping/18us timeout/18ms pulse changes. All source-guard and actual compiled host-C++ mask/abort/free-running timing regressions **PASS** [fast CI 40034765433](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40034765433).
+
+**Current build gate:** [full coherent ARM ELF run 40034765464](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40034765464) rebuilds protected Test44 and coherent source in same pinned GP2040-CE checkout, and must establish SRAM function placement + zero reachable XIP under Core1 IRQ mask. **Status still IN PROGRESS at this note; do not assume pass.** An earlier run 40034701038 failed on the source guard mistakenly searching post-IRQ diagnostic atomic increments; guard now correctly checks only between Core1 `save_and_disable_interrupts()` and `restore_interrupts()`. This was not a firmware failure.
+
+**Evidence:** `findings/ATOMIC-CRITICAL-WINDOW-AND-SPSC-2026-10-23.md` sections 7–8 distinguish SRC, BIN, MODEL, HW, OPEN and pin prior linked disassembly artifact. Actual live DATA threshold/jump and START/PAUSE root cause remain unproven. The +4.75us slot0 artificial delay is a simulator threshold, not observed CPU timing. No new equipment, firmware distribution or new hardware session.
+
+---
 ## 2026-10-23 LATEST — TEST44-DERIVED SPSC LEAN PLAYABLE CANDIDATE (OFFLINE)
 
 **No hardware changed. Test44 remains the protected proven baseline, Test50 START provenance hardware run is on hold.** The preceding SPSC RAM correction at `candidates/offline-spsc-ram-hotpath/XGODriver.cpp` was successfully compiled and verified to have no flash-resident helper calls during the Core1 IRQ-masked serial response ([full verified run 39985794456](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39985794456)). That conclusion remains SRC/BIN, **not** a proven fix for the actual observed unwanted Contra JUMP and PAUSE.
