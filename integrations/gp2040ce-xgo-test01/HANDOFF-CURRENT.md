@@ -2,6 +2,20 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 — OFFLINE CLOCK-FAULT CLASSIFICATION + ISOLATED RAM EXPERIMENT
+
+**Fast regression verified green:** [run 39968607396](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39968607396) from commit `5f8bf28bcec49a977b125793cf000b83a160b3ee`. Free-running XGO virtual-clock model compiles **actual Test49 and postamble candidate C++** and injects hypothetical post-FIRE and post-LOAD stalls. The simulation distinguishes decoded masks from *reported failure slots*:
+- In the **selected LOAD-preparation delay sweep**, 16 synthetic S12 failures were accompanied by wrong host words, **none included START**. All 16 false-START cases instead reported a slot-11 failure. This specific model does NOT support claiming hardware S12 errors caused spontaneous pause.
+- After a hypothetical FIRE-slot high-wait delay of ~7.75us in this model, FIRE persists into future SELECT/START host samples and false START occurs; the responder can report failure AFTER host action sampling. No measured Core1 stall of that duration has been established.
+- 18us and virtual 8us CLOCK timeout behave alike for that failure; tighter virtual 6/4us timeouts reject nominal frames. Timeout-only and final postamble-only fixes remain unproven/rejected as standalone remedies.
+
+**Isolated RAM hot-path experiment:** Source-only annotation candidate `candidates/offline-ram-hotpath/XGODriver.cpp` is literally Test49 with `pico/platform.h` include and SRAM function-placement attributes on `wait_clock`, `wait_data`, `emit_frame` (plus explanatory comments). *No input, IRQ, queue, pulse, timing or GPIO logic changed.* Source exact-diff guard `tests/test_ram_hotpath_source_contract.py` passed in CI. SDK has supported SRAM placement to avoid instruction-fetch XIP latency; this is a plausible improvement for a **hypothesized** CPU instruction-fetch stall, not evidence actual stalls occurred.
+
+Dedicated `.github/workflows/gp2040ce-xgo-ram-hotpath-offline.yml` compiles the complete protected Test49 firmware, substitutes the annotations in a temporary upstream checkout, rebuilds, and audits resulting ELF symbol addresses and direct XIP calls. Initial run [39966848467](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39966848467) compiled the Test49 baseline but failed on an over-strict harness query for one ELF in the whole build tree (not a firmware-source defect). The corrected workflow chooses ELF via its corresponding unique UF2 stem, commit `d5e73f96d8cb2a1f601d5ff399ddaf13d507e919`, run [39967524306](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39967524306). **Do NOT declare the RAM ELF audit passed until CI independently reports success and call graph reviewed.** No UF2 artifact is published by this experiment.
+
+**Preserve** original Test44 golden, Test49 witness/source, Test50 on hold, Frankie cable, and XGO BIOS. No user hardware test, no purchases, no flash. Avoid filling time with more arbitrary firmware tests.
+
+---
 ## 2026-10-23 UPDATE — TIMEOUT SWEEP CLOSES RANDOM THRESHOLD-TUNING PATH
 
 Current fast offline CI **PASS**: [run 39963557253](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39963557253), commit `f387e00edbd0e51ef2dd1709ad2751dfc90d5223`. Exact Test49 and postamble-candidate C++ `emit_frame()` compiled with independent synthetic XGO CLOCK/DATA sample timings:
