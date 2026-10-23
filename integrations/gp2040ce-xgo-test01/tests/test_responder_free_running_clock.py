@@ -227,14 +227,39 @@ int main() {
     for (int q=0; q<=80; ++q) {
         const double hypothetical_delay=q*0.25;
         init_host(RIGHT|FIRE,hypothetical_delay,0,0);
-        (void)emit_frame();
+        xgo_diag_clock_timeouts.store(0);
+        xgo_diag_last_failure_slot.store(0);
+        bool done=emit_frame();
         if (host.decoded & START) {
+            if (first_load_prep_delay_causing_START<0)
+                std::printf("first prep START: delay=%.2fus decoded=0x%03x "
+                            "complete=%d last_failure_slot=%u clock_errors=%u\\n",
+                            hypothetical_delay,unsigned(host.decoded),int(done),
+                            unsigned(xgo_diag_last_failure_slot.load()),
+                            unsigned(xgo_diag_clock_timeouts.load()));
             if (first_load_prep_delay_causing_START<0)
                 first_load_prep_delay_causing_START=hypothetical_delay;
             ++prep_false_actions;
         }
     }
-    require(first_fire_delay_causing_START>0 && first_fire_delay_causing_START<=9.0,
+    // Compare the independent host's final-slot failure classification against
+    // wrong-button decoding. A slot-12 error is NOT automatically a bad bit.
+    unsigned slot12_without_wrong_bit=0,slot12_with_wrong_bit=0;
+    for (int q=0;q<=100;++q) {
+        init_host(RIGHT|FIRE,q*0.25,0,0);
+        xgo_diag_clock_timeouts.store(0);
+        xgo_diag_last_failure_slot.store(0);
+        (void)emit_frame();
+        if (xgo_diag_clock_timeouts.load() &&
+            xgo_diag_last_failure_slot.load()==12) {
+            if (host.decoded==(RIGHT|FIRE)) ++slot12_without_wrong_bit;
+            else ++slot12_with_wrong_bit;
+        }
+    }
+    std::printf("model diagnostic correlation: S12 failures with clean host "
+                "word=%u; S12 failures with mismatched host word=%u\\n",
+                slot12_without_wrong_bit,slot12_with_wrong_bit);
+        require(first_fire_delay_causing_START>0 && first_fire_delay_causing_START<=9.0,
             "Expected a reproducible late-FIRE false START in sweep");
     std::printf("synthetic sweep: first FIRE-processing gap yielding START=%.2fus "
                 "(%u cases); first LOAD-prep gap yielding START=%.2fus "
