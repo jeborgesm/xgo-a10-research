@@ -16,6 +16,7 @@ ROOT = Path('integrations/gp2040ce-xgo-test01/candidates')
 SOURCES = (
     ('Test49', ROOT / 'test49-attack-edge-provenance/XGODriver.cpp'),
     ('postamble-only', ROOT / 'offline-terminal-postamble/XGODriver.cpp'),
+    ('SPSC-RAM', ROOT / 'offline-spsc-ram-hotpath/XGODriver.cpp'),
 )
 
 PRELUDE = r"""
@@ -44,6 +45,8 @@ std::atomic<uint32_t> xgo_diag_consecutive_active_failures{0};
 std::atomic<uint32_t> xgo_diag_max_active_failure_streak{0};
 std::atomic<uint16_t> published_mask{0};
 std::atomic<uint16_t> pending_press_edges{0};
+std::atomic<uint32_t> attack_edge_generation[6]{};
+uint32_t consumed_attack_edge_generation[6]{};
 uint16_t attack_pulse_mask=0;
 uint32_t attack_pulse_start_us=0;
 bool previous_active_success=false;
@@ -149,6 +152,10 @@ void init_host(uint16_t pressed, double delay=0, double recovery=0,
     host.after_fire_high_delay=after_fire_high;
     published_mask.store(pressed);
     pending_press_edges.store(pressed & ATTACK_BITS);
+    for (unsigned bit=0; bit<6; ++bit) {
+        attack_edge_generation[bit].store((pressed >> bit) & 1u);
+        consumed_attack_edge_generation[bit]=0;
+    }
     attack_pulse_mask=0;
 }
 """
@@ -283,6 +290,9 @@ int main() {
 """
 
 def extract(source):
+    # Strip only the platform residency macro for the host-native simulator.
+    source=source.replace('bool __no_inline_not_in_flash_func(emit_frame)() {',
+                          'bool emit_frame() {')
     start=source.index('bool emit_frame() {')
     end=source.index('\n}\n\n} // namespace',start)+2
     function=source[start:end]
