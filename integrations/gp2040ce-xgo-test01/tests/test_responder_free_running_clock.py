@@ -191,6 +191,27 @@ int main() {
     require(emit_frame(),"RIGHT+FIRE clean frame should complete");
     require(host.decoded==(RIGHT|FIRE),"RIGHT+FIRE clean host mismatch");
 
+    // R/slot0 must be actively sunk *before* the immediate first-slot
+    // sample. Sweep total synthetic post-LOAD preparation delay to reveal
+    // the available window. The delay is an injected model parameter,
+    // NOT elapsed time measured on the actual linked SPSC binary.
+    double first_missed_R_slot0_delay=-1;
+    unsigned r0_missed_cases=0;
+    for (int q=0; q<=48; ++q) {
+        const double delay=q*0.25;
+        init_host(RIGHT|FIRE|JUMP_R,delay);
+        (void)emit_frame();
+        if (!(host.decoded&JUMP_R)) {
+            if (first_missed_R_slot0_delay<0) first_missed_R_slot0_delay=delay;
+            ++r0_missed_cases;
+        }
+    }
+    require(first_missed_R_slot0_delay>0,
+            "Synthetic R/slot0 early-sink margin must be finite");
+    std::printf("synthetic R/slot0 PRE-DRIVE first missed at +%.2fus "
+                "preparation delay, cases=%u (not a hardware margin)\\n",
+                first_missed_R_slot0_delay,r0_missed_cases);
+
     // Synthetic threshold lag: although software emits no R, the
     // independent host initially samples DATA as LOW immediately after
     // releasing its LOAD-low pulse. It subsequently rises before CLOCK.
