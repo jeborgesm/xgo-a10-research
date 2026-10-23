@@ -1,7 +1,23 @@
 # XGO A10 / GP2040-CE controller serial integration — CURRENT HANDOFF
 
-**Updated 2026-10-22. Read the CURRENT ADDENDUM first, then the historical record.**
+**Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 CRITICAL CORRECTION — CONTRA JUMP = R/SLOT0; NEW FAST CI PASS
+
+Hardware-proven **Contra P2 JUMP is R/serial slot0**, NOT B1/P4. In prior P1 fixed-R hardware test, asserting R alone repeatedly caused Contra jump; the successful P2 scripted Contra bot also used R as jump. Sources: `experiments/rp2040-responder-p1-fixed-r.md`, `tools/rp2040-xgo-p2-contra/README.md`. In the latest Test49 hardware screenshots, **P0 and P4 were BOTH zero** during reported unwanted JUMPS. Earlier P4-specific inference and "B2 FIRE advances one slot to B1 JUMP" labels were **WRONG** and have been corrected in the offline regression suite. Do not reintroduce this mapping error.
+
+Earlier P0 passive capture (HW) measured XGO DATA/load LOW **6.8–7.5us** and only **0.9–1.3us from DATA release to the first CLOCK-low**; scanner samples R/slot0 immediately on DATA release, *before CLOCK*. An unpressed-R host input may therefore be contaminated by slow DATA recovery across the slot0 sampling aperture, even when the GP2040-CE processed R/P0 counter is zero. This is a **plausible modeled mechanism, NOT verified root cause** for Test49. Earlier GREEN passive-probe loading itself caused jump-only P2 contamination, strengthening relevance of physical DATA release; analog timing in Igor+Frankie was not measured. Spontaneous PAUSE/START slot7 is separate and not explained by this R0 mechanism.
+
+Tests corrected:
+- `tests/test_serial_boundary_faults_offline.py` labels R/slot0 as Contra jump, separates B1/slot4 as an unrelated button.
+- `tests/test_responder_compiled_mock.py` samples slot0 on modeled host DATA release (instead of incorrectly assuming first CLK-fall), and deliberately injects a simulated slow-release false-low sample; both exact source C++ variants pass correctly.
+- `tests/test_slot0_release_settle_offline.py` explores only synthetic threshold/sample delays constrained by the proven first-CLOCK timing. It cannot prove the hardware's actual rise time.
+- **Latest CI PASS:** [run 39950134069](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39950134069) at `1fd3ebcee891612a7f6e71e16fc4edfa27fb518c`: **14** Python source/boundary tests, **6** slot0 release timing-model tests, and actual compiled C++ Test49 and postamble candidate tests (4,096 ideal masks + 22 midframe fault/recovery pairs EACH + slot0 early-sample injection).
+- Detailed corrected audit: `diagnostics/SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md`, with correction commit `ef0d0cb8a03b290737105eb5df7cedbcf7da800a`.
+
+**NO NEW HARDWARE TEST, NO NEW DEVICE, NO XGO CONSOLE PATCH.** Test44 protected; Test50 on hold. Postamble-only correction is NOT established as the phantom-JUMP remedy. Next focus must discriminate host slot0 DATA recovery/sampling versus LOAD/frame misalignment from existing evidence and source, offline first.
+
+---
 ## 2026-10-23 — COMPILED ACTUAL C++ RESPONDER TESTS PASS; HARDWARE STILL UNTOUCHED
 
 Verified fast CI [39949251664](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39949251664) at `7c3c4e5206fd6900102b2f7b7ad6897a1a9addff`: `xgo-fast-serial/verified-models = success`. It runs existing Test49 rising-edge Python regression, 13 Python fault/source regression unit tests, and `tests/test_responder_compiled_mock.py`, which **extracts and compiles the actual Test49 and one-line offline-candidate `emit_frame()` functions** under host g++, replacing only pin/time/IRQ operations with scripted inputs. Both variants passed 4096 idealized complete masks, 22 mid-frame abort+recovery pairs, and the final-high timeout + next-frame recovery semantics. Hardware signal timing is NOT simulated; this does not prove the host would decode correctly with shifted/missed pulses. This is not an RP2040 UF2 compile.
@@ -19,7 +35,7 @@ User requested a simpler, faster approach using existing GP2040-CE, GitHub Actio
 - Source discrepancy: hardware-proven minimal Pico responder ignores failure of *final* CLOCK-high wait after slot12 low, but Test49/Test50 marks it a failed transaction and invokes `require_idle_high` recovery. The corrected HW photo series reports 186 additional cumulative slot12 failures across 261 additional CLK failures, but slot12 counts merge failed terminal low and failed terminal high. Do not claim cause of phantom input from this count.
 - Offline Python source-guard plus timing/slot-alignment regression `tests/test_serial_boundary_faults_offline.py`; dedicated short non-compiling CI workflow `.github/workflows/gp2040ce-xgo-fast-serial-offline.yml`. Detailed evidence with HW/SRC/MODEL/OPEN in `diagnostics/SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md`.
 - Isolated candidate `candidates/offline-terminal-postamble/XGODriver.cpp` differs by **one line only** from Test49: ignore final CLOCK-high wait timeout for transaction success, matching native contract. This is **NOT built, NOT hardware-tested, NOT approved as a fix for jumps/pauses**. Literal source diff guarded by regression. Commit `ffd59f39a6df058b8e15a5b1e667091b58c8e9ab`; fast status publishing workflow updated afterward.
-- Nine dynamic Python model cases passed locally; source guard compared GitHub copies and confirms precise one-line delta. A passing synthetic model is NOT physical-host proof. Await fast GitHub CI result independently; do not presume it passed.
+- The previous CI-pending note is superseded by the verified fast CI result in the newest addendum. Synthetic models and host-compiled source tests are NOT electrical proof.
 - Test50 hardware run ON HOLD. Protected hardware baselines Test42/Test44 untouched; XGO firmware untouched.
 
 ---
@@ -27,7 +43,7 @@ User requested a simpler, faster approach using existing GP2040-CE, GitHub Actio
 
 The user **DID experience multiple unintended JUMPS before photo 2**, while moving RIGHT and repeatedly tapping FIRE without ever intentionally pressing JUMP. The P4 (processed B1) attack rising-edge count was **0 in all photos**, including after the phantom jumps. Continued RIGHT+FIRE, fell off a bridge, then Contra **PAUSED ON ITS OWN** without pressing START. The user pressed START intentionally ONCE to resume and later took photo 3. The assistant initially misread this as "no jumps" and corrected the primary record in `diagnostics/CONTRA-RIGHT-FIRE-OBSERVATION.md` commit `843c26324139c9386bb94f2b0289a603adacede7`. Do not repeat the false interpretation.
 
-Test49 counters photo 1/2/3: CLK 59/172/320; slot12 failures 40/126/226; LO 48/140/259; HI 11/32/61; P0-P4 0/0/0; P5 (processed B2) 0/29/164; RIGHT+attack RF 0/29/169; RF errors E 0/6/28. The phantom JUMPS followed by zero P4 strongly suggest the JUMP bit is introduced **after processed B1 input** if B1 is the jump binding; confirm that binding, and never claim causality to slot12 alone.
+Test49 counters photo 1/2/3: CLK 59/172/320; slot12 failures 40/126/226; LO 48/140/259; HI 11/32/61; P0-P4 0/0/0; P5 (processed B2) 0/29/164; RIGHT+attack RF 0/29/169; RF errors E 0/6/28. **Superseded binding interpretation:** JUMP is hardware-confirmed as R/slot0, NOT B1. P0 also remained zero, so the relevant mismatch is real host JUMP/R0 behavior versus zero processed R0 edges. Never claim causality to slot12 alone.
 
 Test50 commit `b7693af7f17a0f39e318cd098775bd6ae598492b` is an isolated **processed S1/SELECT and S2/START rising-edge provenance** diagnostic, to localize spontaneous pause. Serial responder and map_mask are unchanged from Test49. OLED labels S1/S2. Dedicated workflow `.github/workflows/gp2040ce-xgo-test50-pause-edge-provenance.yml`, expected status `xgo-test50/verified-uf2`; build not yet verified at handoff time. Preserve Test44/Test48/Test49.
 
