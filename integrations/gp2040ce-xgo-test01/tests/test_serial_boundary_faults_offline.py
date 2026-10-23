@@ -23,7 +23,8 @@ NEW_POSTAMBLE = 'if (complete) (void)wait_clock(true, EDGE_TIMEOUT_US);'
 
 RIGHT = 1 << 11
 FIRE_B2 = 1 << 5    # Observed P5 rising with deliberate FIRE tapping.
-JUMP_B1 = 1 << 4   # Conditional mapping; must verify game's binding.
+JUMP_R0 = 1 << 0     # HW fixed-R/P1 Contra A=JUMP mapping, slot 0.
+OTHER_B1 = 1 << 4   # B1 is an independent slot, not proven to be Contra JUMP.
 START_S2 = 1 << 7
 SELECT_S1 = 1 << 6
 ATTACK_BITS = 0x003f
@@ -126,6 +127,14 @@ class TestProvenContracts(unittest.TestCase):
         self.assertIn('constexpr uint32_t EDGE_TIMEOUT_US = 18;', g)
         self.assertIn('#define EDGE_TIMEOUT_US 12u', n)
 
+    def test_real_contra_jump_binding_is_serial_R_slot0(self):
+        p = Path('experiments/rp2040-responder-p1-fixed-r.md').read_text()
+        q = Path('tools/rp2040-xgo-p2-contra/README.md').read_text()
+        self.assertIn('fixed serial-position-0 R responder', p)
+        self.assertIn('raw R maps through the current Contra keymap to FC A/jump', q)
+        self.assertEqual(JUMP_R0, 1)
+        self.assertNotEqual(JUMP_R0, OTHER_B1)
+
     def test_postamble_candidate_is_exactly_one_line_difference(self):
         # Candidate must not touch pulses, mask, IRQ, release, pin mappings,
         # or other sections. This is a source guard, not a compiled binary.
@@ -175,10 +184,12 @@ class TestNoPhantomFromCleanInput(unittest.TestCase):
         output = pulse_queue_states(samples)
         edges = processed_edges([s for _, s in samples])
         self.assertGreater(edges[5], 100)
+        self.assertEqual(edges[0], 0)
         self.assertEqual(edges[4], 0)
         self.assertEqual(edges[7], 0)
         self.assertTrue(all(m & RIGHT for m in output))
-        self.assertTrue(all(not (m & JUMP_B1) for m in output))
+        self.assertTrue(all(not (m & JUMP_R0) for m in output))
+        self.assertTrue(all(not (m & OTHER_B1) for m in output))
         self.assertTrue(all(not (m & START_S2) for m in output))
         self.assertTrue(all(not (m & SELECT_S1) for m in output))
 
@@ -192,19 +203,22 @@ class TestNoPhantomFromCleanInput(unittest.TestCase):
     def test_ideal_host_decoding_never_invents_buttons(self):
         for state in [RIGHT, RIGHT | FIRE_B2, FIRE_B2, 0]:
             self.assertEqual(ideal_host_slots(state), state)
-            self.assertFalse(ideal_host_slots(state) & (JUMP_B1 | START_S2))
+            self.assertFalse(ideal_host_slots(state) & (JUMP_R0 | START_S2 | OTHER_B1))
 
-    def test_single_slot_advance_can_make_fire_look_like_jump(self):
+    def test_one_slot_advance_can_make_fire_look_like_unrelated_B1_not_jump(self):
         decoded = ideal_host_slots(RIGHT | FIRE_B2, shift=1)
-        self.assertTrue(decoded & JUMP_B1)
+        self.assertTrue(decoded & OTHER_B1)
         self.assertFalse(decoded & START_S2)
-        self.assertFalse((RIGHT | FIRE_B2) & JUMP_B1)
+        self.assertFalse((RIGHT | FIRE_B2) & OTHER_B1)
+        self.assertFalse(decoded & JUMP_R0)
+        # Contra JUMP is hardware-confirmed on R/slot0, not B1/slot4.
         # Synthetic alignment offset only: no observed CLOCK waveform.
 
     def test_two_slot_delay_can_make_fire_look_like_start(self):
         decoded = ideal_host_slots(RIGHT | FIRE_B2, shift=-2)
         self.assertTrue(decoded & START_S2)
-        self.assertFalse(decoded & JUMP_B1)
+        self.assertFalse(decoded & JUMP_R0)
+        self.assertFalse(decoded & OTHER_B1)
         self.assertFalse((RIGHT | FIRE_B2) & START_S2)
         # Synthetic alignment offset only: no observed CLOCK waveform.
 
