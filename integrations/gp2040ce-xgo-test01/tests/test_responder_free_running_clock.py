@@ -189,6 +189,8 @@ int main() {
             "Delayed FIRE release should assert host START in synthetic case");
     require((host.decoded&JUMP_R)==0,
             "The delayed-FIRE START counterexample should not assert R");
+    const uint16_t late_fire_decoded=host.decoded;
+    const uint32_t late_fire_clock_errors=xgo_diag_clock_timeouts.load();
 
     // Sweep hypothetical Core1 stalls in quarter-microsecond increments.
     // They are NOT claimed to be measured firmware execution delays.
@@ -223,15 +225,15 @@ int main() {
             "Expected a reproducible late-FIRE false START in sweep");
     std::printf("synthetic sweep: first FIRE-processing gap yielding START=%.2fus "
                 "(%u cases); first LOAD-prep gap yielding START=%.2fus "
-                "(%u cases); complete-but-wrong FIRE-gap cases=%u\\n",
+                "(%u cases); complete-but-wrong FIRE-gap cases=%u\n",
                 first_fire_delay_causing_START,fire_false_actions,
                 first_load_prep_delay_causing_START,prep_false_actions,
                 fire_host_wrong_but_reported_ok);
     std::printf("source=C++ masks=%d; synthetic false-R=YES; "
                 "synthetic late-FIRE START=YES; latter frame complete=%d, "
                 "decoded=0x%03x, clock timeouts=%u\n",
-                passed, int(completed), unsigned(host.decoded),
-                unsigned(xgo_diag_clock_timeouts.load()));
+                passed, int(completed), unsigned(late_fire_decoded),
+                unsigned(late_fire_clock_errors));
 }
 """
 
@@ -249,18 +251,24 @@ def main():
     with tempfile.TemporaryDirectory(prefix='xgo-clock-') as tmp:
         for label, path in SOURCES:
             source=path.read_text()
-            cpp=Path(tmp)/(label+'.cpp')
-            cpp.write_text(PRELUDE+'\n'+extract(source)+'\n'+MAIN)
-            exe=Path(tmp)/(label+'.exe')
-            c=subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra',
-                              '-Werror',str(cpp),'-o',str(exe)],
-                              capture_output=True,text=True)
-            if c.returncode:
-                raise RuntimeError(label+' failed to compile:\n'+c.stderr)
-            r=subprocess.run([str(exe)],capture_output=True,text=True)
-            if r.returncode:
-                raise RuntimeError(label+' timing scenario failed:\n'+r.stderr)
-            print(label+': '+r.stdout.strip())
+            for timeout in (18, 8, 4):
+                variant=f"{label}-edge-timeout-{timeout}us"
+                cpp=Path(tmp)/(variant+'.cpp')
+                prelude=PRELUDE.replace(
+                    'constexpr uint32_t EDGE_TIMEOUT_US=18;',
+                    f'constexpr uint32_t EDGE_TIMEOUT_US={timeout};')
+                assert prelude != PRELUDE or timeout == 18
+                cpp.write_text(prelude+'\n'+extract(source)+'\n'+MAIN)
+                exe=Path(tmp)/(variant+'.exe')
+                c=subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra',
+                                  '-Werror',str(cpp),'-o',str(exe)],
+                                  capture_output=True,text=True)
+                if c.returncode:
+                    raise RuntimeError(variant+' failed to compile:\n'+c.stderr)
+                r=subprocess.run([str(exe)],capture_output=True,text=True)
+                if r.returncode:
+                    raise RuntimeError(variant+' timing scenario failed:\n'+r.stderr)
+                print(variant+': '+r.stdout.strip())
     print('LIMIT: virtual CLOCK/timing and injected stalls, not live hardware proof')
 
 if __name__=='__main__':
