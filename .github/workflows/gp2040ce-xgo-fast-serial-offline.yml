@@ -1,0 +1,30 @@
+name: XGO fast offline serial regression
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/gp2040ce-xgo-fast-serial-offline.yml'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-terminal-postamble/**'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test49-attack-edge-provenance/XGODriver.cpp'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test50-pause-edge-provenance/XGODriver.cpp'
+      - 'tools/rp2040-xgo-live-controller/main.c'
+      - 'tools/rp2040-xgo-native-contra/main.c'
+
+permissions:
+  contents: read
+
+jobs:
+  serial-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Test49 edge model and serial boundary regressions
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py
