@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   serial-offline:
@@ -28,3 +29,27 @@ jobs:
         run: |
           python3 integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py
+      - name: Report fast regression result for downstream review
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then STATE=success; else STATE=failure; fi
+          export STATE
+          python3 - <<'PYJSON' > /tmp/xgo-fast-serial-status.json
+          import json, os
+          print(json.dumps({"state":os.environ["STATE"],
+                            "context":"xgo-fast-serial/verified-models",
+                            "description":"Fast source contract and fault models " + os.environ["STATE"],
+                            "target_url":f"https://github.com/{os.environ['REPO']}/actions/runs/{os.environ['RUN_ID']}"}))
+          PYJSON
+          curl --fail-with-body --retry 3 -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPO/statuses/$SHA" \
+            --data-binary @/tmp/xgo-fast-serial-status.json
