@@ -125,8 +125,11 @@ class TestCoherentPublication(unittest.TestCase):
         self.assertIn("const bool hk_slot0 = (mask & 1u) != 0;",s)
         self.assertIn("constexpr uint32_t ATTACK_PULSE_US = 18000;",s)
         self.assertIn("constexpr uint32_t EDGE_TIMEOUT_US = 18;",s)
-        frame=s[s.index("bool __no_inline_not_in_flash_func(emit_frame)() {"):
-                s.index("} // namespace", s.index("bool __no_inline_not_in_flash_func(emit_frame)() {"))]
+        # The diagnostics after IRQ restoration still legitimately use
+        # atomic fetch_add. Guard only the true IRQ-masked critical window.
+        frame=s[s.index("const uint32_t irq_state = save_and_disable_interrupts();"):
+                s.index("restore_interrupts(irq_state);",
+                        s.index("const uint32_t irq_state = save_and_disable_interrupts();"))]
         self.assertNotIn(".fetch_add(",frame)
         self.assertNotIn(".exchange(",frame)
         self.assertNotIn(".fetch_or(",frame)
