@@ -28,6 +28,23 @@ def zone(addr):
         return "ROM"
     return "OTHER"
 
+def resolve_veneer_targets(name, lookup):
+    """Resolve GCC-generated SRAM veneer name to the *real* linked helper.
+
+    e.g. ____atomic_exchange_2_veneer -> __atomic_exchange_2.
+    Return (address, real_name) pairs, empty for unresolved symbols.
+    """
+    if not name.endswith("_veneer"):
+        return []
+    raw=name[:-len("_veneer")]
+    candidates=[raw]
+    if raw.startswith("____"):
+        candidates.append(raw[2:])
+    targets=[]
+    for candidate in candidates:
+        targets.extend((a,candidate) for a,_ in lookup.get(candidate,[]))
+    return targets
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: audit_ram_hotpath_elf.py path/to/firmware.elf")
@@ -85,13 +102,7 @@ def main():
             violations.append(f"direct XIP 0x{addr:08x} {name}")
         if name.endswith("_veneer"):
             veneers+=1
-            raw=name[:-len("_veneer")]
-            candidates=[raw]
-            if raw.startswith("____"):
-                candidates.append(raw[2:])
-            targets=[]
-            for candidate in candidates:
-                targets.extend((a,candidate) for a,_ in lookup.get(candidate,[]))
+            targets=resolve_veneer_targets(name,lookup)
             # A veneer in SRAM often jumps through an absolute literal into
             # a flash helper. The veneer address alone is *not* proof of RAM.
             if len(targets)!=1:
