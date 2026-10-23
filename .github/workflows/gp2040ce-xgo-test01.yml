@@ -7,7 +7,18 @@ on:
       - research-gp2040ce-xgo-integration
     paths:
       - '.github/workflows/gp2040ce-xgo-test01.yml'
-      - 'integrations/gp2040ce-xgo-test01/**'
+      - 'integrations/gp2040ce-xgo-test01/apply.py'
+      - 'integrations/gp2040ce-xgo-test01/preflight.py'
+      - 'integrations/gp2040ce-xgo-test01/audit_test14.py'
+      - 'integrations/gp2040ce-xgo-test01/validate_generated_headers.py'
+      - 'integrations/gp2040ce-xgo-test01/src/**'
+      - 'integrations/gp2040ce-xgo-test01/headers/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test14_*'
+
+# Do not start legacy full builds for notes, candidate-only experiments, or regression additions.
+concurrency:
+  group: gp2040ce-xgo-test14-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 permissions:
   contents: read
