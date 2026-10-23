@@ -98,7 +98,19 @@ jobs:
           cp integrations/gp2040ce-xgo-test01/candidates/offline-ram-hotpath/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmp integrations/gp2040ce-xgo-test01/candidates/offline-ram-hotpath/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmake --build upstream/build --parallel 2
+          mkdir -p xgo-ram-audit-evidence
+          echo "SOURCE_COMMIT=$GITHUB_SHA" > xgo-ram-audit-evidence/SOURCE-README.txt
+          echo "AUDIT EVIDENCE ONLY - NOT HARDWARE VALIDATED - NO FLASHABLE UF2" >> xgo-ram-audit-evidence/SOURCE-README.txt
+          arm-none-eabi-nm --defined-only -n -S -C "$ELF" > xgo-ram-audit-evidence/linked-symbols.txt
+          arm-none-eabi-objdump -d -C "$ELF" > xgo-ram-audit-evidence/linked-disassembly.txt
           python3 integrations/gp2040ce-xgo-test01/tests/audit_ram_hotpath_elf.py "$ELF"
+      - name: Preserve linked SRAM audit evidence without UF2
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-gp2040ce-RAM-ELF-EVIDENCE-NOT-FLASHABLE
+          path: xgo-ram-audit-evidence/
+          if-no-files-found: warn
       - name: Publish RAM-only audit status
         if: ${{ always() }}
         env:
@@ -108,7 +120,7 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          if [ "$RESULT" = "success" ]; then STATE=success; DESCRIPTION="RAM serial routine and linked-call audit passed"; else STATE=failure; DESCRIPTION="RAM serial hotpath build or audit failed"; fi
+          if [ "$RESULT" = "success" ]; then STATE=success; DESCRIPTION="SRAM responder with veneer-aware XIP-call audit passed"; else STATE=failure; DESCRIPTION="RAM serial hotpath build or audit failed"; fi
           export STATE DESCRIPTION
           python3 - <<'PY' > /tmp/ram-hotpath-status.json
           import json, os
