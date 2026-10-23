@@ -39,12 +39,18 @@ User provided three chronological XGO49 EDGE TRACE OLED photographs. Source mapp
 
 Both conditions met: corrected phase counters sum exactly to CLK at each photograph (LO+HI=CLK). A large part of CLK failures is terminal slot 12. Source's pulse queue cannot introduce an unrelated attack *bit* when only a single attack bit is provided; if the user truly never intentionally pressed the physical control assigned to B1 during the interval, P4 +11 proves the processed Gamepad stream observed B1 rising edges even without intentional use. However **P4 edges could be genuine intended gameplay jumps or contact with another button**; avoid calling them phantom without explicit gameplay confirmation. Next ask only whether the user intentionally pressed jump at any point between initial and final screenshots, and whether any unwanted jumps were seen. The test alone cannot distinguish GPIO/wiring noise from GP2040-CE input processing. No source/firmware changes justified yet.
 
-## Test49 controlled NO-JUMP test: accidental PAUSE observed (2026-10-23)
+## Test49 CONTROLLED RUN — CORRECTED HARDWARE WITNESS ACCOUNT (2026-10-23)
 
-User deliberately avoided pressing JUMP and reported **no unexpected jumps**. During the run, Contra **paused on its own**, without intentional START; user then deliberately pressed START to resume **before the third photo**. Do NOT attribute a START-like event to a processed B1/JUMP edge. Test49 has no START/SELECT edge counters, so this is not yet localized.
+**Important correction:** the user's first report was misinterpreted by the assistant. There WERE **multiple spontaneous/unintended JUMPS before the SECOND photograph**. P4 stayed at **0** throughout all three photographs. After photo 2, the user continued RIGHT + tapping FIRE, fell from the bridge, and Contra **PAUSED ON ITS OWN**. The user deliberately pressed START **once** to resume, continued RIGHT + tapping FIRE and then took photo 3. No deliberate JUMP presses occurred in this controlled experiment. Do not perpetuate the incorrect claim that "no unexpected jumps" occurred.
+
+Exact chronology:
+1. Photo 1: initial baseline before active controlled scenario.
+2. Start of stage: moving RIGHT and repeatedly tapping FIRE, **multiple unexpected JUMPS** occur; user presses no JUMP, takes photo 2.
+3. Continue RIGHT and tap FIRE, fall from bridge, game **pauses unexpectedly** without START press.
+4. User intentionally presses START to resume, continues RIGHT + FIRE taps, takes photo 3.
 
 Three chronological OLED photos:
-| Counter | 1 (before) | 2 | 3 (after) | Delta 1→3 |
+| Counter | Photo 1 | Photo 2, AFTER phantom jumps | Photo 3, AFTER phantom PAUSE and intentional START | Delta 1→3 |
 |---|---:|---:|---:|---:|
 | CLK | 59 | 172 | 320 | +261 |
 | S12 FAIL | 40 | 126 | 226 | +186 |
@@ -55,4 +61,8 @@ Three chronological OLED photos:
 | RF | 0 | 29 | 169 | +169 |
 | E (RF failures) | 0 | 6 | 28 | +28 |
 
-The P4/B1 processed-rising-edge counter never increased; gameplay also had no jumping. The test is **not evidence of an upstream phantom jump**. The automatic pause remains a separate unexplained unintended action. START/SELECT are XGO protocol slots 7/6, respectively (processed `pressedS2()/pressedS1()` in the current driver). Add separate processed START/SELECT rising-edge counters while leaving the serial responder and timing byte-for-byte unchanged, then use a controlled session that records an unprompted pause separately from intentional START presses. These aggregate counters cannot establish a one-to-one causal relationship for a single unsolicited pause.
+**Key supported result:** Multiple actual phantom JUMPS occurred in a window during which GP2040-CE's P4 `pressedB1()` processed-attack rising-edge counter stayed zero. If B1 maps to jump in the active Contra control scheme (needs explicit confirmation), this strongly disfavors a spurious processed B1 edge and points downstream to serial output/decoding or console/game-side input interpretation. The result alone cannot prove what the host sampled, prove a particular serial fault caused each jump, or rule out a different control mapping. P5/B2 rises correspond to tapped FIRE if the mapping matches gameplay.
+
+The unsolicited pause is a second distinct phantom-action symptom. Test49 has **no processed S1/S2 edge counters**, so it cannot localize whether an unsolicited START signal originated upstream. The single intentional START press after the unsolicited pause is important: expect **one intentional S2 rising edge** after the pause in any future provenance trace, not zero.
+
+Next diagnostic decision: add counters for processed S1/SELECT and S2/START rising edges as a single controller-side, read-only change; keep the Test49 serial responder byte-for-byte unchanged, including bit mapping, timing and pulses. Preserve hardware-proven Test44. Do not claim P4 remained zero because there were no jumps; that conclusion was false.
