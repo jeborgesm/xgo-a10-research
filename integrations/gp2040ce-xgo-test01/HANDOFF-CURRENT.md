@@ -2,6 +2,15 @@
 
 **Updated 2026-10-22. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 — COMPILED ACTUAL C++ RESPONDER TESTS PASS; HARDWARE STILL UNTOUCHED
+
+Verified fast CI [39949251664](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39949251664) at `7c3c4e5206fd6900102b2f7b7ad6897a1a9addff`: `xgo-fast-serial/verified-models = success`. It runs existing Test49 rising-edge Python regression, 13 Python fault/source regression unit tests, and `tests/test_responder_compiled_mock.py`, which **extracts and compiles the actual Test49 and one-line offline-candidate `emit_frame()` functions** under host g++, replacing only pin/time/IRQ operations with scripted inputs. Both variants passed 4096 idealized complete masks, 22 mid-frame abort+recovery pairs, and the final-high timeout + next-frame recovery semantics. Hardware signal timing is NOT simulated; this does not prove the host would decode correctly with shifted/missed pulses. This is not an RP2040 UF2 compile.
+
+Investigate one source-grounded early timing difference next: minimum proven Pico pre-reads button mask before LOAD, while Test49 GP2040-CE does atomic mask reads, edge queue and pulse logic **after seeing LOAD low but before waiting for DATA high and CLOCK fall**. Given the short LOAD and early slot timing, this could reduce margin, but no measured timing or direct causal link to phantom JUMP and PAUSE is established. Use the existing host waveform models and short CI, not another OLED counter firmware. Detailed evidence: `diagnostics/SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md`.
+
+**Do not ask user for a hardware test yet. Test50 on hold; protected Test42/Test44 and Frankie unchanged.** The postamble-only candidate is NOT a verified wrong-button fix.
+
+---
 ## 2026-10-23 — OFFLINE-FIRST SERIAL INVESTIGATION, NO HARDWARE REQUEST
 
 User requested a simpler, faster approach using existing GP2040-CE, GitHub Actions, known source and existing OLED findings; **no new analyzer, Pico, wiring, serial logger or flashing per hypothesis**.
