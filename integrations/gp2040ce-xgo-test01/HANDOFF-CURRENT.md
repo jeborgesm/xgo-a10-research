@@ -2,6 +2,23 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 LATEST — TEST44-DERIVED SPSC LEAN PLAYABLE CANDIDATE (OFFLINE)
+
+**No hardware changed. Test44 remains the protected proven baseline, Test50 START provenance hardware run is on hold.** The preceding SPSC RAM correction at `candidates/offline-spsc-ram-hotpath/XGODriver.cpp` was successfully compiled and verified to have no flash-resident helper calls during the Core1 IRQ-masked serial response ([full verified run 39985794456](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39985794456)). That conclusion remains SRC/BIN, **not** a proven fix for the actual observed unwanted Contra JUMP and PAUSE.
+
+**New controlled next step:** The Test49 SPSC prototype still inherited extra diagnostic provenance instrumentation. Source diff confirms Test44 and Test49 share button mapping, slot0 pre-drive, attack-pulse timing, and 18us serial CLOCK timeout; Test49 only adds extra per-bit/clock classification counters and right+attack counters. A new `candidates/offline-test44-spsc-ram-playable/XGODriver.cpp` reuses the proven SPSC+SRAM queue but strips **exactly nine diagnostic-only differences** to restore Test44 driver/display/header contract. The two original baselines are unchanged.
+
+**Guarded ancestry:** `tests/test_test44_spsc_lineage.py` pins Test44 original blob SHA `f445a1a6d8f9c871a80532e25cc5b1a3ac3b32a0` and earlier compiled SPSC blob SHA `68301b47e4b815cff4cfd5b24bf760d875875492`, and asserts new candidate is exactly SPSC minus Test49-only diagnostics. Stable Test44 OLED `ButtonLayoutScreen.cpp` and `XGODiagnostics.h` are selected when compiling the candidate, rather than Test49 instruments.
+
+**Fast offline CI VERIFIED PASS:** [run 40033843426](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40033843426), commit `ea589bee0363876d023531646e5ef2905a132901`. Includes source-lineage, 4096-mask exact extracted Test44/SPSC C++ function, 22 abort/recovery pairs, independently advancing host CLOCK, six-slot queue stress/25k events. The model still demonstrates false R/JUMP and false S2/START when **artificial** bad timing is injected; those are not physical measurements.
+
+**Full pinned RP2040 ELF gate:** [run 40033843466](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40033843466) compares original Test44 complete firmware with new driver in the same pinned GP2040-CE 3d1f32f and Pico SDK 2.3.1. The new driver MUST have SRAM `emit_frame()` and 0 reachable BL/BLX calls while IRQ-masked; retain linked nm/objdump evidence. No UF2 uploaded. **At handoff edit: job in progress. Do not declare full binary success or offer firmware until CI result is verified.** Source details in `findings/ATOMIC-CRITICAL-WINDOW-AND-SPSC-2026-10-23.md` section 7.
+
+**Real machine-code timing caveat:** Prior SPSC ARM disassembly (artifact ID 12516859458 from run 39985794456) shows 19 Thumb instructions in a six-iteration counter snapshot loop, including a DMB per acquire-load; accepted-generation conditional update adds further branches. There are no flash calls in the IRQ-masked region, but absolute timing relative to the very early XGO slot0 DATA sample is still OPEN. Do not treat static instruction counts or synthetic +4.75us R pre-drive sensitivity as an actual timing measurement.
+
+**Decision:** Do not revive random timeout, postamble-only, or diagnostic-counter-only hardware patches. Evaluate true final linked Test44 candidate, preserve tests, then scope ONE validation session only when justified. No Frankie rewiring, new equipment, XGO BIOS change, or new GPIO instrumentation requested.
+
+---
 ## 2026-10-23 LATEST VERIFIED — SPSC FULL LINKED ARM AUDIT PASSED
 
 **This supersedes all earlier pending/uncertain SPSC build statuses.**
