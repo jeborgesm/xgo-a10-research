@@ -1,3 +1,14 @@
+# CLOSED GOLD — XGO native Handle P1/P2 + PAL Setup rendering (2026-10-22)
+
+**THIS TASK IS COMPLETE.** User hardware-approved the final alignment and previously hardware-validated both Refresh and Handle menus in PAL. All approved bold captions, working NTSC behavior and P1/P2 switching are retained. This document now preserves the archaeological progression; text below describing untested candidates is historical, not the current status.
+
+**Current GOLD artifact:** `XGO_PAL_Fixed_TV_Text_Final12_Bold_Handle_TEST.zip` (filename kept for traceability); ZIP SHA-256 `42c3f05ab3365f3fb58016d770f89106378b9ecedc4741599927058af9d7eb6c`; BIOS SHA-256 `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`; CRC32/MPEG2 `0x80744DD0`.
+
+**Source-of-truth:** `findings/2026-10-22-native-handle-pal-GOLD-closure.md`, README GOLD milestone, `tools/handle/` builders, final ZIP embedded `SOURCE/` files, protected companion artifact.
+
+**NEXT:** This branch is CLOSED; after merge, start unrelated work from updated `main`. Preserve cumulative firmware features and the verified GOLD artifact; no more Handle/PAL engineering is pending.
+
+---
 # XGO Archeology — CURRENT Handle/PAL firmware handoff
 Checkpoint date: 2026-10-22. Branch: research-handle-interface-p1-experimental.
 
