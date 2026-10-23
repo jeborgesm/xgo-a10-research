@@ -45,3 +45,26 @@ A separate test-script issue was corrected: Test49's `test49_attack_edge_provena
 2. Whether early-slot loss of synchronization actually occurred in the spontaneous JUMP/PAUSE episodes. Synthetic shift examples are not physical proof.
 3. Exact in-game JUMP binding vs logical B1 and whether external interference or controller electrical behavior is involved.
 4. Whether the one-line candidate impacts reliable host-to-controller frame acquisition under real-world timing. It is uncompiled and untested on hardware.
+
+## Follow-up: compile actual C++ responder with scripted host signals (2026-10-23)
+
+**CI verified PASS:** [GitHub Actions run 39949251664](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39949251664), commit `7c3c4e5206fd6900102b2f7b7ad6897a1a9addff`, status `xgo-fast-serial/verified-models = success`.
+
+The regression `tests/test_responder_compiled_mock.py` extracts the *actual* `bool emit_frame()` function from the repository for **both Test49 and the postamble-only offline candidate**, compiling it as ordinary host-side C++ with deterministic substitute `wait_clock`, `wait_data`, `data_sink`, `data_release`, atomics, and timer/IRQ stubs. It does NOT replace the function with a Python rewrite.
+
+Each of the two compiled source variants completed:
+
+- **4,096 / 4,096 idealized synchronized 12-bit masks** with exact expected slot values, including START/SELECT/JUMP and all combinations.
+- **22 injected mid-frame aborts and corresponding next-frame recovery checks** (a failed CLOCK-low and CLOCK-high at each of slots 1–11). Both variants report failed frame and require DATA-high rearm, then pass subsequent frame.
+- **One final CLOCK-high failure after sending all 12 bits, followed by a good next frame.** Test49 reports failed frame and requires an extra DATA-high rearm. The one-line candidate reports successful frame without extra rearm, precisely matching its intended native-style postamble classification.
+- With right + B2/FIRE as the only active bits, the idealized serial output does not spontaneously set B1/JUMP or S2/START.
+
+The source test runs with only a host `g++` compiler in the short existing CI job, without downloading/compiling the full GP2040-CE firmware. The first two CI attempts failed on **mock-test harness compile issues** (prototype ordering then assertion parentheses under `-Werror`), fixed before the verified green run; these were test-harness failures, not XGO firmware defects.
+
+**Limit of proof:** The mock intentionally advances a scripted host transition sequence when the C++ responder asks for each CLOCK/DATA level. It does not simulate a free-running real-clock waveform, electrical glitches, delayed interrupt entry, physical LOAD length, or the XGO host's actual button sampling. Consequently, the result proves there is no ordinary source-level wrong-bit mapping or wrong-bit insertion **under correctly sequenced inputs**, not that the real XGO serial link is clean. A successful mock C++ compile is NOT a successful RP2040 firmware compile. The one-line candidate remains offline and unvalidated on hardware.
+
+### Next offline priority (no new firmware, no flash)
+
+Focus on **acquisition timing at the start of a frame**, not more aggregate counters: in Test49 the LOAD-low detection is followed by `save_and_disable_interrupts()`, an atomic published-mask read, 18ms pulse expiry/queue processing, an atomic pending-edge exchange, and mask composition *before* attempting `wait_data(true)` and the first CLOCK-low wait. The minimal proven Pico samples its GPIO mask **before waiting for LOAD**, then performs the load-release/clock handshake without that queue work between LOAD-low acquisition and first clock. This is a genuine source difference that could reduce early-slot timing margin; no cycle-accurate time budget or missed-CLOCK event has yet been established. Prefer offline early-slot timing analysis and analysis of existing Test14 synthetic waveform scripts over changing the responder speculatively.
+
+**Stop condition:** Do not promote the terminal-postamble-only candidate as a phantom JUMP/PAUSE fix. If an offline candidate is eventually justified, require source-level invariant checks, actual RP2040 compilation, and only then a single physical test of a small set of grounded changes rather than isolated counter firmware updates.
