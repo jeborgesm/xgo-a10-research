@@ -1,4 +1,4 @@
-name: GP2040-CE XGO Test48 failure-aware attack build
+name: GP2040-CE XGO Test48 Contra telemetry build
 
 on:
   workflow_dispatch:
