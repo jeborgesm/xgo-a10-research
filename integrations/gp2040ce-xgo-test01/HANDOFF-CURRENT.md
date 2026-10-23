@@ -2,6 +2,15 @@
 
 **Updated 2026-10-22. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 IMPORTANT — CORRECTED TEST49 USER-WITNESS ACCOUNT
+
+The user **DID experience multiple unintended JUMPS before photo 2**, while moving RIGHT and repeatedly tapping FIRE without ever intentionally pressing JUMP. The P4 (processed B1) attack rising-edge count was **0 in all photos**, including after the phantom jumps. Continued RIGHT+FIRE, fell off a bridge, then Contra **PAUSED ON ITS OWN** without pressing START. The user pressed START intentionally ONCE to resume and later took photo 3. The assistant initially misread this as "no jumps" and corrected the primary record in `diagnostics/CONTRA-RIGHT-FIRE-OBSERVATION.md` commit `843c26324139c9386bb94f2b0289a603adacede7`. Do not repeat the false interpretation.
+
+Test49 counters photo 1/2/3: CLK 59/172/320; slot12 failures 40/126/226; LO 48/140/259; HI 11/32/61; P0-P4 0/0/0; P5 (processed B2) 0/29/164; RIGHT+attack RF 0/29/169; RF errors E 0/6/28. The phantom JUMPS followed by zero P4 strongly suggest the JUMP bit is introduced **after processed B1 input** if B1 is the jump binding; confirm that binding, and never claim causality to slot12 alone.
+
+Test50 commit `b7693af7f17a0f39e318cd098775bd6ae598492b` is an isolated **processed S1/SELECT and S2/START rising-edge provenance** diagnostic, to localize spontaneous pause. Serial responder and map_mask are unchanged from Test49. OLED labels S1/S2. Dedicated workflow `.github/workflows/gp2040ce-xgo-test50-pause-edge-provenance.yml`, expected status `xgo-test50/verified-uf2`; build not yet verified at handoff time. Preserve Test44/Test48/Test49.
+
+---
 ## 2026-10-22 ADDENDUM — CURRENT PRIORITY (supersedes stale 2026-10-20 snapshot below)
 
 **Do not restart.** Branch `research-gp2040ce-xgo-integration`; protected controller hardware baselines Test42 and Test44. Never modify XGO console firmware. All subsequent candidates are GP2040-CE controller only.
