@@ -18,6 +18,7 @@ SOURCES = (
     ('postamble-only', ROOT / 'offline-terminal-postamble/XGODriver.cpp'),
     ('SPSC-RAM', ROOT / 'offline-spsc-ram-hotpath/XGODriver.cpp'),
     ('Test44-playable-SPSC', ROOT / 'offline-test44-spsc-ram-playable/XGODriver.cpp'),
+    ('Test44-coherent-SPSC', ROOT / 'offline-test44-spsc-coherent-ram/XGODriver.cpp'),
 )
 
 PRELUDE = r"""
@@ -48,6 +49,8 @@ std::atomic<uint16_t> published_mask{0};
 std::atomic<uint16_t> pending_press_edges{0};
 std::atomic<uint32_t> attack_edge_generation[6]{};
 uint32_t consumed_attack_edge_generation[6]{};
+std::atomic<uint32_t> attack_edge_commit_seq{0};
+uint32_t core0_attack_commit_counter=0;
 uint16_t attack_pulse_mask=0;
 uint32_t attack_pulse_start_us=0;
 bool previous_active_success=false;
@@ -153,6 +156,8 @@ void init_host(uint16_t pressed, double delay=0, double recovery=0,
     host.after_fire_high_delay=after_fire_high;
     published_mask.store(pressed);
     pending_press_edges.store(pressed & ATTACK_BITS);
+    attack_edge_commit_seq.store(0);
+    core0_attack_commit_counter=0;
     for (unsigned bit=0; bit<6; ++bit) {
         attack_edge_generation[bit].store((pressed >> bit) & 1u);
         consumed_attack_edge_generation[bit]=0;

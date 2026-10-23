@@ -20,6 +20,7 @@ SOURCES = (
     ("native-postamble-candidate", ROOT / "offline-terminal-postamble/XGODriver.cpp", False),
     ("SPSC-RAM-candidate", ROOT / "offline-spsc-ram-hotpath/XGODriver.cpp", True),
     ("Test44-playable-SPSC", ROOT / "offline-test44-spsc-ram-playable/XGODriver.cpp", True),
+    ("Test44-coherent-SPSC", ROOT / "offline-test44-spsc-coherent-ram/XGODriver.cpp", True),
 )
 
 PRELUDE = r"""
@@ -53,6 +54,8 @@ std::atomic<uint16_t> published_mask{0};
 std::atomic<uint16_t> pending_press_edges{0};
 std::atomic<uint32_t> attack_edge_generation[6]{};
 uint32_t consumed_attack_edge_generation[6]{};
+std::atomic<uint32_t> attack_edge_commit_seq{0};
+uint32_t core0_attack_commit_counter=0;
 uint16_t attack_pulse_mask = 0;
 uint32_t attack_pulse_start_us = 0;
 bool previous_active_success = false;
@@ -145,6 +148,8 @@ void run_frame(uint16_t mask, bool rearm, bool expected_success,
     sinking = false;
     published_mask.store(mask);
     pending_press_edges.store(mask & ATTACK_BITS);
+    attack_edge_commit_seq.store(0);
+    core0_attack_commit_counter=0;
     for (unsigned bit = 0; bit < 6; ++bit) {
         attack_edge_generation[bit].store((mask >> bit) & 1u);
         consumed_attack_edge_generation[bit] = 0;
@@ -218,7 +223,8 @@ def extract(source):
     function = source[start:end]
     assert function.count("bool emit_frame()") == 1
     assert ("pending_press_edges.exchange(0, std::memory_order_acq_rel)" in function
-            or "attack_edge_generation[bit].load(std::memory_order_acquire)" in function)
+            or "attack_edge_generation[bit].load(std::memory_order_acquire)" in function
+            or "attack_edge_generation[bit].load(std::memory_order_seq_cst)" in function)
     assert "if (!complete) require_idle_high = true;" in function
     return function
 

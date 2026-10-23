@@ -1,0 +1,155 @@
+name: GP2040-CE XGO Test44 coherent SPSC RAM offline ELF audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/gp2040ce-xgo-test44-spsc-coherent-ram-offline.yml'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-coherent-ram/**'
+      - 'integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_spsc_chord_atomicity.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_irq_window_elf.py'
+
+# Keep only the newest offline SRAM audit when source/workflow changes.
+concurrency:
+  group: gp2040ce-xgo-test44-spsc-coherent-ram-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  test-and-compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard hardware-proven Test44 ancestry and protected behavior
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_spsc_chord_atomicity.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_ram_hotpath_source_contract.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_spsc_attack_generations.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_responder_compiled_mock.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py
+      # Reuse the ARM toolchain archive cache from the existing Test14 workflow.
+      - name: Cache ARM toolchain APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-arm-gp2040ce-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu2404
+      - name: Install build tools from cached archives
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --download-only cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+          sudo apt-get install -y --no-download cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+      - name: Clone pinned firmware and SDK
+        run: |
+          git clone https://github.com/OpenStickCommunity/GP2040-CE.git upstream
+          git -C upstream checkout 3d1f32f7d02d418826b725b60208278d3be878c3
+          git -C upstream submodule update --init --recursive
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git pico-sdk
+          git -C pico-sdk submodule update --init --recursive
+      - name: Apply and audit protected Test14 overlay
+        run: |
+          python3 integrations/gp2040ce-xgo-test01/preflight.py upstream
+          python3 integrations/gp2040ce-xgo-test01/apply.py upstream
+          python3 integrations/gp2040ce-xgo-test01/validate_generated_headers.py upstream
+          python3 integrations/gp2040ce-xgo-test01/audit_test14.py upstream
+          cmp integrations/gp2040ce-xgo-test01/src/drivers/xgo/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+      - name: Restore hardware-proven Test44 driver and OLED/header in temporary checkout
+        run: |
+          cp integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/ButtonLayoutScreen.cpp upstream/src/display/ui/screens/ButtonLayoutScreen.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/XGODiagnostics.h upstream/headers/drivers/xgo/XGODiagnostics.h
+          cmp integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          grep -q 'XGO44 SERIAL DIAG' upstream/src/display/ui/screens/ButtonLayoutScreen.cpp
+      - name: Verify original LED shortcut remains intact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('upstream/src/addons/neopicoleds.cpp')
+          s=p.read_text()
+          assert s.count('else if (gamepad->pressedR1())') == 1, 'original LED shortcut missing'
+          assert 'inputMode != INPUT_MODE_XGO && gamepad->pressedR1()' not in s
+          print('Original SELECT+START+R1 LED shortcut retained in XGO mode')
+          PY
+      # Dedicated clean-controller CI; push to this workflow triggers validation.
+      - name: Compile protected Test44 firmware for comparative ELF
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          GP2040_BOARDCONFIG: Pico
+        run: |
+          cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build upstream/build --parallel 2
+      - name: Compare Test44 and Test44-derived SPSC linked RP2040 ELF
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          GP2040_BOARDCONFIG: Pico
+        run: |
+          set -euo pipefail
+          readarray -t UF2S < <(find upstream/build -name '*.uf2' -type f)
+          test "${#UF2S[@]}" -eq 1
+          ELF="${UF2S[0]%.uf2}.elf"
+          test -f "$ELF"
+          mkdir -p xgo-test44-coherent-elf-evidence
+          echo "SOURCE_COMMIT=$GITHUB_SHA" > xgo-test44-coherent-elf-evidence/SOURCE-README.txt
+          echo "Original Test44 UI + diagnostics retained, candidate modifies only protected XGODriver" >> xgo-test44-coherent-elf-evidence/SOURCE-README.txt
+          echo "DISASSEMBLY EVIDENCE ONLY - NO HARDWARE VALIDATION - NO UF2 UPLOADED" >> xgo-test44-coherent-elf-evidence/SOURCE-README.txt
+          arm-none-eabi-nm --defined-only -n -S -C "$ELF" > xgo-test44-coherent-elf-evidence/test44-symbols.txt
+          arm-none-eabi-objdump -d -C "$ELF" > xgo-test44-coherent-elf-evidence/test44-disassembly.txt
+
+          cp integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-coherent-ram/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-coherent-ram/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmake --build upstream/build --parallel 2
+          arm-none-eabi-nm --defined-only -n -S -C "$ELF" > xgo-test44-coherent-elf-evidence/test44-spsc-symbols.txt
+          arm-none-eabi-objdump -d -C "$ELF" > xgo-test44-coherent-elf-evidence/test44-spsc-disassembly.txt
+          python3 integrations/gp2040ce-xgo-test01/tests/test_irq_window_elf.py \
+            xgo-test44-coherent-elf-evidence/test44-spsc-disassembly.txt \
+            xgo-test44-coherent-elf-evidence/test44-spsc-symbols.txt EXPECT_CLEAN
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('xgo-test44-coherent-elf-evidence/test44-spsc-symbols.txt').read_text()
+          symbols=[(int(m[1],16),int(m[2],16)) for m in
+              re.finditer(r'^([0-9a-f]{8})\s+([0-9a-f]{8})\s+[tTwW]\s+\(anonymous namespace\)::emit_frame\(\)$',s,re.M)]
+          assert len(symbols)==1, symbols
+          addr,size=symbols[0]
+          assert 0x20000000<=addr<0x20042000
+          print(f'PASS: Test44-SPSC compiled emit_frame in RP2040 SRAM at {addr:#x}, bytes={size}')
+          PY
+      - name: Preserve source-pinned linked comparison without UF2
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xgo-gp2040ce-Test44-COHERENT-ELF-EVIDENCE-NOT-FLASHABLE
+          path: xgo-test44-coherent-elf-evidence/
+          if-no-files-found: warn
+      - name: Publish Test44-derived candidate offline audit status
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = "success" ]; then STATE=success; DESCRIPTION="Test44 coherent SPSC compiled, SRAM and IRQ window clean"; else STATE=failure; DESCRIPTION="Test44-derived SPSC build or IRQ audit failed"; fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/ram-hotpath-status.json
+          import json, os
+          print(json.dumps({"state":os.environ["STATE"],"context":"xgo-test44-coherent/offline-elf-audit","description":os.environ["DESCRIPTION"],"target_url":f"https://github.com/{os.environ['REPO']}/actions/runs/{os.environ['RUN_ID']}"}))
+          PY
+          curl --fail-with-body --retry 3 -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPO/statuses/$SHA" \
+            --data-binary @/tmp/ram-hotpath-status.json
