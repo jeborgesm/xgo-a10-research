@@ -24,3 +24,13 @@ Firmware differs only at 8 instruction words and CRC; offline integrity/CRC and 
 
 ## Next action
 User hardware-test combined candidate on SD clone: NTSC Setup/Refresh/Handle underline and routing; switch PAL and verify Refresh + Handle graphics visible, control routing, TV label alignment; switch back NTSC. Await actual results before HW-PASS claim. If PAL still fails, trace 0x807DB9D4 stage-two and video framebuffer/page handling. No assumptions of background execution and no repeated narration.
+## NEWEST HW result + followup (2026-10-22)
+- User reports the combined PAL submenu branch-repair firmware WORKED on physical device. Thus Refresh and Handle submenu visibility in PAL is now HW-PASS. This supersedes this document's older 'hardware UNTESTED' classification for the combined baseline; keep its ZIP/SHA intact as rollback baseline.
+- User requests only a further TV-mode dynamic label X=-12 / Y=+12 versus that hardware-passed baseline.
+- Built XGO_PAL_Fixed_TV_Text_Final12_Bold_Handle_TEST.zip; ZIP SHA256 42c3f05ab3365f3fb58016d770f89106378b9ecedc4741599927058af9d7eb6c; firmware SHA256 75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b; CRC32/MPEG2 0x80744dd0.
+- Changed only 6 native TV string coordinates at offsets 0x359B88/8C, 0x35AC98/9C, 0x35ACD0/D4 and CRC at 0x18C-18F. Six approved bold resources, PAL rendering branch fixes, controller P1/P2/underline and fixed-P1 recovery are byte-identical to HW-pass baseline.
+- Exact byte checks passed. The new text alignment coordinates remain UNTESTED on hardware; DO NOT call it HW-PASS until reported.
+- Full evidence in findings/2026-10-22-pal-submenus-hw-pass-tv-label-final-offset.md. Reproducible builder tools/handle/build_tv_mode_final12.py, plus exact packaged build source at SOURCE/build_xgo_tv_final_12px.py in candidate ZIP.
+
+### Next
+Test label placement NTSC + PAL and confirm Refresh/Handle still visible. Retain hardware-proven combined PAL ZIP as recovery. Once approved, archive hashes and consider branch merge. No need for additional PAL root-cause archaeology unless regression observed.
