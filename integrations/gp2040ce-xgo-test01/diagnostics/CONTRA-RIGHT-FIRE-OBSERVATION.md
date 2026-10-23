@@ -66,3 +66,13 @@ Three chronological OLED photos:
 The unsolicited pause is a second distinct phantom-action symptom. Test49 has **no processed S1/S2 edge counters**, so it cannot localize whether an unsolicited START signal originated upstream. The single intentional START press after the unsolicited pause is important: expect **one intentional S2 rising edge** after the pause in any future provenance trace, not zero.
 
 Next diagnostic decision: add counters for processed S1/SELECT and S2/START rising edges as a single controller-side, read-only change; keep the Test49 serial responder byte-for-byte unchanged, including bit mapping, timing and pulses. Preserve hardware-proven Test44. Do not claim P4 remained zero because there were no jumps; that conclusion was false.
+
+## Superseding hardware mapping correction — 2026-10-23
+
+**Contra P2 JUMP is hardware-proven on XGO serialized R/slot0 (P0), NOT on GP2040-CE B1/slot4 (P4).** This comes from the previously executed fixed-R P1 controller proof and scripted P2 Contra bot. Source: `experiments/rp2040-responder-p1-fixed-r.md` and `tools/rp2040-xgo-p2-contra/README.md`. The earlier statement that P4=0 localizes missing JUMP to `pressedB1()` is a **superseded incorrect binding assumption**.
+
+Correct implication of the three controlled Test49 photos: **P0=0 and P4=0 at all three moments**, while Contra executed unintended JUMP before photo2. Thus there was no measured processed `pressedR1()` rising edge in the game session (nor B1 edge), while the XGO/game perceived a JUMP action. This points to host-decoded false R/slot0 assertion or other downstream input interpretation. It does not by itself prove a CLOCK phase shift.
+
+Older passive P0 HW timing: host DATA load-low ~6.8–7.5us; release only ~0.9–1.3us ahead of first CLOCK falling edge. The stock host samples R/slot0 immediately after DATA release. A transient host-visible low during that immediate sampling aperture could result in R/JUMP even while later DATA (and all P0 processed counters) is high. This is now the leading *model-based explanation to investigate*, supported by prior GREEN measurement loading generating jump-only behavior, NOT a verified Test49 analog waveform observation. The spontaneous PAUSE corresponds to START/slot7 and remains a distinct issue. See `SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md` for source and model delimiters.
+
+Do not use B2->B1 hypothetical one-slot shift as a proven explanation of Contra jump. Tests now label B1 correctly as an unrelated slot, maintain FIRE=B2/P5, and evaluate separate slot0 release timing models without asking for new hardware.
