@@ -2,7 +2,11 @@ name: Build XGO P0 passive capture
 
 on:
   workflow_dispatch:
-  pull_request:\n    branches: [ main ]\n    paths:\n      - 'tools/rp2040-xgo-p0/**'\n      - '.github/workflows/build-xgo-p0.yml'\n  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'tools/rp2040-xgo-p0/**'
+      - '.github/workflows/build-xgo-p0.yml'
 
 jobs:
   build:
