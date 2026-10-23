@@ -28,6 +28,9 @@ PRELUDE = r"""
 #include <vector>
 using std::memory_order_relaxed;
 
+// Declaration must precede run_frame(), which calls the extracted body.
+bool emit_frame();
+
 std::atomic<uint32_t> xgo_diag_load_timeouts{0};
 std::atomic<uint32_t> xgo_diag_release_timeouts{0};
 std::atomic<uint32_t> xgo_diag_clock_timeouts{0};
@@ -193,11 +196,14 @@ def run():
             src = Path(tmp) / (name + ".cpp")
             exe = Path(tmp) / (name + ".bin")
             src.write_text(code)
-            subprocess.run(
+            compile_result = subprocess.run(
                 ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra",
                  "-Werror", str(src), "-o", str(exe)],
-                check=True, capture_output=True, text=True
+                capture_output=True, text=True
             )
+            if compile_result.returncode:
+                raise RuntimeError(f"{name} mock C++ compilation failed:\\n"
+                                   + compile_result.stderr)
             p = subprocess.run([str(exe)], check=True, capture_output=True, text=True)
             print(name + ": " + p.stdout.strip())
     print("LIMIT: scripted input levels, not a measured XGO CLOCK/DATA waveform")
