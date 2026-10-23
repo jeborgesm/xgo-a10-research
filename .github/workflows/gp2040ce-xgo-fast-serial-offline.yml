@@ -15,6 +15,8 @@ on:
       - 'integrations/gp2040ce-xgo-test01/tests/test_ram_audit_veneer_resolution.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_spsc_attack_generations.py'
       - 'integrations/gp2040ce-xgo-test01/candidates/offline-spsc-ram-hotpath/**'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-ram-playable/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py'
       - 'integrations/gp2040ce-xgo-test01/tests/audit_ram_hotpath_elf.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py'
       - 'integrations/gp2040ce-xgo-test01/candidates/offline-terminal-postamble/**'
@@ -52,6 +54,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_armv6m_atomic_codegen.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_ram_audit_veneer_resolution.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_spsc_attack_generations.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py
       - name: Report fast regression result for downstream review
         if: always()
         env:

@@ -17,6 +17,7 @@ SOURCES = (
     ('Test49', ROOT / 'test49-attack-edge-provenance/XGODriver.cpp'),
     ('postamble-only', ROOT / 'offline-terminal-postamble/XGODriver.cpp'),
     ('SPSC-RAM', ROOT / 'offline-spsc-ram-hotpath/XGODriver.cpp'),
+    ('Test44-playable-SPSC', ROOT / 'offline-test44-spsc-ram-playable/XGODriver.cpp'),
 )
 
 PRELUDE = r"""
