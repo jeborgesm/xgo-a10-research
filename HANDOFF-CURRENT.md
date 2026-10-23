@@ -1,9 +1,17 @@
-# ACTIVE HANDOFF OVERRIDE (2026-10-22)
+# XGO ARCHEOLOGY — CURRENT MERGED HANDOFF
+## Handle P1/P2 + PAL Setup UI GOLD / task CLOSED (2026-10-22)
 
-**This branch's current work is now the Handle P1/P2 native Setup + PAL rendering repair, not the October 5 RP2040 task below.** Read [HANDOFF-HANDLE-PAL-20261022.md](HANDOFF-HANDLE-PAL-20261022.md) first. The historical notes below remain for provenance. Latest combined PAL/TV-label firmware ZIP is offline-tested and awaits hardware testing; all exact hashes and patches are recorded in that new handoff.
+**Integrated in `main` through PR #60.** User hardware-approved the native Setup P1/P2 selector, working NTSC/PAL Refresh and Handle submenus, underline, approved bold captions and final TV-mode text alignment. **No open Handle/PAL task remains.**
+
+- Gold ZIP: `XGO_PAL_Fixed_TV_Text_Final12_Bold_Handle_TEST.zip` (name retained for provenance). SHA-256 `42c3f05ab3365f3fb58016d770f89106378b9ecedc4741599927058af9d7eb6c`.
+- Gold firmware: `bios/bisrv.asd` SHA-256 `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`; CRC32/MPEG2 `0x80744DD0`.
+- Preserve standalone fixed-P1 recovery (`8a8cf7a84f7771b0fc116b80521e13d3dfbd5aace73e6053fb7494eaa7d44c4a`).
+- Read `findings/2026-10-22-native-handle-pal-GOLD-closure.md` and `tools/handle/README.md` for exact evidence, code and artifact provenance. `HANDOFF-HANDLE-PAL-20261022.md` contains the completed experiment's chronological history.
+- The concurrent RP2040 live-controller/Frankie work and all other merged milestones on `main` are preserved. Do not mistake the historical October 7 notes below for an active Handle/PAL blocker.
+
+**For new investigations: branch from current `main`.** Preserve the protected cumulative baseline; no additional PAL/Handle tests are requested unless new regression evidence appears.
 
 ---
-
 # XGO ARCHEOLOGY — HANDOFF
 ## Native RP2040 XGO transport CLOSED; live GPIO controller awaiting final 12-input golden check
 ## Date: 2026-10-07
