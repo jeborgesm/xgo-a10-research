@@ -1,0 +1,5 @@
+# Handle toggle — live binary UI seam verification (2026-10-21)
+
+**BIN:** Directly read `bios/bisrv.asd` from user-uploaded HW-positive ZIP. At `0x359E94`, instruction is `0x0828E1A2` (`j 0x80A38688`), followed by `nop` at `0x359E98`. This matches the previously documented Test92 state-14 Setup confirm-hook target. Additional existing changes: `0x359AA4=0x0828E272`, `0x359E60=0x0828E27B`, `0x359EA8=0x0828E17C`. Therefore the tested firmware ALREADY contains a custom Setup interception path; do not install a second competing hook at `0x359E94`. The existing P1 normalizer hook remains `0x35D53C=0x0828E639` to `0x80A398E4`. `0xA389C0` and `0xA389C4` are zero in the file, but **do not assume writable unused globals** from that observation. Next trace current Setup dispatcher at `0xA38688` and its exact actions, then integrate a non-conflicting selector there.
+
+**HW:** user additionally reports perfect victory versus Honda with fixed-P1 image. **OPEN:** toggle state, UI action, executable placement, hardware toggle validation.

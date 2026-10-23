@@ -1,0 +1,7 @@
+# PAL first-stage renderer correction (2026-10-22)
+
+Direct binary comparison shows NTSC Setup UI follows the text call at 0x80359BA0 with a jump at 0x80359BA8 to custom first-stage renderer 0x80A38A58. Both alternate video-mode branches at 0x8035ACB8 and 0x8035ACF0 instead jump directly to second-stage renderer 0x807DB9D4. This bypasses first-stage custom Refresh and Handle graphics. Stage one itself rejoins stage two at 0x80A38EF0, so the repair redirects these two alternate exits to the already-working NTSC first-stage entry.
+
+A combined hardware-test ZIP was built: XGO_PAL_Submenu_Render_Branch_Repair_TV_Alignment_Combined_TEST.zip. SHA256 2451905dd48626524dc0303a50388170ac1ee71b7d3b29e70a45253de3e623b2. Firmware SHA256 efaec378c7ce6ffee8e68e42228fc05dc6514c8a67ac1ba98eb9d34b54f73481. CRC MPEG2 7ba94869. Six bold resources preserved without changes. TV-mode label X reduced by 12 and Y increased by 12 at each of three existing draw paths. Controller routing, underline and second-stage renderer unchanged. Manifest and build source are embedded in ZIP. ZIP integrity and byte-difference audit passed. PAL behavior remains UNTESTED on hardware.
+
+HW evidence leading to patch: Refresh and Handle menus visible NTSC but invisible PAL, while input actions work. The explicit video-mode split at 0x80359B6C / 0x80359B74 establishes a stronger candidate cause than previously hypothesized row stride. Test NTSC then PAL on cloned SD and record both menus and TV label alignment.

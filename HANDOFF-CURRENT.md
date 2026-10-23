@@ -1,3 +1,9 @@
+# ACTIVE HANDOFF OVERRIDE (2026-10-22)
+
+**This branch's current work is now the Handle P1/P2 native Setup + PAL rendering repair, not the October 5 RP2040 task below.** Read [HANDOFF-HANDLE-PAL-20261022.md](HANDOFF-HANDLE-PAL-20261022.md) first. The historical notes below remain for provenance. Latest combined PAL/TV-label firmware ZIP is offline-tested and awaits hardware testing; all exact hashes and patches are recorded in that new handoff.
+
+---
+
 # XGO ARCHEOLOGY — HANDOFF
 ## Native RP2040 XGO transport CLOSED; live GPIO controller awaiting final 12-input golden check
 ## Date: 2026-10-07

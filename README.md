@@ -14,6 +14,29 @@ The XGO is an **SF2000-derived HC15xx/MIPS system**, but it is a distinct hardwa
 
 > Do **not** flash stock SF2000 firmware onto an XGO based only on family similarity.
 
+
+## Handle Interface → Player 1: hardware PASS (2026-10-21)
+
+The physical XGO has **one** external Handle Interface (proprietary synchronous GPIO, not USB HID); the RP2040 responder was previously hardware-proven as Player 2. On 2026-10-21, the user installed the fixed Handle-as-P1 experimental firmware and **hardware-confirmed Street Fighter gameplay (Ryu defeated Blanka) and native-menu navigation using the external controller**. This validates interception at the shared input normalizer, not just an emulator mapping. It does not independently prove every game's behavior or simultaneous controller combinations.
+
+- **HW golden fixed-P1 firmware SHA-256:** `8a8cf7a84f7771b0fc116b80521e13d3dfbd5aace73e6053fb7494eaa7d44c4a`.
+- **Input firmware SHA-256:** `f5e2a91dced95b60ab7988952ea3a7aa1c2460c97b3644e2ea815b77b58d07aa`.
+- **Patch:** normalizer hook file offset `0x35D53C`; helper at `0xA398E4`; LCFG CRC-32/MPEG-2 resealed.
+- **Reproducibility:** `tools/build_handle_p1.py`; full HW report `findings/handle-interface-p1-hardware-pass-20261021.md`.
+- **CLOSED / SUPERSEDED:** The optional native P1/P2 routing toggle is now hardware-proven with a native Setup selector, NTSC/PAL submenu repair and the final label alignment. Preserve fixed-P1 as an independent recovery baseline. See GOLD closure below.
+
+## GOLD milestone: native Setup Handle P1/P2 toggle and PAL UI closure (2026-10-22)
+
+The XGO A10 now has a **hardware-proven native Handle controller P1/P2 selector** in Setup. Default P2 retains the original external-Player-2 behavior; P1 mode directs the external controller to Player 1. The P1/P2 mode underline and **bold SETUP / REFRESH / HANDLE** captions are confirmed. After fixing two alternate PAL-mode branches that skipped the custom first-stage renderer, **Refresh and Handle submenus now render and function in both NTSC and PAL**. The TV-mode text was repositioned and the final adjustment was approved on physical hardware.
+
+**GOLD ZIP SHA-256:** `42c3f05ab3365f3fb58016d770f89106378b9ecedc4741599927058af9d7eb6c`  
+**GOLD `bios/bisrv.asd` SHA-256:** `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`  
+**LCFG CRC32/MPEG2:** `0x80744DD0`  
+**Legacy fixed-P1 recovery BIOS SHA-256:** `8a8cf7a84f7771b0fc116b80521e13d3dfbd5aace73e6053fb7494eaa7d44c4a`.
+
+The GOLD ZIP includes six approved RGB565 Setup resource bitmaps, full build/verification scripts and diagnostic manifests alongside the patched BIOS and a separate recovery copy. The complete patched proprietary BIOS is retained in the owner's companion artifact vault, not mirrored as a public repository binary. This is **HW-PASS for the controller/UI task**, not a claim that every emulator/core received a fresh regression pass.
+
+Details: [GOLD closure](findings/2026-10-22-native-handle-pal-GOLD-closure.md), [hardware PAL pass](findings/2026-10-22-pal-submenus-hw-pass-tv-label-final-offset.md), [reproducible PAL patch](tools/handle/pal_setup_branch_repair.py) and [final alignment builder](tools/handle/build_tv_mode_final12.py). This branch's work is **closed**.
 ## Project goals
 
 1. **Archaeology and preservation** — document the original machine, firmware, SD layout, interfaces, addresses, resource formats, emulator contracts, product lineage, packaging/manual evidence, and hardware behavior with reproducible evidence.
