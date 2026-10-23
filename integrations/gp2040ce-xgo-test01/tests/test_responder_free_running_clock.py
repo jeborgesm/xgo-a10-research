@@ -245,20 +245,27 @@ int main() {
     // Compare the independent host's final-slot failure classification against
     // wrong-button decoding. A slot-12 error is NOT automatically a bad bit.
     unsigned slot12_without_wrong_bit=0,slot12_with_wrong_bit=0;
+    unsigned slot12_with_false_START=0, slot11_with_false_START=0;
     for (int q=0;q<=100;++q) {
         init_host(RIGHT|FIRE,q*0.25,0,0);
         xgo_diag_clock_timeouts.store(0);
         xgo_diag_last_failure_slot.store(0);
         (void)emit_frame();
-        if (xgo_diag_clock_timeouts.load() &&
-            xgo_diag_last_failure_slot.load()==12) {
-            if (host.decoded==(RIGHT|FIRE)) ++slot12_without_wrong_bit;
-            else ++slot12_with_wrong_bit;
+        if (xgo_diag_clock_timeouts.load()) {
+            const auto last=xgo_diag_last_failure_slot.load();
+            if (last==12) {
+                if (host.decoded==(RIGHT|FIRE)) ++slot12_without_wrong_bit;
+                else ++slot12_with_wrong_bit;
+                if (host.decoded & START) ++slot12_with_false_START;
+            }
+            if (last==11 && (host.decoded & START)) ++slot11_with_false_START;
         }
     }
     std::printf("model diagnostic correlation: S12 failures with clean host "
-                "word=%u; S12 failures with mismatched host word=%u\\n",
-                slot12_without_wrong_bit,slot12_with_wrong_bit);
+                "word=%u; S12 failures with mismatched host word=%u; "
+                "S12+falseSTART=%u; S11+falseSTART=%u\\n",
+                slot12_without_wrong_bit,slot12_with_wrong_bit,
+                slot12_with_false_START,slot11_with_false_START);
         require(first_fire_delay_causing_START>0 && first_fire_delay_causing_START<=9.0,
             "Expected a reproducible late-FIRE false START in sweep");
     std::printf("synthetic sweep: first FIRE-processing gap yielding START=%.2fus "
