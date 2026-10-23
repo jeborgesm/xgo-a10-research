@@ -1,6 +1,22 @@
 # XGO A10 / GP2040-CE controller serial integration — CURRENT HANDOFF
 
-**Updated 2026-10-20. Read this file fully before doing anything.**
+**Updated 2026-10-22. Read the CURRENT ADDENDUM first, then the historical record.**
+
+## 2026-10-22 ADDENDUM — CURRENT PRIORITY (supersedes stale 2026-10-20 snapshot below)
+
+**Do not restart.** Branch `research-gp2040ce-xgo-integration`; protected controller hardware baselines Test42 and Test44. Never modify XGO console firmware. All subsequent candidates are GP2040-CE controller only.
+
+- Test45 failure-aware pulse delivery was compiled but felt slower and did not improve the Street Fighter II car benchmark; rejected for playability.
+- Test46 clock LOW/HIGH diagnostics preserved Test44 timing and cleared Street Fighter II car with ~1 second left. Test46 incorrectly classified slot 1–11 CLOCK-high timeouts as LOW; its LO/HI breakdown is not trustworthy.
+- Test47 fixed the classification (source committed and CI workflow present); no claim of separate hardware success.
+- Test48 Contra diagnostic compiled, verified and *hardware tested*. When user holds RIGHT while **tapping** FIRE, Contra intermittently produces unsolicited JUMP. One or two phantom jumps occurred before third diagnostic photo; fewer than in prior tests, not solved. Photos before/after: ERR 350→628, CLK 339→597, REL 11→31, LO 299→480, HI 40→117, RF 0→179, E 0→21. `RF` is RIGHT plus **any** attack output bit, not necessarily game's FIRE. Last photo S12 FAIL 421 of CLK 597 accumulated. See `diagnostics/CONTRA-RIGHT-FIRE-OBSERVATION.md`.
+- Source-level insight: slot 12 is the terminal CLOCK handshake **after all twelve button-bit slots have been transmitted**. An S12 timeout does not itself prove the XGO decoded a wrong bit; it may nonetheless disrupt rearming. Do not infer phantom-JUMP causality from aggregate CLOCK errors.
+- Test49 (source commit `4bbebb277aae0af24f9b1e6c9dfdca1cb332f92c`, CI verification commit `8771532babc74e732b05aad1bf242e6e97e81a8b`) introduces six `P0–P5` *processed Gamepad attack rising-edge* counters, plus OLED layout. Test48's entire timing-critical `emit_frame()` function and `map_mask()` are byte-for-byte identical in Test49. Source audit passed. The workflow is `.github/workflows/gp2040ce-xgo-test49-attack-edge-provenance.yml`; check **`xgo-test49/verified-uf2`** commit status, then retrieve and verify artifact before any user flashing. The CI result was not available when this addendum was written. Test49 is diagnostic, not a fix.
+- Test49 OLED rows: 0 header; 1 OK/ERR; 2 CLK/S12; 3 LO/HI; 4 P0/P1; 5 P2/P3; 6 P4/P5; 7 RF/E. `P0–P5` record processed button edge transitions, **not direct GPIO voltage or XGO's decoded inputs**. Avoid assigning FIRE or JUMP to a particular P bit without empirical mapping.
+- User should **not watch OLED while playing**. Take initial OLED photo; play Contra normally moving RIGHT and tapping FIRE; note occurrence of unwanted JUMP; take final OLED photo. Compare `P` counter deltas to determine if the source detects an unintended second attack button. Pure FIRE edge sequences cannot synthesize JUMP in the source-level queue model; this is not proof of wire-level integrity.
+- Preserve every tested candidate; no changes to Test44/Test48. When build is verified, deliver direct UF2 and ZIP if possible, not unsupported links or promises. Any hardware followup should be short and focused.
+
+---
 
 ## Mandatory first action in next chat
 Resume branch `research-gp2040ce-xgo-integration` of `jeborgesm/xgo-a10-research`. **Do not restart archaeology.** The user explicitly asks for **actual engineering work on missed attack inputs**, not a status narrative or another unsupported promise. The immediate work is offline source analysis and implementation planning of attack event delivery across failed serial transactions. Preserve tested builds. Do not request another hardware test until there is a genuine compiled candidate and a clear reason for testing it.
