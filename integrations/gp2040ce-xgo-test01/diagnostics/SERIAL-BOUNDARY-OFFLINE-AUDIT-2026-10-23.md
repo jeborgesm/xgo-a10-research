@@ -26,7 +26,7 @@ A separate test-script issue was corrected: Test49's `test49_attack_edge_provena
 - Final low present but final high delayed/absent: minimal accepts; Test49 marks failure/rearm. The modeled misclassification **does not alone invent a JUMP bit**.
 - Final low missing: both fail.
 - A valid RIGHT + tapped B2/FIRE sequence with no B1 or S2 cannot create JUMP or START through the modeled Core0-to-Core1 pulse queue and correctly aligned serial slot decoder.
-- A *hypothetical* one-slot advancement of FIRE bit 5 would appear in host slot 4 (possible wrong JUMP); a hypothetical two-slot delay would appear in slot 7 (possible wrong START). **These are examples of what a loss of alignment could do, not evidence that the XGO actually drifted by these amounts.** The electrical root cause is still OPEN.
+- A *hypothetical* one-slot advancement of FIRE bit 5 would appear in host slot 4 (B1, NOT the hardware-proven Contra JUMP); a hypothetical two-slot delay would appear in slot 7 (possible wrong START). **These are examples of what a loss of alignment could do, not evidence that the XGO actually drifted by these amounts.** The electrical root cause is still OPEN.
 - Source checks ensure the native, Test49, Test50 behaviors and the intentional one-line candidate change match the actual repository sources, guarding against misleading model-only passes.
 
 ## Isolated candidate (SRC only; no compilation or hardware pass)
@@ -68,3 +68,32 @@ The source test runs with only a host `g++` compiler in the short existing CI jo
 Focus on **acquisition timing at the start of a frame**, not more aggregate counters: in Test49 the LOAD-low detection is followed by `save_and_disable_interrupts()`, an atomic published-mask read, 18ms pulse expiry/queue processing, an atomic pending-edge exchange, and mask composition *before* attempting `wait_data(true)` and the first CLOCK-low wait. The minimal proven Pico samples its GPIO mask **before waiting for LOAD**, then performs the load-release/clock handshake without that queue work between LOAD-low acquisition and first clock. This is a genuine source difference that could reduce early-slot timing margin; no cycle-accurate time budget or missed-CLOCK event has yet been established. Prefer offline early-slot timing analysis and analysis of existing Test14 synthetic waveform scripts over changing the responder speculatively.
 
 **Stop condition:** Do not promote the terminal-postamble-only candidate as a phantom JUMP/PAUSE fix. If an offline candidate is eventually justified, require source-level invariant checks, actual RP2040 compilation, and only then a single physical test of a small set of grounded changes rather than isolated counter firmware updates.
+
+## CRITICAL CORRECTION — Contra JUMP is hardware-proven R / serial position 0
+
+Earlier sections inherited a faulty provisional interpretation from Test49: they associated phantom JUMP with `P4 / B1`, then used a one-slot synthetic misalignment (B2 slot5 -> B1 slot4) as an example of a potential *jump*. That association was **wrong for the confirmed Contra mapper**.
+
+The archaeology already contains a physical hardware proof:
+
+- `experiments/rp2040-responder-p1-fixed-r.md`: an intentionally forced R/serial-position-0 input made Contra Player 2 jump repeatedly, with no other input asserted.
+- `tools/rp2040-xgo-p2-contra/README.md`: confirms raw R maps to FC A/JUMP in the tested Contra .kmp and the full scripted controller's jump action passed on hardware.
+- `experiments/rp2040-usbphy-p3-passive.md` independently notes unsolicited Contra jumping when merely attaching a passive native PHY, and explicitly connects that to R/slot0 sensitivity.
+- In the latest user-controlled Test49 run, **P0=0 and P4=0 throughout** while unsolicited JUMPs occurred. This means processed `pressedR1()` (bit0) did NOT rise, not that the host couldn't perceive a pressed R/slot0.
+
+Thus the strongest source/hardware-consistent explanation for **the JUMPS** is erroneous **host interpretation of position 0**, potentially associated with DATA returning high from the XGO's own load-low pulse too slowly or a slot0 software/line setup problem. It remains a hypothesis, not a measured live fault.
+
+### Timing evidence matters more than the Test04 source comment
+
+P0 passive capture established **host DATA/LOAD low approximately 6.8–7.5 us** and the first CLOCK low **approximately 0.9–1.3 us after DATA release**. Source: `experiments/rp2040-responder-p1-fixed-r.md` and `experiments/rp2040-usbphy-p3-passive.md`. The earlier GP source comment asserting a 12us first-bit interval must not override this later timing evidence from hardware. XGO firmware samples serial position 0 immediately after releasing DATA as its load/reset line, *before* the first CLOCK pulse.
+
+The source's open-drain `data_release()` only relinquishes controller drive; it cannot itself guarantee that the host's GPIO input crossed the valid-HIGH threshold by the initial sample. Physical release threshold timing with Igor/Frankie during Test49 was NOT measured.
+
+### New short offline tests and true limitations
+
+- Updated `tests/test_serial_boundary_faults_offline.py` uses `JUMP_R0=1<<0`, explicitly distinguishes B1/slot4, and refuses to label synthetic B2->B1 one-slot movement as an actual Contra JUMP. It retains the separate speculative B2->START two-slot shift demonstration for the unsolicited pause.
+- Updated `tests/test_responder_compiled_mock.py` treats unpressed-R/slot0 ideal sampling at the host DATA-release event rather than at the first CLOCK fall; the separately pre-driven R/slot0 path is folded into that earlier event because there is no `wait_data(true)` call in that code path. It also injects a *hypothetical* host-sampled-low slot0 despite the responder logically sending R=0 and later seeing DATA high. That demonstrates a clean C++ `emit_frame()` success can coexist with host-visible JUMP under this modeled external DATA-transition error, not that the error actually happened.
+- New `tests/test_slot0_release_settle_offline.py` uses the proven 0.9–1.3us release-to-first-CLOCK window and explicit *synthetic* recovery-delay/sample-offset pairs. A transient LOW at the earlier slot0 sample, followed by valid HIGH before first CLOCK, would give jump-only input while DATA appears high during the clock burst. This reconciles the earlier physical GREEN probe's jump-only symptom with the clean later CLOCK DATA idle observation, but does not prove Igor suffers the same analog effect.
+- The spontaneous **PAUSE** (START/slot7) is a distinct observed failure; the slot0 mechanism cannot explain it. Do not overfit both symptoms to a single analog hypothesis without host-side evidence.
+
+These source and model corrections do not change ANY RP2040 firmware and do not require physical testing. The one-line terminal CLOCK-high candidate remains a separate unvalidated recovery experiment, NOT a demonstrated phantom-JUMP fix. If a proposed firmware tweak cannot influence the XGO's immediate slot0 DATA sample, it is not a grounded fix for this specific mechanism.
+
