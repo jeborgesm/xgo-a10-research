@@ -2,6 +2,21 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 LATEST — REAL ARM ATOMIC VENEERS, SRAM AUDIT FIX
+
+**Protected baseline unchanged:** Test44 remains the hardware-proven controller; no XGO firmware, wiring, or physical tests have occurred during this offline effort. Test49 and Test50 source remain preserved.
+
+**Real linked GCC/RP2040 finding:** Full Test49-vs-offline-ram-hotpath firmware workflow [run 39970119162](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39970119162) compiled both successfully. The annotated `(anonymous namespace)::emit_frame()` landed in SRAM at **0x200000F0**, size **1028 bytes**. `wait_clock`/`wait_data` were optimized away or inlined. The production C++ responder makes real linked calls to `____atomic_exchange_2_veneer` (0x20005A38), `____atomic_fetch_or_2_veneer` (0x20005BB8), and `____atomic_fetch_add_4_veneer` (0x20005A18). These veneer call destinations are in SRAM, **but a veneer can branch onward to an actual helper in XIP FLASH**. The first ELF audit mistakenly treated veneer-in-SRAM as sufficient and reported PASS. Do NOT equate that result with a flash-independent responder.
+
+**Source/Clang check verified:** `tests/test_armv6m_atomic_codegen.py` on [fast CI 39969730063](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39969730063) demonstrated Test49 does `std::atomic<uint16_t>` LOAD/EXCHANGE (and conditional FETCH_OR) after XGO LOAD-low while Core1 interrupts are disabled and **before** DATA-high/slot0 and subsequent CLOCK. Cortex-M0+ Clang reference compilation emits out-of-line `__atomic_load_2`, `__atomic_exchange_2`, `__atomic_fetch_or_2` helper calls. The real GCC ELF above independently confirms atomic-helper veneers exist. Their actual target placement and worst-case multicore synchronization delay are OPEN until the corrected audit.
+
+**Correction committed:** `tests/audit_ram_hotpath_elf.py` now resolves every observed `*_veneer` to the actual linked helper symbol using nm and classifies that target, failing closed if it is XIP or unresolved. The corresponding full offline CI preserves linked `nm`/objdump evidence as an artifact (no UF2). `tests/test_ram_audit_veneer_resolution.py` adds the synthetic safety regression to detect FLASH behind an SRAM veneer. Latest corrected commit `e846f422d8c8d77d2b185156334c7781e6209ae2`; [full corrected ELF audit](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39971706120) and [quick veneer regression](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39971706050) were QUEUED at this checkpoint, not yet verified PASS. Never promote test artifacts based solely on their queued status.
+
+**Engineering significance:** Plain Core1 interrupt masking cannot guarantee flash instructions or shared ARMv6-M atomic helpers never stall. These calls in the LOAD-to-slot0 window are a source-supported suspect for early-clock phase loss, but NO measured actual >~7.75us stall has been established. Moving pending-press exchanges out of that window might introduce an additional ~16ms of input latency if naively implemented and must NOT be done without verifying short taps and the protected 18ms pulse behavior. No firmware fix is approved.
+
+**CI efficiency:** The broad historical Test14 rebuild trigger has been narrowed to actual Test14 overlay dependencies. The RAM audit reuses cached ARM toolchain packages and cancels superseded RAM-only runs on push. Avoid writing routine analysis to `diagnostics/**`: many older Test27-49 workflows match that broad path and launch unnecessary full builds. Update THIS handoff or a separate findings document outside `diagnostics/**` instead. The unrelated legacy `build-xgo-p0.yml` failure is not evidence about GP2040-CE responder.
+
+---
 ## 2026-10-23 — OFFLINE CLOCK-FAULT CLASSIFICATION + ISOLATED RAM EXPERIMENT
 
 **Fast regression verified green:** [run 39968607396](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39968607396) from commit `5f8bf28bcec49a977b125793cf000b83a160b3ee`. Free-running XGO virtual-clock model compiles **actual Test49 and postamble candidate C++** and injects hypothetical post-FIRE and post-LOAD stalls. The simulation distinguishes decoded masks from *reported failure slots*:
