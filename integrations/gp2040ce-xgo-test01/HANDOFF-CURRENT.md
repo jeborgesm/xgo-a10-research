@@ -2,6 +2,18 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 UPDATE — TIMEOUT SWEEP CLOSES RANDOM THRESHOLD-TUNING PATH
+
+Current fast offline CI **PASS**: [run 39963557253](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39963557253), commit `f387e00edbd0e51ef2dd1709ad2751dfc90d5223`. Exact Test49 and postamble-candidate C++ `emit_frame()` compiled with independent synthetic XGO CLOCK/DATA sample timings:
+- 18us and 8us timeout: 4096/4096 ideal nominal masks PASS; BOTH allow synthetic START/PAUSE when FIRE DATA stays low due >~7.75us injected post-FIRE delay; synthetic LOAD-prep delay first creates START at ~13.75us; errors occur after host already sampled false START. Tightening from 18 to 8 **does NOT fix** that modeled mechanism.
+- 6us timeout: 2048/4096 nominal masks FAIL under mock; 4us: 4096/4096 nominal masks FAIL. These counts are **chosen virtual CPU schedule**, not hardware error forecasts. Source-only timeouts are not a safe next firmware candidate.
+- Hypothetical DATA-high recovery lag at immediate LOAD release yields false R/Contra JUMP despite zero `pressedR1()` edge; separate from false START. Neither modeled failure is cured by final-CLOCK postamble policy.
+- New source audit of minimal native and Test49 `raw_init()`: ordered 12 mux/PHY override constants and register assignments are equivalent (SRC). No obvious changed USB-PHY register config explains GP phantom input. Electrical recovery still OPEN.
+- All new analysis documented under `diagnostics/SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md` (latest source comparison commit `1b0a07fa0aab6909cacf077fe6585a3f033f3496`).
+
+**Do not change protected Test44, do not flash the terminal-postamble experimental file, and do not request a new tester session yet.** Further source-level timing work must distinguish actual possible runtime gaps from the hypothetical 7.75us fault injection before claiming a firmware fix.
+
+---
 ## 2026-10-23 LATEST — FREE-RUNNING CLOCK CI PASS; NO FIRMWARE CHANGED
 
 **Fast CI PASS:** [run 39963557253](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39963557253), commit `f387e00edbd0e51ef2dd1709ad2751dfc90d5223`.
