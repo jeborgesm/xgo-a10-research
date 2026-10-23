@@ -40,6 +40,8 @@ jobs:
           assert 'xgo_diag_right_attack_attempts.fetch_add' in s
           assert 'xgo_diag_right_attack_failures.fetch_add' in s
           assert 'xgo_diag_attack_rising_edges[bit].fetch_add' in s
+          assert 'std::atomic<uint32_t> xgo_diag_attack_rising_edges[6]{};' in s
+          assert s[s.index('bool emit_frame()'):s.index('} // namespace', s.index('bool emit_frame()'))].find('xgo_diag_attack_rising_edges') == -1
           assert 'xgo_diag_clock_low_failures.fetch_add' in s
           assert 'xgo_diag_clock_high_failures.fetch_add' in s
           assert 'clock_high_failure = true' in s
