@@ -2,6 +2,17 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 LATEST — FREE-RUNNING CLOCK CI PASS; NO FIRMWARE CHANGED
+
+**Fast CI PASS:** [run 39963557253](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39963557253), commit `f387e00edbd0e51ef2dd1709ad2751dfc90d5223`.
+
+`tests/test_responder_free_running_clock.py` compiles actual Test49 and isolated postamble-candidate `emit_frame()` C++ functions against an independent virtual XGO CLOCK and host sampler, not a scripted next-expected-edge mock. With 7.2us LOAD, 1.2us LOAD-release-to-first-CLOCK and 4.0us CLOCK periods (representative **HW P0** values), both variants serialize all **4096 masks** correctly in ideal timing. **Hypothetical** 0.35us DATA high-recovery delay at immediate slot0 host sample makes an unsolicited R/Contra JUMP while processed R remains absent. **Hypothetical** 9us delay after B2/FIRE slot5 output leaves DATA asserted through S1/SELECT and S2/START host samples: observed synthetic word `0x0e0`, the function eventually flags CLOCK failure but START has already been sampled. A 0.25us-step sweep first shows false START after a ~7.75us injected FIRE-gap or ~13.75us injected LOAD-prep gap. These gaps are **NOT measured physical Core1 delays**; interrupts are masked during the serial train.
+
+Tightening EDGE_TIMEOUT_US from 18 to 8 within the **offline mock** does not prevent the synthetic false START. At virtual 6/4us timeouts, even ordinary nominal frames fail in the chosen model, showing why arbitrary tightening is risky but not quantifying actual RP2040 failure rates. Postamble-only candidate has identical simulated phantom R and START outcomes; **NOT** a standalone fix. Detailed evidence: `diagnostics/SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md`, updated in commit `7bb1f2451c316da96cda66fa2eb37c032674aee9`.
+
+**Next decision:** no flash yet. Examine actual code execution between FIRE high and subsequent CLOCK handling, and whether a physically plausible phase skip can occur without an injected artificial stall; separately source-audit native PHY DATA-high recovery/slot0. Preserve Test44, protect Frankie, and DO NOT modify XGO console firmware. START edge provenance Test50 hardware test remains on hold at user's request for fewer hardware sessions.
+
+---
 ## 2026-10-23 CRITICAL CORRECTION — CONTRA JUMP = R/SLOT0; NEW FAST CI PASS
 
 Hardware-proven **Contra P2 JUMP is R/serial slot0**, NOT B1/P4. In prior P1 fixed-R hardware test, asserting R alone repeatedly caused Contra jump; the successful P2 scripted Contra bot also used R as jump. Sources: `experiments/rp2040-responder-p1-fixed-r.md`, `tools/rp2040-xgo-p2-contra/README.md`. In the latest Test49 hardware screenshots, **P0 and P4 were BOTH zero** during reported unwanted JUMPS. Earlier P4-specific inference and "B2 FIRE advances one slot to B1 JUMP" labels were **WRONG** and have been corrected in the offline regression suite. Do not reintroduce this mapping error.
