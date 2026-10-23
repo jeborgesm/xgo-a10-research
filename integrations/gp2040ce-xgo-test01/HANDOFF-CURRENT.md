@@ -2,6 +2,18 @@
 
 **Updated 2026-10-22. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 — OFFLINE-FIRST SERIAL INVESTIGATION, NO HARDWARE REQUEST
+
+User requested a simpler, faster approach using existing GP2040-CE, GitHub Actions, known source and existing OLED findings; **no new analyzer, Pico, wiring, serial logger or flashing per hypothesis**.
+
+- Corrected HW witness stands: accidental Contra JUMPS while B1/P4 processed counter remained zero; later spontaneous PAUSE, then one deliberate START. User's tapped FIRE is P5/B2. Test49 legacy Python regression wrongly modeled FIRE as bit4; corrected in test-only commit `1c0f5c047597809b4b4c6031464ff78021ebefd5`. Controller mapping unchanged.
+- Source discrepancy: hardware-proven minimal Pico responder ignores failure of *final* CLOCK-high wait after slot12 low, but Test49/Test50 marks it a failed transaction and invokes `require_idle_high` recovery. The corrected HW photo series reports 186 additional cumulative slot12 failures across 261 additional CLK failures, but slot12 counts merge failed terminal low and failed terminal high. Do not claim cause of phantom input from this count.
+- Offline Python source-guard plus timing/slot-alignment regression `tests/test_serial_boundary_faults_offline.py`; dedicated short non-compiling CI workflow `.github/workflows/gp2040ce-xgo-fast-serial-offline.yml`. Detailed evidence with HW/SRC/MODEL/OPEN in `diagnostics/SERIAL-BOUNDARY-OFFLINE-AUDIT-2026-10-23.md`.
+- Isolated candidate `candidates/offline-terminal-postamble/XGODriver.cpp` differs by **one line only** from Test49: ignore final CLOCK-high wait timeout for transaction success, matching native contract. This is **NOT built, NOT hardware-tested, NOT approved as a fix for jumps/pauses**. Literal source diff guarded by regression. Commit `ffd59f39a6df058b8e15a5b1e667091b58c8e9ab`; fast status publishing workflow updated afterward.
+- Nine dynamic Python model cases passed locally; source guard compared GitHub copies and confirms precise one-line delta. A passing synthetic model is NOT physical-host proof. Await fast GitHub CI result independently; do not presume it passed.
+- Test50 hardware run ON HOLD. Protected hardware baselines Test42/Test44 untouched; XGO firmware untouched.
+
+---
 ## 2026-10-23 IMPORTANT — CORRECTED TEST49 USER-WITNESS ACCOUNT
 
 The user **DID experience multiple unintended JUMPS before photo 2**, while moving RIGHT and repeatedly tapping FIRE without ever intentionally pressing JUMP. The P4 (processed B1) attack rising-edge count was **0 in all photos**, including after the phantom jumps. Continued RIGHT+FIRE, fell off a bridge, then Contra **PAUSED ON ITS OWN** without pressing START. The user pressed START intentionally ONCE to resume and later took photo 3. The assistant initially misread this as "no jumps" and corrected the primary record in `diagnostics/CONTRA-RIGHT-FIRE-OBSERVATION.md` commit `843c26324139c9386bb94f2b0289a603adacede7`. Do not repeat the false interpretation.
