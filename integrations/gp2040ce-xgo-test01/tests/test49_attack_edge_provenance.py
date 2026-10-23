@@ -25,8 +25,8 @@ assert 'XGO49 EDGE TRACE' in display
 
 ATTACK_BITS = 0x003f
 RIGHT = 1 << 11
-FIRE = 1 << 4
-OTHER = 1 << 5
+FIRE = 1 << 5
+OTHER = 1 << 4
 
 def simulate(inputs):
     prev = 0
@@ -48,7 +48,7 @@ def simulate(inputs):
             active, pending, started = pending, 0, time
         output = (mask & ~ATTACK_BITS) | active
         assert output & RIGHT
-        if counts[5] == 0:
+        if counts[4] == 0:
             assert not output & OTHER, "Pulse queue synthesized an unrelated button"
     return counts
 
@@ -56,11 +56,11 @@ def simulate(inputs):
 sequence = [(t, RIGHT | (FIRE if (t // 6000) % 2 else 0))
             for t in range(0, 240000, 1000)]
 counts = simulate(sequence)
-assert counts[4] > 10 and all(v == 0 for i, v in enumerate(counts) if i != 4)
+assert counts[5] > 10 and all(v == 0 for i, v in enumerate(counts) if i != 5)
 # Holding FIRE produces one physical rising edge, not repeated edges.
 counts = simulate([(t, RIGHT | FIRE) for t in range(0, 240000, 1000)])
-assert counts[4] == 1 and sum(counts) == 1
+assert counts[5] == 1 and sum(counts) == 1
 # If a processed JUMP does appear, it must appear in its own edge counter.
 counts = simulate([(0, RIGHT | FIRE), (1000, RIGHT), (2000, RIGHT | OTHER)])
-assert counts[5] == 1 and counts[4] == 1
+assert counts[4] == 1 and counts[5] == 1
 print("PASS: Test49 edge provenance source guard and repeated-tap models")
