@@ -108,3 +108,26 @@ At [preamble timing-sensitivity regression 39992215627](https://github.com/jebor
 - **Not yet proven:** absolute timing margin at the immediate host R/slot0 sample; absence of spontaneous JUMP or PAUSE under live Contra; whether the legacy S12 failures diminish.
 - **Protected:** Test44, Test49 hardware witness, 18ms input pulse, all mappings, Frankie, and XGO firmware.
 - **Candidate status:** source and binary offline verified; no UF2 distributed and no hardware validation. Do not represent the result as a fixed controller until a single targeted hardware session is justified and executed.
+
+## 7. Lean Test44-derived playable candidate — source, simulator and binary gates
+
+The *protected* hardware baseline is the exact `test44-clock-timeout-18us/XGODriver.cpp` Git blob **`f445a1a6d8f9c871a80532e25cc5b1a3ac3b32a0`**. Test49 differs from Test44 in diagnostic declarations, per-bit rising-edge counters, right+attack counters and per-direction CLOCK-high/low failure classification. The serialized button mapping, Test27 first-slot path, 18µs CLOCK timeout, 18ms attack pulse and pending-edge queue are otherwise unchanged (SRC). Extra diagnostic work occurs primarily on Core0 and after Core1 IRQ restoration, but it can still influence inter-poll scheduling; therefore do not assume diagnostic Test49 is the most suitable playable baseline.
+
+New isolated **`candidates/offline-test44-spsc-ram-playable/XGODriver.cpp`** is derived by taking the ELF-verified SPSC+RAM transport change and removing precisely the Test49-only diagnostic additions, leaving all protected Test44 mapping, GPIO, serial, 18µs timeout, 18ms pulse and Test44 OLED/header contract intact. Original protected source files were **not modified**. CI `tests/test_test44_spsc_lineage.py` SHA-pins Test44 and SPSC ancestors, replays an exact list of nine diagnostic-only reversions, and compares the candidate byte-for-byte with the result. This is a derivation/compatibility guard, not hardware validation.
+
+**Fast CI VERIFIED PASS:** [run 40033843426](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40033843426), commit `ea589bee0363876d023531646e5ef2905a132901`. It executed:
+
+- The four Test44/SPSC exact-lineage and control invariants.
+- Host-compiled actual C++ serial function for the Test44-derived candidate: 4096/4096 masks, 22 abort/recovery pairs, and synthetic slot0 false-low injection.
+- Independently running CLOCK simulation with 4096 nominal masks and deliberate synthetic R-slot0/FIRE-to-START delay fault cases; 18µs and 8µs nominal settings pass, while overly restrictive 6µs/4µs budgets regress in that model. **Those artificial delays are not observed RP2040 hardware timing.**
+- The existing queue-equivalence, ARM atomic, slot0 release and Test49 source contracts.
+
+**Full, pinned RP2040 ELF validation:** [Test44-SPSC offline ARM workflow 40033843466](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40033843466) compiles the actual original Test44 firmware with Test44 display/header, then replaces only `XGODriver.cpp` in the temporary upstream tree with the isolated Test44/SPSC candidate. It saves before/after linked disassembly and symbols, ensures the new `emit_frame()` lies in SRAM, and requires **no reachable call out of SRAM inside Core1's masked IRQ frame**. No UF2 is uploaded. **At the time this paragraph was authored, the full build was running and its final verdict was OPEN.** Update this label only after independently inspecting its run.
+
+### Actual machine-code timing structure from the prior ELF (BIN, not HW)
+
+Previously verified SPSC binary from [run 39985794456](https://github.com/jeborgesm/xgo-a10-research/actions/runs/39985794456), artifact ID **12516859458**, contains the six-element generation-read loop at **`0x20000186–0x200001AC`**, 19 *static* Thumb instructions per loop body, executed **six times**. Each iteration reads one SRAM generation, executes `dmb ish`, compares consumed generation and advances pointer/index. The conditional accepted-generation update code spans `0x200001BE–0x20000204` (36 static instructions, with conditional paths skipped as appropriate). No `BL` occurs in the IRQ-masked region.
+
+The loop removes flash-resident spinlock calls, but its work is not zero-cost. Neither byte count nor static instruction count is a valid proof of a microsecond deadline: SRAM and SIO memory access latency, fetch/branch timing, whether the pending-press branch executes, and exact host LOAD sampling phase all matter. The +4.75µs artificial R predrive miss threshold is a **simulation sensitivity example**, not a measured hardware tolerance.
+
+**Remaining open before any single hardware session:** actual worst-case time from LOAD recognition through the Test44-derived candidate's six-counter snapshot to valid slot0 DATA, and whether after-frame diagnostics could defer detection of a subsequent short LOAD. Correcting one source-proven flash/spinlock hazard does not establish a fix for the observed unsolicited JUMP or PAUSE.
