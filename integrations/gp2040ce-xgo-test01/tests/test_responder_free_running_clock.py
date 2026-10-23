@@ -189,6 +189,44 @@ int main() {
             "Delayed FIRE release should assert host START in synthetic case");
     require((host.decoded&JUMP_R)==0,
             "The delayed-FIRE START counterexample should not assert R");
+
+    // Sweep hypothetical Core1 stalls in quarter-microsecond increments.
+    // They are NOT claimed to be measured firmware execution delays.
+    // The host's 12 CLOCK pulses continue regardless of responder progress.
+    double first_fire_delay_causing_START=-1;
+    double first_load_prep_delay_causing_START=-1;
+    unsigned fire_false_actions=0, prep_false_actions=0;
+    unsigned fire_host_wrong_but_reported_ok=0;
+    for (int q=0; q<=64; ++q) {
+        const double hypothetical_delay=q*0.25;
+        init_host(RIGHT|FIRE,0,0,hypothetical_delay);
+        bool ok=emit_frame();
+        if (host.decoded & START) {
+            if (first_fire_delay_causing_START<0)
+                first_fire_delay_causing_START=hypothetical_delay;
+            ++fire_false_actions;
+        }
+        if (ok && host.decoded != (RIGHT|FIRE))
+            ++fire_host_wrong_but_reported_ok;
+    }
+    for (int q=0; q<=80; ++q) {
+        const double hypothetical_delay=q*0.25;
+        init_host(RIGHT|FIRE,hypothetical_delay,0,0);
+        (void)emit_frame();
+        if (host.decoded & START) {
+            if (first_load_prep_delay_causing_START<0)
+                first_load_prep_delay_causing_START=hypothetical_delay;
+            ++prep_false_actions;
+        }
+    }
+    require(first_fire_delay_causing_START>0 && first_fire_delay_causing_START<=9.0,
+            "Expected a reproducible late-FIRE false START in sweep");
+    std::printf("synthetic sweep: first FIRE-processing gap yielding START=%.2fus "
+                "(%u cases); first LOAD-prep gap yielding START=%.2fus "
+                "(%u cases); complete-but-wrong FIRE-gap cases=%u\\n",
+                first_fire_delay_causing_START,fire_false_actions,
+                first_load_prep_delay_causing_START,prep_false_actions,
+                fire_host_wrong_but_reported_ok);
     std::printf("source=C++ masks=%d; synthetic false-R=YES; "
                 "synthetic late-FIRE START=YES; latter frame complete=%d, "
                 "decoded=0x%03x, clock timeouts=%u\n",
