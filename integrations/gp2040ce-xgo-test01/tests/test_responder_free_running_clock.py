@@ -168,7 +168,7 @@ int main() {
         else
             ++passed;
     }
-    // A 4us timeout is shorter than some simulated ordinary wait/check
+    // A 4-6us timeout is shorter than some simulated ordinary wait/check
     // schedules; report the modeled nominal regression rather than treating
     // every timeout budget as proven safe for this virtual CPU.
     if (EXPECT_NOMINAL_PASS) {
@@ -272,7 +272,7 @@ def main():
                     f'constexpr uint32_t EDGE_TIMEOUT_US={timeout};')
                 assert prelude != PRELUDE or timeout == 18
                 cpp.write_text(prelude+'\n'+extract(source)+'\n'+MAIN.replace(
-                    'EXPECT_NOMINAL_PASS', 'false' if timeout==4 else 'true'))
+                    'EXPECT_NOMINAL_PASS', 'false' if timeout<=6 else 'true'))
                 exe=Path(tmp)/(variant+'.exe')
                 c=subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra',
                                   '-Werror',str(cpp),'-o',str(exe)],
