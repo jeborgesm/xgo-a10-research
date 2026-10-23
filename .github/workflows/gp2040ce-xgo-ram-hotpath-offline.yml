@@ -77,14 +77,16 @@ jobs:
           GP2040_BOARDCONFIG: Pico
         run: |
           set -euo pipefail
-          readarray -t ELFS < <(find upstream/build -name '*.elf' -type f)
-          test "${#ELFS[@]}" -eq 1
-          echo "BASELINE ELF: ${ELFS[0]}"
-          arm-none-eabi-nm --defined-only -S -C "${ELFS[0]}" | grep -E 'emit_frame|wait_clock|wait_data' || true
+          readarray -t UF2S < <(find upstream/build -name '*.uf2' -type f)
+          test "${#UF2S[@]}" -eq 1
+          ELF="${UF2S[0]%.uf2}.elf"
+          test -f "$ELF"
+          echo "BASELINE ELF: $ELF"
+          arm-none-eabi-nm --defined-only -S -C "$ELF" | grep -E 'emit_frame|wait_clock|wait_data' || true
           cp integrations/gp2040ce-xgo-test01/candidates/offline-ram-hotpath/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmp integrations/gp2040ce-xgo-test01/candidates/offline-ram-hotpath/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
           cmake --build upstream/build --parallel 2
-          python3 integrations/gp2040ce-xgo-test01/tests/audit_ram_hotpath_elf.py "${ELFS[0]}"
+          python3 integrations/gp2040ce-xgo-test01/tests/audit_ram_hotpath_elf.py "$ELF"
       - name: Publish RAM-only audit status
         if: ${{ always() }}
         env:
