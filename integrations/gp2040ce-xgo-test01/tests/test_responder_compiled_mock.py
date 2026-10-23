@@ -152,7 +152,7 @@ int main() {
     }
 
     // Nominal RIGHT+FIRE never emits JUMP or START in source-level serialization.
-    check((RIGHT | FIRE) & (JUMP | START) == 0, "Invalid bit identities");
+    check(((RIGHT | FIRE) & (JUMP | START)) == 0, "Invalid bit identities");
     run_frame(RIGHT | FIRE, false, true);
 
     // Final high fails AFTER all 12 slots were sent. Real source policy differs.
