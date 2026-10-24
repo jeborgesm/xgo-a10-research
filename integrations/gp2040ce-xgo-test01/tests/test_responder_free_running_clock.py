@@ -19,6 +19,7 @@ SOURCES = (
     ('SPSC-RAM', ROOT / 'offline-spsc-ram-hotpath/XGODriver.cpp'),
     ('Test44-playable-SPSC', ROOT / 'offline-test44-spsc-ram-playable/XGODriver.cpp'),
     ('Test44-coherent-SPSC', ROOT / 'offline-test44-spsc-coherent-ram/XGODriver.cpp'),
+    ('Test44-XGO-native-XY-hold', ROOT / 'offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp'),
 )
 
 PRELUDE = r"""
@@ -56,6 +57,8 @@ uint32_t attack_pulse_start_us=0;
 bool previous_active_success=false;
 uint32_t active_failure_streak=0;
 constexpr uint16_t ATTACK_BITS=0x003fu;
+constexpr uint16_t ATTACK_PULSE_BITS=0x0039u;
+constexpr bool SOURCE_NATIVE_TURBO_HOLD=IS_NATIVE_TURBO_HOLD;
 constexpr uint32_t ATTACK_PULSE_US=18000;
 constexpr uint32_t EDGE_TIMEOUT_US=18;
 constexpr uint32_t LOAD_TIMEOUT_US=20000;
@@ -159,7 +162,8 @@ void init_host(uint16_t pressed, double delay=0, double recovery=0,
     attack_edge_commit_seq.store(0);
     core0_attack_commit_counter=0;
     for (unsigned bit=0; bit<6; ++bit) {
-        attack_edge_generation[bit].store((pressed >> bit) & 1u);
+        const uint16_t pulses=SOURCE_NATIVE_TURBO_HOLD ? ATTACK_PULSE_BITS : ATTACK_BITS;
+        attack_edge_generation[bit].store(((pressed & pulses) >> bit) & 1u);
         consumed_attack_edge_generation[bit]=0;
     }
     attack_pulse_mask=0;
@@ -340,6 +344,9 @@ def main():
                     'constexpr uint32_t EDGE_TIMEOUT_US=18;',
                     f'constexpr uint32_t EDGE_TIMEOUT_US={timeout};')
                 assert prelude != PRELUDE or timeout == 18
+                prelude=prelude.replace(
+                    'IS_NATIVE_TURBO_HOLD',
+                    'true' if label=='Test44-XGO-native-XY-hold' else 'false')
                 cpp.write_text(prelude+'\n'+extract(source)+'\n'+MAIN.replace(
                     'EXPECT_NOMINAL_PASS', 'false' if timeout<=6 else 'true'))
                 exe=Path(tmp)/(variant+'.exe')

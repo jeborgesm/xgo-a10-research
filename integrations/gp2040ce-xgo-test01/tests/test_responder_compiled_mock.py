@@ -21,6 +21,7 @@ SOURCES = (
     ("SPSC-RAM-candidate", ROOT / "offline-spsc-ram-hotpath/XGODriver.cpp", True),
     ("Test44-playable-SPSC", ROOT / "offline-test44-spsc-ram-playable/XGODriver.cpp", True),
     ("Test44-coherent-SPSC", ROOT / "offline-test44-spsc-coherent-ram/XGODriver.cpp", True),
+    ("Test44-XGO-native-XY-hold", ROOT / "offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp", True),
 )
 
 PRELUDE = r"""
@@ -61,6 +62,8 @@ uint32_t attack_pulse_start_us = 0;
 bool previous_active_success = false;
 uint32_t active_failure_streak = 0;
 constexpr uint16_t ATTACK_BITS = 0x003fu;
+constexpr uint16_t ATTACK_PULSE_BITS = 0x0039u;
+constexpr bool SOURCE_NATIVE_TURBO_HOLD = IS_NATIVE_TURBO_HOLD;
 constexpr uint32_t ATTACK_PULSE_US = 18000;
 constexpr uint32_t EDGE_TIMEOUT_US = 18;
 constexpr uint32_t LOAD_TIMEOUT_US = 20000;
@@ -141,20 +144,24 @@ void check(bool condition, const char* message) {
 }
 void run_frame(uint16_t mask, bool rearm, bool expected_success,
                int failure_slot = -1, bool fail_rise = false, bool final_high = true,
-               bool inject_slot0_false_low = false) {
+               bool inject_slot0_false_low = false,
+               bool preserve_queue = false) {
     script.clear(); cursor = 0; slot_seen = 0; sampled_mask = 0;
     saw_load_low = false; sampled_slot0 = false;
     model_host_sampled_release_too_early = inject_slot0_false_low;
     sinking = false;
     published_mask.store(mask);
-    pending_press_edges.store(mask & ATTACK_BITS);
-    attack_edge_commit_seq.store(0);
-    core0_attack_commit_counter=0;
-    for (unsigned bit = 0; bit < 6; ++bit) {
-        attack_edge_generation[bit].store((mask >> bit) & 1u);
-        consumed_attack_edge_generation[bit] = 0;
+    if (!preserve_queue) {
+        pending_press_edges.store(mask & ATTACK_BITS);
+        attack_edge_commit_seq.store(0);
+        core0_attack_commit_counter=0;
+        for (unsigned bit = 0; bit < 6; ++bit) {
+            const uint16_t pulsed = SOURCE_NATIVE_TURBO_HOLD ? ATTACK_PULSE_BITS : ATTACK_BITS;
+            attack_edge_generation[bit].store(((mask & pulsed) >> bit) & 1u);
+            consumed_attack_edge_generation[bit] = 0;
+        }
+        attack_pulse_mask = 0;
     }
-    attack_pulse_mask = 0;
     frame_script(mask, rearm, failure_slot, fail_rise, final_high);
     const bool complete = emit_frame();
     check(complete == expected_success, "Unexpected frame success/failure");
@@ -208,6 +215,19 @@ int main() {
             run_frame(RIGHT | FIRE, true, true);
         }
     }
+    if (SOURCE_NATIVE_TURBO_HOLD) {
+        // Keep a single physical X/Y press held across more than 18ms.
+        // If either bit is routed through the legacy pulse queue, it would
+        // disappear from the responder's wire mask on the later frame.
+        for (uint16_t held : {uint16_t(2),uint16_t(4),uint16_t(6)}) {
+            run_frame(held, false, true);
+            tick += 24000;
+            run_frame(held, false, true, -1, false, true, false, true);
+            tick += 24000;
+            run_frame(held, false, true, -1, false, true, false, true);
+            run_frame(0, false, true, -1, false, true, false, true);
+        }
+    }
     std::printf("PASS exact extracted C++ responder: 4096 ideal masks,"
                 " 22 mid-frame abort/recovery pairs, slot0 early-sample injection, final postamble policy\n");
 }
@@ -235,7 +255,9 @@ def run():
         for name, path, tail_failure_expected in SOURCES:
             source = path.read_text()
             function = extract(source)
-            code = (PRELUDE + "\nbool emit_frame();\n" + function + "\n" +
+            code = (PRELUDE.replace("IS_NATIVE_TURBO_HOLD",
+                          "true" if name == "Test44-XGO-native-XY-hold" else "false")
+                    + "\nbool emit_frame();\n" + function + "\n" +
                     MAIN.replace("POSTAMBLE_FAILS", "true" if tail_failure_expected else "false"))
             src = Path(tmp) / (name + ".cpp")
             exe = Path(tmp) / (name + ".bin")
