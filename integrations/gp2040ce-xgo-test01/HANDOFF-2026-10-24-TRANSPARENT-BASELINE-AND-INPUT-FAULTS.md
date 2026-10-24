@@ -1,3 +1,11 @@
+## AUTHORITATIVE OWNER CORRECTION: XGO A10 IS WIRED-ONLY — NO WIRELESS CONTROLLER CAPABILITY (2026-10-24)
+
+**Owner's user-supplied HW fact:** Their XGO does NOT support wireless controllers. The Micro-USB-shaped Handle port is the **wired controller interface**. The previously speculated SF900-on-XGO wireless use was incorrect; **do not propose pairing/testing the SF900 with XGO**. Original XGO `bisrv.asd` contains inherited SF2000 RF software/protocol tables [BIN], but this is **software lineage, not evidence of a functional/populated receiver or wireless capability**. The SF900 pads demonstrably work on the **separate SF2000**, and their radio code is a conceptual comparator, NOT a replacement or feature path for our wired GP2040-CE. Preserve the actual physical XGO B15/L0/B7 DATA/CLOCK scanner + GP2040 responder and user-tested Handle=P1/P2 GOLD normalizer as the only operative controller transport/role architecture.
+
+This explicit statement **supersedes any previous HANDOFF passages suggesting board RF population is an OPEN engineering lead or that the user might test SF900 on XGO**. No hardware test requested; no firmware changes. [Correction on the SF900 comparison](findings/2026-10-24-SF900-SF2000-KNOWN-GOOD-RF-VERSUS-XGO-HANDLE.md).
+
+---
+
 ## SF900/SF2000 KNOWN-GOOD RF COMPARATOR — NEW OFFLINE EVIDENCE (2026-10-24)
 
 User owns SF900 wireless controllers that reliably operate their SF2000 and select P1/P2 with physical switch. User suggested comparing those with ongoing XGO/GP2040 transparent-controller fault research, **not changing direction or requesting a radio redesign**. Work completed offline:
