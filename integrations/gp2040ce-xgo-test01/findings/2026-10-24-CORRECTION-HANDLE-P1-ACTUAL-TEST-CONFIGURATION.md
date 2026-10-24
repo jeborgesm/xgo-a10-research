@@ -70,3 +70,23 @@ The user's observation that holds/taps generally behave correctly is a strong po
 5. A future bounded discrimination *could* compare Handle P1 and P2 modes or read a real per-ROM `.kmp` after first specifying what differing result would distinguish. Do not ask for repetitive hardware trials or modify the XGO GOLD firmware merely to observe the symptom.
 
 **Status:** important user-supplied HW context integrated. No new controller firmware or host BIOS edits, no new hardware claims, no fix released.
+
+## Additional BIN correction: normalizer's branch-delay slot clears LOGICAL, not raw serial state
+
+Hash-pinned direct reinspection of the original `XGoAnalisis.zip/bios/bisrv.asd` identified an error in the older main-branch Handle investigation note, which claimed that `0x8035D54C: sw zero,0(a0)` cleared the current player's **raw serial** word. In fact:
+
+```text
+0x8035D4FC  addiu s5,gp,-0xd2c    # raw serial base
+0x8035D508  addiu fp,gp,-0xd18    # logical input base
+0x8035D524  addu a0,t0,s5       # a0 points at raw serial[player]
+0x8035D52C  lw s4,0(a0)         # consume raw serial
+0x8035D534  addu a0,t0,fp       # a0 is REASSIGNED to logical[player]
+0x8035D548  beq s2,zero,0x8035D558
+0x8035D54C  sw zero,0(a0)       # branch delay: clears LOGICAL[player]
+```
+
+The new serial scanner explicitly clears the raw serial input pair earlier at `0x8035D780` (`gp-0xd2c`, P1) and `0x8035D788` (`gp-0xd28`, physical Handle/P2), *before acquiring their next bits*. The scanner tail at `0x8035DE10` branches back into the normalizer loop. An alternate path at `0x8035D764` re-enters normalizer without newly scanning; **this particular `0x8035D54C` write does not force the raw serial inputs to zero on that re-entry**.
+
+**Consequences:** the P1 merge helper reading physical Handle raw P2 at `0x80C33A4C` is **not** automatically defeated by a preceding P1 normalizer iteration clearing that raw address; the older "consumes and clears raw" wording is wrong. Nor is a phantom periodic release established from this code path. Other global writes and exact runtime scheduling are not fully excluded by this limited original-image analysis. This correction comes from **original unmodified XGO BIN**, not a direct disassembly of current GOLD modified BIOS. The GOLD helper's own semantic provenance remains pinned separately.
+
+A reproducible [13-opcode original BIOS verifier](../tests/verify_xgo_raw_vs_logical_clear.py) was executed offline against the actual user-supplied original ZIP and PASSed, without modifying any binary. The original older note is retained for archaeology; this new evidence supersedes its incorrect pointer interpretation.
