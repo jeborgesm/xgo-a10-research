@@ -1,5 +1,16 @@
 # GP2040-CE / XGO — one-session hardware acceptance gate
 
+## 2026-10-24 HARDWARE RESULT — FAILED, DO NOT PROMOTE
+
+The user has now tested the coherent Test44/SPSC trial produced by GitHub Actions run 40052163597 (UF2 SHA-256 `79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6`). This procedure is no longer merely awaiting execution. **Contra's sporadic unintended jump persists**, despite apparently responsive Street Fighter controls. **Holding X/Y does not produce the host-native repeated shooting/jumping expected by the user**.
+
+Source-level explanation for the missing native X/Y turbo: this specific firmware only sends an 18ms edge pulse for X/Y, even though XGO needs a continuous held level to generate turbo. This is fixed **offline only** in separate source `candidates/offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp`, not in the already-tested UF2.
+
+The underlying phantom-JUMP root cause is still OPEN; fixing X/Y held semantics does not establish a jump fix. **Do not overwrite this result or label the tested firmware as approved.** See `findings/2026-10-24-HARDWARE-NATIVE-XY-TURBO-AND-CONTRA-JUMP.md` for evidence. Preserve original Test44 rollback and avoid additional flashing until the next controlled experiment is explicitly justified.
+
+---
+
+
 **Status:** PROCEDURE ONLY. Do not request or execute this hardware test until the coherent Test44-derived SPSC firmware compiles successfully and the linked ELF audit verifies SRAM placement with ZERO reachable FLASH/XIP calls while Core1 interrupts are masked.
 
 **Protected baseline:** Test44 hardware-proven GP2040-CE, existing Frankie wiring, and unchanged XGO A10 console firmware. Keep the already-verified Test44 UF2 accessible for immediate restoration. Do not install a candidate over the only copy of the known-good file.
