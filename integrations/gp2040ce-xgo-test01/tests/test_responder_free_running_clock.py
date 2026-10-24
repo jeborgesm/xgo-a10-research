@@ -240,10 +240,10 @@ int main() {
     // checking what it received, not only the virtual CPU's execution time.
     const double host_end=host.first_fall+12*host.period+1;
     if (host.us < host_end) advance(host_end-host.us);
-    require((host.decoded & (1u<<2)) != 0,
-            "Synthetic 7.5us DATA settling tail should falsely assert X/slot2");
-    std::printf("synthetic slow DATA release: false X/slot2=YES "
-                "(NES turbo jump mapping, UNMEASURED)\\n");
+    require((host.decoded & 0x7u) == 0x7u,
+            "Monotonic 7.5us DATA tail must assert R/slot0 AND Y/slot1 AND X/slot2");
+    std::printf("synthetic slow DATA release: false R+Y+X prefix=YES "
+                "(NES jump AND shoot mappings, UNMEASURED)\\n");
 
     // Model a CPU stall after completing FIRE slot5 CLOCK-high handshake.
     // A sufficiently long stall leaves FIRE asserted while host advances
