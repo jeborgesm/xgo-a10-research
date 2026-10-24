@@ -10,6 +10,7 @@ on:
       - 'integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_responder_compiled_mock.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_frame_phase.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_rearm_two_frames.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_armv6m_atomic_codegen.py'
@@ -64,6 +65,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_serial_boundary_faults_offline.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_responder_compiled_mock.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_frame_phase.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_rearm_two_frames.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_armv6m_atomic_codegen.py
