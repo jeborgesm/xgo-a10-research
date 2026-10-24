@@ -1,5 +1,8 @@
 # XGO vs SF2000 wireless RF path — bit-for-bit comparison
 
+> **OWNER HW CLARIFICATION — 2026-10-24 (superseding speculative compatibility):** This XGO A10 specimen has **no wireless-controller capability**; its supported external controller uses the proprietary **wired Micro-USB-shaped Handle Interface**. Identical stock SF2000/SF900 RF code/tables are **firmware ancestry only**, not evidence of a usable XGO wireless receiver. Do not suggest an SF900-on-XGO wireless test, pairing or controller alternative. The user's SF900 gamepads work wirelessly with their separate SF2000. See [current comparator and correction](../integrations/gp2040ce-xgo-test01/findings/2026-10-24-SF900-SF2000-KNOWN-GOOD-RF-VERSUS-XGO-HANDLE.md). Board-level RF chip population was not established and is not part of the active controller workflow.
+
+
 ## Summary
 
 A direct comparison of the XGO stock firmware RF driver against the current UniFrog reconstruction of the stock SF2000 wireless path shows that the two implementations are not merely similar. At every high-value point currently available for comparison they use the same MMIO registers, the same GPIO signal masks, the same RF self-test, the same configuration values, the same RF address/channel tables, the same packet source registers, the same P1/P2 status interpretation, and the same raw button bits.
