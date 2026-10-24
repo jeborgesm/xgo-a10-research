@@ -131,9 +131,9 @@ jobs:
         run: |
           set -euo pipefail
           readarray -t UF2S < <(find upstream/build -name '*.uf2' -type f)
-          test "\${#UF2S[@]}" -eq 1
+          test "${#UF2S[@]}" -eq 1
           mkdir -p xgo-test44-coherent-trial
-          cp "\${UF2S[0]}" xgo-test44-coherent-trial/XGO-Test44-Coherent-SPSC-HARDWARE-UNVERIFIED-TRIAL.uf2
+          cp "${UF2S[0]}" xgo-test44-coherent-trial/XGO-Test44-Coherent-SPSC-HARDWARE-UNVERIFIED-TRIAL.uf2
           cp integrations/gp2040ce-xgo-test01/findings/COHERENT-SPSC-SINGLE-HARDWARE-ACCEPTANCE.md xgo-test44-coherent-trial/HARDWARE-ACCEPTANCE.md
           (cd xgo-test44-coherent-trial && sha256sum ./*.uf2 > SHA256SUMS.txt)
           python3 - <<'PY'
