@@ -1,3 +1,11 @@
+# NEW CONTRA P2 HW OBSERVATION — HELD A/B ACTIONS INTERMITTENT (2026-10-24)
+
+User compared the external controller in **GOLD Handle=P2** versus P1: P2 feels worse, character **jumps randomly**, and holding physical **A or B** yields jumping/shooting actions **intermittently**, informally around **1–2 seconds apart**, rather than continuously responsive. Not a measured serial output period, not proof of repeated button edges, and not a fresh report of built-in P1 gameplay while in P2 mode. Earlier **Handle=P1**, built-in P1 play + untouched connected external also produced phantom jumps. Thus Handle-to-P1 merge is **not necessary** for observed P2 phantom JUMP; physical serial L0 still used in BOTH logical modes. GP2040 `emit_frame` source waits for DATA HIGH when R0 released before driving later A/B slots; slow/abnormal recovery could conditionally allow false first bit and lost/misphased later held bits, **MODEL/INF only**. Role-specific game mapping/port behavior remains OPEN. Keep working transparent controller A, XGO GOLD, and offline unflashed OLED B statuses unchanged.
+
+[Exact observation and revised fault-tree findings](integrations/gp2040ce-xgo-test01/findings/2026-10-24-CORRECTION-HANDLE-P1-ACTUAL-TEST-CONFIGURATION.md).
+
+---
+
 # CRITICAL NEW HW FACT — CONTRA GHOSTS ON BUILT-IN P1 WITH HANDLE CONNECTED, UNTOUCHED (2026-10-24)
 
 In **GOLD XGO Handle=P1 mode**, user plays Contra with built-in controls, leaves GP2040 connected **without touching it**, and still sees uncommanded logical P1 JUMP. The external does NOT have exclusive takeover of P1: the GOLD helper ORs built-in physical P1/B15 and Handle physical P2/L0 pressed masks. Untouched external buttons do not prove XGO decoded all-zero Handle bits at every scan. An intermittent false bit from idle external or local serial state can become a P1 action; routing OR alone cannot invent one. No P2-mode comparison has yet been reported. The [precise HW addendum](integrations/gp2040ce-xgo-test01/findings/2026-10-24-CORRECTION-HANDLE-P1-ACTUAL-TEST-CONFIGURATION.md) and [model](integrations/gp2040ce-xgo-test01/tests/test_handle_as_p1_fault_isolation.py) constrain the next fault tree. Preserve both protected firmware images, keep paged OLED B unflashed, and do not perform a speculative electrical or keymap fix.
