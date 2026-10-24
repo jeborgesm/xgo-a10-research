@@ -2,6 +2,16 @@
 
 **2026-10-24. Research branch:** `research-gp2040ce-xgo-integration`. User's direct HW comparator + pinned XGO original BIN + upstream live SRC + bounded MODEL. **No binary changes, no new user hardware trial or request.**
 
+## OWNER CORRECTION — THIS XGO A10 HAS NO WIRELESS-CONTROLLER CAPABILITY (2026-10-24)
+
+**USER HW/product fact, controlling for this project:** The owner explicitly confirmed the XGO A10 does **not** have wireless-controller capability; the external controller is connected via the **wired proprietary Micro-USB-shaped Handle Interface**. Treat the XGO as **wired-only** for engineering, testing and recommendations. The earlier suggestion that the user's SF900 controllers might work wirelessly with the XGO based on common firmware RF code was **unwarranted** and is withdrawn. **Never request a wireless controller test or suggest wireless pairing with the user's XGO as an alternative solution.**
+
+**Evidence discipline:** Original XGO firmware still contains genuine SF2000-family RF driver routines and matching calibration/packet constants [BIN], and the SF900 controllers work with the user's separate SF2000 [HW]. These are shared-software-lineage findings, **not evidence of XGO wireless capability, a populated receiver, or an RF path in the user's actual controller use**. Board component-level population was not verified in this investigation, but it does not reopen the owner's explicit functional constraint. The comparison's useful part is the common decoded button map and differences in transport; **the working GP2040 XGO path remains wired DATA/CLOCK on L0, irrespective of RF code**. The XGO GOLD post-scan P1/P2 toggle is unrelated to the wireless SF900 hardware switch.
+
+**Supersedes** the speculative “XGO radio population OPEN / future SF900-on-XGO test” passages below where they could be read as suggesting a viable wireless accessory or follow-up. Those passages are retained only as historical archaeology, not an active option.
+
+---
+
 ## Motivation and hardware context [HW]
 
 The user owns **SF900 controllers that control an SF2000 flawlessly** and can switch P1/P2 with their physical switch. They suggest studying that working family system while investigating XGO/GP2040-CE unexpected Contra jumps, SFII intermittent inputs, and particularly the worse external-P2 perceived A/B holds. This is a useful comparator, **not a request to change the GP2040 hardware or abandon our transparent-controller baseline**.
