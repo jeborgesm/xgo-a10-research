@@ -235,6 +235,11 @@ int main() {
     // uniquely relevant button. This is NOT a measured voltage/rise-time.
     init_host(RIGHT|FIRE,0,7.5);
     (void)emit_frame();
+    // The XGO clock continues when the responder bails out early (e.g.
+    // with an 8us deadline). Finish the independent host's samples before
+    // checking what it received, not only the virtual CPU's execution time.
+    const double host_end=host.first_fall+12*host.period+1;
+    if (host.us < host_end) advance(host_end-host.us);
     require((host.decoded & (1u<<2)) != 0,
             "Synthetic 7.5us DATA settling tail should falsely assert X/slot2");
     std::printf("synthetic slow DATA release: false X/slot2=YES "
