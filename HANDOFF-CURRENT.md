@@ -1,3 +1,17 @@
+# XGO ARCHEOLOGY — CURRENT CHECKPOINT (2026-10-24)
+
+**Authoritative active thread:** GP2040-CE transparent controller signal reliability; do not restart the historical Test14/Test15 project detailed below. Read [the current October 24 master handoff](integrations/gp2040ce-xgo-test01/HANDOFF-2026-10-24-TRANSPARENT-BASELINE-AND-INPUT-FAULTS.md), [controller-transparency contract](integrations/gp2040ce-xgo-test01/CONTROLLER-TRANSPARENCY-CONTRACT.md) and the [branch-local handoff](integrations/gp2040ce-xgo-test01/HANDOFF-CURRENT.md) **before** the old text below. Branch `research-gp2040ce-xgo-integration`.
+
+**HW-positive working baseline:** transparent controller + restored OLED UF2 SHA-256 `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`. Held/tapped inputs work; user played SFII (defeated Dhalsim) and Contra (X/Y turbo works through XGO). **OPEN:** intermittent spontaneous Contra JUMP; SFII sometimes ignores LP or gives three rapid LP punches. Exact cause unproven.
+
+**Offline-only paged OLED candidate:** UF2 `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b`, compiled/linked/verified via CI 40107598214, **NOT flashed or hardware proven**; fixes a source-observed Core0 I2C blocking risk but does not prove a ghost-JUMP cure. Preserve both firmware hashes and the old Test44 recovery separately.
+
+**Latest BIN development:** [original XGO P1-dependent P2 slot0 sampling](integrations/gp2040ce-xgo-test01/findings/2026-10-24-xgo-p1-dependent-p2-slot0-sampling.md), with [hash-pinned verifier](integrations/gp2040ce-xgo-test01/tests/verify_original_xgo_slot0_p1_path.py). If P1 slot0 is LOW the XGO host executes four more MIPS instructions before reading P2 slot0; all sampled before first CLOCK-low. This is an instruction-path discriminator, **not** measured voltage/cycle timing or causal proof of Contra jumps. The protected XGO `bios/bisrv.asd`, controller driver, normal OLED, Frankie wiring and input semantics must not change without separate evidence.
+
+**The remaining content below is HISTORICAL and contains obsolete "next task" and Test14/Test15 instructions. It MUST NOT override the active 2026-10-24 master handoff.**
+
+---
+
 ## CRITICAL HW RESULT — Test15 REJECTED (2026-10-12)
 
 User tested Test15: HK short taps FAIL; HK/HP hold repetitions FAIL; unintended LP from HK FAIL; unintended LK from HP FAIL; rapid tap/hold mixed attacks FAIL. OLED input display PASS; Web Config PASS. **No actual improvement over Test14.** Source: `findings/gp2040ce-test15-hardware-failure-2026-10-12.md` (commit `6ae5564`). The Test15 candidate's fresh snapshot and reduced IRQ-off diagnostics **are not a demonstrated fix**. Do not suggest Test15 again as resolved. Golden Test14 protected. Pivot to independent end-to-end processed mask/PHY/host decode and game binding evidence before Test16. Do not ask for repeat of these same tests.
