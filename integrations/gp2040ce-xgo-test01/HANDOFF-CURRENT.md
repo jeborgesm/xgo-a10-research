@@ -1,6 +1,24 @@
 # XGO A10 / GP2040-CE controller serial integration — CURRENT HANDOFF
 
-**Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
+**Updated 2026-10-24. Read the CURRENT ADDENDUM first, then the historical record.**
+
+## 2026-10-24 ACTUAL HARDWARE — PREVIOUS COHERENT SPSC TRIAL FAILED, X/Y TURBO SEMANTIC FOUND
+
+**Newest user-supplied HW evidence, overriding the 2026-10-23 offline confidence:**
+- The coherent Test44/SPSC UF2 SHA-256 `79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6` was hardware-tested. **Street Fighter felt responsive; Contra still had sporadic unintended JUMP.** Do NOT promote the old candidate as fixed.
+- Sustained X or Y buttons **did not produce continuous shooting/jumping**. User clarified **XGO itself provides the turbo/repeat behavior when it sees X or Y continuously held**. The controller must send a held level on wire slots1/2, not generate its own turbo pulses.
+- Original Test44 and coherent SPSC had `ATTACK_BITS=0x003f`, queuing X/Y with the other four through an 18ms one-shot pulse. That explains the missing X/Y held behavior at SRC level. Older Test44 "held no-repeat PASS" criteria were valid for those earlier Street Fighter attack semantics but are superseded for X/Y native XGO turbo.
+- Default embedded NES `.kmp` fallback maps physical **R/slot0, X/slot2 and A/slot4** to NES A (jump), of which R/X are turbo. Physical **Y/slot1, L/slot3 and B/slot5** map NES B (shoot), of which Y/L are turbo. The previous statement "an unintended JUMP uniquely identifies R/slot0" is incorrect. Test49 P0/P4 processed-edge zeros do not exclude host receiving a false X/slot2. Per-ROM `.kmp` may override defaults; do not guess user-specific file content.
+- Detailed HW/SRC/MODEL evidence: `findings/2026-10-24-HARDWARE-NATIVE-XY-TURBO-AND-CONTRA-JUMP.md`. New mapping test: `tests/test_nes_jump_origins.py`.
+
+**New isolated controller-only candidate, NOT flashed:** `candidates/offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp`, ancestor exact coherent SPSC Git blob `9b23cd633635a400dcfb8257a9f874085857f9f5`; new candidate blob `dff1a7b344655e2614f371325a21767d11a455a2`. Only THREE substitutions: define X/Y held wire bits `0x0006`, narrow existing attack-edge queue to R/L/A/B `0x0039`, and compose outbound mask preserving the continuous physical X/Y levels. No XGO BIOS, ROM, turbo generator, Frankie, serial timing or button bit order changes.
+
+**New fast CI VERIFIED PASS** [run 40066164956](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40066164956), source commit `5718eeb03b7e3413286400969aead02d73949980`: exact limited-source-diff and native NES turbo mapping checks; held X/Y through 128ms with immediate release; held X/Y plus 18ms B/FIRE pulse; actual compiled C++ `emit_frame()` 4096 masks/22 abort-recovery cases; repeated C++ frames with X/Y held past 18ms; independent free-running CLOCK simulations. No firmware hardware test.
+
+**Full pinned ARM build/IRQ-window audit** [run 40066165034](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40066165034) **still running at this edit**. Must verify final status from CI before binary promotion; no new test UF2 has been bundled. The previous coherent candidate was ELF-proven but HW-failed. The X/Y hold fix addresses the second failure only; unintended Contra jump is STILL OPEN. In the meantime, protect Test44 UF2 rollback, XGO SD/BIOS, Frankie, previous observations, and do not conflate speculative DATA-line settling models with measured physical cause.
+
+---
+
 
 ## 2026-10-23 COMPLETED — COHERENT TEST44 SPSC ELF GATE AND ONE HARDWARE-UNVERIFIED UF2
 
