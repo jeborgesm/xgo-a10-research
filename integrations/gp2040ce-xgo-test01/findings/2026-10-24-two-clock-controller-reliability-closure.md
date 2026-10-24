@@ -53,3 +53,14 @@ No new UF2 was built, flashed, offered as a ghost-jump fix, or labeled HW PASS b
 ## MODEL: why a continuous physical LP hold could still appear as several downstream press onsets
 
 A new [generic host-bit transition test](../tests/test_held_input_false_release_model.py) explicitly separates controller semantics from a hypothetical downstream frame error. A genuinely held physical button represented as `0,1,1,1,1,1,1,1,1,0` has one rising transition. If the host accidentally observes `0,1,1,0,1,1,0,1,1,0`, **two falsely released host frames** generate **three rising transitions** despite a transparent controller never generating turbo or shortening the hold. A full sequence of missing pressed frames generates zero. This is a bounded *possible mechanism*, not proof that the native SFII core triggers an attack on every such transition; the observed three punches and missed LP have no captured host word or game binding. It also does not explain a completely new Contra jump without some false *pressed* bit. Therefore a **serial false-negative / frame integrity problem** remains a plausible common source for SFII miss/retrigger, while Contra requires an independent false-positive pathway (which might or might not share electrical origins).
+
+## Re-verified packaged UF2s (connector download + fresh local ZIP inspection, 2026-10-24)
+
+The two actual historical build artifacts were downloaded again and independently opened as ZIP/UF2, rather than relying only on text manifests. **No new firmware was compiled or flashed in this follow-up.**
+
+| Build | Actions artifact ID | ZIP SHA256 | Actual UF2 SHA256 | Size / UF2 blocks | Status |
+| --- | --- | --- | --- | --- | --- |
+| Protected normal-OLED transparent A | 12551696668 | `c73a1015422c8414919e6b9ec139416b2dddb546206bd8f521388025505dcec6` | `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84` | 2,515,456 bytes / 4,913 | user-tested HW-positive |
+| OLED one-page candidate B | 12565735941 | `beea95101e99fb6b6cb0001ff4198a813d67f28326e47269290a09aff20b1c3e` | `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b` | 2,515,968 bytes / 4,914 | **still unflashed** |
+
+All UF2 first-block magic and trailing magic, 512-byte block sizing, listed block counts and exact UF2 SHA-256 passed fresh local checks. B package `PROVENANCE.json` and `SHA256SUMS.txt` matched, including pinned source commit `cce1b948d1af9b7cbf0138c802ec63426155bbe2`. B is one tested-by-CI scheduling correction, **not** a verified fix of spontaneous Contra JUMP.
