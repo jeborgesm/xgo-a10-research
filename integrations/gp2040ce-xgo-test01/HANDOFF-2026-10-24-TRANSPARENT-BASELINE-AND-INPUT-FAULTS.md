@@ -1,3 +1,13 @@
+## LATEST CI-GREEN EXACT SOURCE GHOST/PHASE DIFFERENTIAL — 2026-10-24
+
+New [actual C++ `emit_frame()` chronological fake-host harness](tests/test_exact_xgo_frame_phase.py) extracts **unchanged source** from protected GP2040 transparent A, compiles with g++ and virtual host DATA/CLOCK GPIO. Pinned [successful CI run 40129373359](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40129373359), all existing fast serial regressions PASS. A separately compiled CLOCK-first alternative changes only the in-memory `wait_data(true,18us)` gate for released R0; **NO firmware files are edited**. Both original and alternative pass **4096/4096 physical masks** in the ideal host model.
+
+With physical A continuously HELD and R released, simulated DATA rise after host R sample but before missing CLK #1 yields host `0x1080` (real A + phantom R), *responder reports successful frame and no CLOCK error*, under **both** policies. DATA rise after CLOCK #1 already rose yields: protected A host `0x3040` (R+Y+incorrect B replacing A), terminal slot12 timeout; hypothetical CLOCK-first host `0x3080` (R+Y+correct A), no clock timeout. **False early R/Y persist** under clock-first: therefore a CLOCK-first-only patch is NOT a ghost-jump fix. Separate physical R+A held yields modeled `0x3080` with no timeout because R pre-drive bypasses DATA-high gate, though false Y may still contaminate. All virtual recovery delays/thresholds synthetic and NOT measurements on Frankie V2 Jr.
+
+[Full exact-C++ finding](findings/2026-10-24-EXACT-CPP-RESPONDER-CHRONOLOGICAL-HOST-DIFFERENTIAL.md). Preserve XGO GOLD BIOS SHA `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`, transparent A UF2 SHA `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`, and unflashed paged-OLED B. Original user's Test48/49 CLK errors are not current A host-bitword captures. Next source-only discriminator: LOAD re-arm/false-start and first-FALL timing cases while maintaining serial transparency; only eventual measured DATA voltage relative to XGO sample can prove first-slot electrical cause. No new user hardware test requested.
+
+---
+
 ## LATEST BIN + MODEL: LATE DATA RECOVERY CAN LINK FALSE R AND SHIFTED HELD A (2026-10-24)
 
 Continued actual offline ghost-input investigation without modifying firmware: original user's XGO `XGoAnalisis.zip/bios/bisrv.asd` SHA `869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf` has **both R0 reads before CLOCK**, then exactly **12 host B7 LOW/HIGH pulses** each with nominal 2us LOW, verified via 13 original MIPS delay JAL calls and 24 GPIO stores. Do **not** posit stock XGO only outputs 11 pulses or conflate non-detected 12th pulse with no host pulse.
