@@ -88,7 +88,7 @@ int main(){
   // the later bits on DATA HIGH. Even there the host can sample a false Y
   // when the external line remains low into the second bit's sample.
   auto held_r_a=trial((1u<<0)|(1u<<4),3.6);
-  std::printf("policy=%d HELD_R_A rise=3.6 host=%04x ok=%d clkerr=%u\\n",
+  std::printf("policy=%d HELD_R_A rise=3.6 host=%04x ok=%d clkerr=%u\n",
       CLOCK_FIRST,held_r_a.host,held_r_a.ok,held_r_a.clk);
   if(!held_r_a.ok||held_r_a.host!=0x3080||held_r_a.clk)return 6;
   for(double rise:{0.,.3,.7,2.1,3.0,3.6}){
