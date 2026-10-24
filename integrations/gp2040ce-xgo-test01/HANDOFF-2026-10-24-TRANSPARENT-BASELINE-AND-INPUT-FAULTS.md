@@ -1,3 +1,16 @@
+## LATEST CI-PASSED EXACT C++ TWO-FRAME REARM + MISSED CLOCK SWEEP (2026-10-24)
+
+New investigation [full bounded fault report](findings/2026-10-24-TWO-FRAME-RECOVERY-AND-SLOT12-ERROR-AMBIGUITY.md), [exact protected responder chronological source test](tests/test_exact_xgo_rearm_two_frames.py), [GREEN CI #40129993336](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40129993336). **No firmware edited.**
+
+The actual protected transparent `emit_frame()` C++ is compiled with a two-frame fake XGO clock/data host at 16.03ms interval. With physical A held continuously, host raw `0x0080`:
+- **No fault**: both host scans decode A.
+- **RP misses any ONE of host CLOCK pulses 1–11** (host still generates 12): source reports **CLOCK failure at terminal slot12**, regardless of which actual pulse was missed. For missed #1–4 first host reads B `0x0040` instead of A; missed #5 reads A+B `0x00c0`; missed #6–11 still reads A `0x0080`. RP `xgo_diag_clock_timeouts=1`, `xgo_diag_last_failure_slot=12`, even when physical observation fault occurred at pulse1. All eleven **recover to correct A on the next host scan** in this model.
+- **RP misses only the final CLOCK HIGH**: first XGO word STILL A, source `complete=false` and rearm occurs, but protected A increments NO `xgo_diag_clock_timeouts` (diagnostic accounting gap unlike Test48/49); next frame A correct.
+
+**Major interpretation:** old OLED S12=421 Test48 / S12=226 controlled Test49 **do not locate failure at last pulse nor count wrong game words**. S12 may reflect earlier missed CLOCK, terminal failure or earlier diagnostic firmware's final-HIGH classification. No source reason yet to attribute a *lasting* 1–2sec unreliable held button to a single timeout+rearm: with normal DATA idle-high between frames, protected rearm returns correctly after one error. Recurring physical electrical faults remain possible, unmeasured. False slot0 R/Jump is a separate acquisition mechanism (can occur with zero CLK errors); **the sweep did not reproduce Jump**. Previous Test35 strict clock-phase gate was HW rejected, do not resurrect. Preserve both protected firmware images and unflashed OLED B; do not force a fix.
+
+---
+
 ## LATEST CI-GREEN EXACT SOURCE GHOST/PHASE DIFFERENTIAL — 2026-10-24
 
 New [actual C++ `emit_frame()` chronological fake-host harness](tests/test_exact_xgo_frame_phase.py) extracts **unchanged source** from protected GP2040 transparent A, compiles with g++ and virtual host DATA/CLOCK GPIO. Pinned [successful CI run 40129373359](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40129373359), all existing fast serial regressions PASS. A separately compiled CLOCK-first alternative changes only the in-memory `wait_data(true,18us)` gate for released R0; **NO firmware files are edited**. Both original and alternative pass **4096/4096 physical masks** in the ideal host model.
