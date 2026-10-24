@@ -1,3 +1,11 @@
+# NEW DIAGNOSTIC EVIDENCE — RECONCILED TEST48/TEST49 OLED ERR COUNTERS (2026-10-24)
+
+User recalls persistent errors on earlier diagnostic OLED firmware. Historical records confirm **Test48** final ERR628=CLK597+REL31, S12=421; **Test49 controlled run** CLK320 with S12=226, while uncommanded Contra JUMP and PAUSE were observed. In both, ~70.5% of CLOCK errors labeled S12, but **S12 covers terminal falling-edge or trailing high timeout after 12 bits were emitted** and does NOT prove wrong host bits. At least 304 Test48 and 165 Test49 terminal fall errors from LO/HI arithmetic; **nonterminal CLOCK classifications** Test48=176, Test49=94. These are local RP2040 wait timeouts, **NOT decoded frame error rate**. Current transparent A has no measured comparable rate and its final-high accounting differs. Historic transport sync faults are credible but precise cause for current spontaneous P2 JUMP/held A/B appearance OPEN.
+
+[Diagnostic retrospective](integrations/gp2040ce-xgo-test01/findings/2026-10-24-OLED-ERROR-COUNTERS-RETROSPECTIVE.md). No firmware changed, XGO GOLD and GP2040 A protected, paged OLED B unflashed.
+
+---
+
 # NEW CONTRA P2 HW OBSERVATION — HELD A/B ACTIONS INTERMITTENT (2026-10-24)
 
 User compared the external controller in **GOLD Handle=P2** versus P1: P2 feels worse, character **jumps randomly**, and holding physical **A or B** yields jumping/shooting actions **intermittently**, informally around **1–2 seconds apart**, rather than continuously responsive. Not a measured serial output period, not proof of repeated button edges, and not a fresh report of built-in P1 gameplay while in P2 mode. Earlier **Handle=P1**, built-in P1 play + untouched connected external also produced phantom jumps. Thus Handle-to-P1 merge is **not necessary** for observed P2 phantom JUMP; physical serial L0 still used in BOTH logical modes. GP2040 `emit_frame` source waits for DATA HIGH when R0 released before driving later A/B slots; slow/abnormal recovery could conditionally allow false first bit and lost/misphased later held bits, **MODEL/INF only**. Role-specific game mapping/port behavior remains OPEN. Keep working transparent controller A, XGO GOLD, and offline unflashed OLED B statuses unchanged.
