@@ -2,6 +2,21 @@
 
 **Updated 2026-10-24. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-24 VERIFIED X/Y HOLD SOURCE/BINARY, CONTRA PHANTOM JUMP STILL OPEN
+
+**Current HW verdict (user's real testing):** The 2026-10-23 coherent SPSC hardware trial (UF2 SHA-256 `79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6`) **FAILED complete gameplay acceptance**: Street Fighter feels responsive but Contra still has sporadic unintended JUMP, and sustained X/Y input fails to cause stock XGO's expected native turbo actions.
+
+**Critical corrected protocol interpretation:** Stock NES keymap maps physical X/slot2 to A+turbo (JUMP) and Y/slot1 to B+turbo (SHOOT); R/slot0 also maps A+turbo and physical A/slot4 maps normal A. Therefore unintended JUMP is NOT uniquely R/slot0. XGO provides turbo internally from the **held** physical X/Y bit. The RP2040 controller must NOT synthesize repeated pulses, and its inherited Test44/SPSC 18ms one-shot pulse on X/Y was a definite source-level error. Earlier no-held-repeat acceptance applies only to other button semantics; it does not override the new user-confirmed requirement for native X/Y turbo.
+
+**New isolated X/Y correction:** `candidates/offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp`, SHA blob `dff1a7b344655e2614f371325a21767d11a455a2`, exact three substitutions from protected coherent SPSC candidate. X/Y (slots1/2, mask `0x0006`) directly reflect **physical held level** in every host frame; other R/L/A/B press events (mask `0x0039`) retain 18ms coherent SPSC pulses. No clock timeout, serial slots, OLED, XGO firmware, Frankie or embedded XGO turbo changes.
+
+**FAST CI PASS:** [40066164956](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40066164956) included exact source diff, actual C++ 4096 masks, 22 abort/recoveries, repeated held-X/Y frames past 18ms, release timing, mixed X/Y+FIRE and free-running HOST model.
+**FULL LINKED ARM CI PASS:** [40066165034](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40066165034) compiled in pinned Test44 GP2040-CE+Pico SDK. `emit_frame()` at SRAM `0x200000F0`, 1048 bytes, 290 statically reachable instructions from IRQ masking, **zero reachable calls while IRQ-masked, zero XIP**. Linked disassembly artifact ID 12549665877. Hardware still untested for THIS corrective version; no UF2 has been published.
+**SOURCE/MODEL JUMP CORRECTION PASS:** [fast CI 40066648722](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40066648722), `tests/test_nes_jump_origins.py`, and patched free-running clock simulation show the stock NES mapping can visibly JUMP from R/slot0, X/slot2 or A/slot4. An **artificial 7.5us DATA-low settling tail** can create false X/slot2 in that model, but this timing has **NEVER been physically measured**; don't promote MODEL to HW cause.
+
+**Authoritative detailed record:** `findings/2026-10-24-HARDWARE-NATIVE-XY-TURBO-AND-CONTRA-JUMP.md`, marked actual old trial HW-failed. Do not restart old X/Y edge-queue work, announce the prior hardware trial as successful, apply firmware to XGO/bisrv.asd, request Frankie rewiring, or send an unjustified chain of controller flashes. The user's Test44 rollback remains protected. The next physical trial requires an explicit reason and must still classify any phantom jump as FAIL.
+
+---
 ## 2026-10-24 ACTUAL HARDWARE — PREVIOUS COHERENT SPSC TRIAL FAILED, X/Y TURBO SEMANTIC FOUND
 
 **Newest user-supplied HW evidence, overriding the 2026-10-23 offline confidence:**
