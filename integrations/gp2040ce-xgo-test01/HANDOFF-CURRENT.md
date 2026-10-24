@@ -2,6 +2,19 @@
 
 **Updated 2026-10-23. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-23 COMPLETED — COHERENT TEST44 SPSC ELF GATE AND ONE HARDWARE-UNVERIFIED UF2
+
+**This supersedes the earlier full ARM gate OPEN / packaging pending notes. DO NOT RESTART THE INVESTIGATION.**
+
+**Full coherent ARM binary gate passed:** [GitHub Actions run 40034765464](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40034765464), commit `fa4377cc4c5b8ee901d3e5cb562094c6af1a2d3d`, **SUCCESS**. Actual linked `emit_frame()` resides at SRAM `0x200000F0`, **1048 bytes**; CFG traversal under Core1 masked interrupts found **zero reachable subroutine calls and zero XIP/flash calls**. The exact source `candidates/offline-test44-spsc-coherent-ram/XGODriver.cpp` is blob `9b23cd633635a400dcfb8257a9f874085857f9f5`; original hardware-proven Test44 source blob remains `f445a1a6d8f9c871a80532e25cc5b1a3ac3b32a0`. [Quick CI run 40034765433](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40034765433) **SUCCESS**, including actual extracted C++ 4096 button masks, 22 mid-frame abort/recoveries, free-running model and 130680 exhaustive sequential-consistency chord publication schedules; the previously identified 67426 partial-chord model snapshots are all rejected by the coherent commit marker.
+
+**FINAL OFFLINE OUTPUT NOW PREPARED AND CHECKSUM-VERIFIED:** [controlled trial packaging build 40052163597](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40052163597), source commit `fe8a5e169e89c3986ea0650268eb0862a1217611`, **SUCCESS**. New packaging workflow `.github/workflows/gp2040ce-xgo-test44-coherent-trial-package.yml` rebuilds the exact protected source and pinned upstream after source blob checks, re-runs complete ELF/IRQ-window check, then creates ONE UF2 trial and uploads it **only after** the audit passes. Published artifact ID **12543324833**, `XGO-Test44-Coherent-SPSC-SINGLE-TRIAL-HARDWARE-UNVERIFIED`.
+
+**Packaged UF2 details, verified by opening the ZIP and hashing the bytes locally:** filename `XGO-Test44-Coherent-SPSC-HARDWARE-UNVERIFIED-TRIAL.uf2`, size **2518528 bytes**, SHA-256 **`79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6`**. ZIP also contains `SHA256SUMS.txt`, `PROVENANCE.json`, `README-FIRST.txt`, and `HARDWARE-ACCEPTANCE.md`. UF2 magic verified. GitHub packaging and artifact download verified. The linked binary evidence remains available separately in artifacts from the CI runs. No XGO `bios/bisrv.asd`, XGO SD card, RP2040 hardware or Frankie wiring changed, and nothing was flashed. The *user* retains the physical Test44 baseline.
+
+**Next action if user elects hardware test:** Only ONE controlled trial as described in `findings/COHERENT-SPSC-SINGLE-HARDWARE-ACCEPTANCE.md`: preserve the original known-working Test44 UF2 for immediate rollback, then check boot, Contra RIGHT+rapid FIRE (zero unintended JUMP/PAUSE), deliberate R/JUMP, deliberate START, deliberate dual-attack chord, and post-stress recovery. Do not ask for extra OLED screenshots or a chain of diagnostic firmware images. On any regression, restore Test44. A successful source/ELF test is **not** proof these physical gameplay symptoms are fixed. Do not claim root cause is demonstrated; actual early-slot DATA-level timing remains OPEN.
+
+---
 ## 2026-10-23 NEWEST — CHORD-COHERENT TEST44 SPSC; FULL ARM GATE OPEN
 
 **Protected baseline unchanged.** Test44 hardware-proven, Test49 diagnostic witness preserved, no controller/UFP/XGO console flash, Frankie unchanged. Do NOT request physical hardware testing at this point.
