@@ -23,7 +23,6 @@ unsigned fault=0;
 constexpr double cadence=16030.0;
 constexpr double low_width=2.0;
 constexpr double period=4.0;
-static uint16_t host_bits[2];
 static const uint16_t wirebits[12]={
   0x1000,0x2000,0x4000,0x0800,0x0080,0x0040,
   0x0020,0x0010,0x0008,0x0004,0x0002,0x0001};
