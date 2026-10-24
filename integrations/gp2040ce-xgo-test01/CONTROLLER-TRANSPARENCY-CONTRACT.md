@@ -101,7 +101,14 @@ A new candidate is eligible for firmware packaging only after:
 
 **Current result:** NO previously built Test44/SPSC/X-Y-exception UF2 meets
 this contract. Keep their historical test results and Test44 rescue binary
-but never label their protocol semantics approved. No new transparent
-controller firmware has yet been validated.
+but never label their protocol semantics approved.
+
+**New transparent candidate (2026-10-24):** `candidates/offline-test44-transparent-controller/XGODriver.cpp`
+with restored prediagnostic `ButtonLayoutScreen.cpp` HAS now passed the
+static contract, full 12-bit real-C++ input-to-wire regression and ARM
+linked SRAM/IRQ-window audit in [run 40071967532](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40071967532).
+A firmware UF2 was built, checksum-verified and packaged. **Its XGO hardware
+behavior is still unverified; do not promote BIN/MODEL to HW**. The separate
+previously observed spontaneous Contra JUMP remains OPEN.
 
 Only an explicit subsequent user decision may amend this invariant.
