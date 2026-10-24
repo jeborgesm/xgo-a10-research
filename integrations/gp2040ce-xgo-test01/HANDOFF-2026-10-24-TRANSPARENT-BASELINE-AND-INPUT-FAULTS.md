@@ -4,6 +4,8 @@ The user explicitly clarified that ALL their recently reported transparent-contr
 
 **Binding correction:** P2-slot0 scanner remains physically relevant, but current user-visible JUMP/LP actions are **P1 game input** and can arise from either physical channel or downstream P1 mapping. A correct OR merge cannot fabricate a pressed bit. Prior P2-only claims for the recent tests are superseded. Historical P2 passive probes remain P2 observations. Do not confuse this GOLD XGO host BIOS with the separate protected GP2040 transparent UF2. Neither device's firmware was modified in response to this clarification.
 
+**Additional original-BIN correction (2026-10-24):** `0x8035D54C: sw zero,0(a0)` clears the **logical** output word because `a0` is repointed to `gp-0xd18` at `0x8035D534`. The older Handle investigation's claim that this instruction clears **raw serial** was wrong. The actual raw serial inputs are explicitly reset at **scanner entry** `0x8035D780` / `0x8035D788`. Verified all 13 opcodes from the hash-pinned original XGO archive; see [full correction and 13-opcode verifier](findings/2026-10-24-CORRECTION-HANDLE-P1-ACTUAL-TEST-CONFIGURATION.md). Alternate normalization-loop entry is NOT by itself proof of synthetic release. No changes to GOLD firmware.
+
 ---
 
 # XGO A10 / GP2040-CE — DEFINITIVE ENGINEERING HANDOFF
