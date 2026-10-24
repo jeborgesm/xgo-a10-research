@@ -107,8 +107,8 @@ but never label their protocol semantics approved.
 with restored prediagnostic `ButtonLayoutScreen.cpp` HAS now passed the
 static contract, full 12-bit real-C++ input-to-wire regression and ARM
 linked SRAM/IRQ-window audit in [run 40071967532](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40071967532).
-A firmware UF2 was built, checksum-verified and packaged. **Its XGO hardware
-behavior is still unverified; do not promote BIN/MODEL to HW**. The separate
-previously observed spontaneous Contra JUMP remains OPEN.
+The transparent firmware UF2 was built, checksum-verified and **subsequently tested by the user**: actual physical holds/taps work, Street Fighter II was playable (Dhalsim defeated), and Contra was playable with and without XGO-native X/Y turbo. It is the **protected HW-positive controller-semantic baseline**. Two reliability observations remain **OPEN**: spontaneous Contra JUMP and SFII LP occasionally absent or producing three rapid punches during a hold. Do not conflate these with RP2040 implementing turbo.
+
+A separate **OLED-page-only candidate** has passed host-C++ tests and full linked RP2040 audit but **has not been hardware-tested**; no serial/game interpretation code was changed. The known-good and unflashed UF2 checksums, evidence, and next engineering steps are pinned in `HANDOFF-2026-10-24-TRANSPARENT-BASELINE-AND-INPUT-FAULTS.md`. Preserve XGO firmware, Frankie wiring and the user's exact positive HW baseline.
 
 Only an explicit subsequent user decision may amend this invariant.

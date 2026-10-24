@@ -2,6 +2,8 @@
 
 **Updated 2026-10-24. Read the CURRENT ADDENDUM first, then the historical record.**
 
+**NEW-CHAT MASTER HANDOFF:** [`HANDOFF-2026-10-24-TRANSPARENT-BASELINE-AND-INPUT-FAULTS.md`](HANDOFF-2026-10-24-TRANSPARENT-BASELINE-AND-INPUT-FAULTS.md). This is the authoritative 2026-10-24 stopping-point document, with precise known-good and UNFLASHED trial UF2 hashes, CI artifacts, original MIPS scanner addresses, HW/SRC/BIN/MODEL/OPEN classifications, protection rules, and an exact continuation prompt. Read it before older handoff addenda. **No firmware was modified in the handoff commit.**
+
 ## 2026-10-24 — CURRENT HARDWARE ACCEPTANCE + NEXT INVESTIGATION HANDOFF (READ FIRST)
 
 **This section supersedes any earlier note that the transparent controller has not been hardware-tested.** The user has now flashed and PLAYED the successful transparent-controller firmware. Do NOT restart development from Test44, do NOT reintroduce controller-side pulse/turbo, and do NOT rebuild the entire controller. This is a **good, usable baseline** needing targeted signal/scan reliability corrections.
@@ -34,7 +36,7 @@
 
 ### Where the current investigation stopped (NO new fix yet)
 
-The user requested a **deep offline investigation** into the two residual symptoms, with minimal corrections to the good baseline. The assistant began reviewing existing source and prior findings, but **chat capacity interrupted before completing a causal audit or producing any new candidate**. Do not claim a corrected release exists.
+The user requested a **deep offline investigation** into the two residual symptoms, with minimal corrections to the good baseline. **A source-supported causal audit and ONE OLED-ONLY candidate have since been completed OFFLINE**, as recorded in `findings/OLED-PAGE-LATENCY-AND-CONTRA-JUMP-2026-10-24.md` and the new master handoff. In the GP2040 XGO overlay, Core0's synchronous full 1025-byte SSD1306 write (~23ms nominal wire time at 400kHz) on every input loop can exceed the ~16ms host scan period and miss a brief physical press. The page-only variant transfers one 129-byte SSD1306 or 131-byte SH1106 page (~2.9ms modeled time), allowing Core0 input scans between transfers. **Full ARM build 40107598214 PASS; new UF2 SHA256 `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b` is compiled and packaged but HAS NOT BEEN FLASHED.** Original transparent source and serial critical machine code remain unchanged. This does NOT establish the cause of Contra ghost jump or SFII triple LP; do not claim a new hardware-accepted fix exists.
 
 Already established protocol evidence from prior sessions:
 
