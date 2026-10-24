@@ -1,9 +1,10 @@
-ARCHIVED - NONCOMPLIANT GP2040-CE ATTACK-PULSE TRIAL (DO# HISTORICAL ONLY: not eligible for new firmware publication under controller transparency contract.
+name: ARCHIVED - NONCOMPLIANT XGO attack-pulse trial (coherent SPSC)
+
+# Historical source and artifacts remain intact, but new builds of this
+# firmware are blocked by the mandatory transparent-controller source gate.
 on:
   workflow_dispatch:
-ndow_elf.py'
 
-# Keep only the newest offline SRAM audit when source/workflow changes.
 concurrency:
   group: gp2040ce-xgo-trial-package-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
