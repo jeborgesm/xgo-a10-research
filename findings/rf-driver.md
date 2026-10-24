@@ -1,5 +1,8 @@
 # XGO RF Driver — Disassembly Findings
 
+> **OWNER HW CLARIFICATION — 2026-10-24 (superseding speculative compatibility):** This XGO A10 specimen has **no wireless-controller capability**; its supported external controller uses the proprietary **wired Micro-USB-shaped Handle Interface**. Identical stock SF2000/SF900 RF code/tables are **firmware ancestry only**, not evidence of a usable XGO wireless receiver. Do not suggest an SF900-on-XGO wireless test, pairing or controller alternative. The user's SF900 gamepads work wirelessly with their separate SF2000. See [current comparator and correction](../integrations/gp2040ce-xgo-test01/findings/2026-10-24-SF900-SF2000-KNOWN-GOOD-RF-VERSUS-XGO-HANDLE.md). Board-level RF chip population was not established and is not part of the active controller workflow.
+
+
 Status: **confirmed firmware behavior; physical radio hardware not yet confirmed**.
 
 ## Summary
