@@ -2,6 +2,62 @@
 
 **Updated 2026-10-24. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-24 — CURRENT HARDWARE ACCEPTANCE + NEXT INVESTIGATION HANDOFF (READ FIRST)
+
+**This section supersedes any earlier note that the transparent controller has not been hardware-tested.** The user has now flashed and PLAYED the successful transparent-controller firmware. Do NOT restart development from Test44, do NOT reintroduce controller-side pulse/turbo, and do NOT rebuild the entire controller. This is a **good, usable baseline** needing targeted signal/scan reliability corrections.
+
+### Latest actual user hardware report (HW, verbatim substance)
+
+- **PASS:** Physical held inputs remain held; physical taps remain taps. GP2040-CE is now behaving as a controller, not a gameplay interpreter.
+- **PASS:** Played Street Fighter II successfully, defeated Dhalsim. Played Contra with and without X/Y native XGO turbo. All six physical attack buttons are now useful as ordinary physical controller inputs.
+- **OPEN / REPRODUCED:** Contra still sometimes generates **uncommanded JUMP** (ghost input). This is NOT resolved by transparent source publication and may be host sampling/electrical/phase behavior rather than GP2040 game semantics.
+- **OPEN / REPRODUCED:** Street Fighter II occasionally misses or misreads inputs. On one occasion holding LP produced **three very fast punches**; on a subsequent LP hold **nothing happened**. The user reports generally missing some SFII inputs. No timing trace of those individual events exists yet, and no root cause is established. Do not interpret the 3-punch event as evidence of GP2040 generating turbo; XGO owns repeated-game behavior and sampled wire errors are still possible.
+- **No other hardware observations were reported.** Avoid inventing button failures, other emulator regressions, frequency estimates, or electrical measurements.
+
+### Binding engineering constraints
+
+1. Preserve the **exact successful transparent firmware UF2** as the new **hardware-validated working baseline**, distinct from historical Test44 rescue/rollback. Do not overwrite the known-good build or source. The release is **usable, not perfect**. Keep both current transparent baseline and Test44 rollback available.
+2. **UNBREAKABLE CONTROLLER-TRANSPARENCY CONTRACT:** physical press = wire pressed, physical hold = continuously pressed, physical release = wire released, across all 12 slots, all games. **XGO alone owns** turbo, repeat, keymaps and gameplay interpretation. NO 18ms attack pulse, NO edge-to-pulse translation, NO X/Y exemption, NO emulator-specific button logic. See `CONTROLLER-TRANSPARENCY-CONTRACT.md` and `AGENTS.md`.
+3. Preserve the **restored normal GP2040-CE OLED** (selected directional and button diagrams, live pressed-state indicators, pressed-button history in bottom row). No new OLED serial-diagnostic display unless explicitly requested. Preserve Frankie V2 Jr wiring, XGO SD and `bios/bisrv.asd`, 12-slot XGO pin/bit mapping, and protected Test14 LED behavior. Do not ask for extra hardware or unnecessary repeated flash tests.
+4. Diagnose **both** Contra false-positive input and SFII missing/unstable inputs. They might share a serial phase/data-validity cause, but that is **hypothesis, not proof**. Do not assume fixing one will fix the other.
+5. Evidence labels: **HW** user-observed device behavior, **BIN** linked ARM disassembly/real firmware, **SRC** actual implementation, **MODEL** deterministic host simulator, **INF** hypothesis, **OPEN** unresolved. Green host simulation alone cannot prove electrical correctness.
+
+### Protected successful release and reproducibility
+
+- Working source: `integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/XGODriver.cpp`, Git blob `cccb985a05baa8bb9078b6e336eb5f991c1a7a8f`. This is now **HW-proven for held/tapped controller semantics**; the remaining input reliability problems are HW-observed OPEN.
+- OLED: `integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/ButtonLayoutScreen.cpp`, Git blob `d15cfdc4953647c9d67e7467e244bf5da7233d76`. Pre-diagnostic upstream layout plus two XGO-only bottom history changes; hardware acceptance of full OLED detail should not be claimed beyond user observations.
+- Successful immutable firmware build: [Actions run 40071967532](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40071967532), source commit `2ff4d85b226539350921fece221b266504792ea4`. Artifact `XGO-TRANSPARENT-CONTROLLER-RESTORED-OLED-UNVERIFIED` (historical build-time label only; **user has since hardware-tested it**), artifact ID `12551696668`; corresponding linked ELF evidence artifact ID `12551597007`.
+- Exact UF2: `XGO-Transparent-Controller-RESTORED-OLED-HARDWARE-UNVERIFIED.uf2`, 2,515,456 bytes, SHA-256 `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`. Do not silently change this artifact; new corrective firmware must get a **new candidate name and checksum**.
+- Actual linked ARM `emit_frame()`: SRAM `0x200000F0`, 728 bytes, masked IRQ region with zero linked calls to XIP/flash. This reduces but does not eliminate risk of GPIO bus-level races or clock phase errors.
+- [Fast host regression run 40071967462](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40071967462): real C++ `map_mask()` + `process()` + `emit_frame()`, all 4096 physical masks, 12 individually held/released inputs, simultaneous buttons, short taps, RIGHT+FIRE, 22 aborted frames and recovery. Synthetic host model; not evidence that XGO samples correct analog DATA levels.
+- Build workflow: `.github/workflows/gp2040ce-xgo-transparent-controller-build.yml`; acceptance procedure: `findings/TRANSPARENT-CONTROLLER-SINGLE-TRIAL.md`.
+
+### Where the current investigation stopped (NO new fix yet)
+
+The user requested a **deep offline investigation** into the two residual symptoms, with minimal corrections to the good baseline. The assistant began reviewing existing source and prior findings, but **chat capacity interrupted before completing a causal audit or producing any new candidate**. Do not claim a corrected release exists.
+
+Already established protocol evidence from prior sessions:
+
+- Proprietary **12-bit XGO P2 synchronous serial**, NOT USB HID. RP2040 USB PHY used as raw pins: DM receives host CLOCK; DP sinks/releases DATA. XGO drives LOAD/DATA low for approximately 6.8–7.5 µs, first CLOCK low approximately 0.9–1.3 µs later, then 12 CLOCK pulses around 4 µs per period, ~16 ms host scan cadence. **Slot 0 (R1) is sampled before the first CLOCK**; early DATA setup/release is critical.
+- Zero-based slot map: 0 R/pressedR1 (**Contra jump, HW-proven**); 1 Y/B4; 2 X/B3; 3 L/L1; 4 A/B1; 5 B/B2 (**Contra fire**); 6 SELECT; 7 START; 8 UP; 9 DOWN; 10 LEFT; 11 RIGHT. The physical X/Y keys map to XGO-native turbo functions, NOT controller-generated turbo.
+- Previous Test49 physical RIGHT+FIRE captured unexpected JUMP/PAUSE while UI diagnostics showed no software R press; frequent late frame slot12 failure counts were observed. **Do not equate slot12 errors directly with false START**: the earlier deterministic LOAD-preparation-delay sweep showed 16 S12 failures with wrong host word, **zero S12+falseSTART**, and 16 S11+falseSTART cases. All such sweep numbers were **synthetic**, not measured RP2040 stalls.
+- Offline free-running host CLOCK model showed **artificial DATA-release/recovery latency ~0.35 µs** could cause host to see R/slot0 pressed while software mask contained only RIGHT+FIRE. Artificial after-FIRE processing stalls ≥7.75 µs or LOAD-prep stalls ≥13.75 µs could cause wrong slot decoding, but are hypothetical timing injections, NOT proven physical delays. 18µs timeout is inherited; 6µs/4µs thresholds failed nominal virtual-host tests and must not be adopted blindly.
+- Prior **passive PHY/P3** experiment reported phantom jumps even without intentional RP2040 DATA sinking, but **used a different cable/physical context**, so it cannot isolate the present Frankie V2 Jr wiring or prove XGO host firmware at fault. Consult its source and exact report before using it as causal evidence.
+
+### Next-chat execution plan — start here, not with a rewrite
+
+1. Read this full handoff, `CONTROLLER-TRANSPARENCY-CONTRACT.md`, the current successful `XGODriver.cpp`, `tests/test_transparent_controller_end_to_end.py`, `tests/test_responder_free_running_clock.py`, the linked ELF audit, and prior passive PHY captures. Inspect `findings/xgo-controller-scanner-binary-signature.md`, `findings/player2-revisit-and-handle-interface.md`, `experiments/rp2040-passive-probe-p0.md` and `experiments/rp2040-usbphy-p3-passive.md` for **actual** XGO scanner and electrical evidence.
+2. **Causal fault tree:** investigate (a) early slot0 DATA release/setup/line rise and host sampling threshold; (b) RP2040 clock edge phase tracking, missed/double CLOCK edges and LOAD re-arm; (c) XGO sampling of low/high transition and how aborted or incomplete frames are consumed; (d) whether physical input sampling/publishing between host scans loses legitimate short taps or creates apparent repeats; (e) RP2040 USB PHY pad drive/release/open-drain behavior, pull-ups, and electrical loading. Separate wrong-bit **ghost positive** from missing-bit **false negative**.
+3. Model the **actual** latest transparent source against independently clocked XGO host, including precise slot0 sample-before-first-clock, DATA low/high rise delays, host LOAD pulse width/jitter, CPU stalls, repeated scan holds, rapid alternating LP presses, frame abort/recovery and independent button release. Extend existing tests rather than replacing them with ungrounded mock behavior. Compare expected host sample mask with actual mask, not just Core0 diagnostic snapshot.
+4. Review any available XGO `bisrv.asd` scanner disassembly/address-map evidence offline (READ-ONLY) to constrain the host sample point and debouncing/press interpretation; preserve all XGO firmware. Explicitly mark where binary evidence stops and inferred behavior begins.
+5. Identify a **minimal, justified** responder-only correction and a narrowly scoped source diff. Preserve OLED and coherent physical publication unless an actual publication bug is demonstrated. Add regression tests proving both no false JUMP/START and no missing legitimate SFII LP/R inputs across full masks and multi-scan holds/releases. Run host C++ tests, free-running CLOCK tests, real ARM linked SRAM/IRQ audit and complete pinned build. Do not label success without tests.
+6. Only after evidence supports the fix, produce a **separately named, checksum-pinned** new UF2 and one controlled hardware trial with clear rollback to this now-working transparent baseline. No repeated diagnostic firmware or additional equipment by default.
+
+**Critical continuity note:** The user's latest hardware feedback is POSITIVE on the transparent architecture. The next task is signal reliability, **not** redesigning controls, changing XGO keymaps, or emulating turbo in GP2040-CE.
+
+---
+
+
 ## 2026-10-24 VERIFIED — TRANSPARENT CONTROLLER ACTUAL UF2 AND RESTORED OLED BUILD
 
 **This supersedes all previous “full build pending” notes and all prior pulse/XY-only firmware claims.** The binding controller-transparency rule is unchanged: send pressed while pressed, held while held and released on real sampled release, for all twelve physical bits; XGO alone interprets mapped game actions, turbo and repeats.
