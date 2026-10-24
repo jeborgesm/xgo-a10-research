@@ -2,6 +2,23 @@
 
 **Updated 2026-10-24. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## PERMANENT USER-MANDATED RULE — CONTROLLER IS TRANSPARENT, NOT GAME-AWARE
+
+**NON-NEGOTIABLE. Takes precedence over ALL historical Test44/SPSC/XY-only instructions and tests in this handoff.** The user explicitly established on 2026-10-24:
+
+> **GP2040-CE must function as a controller, not as an emulator-specific input interpreter. When a physical button is pressed, GP2040-CE reports pressed. While it is held, it continues reporting pressed. When released, it reports released. XGO alone interprets inputs into single actions, turbo, continuous shooting, jumping, or game/emulator behavior.**
+
+**ALL 12 bits. ALL six R/Y/X/L/A/B buttons and START/SELECT/directions. ALL systems including Street Fighter II.** No RP2040 turbo clock, no 18ms one-shot output pulse, no truncated holds, no X/Y exemption, no host-keymap semantics in controller transport.
+
+**Important correction:** Test44, coherent-SPSC and the newer X/Y-only "native turbo" firmware ALL violate the rule: Test44 and original SPSC pulse all six attack bits, while X/Y-only firmware preserves X/Y holds but still pulses R/L/A/B for 18ms. Older green model/ARM CI results do NOT validate semantics, and historical hardware successes do NOT authorize these hacks. Preserve these files as research and Test44 as rescue/rollback only; DO NOT promote or flash another as the correct controller design. This is an architectural bug, not just a label/turbo issue.
+
+**Primary binding project spec:** `CONTROLLER-TRANSPARENCY-CONTRACT.md`, together with root `AGENTS.md` and local `AGENTS.md`. Future candidate must pass `tests/test_controller_transparency_contract.py --candidate <XGODriver.cpp>`, followed by true end-to-end physical-state -> serial-wire behavioral tests, SRAM/IRQ audit and hardware testing. The static test alone is not proof, and the original Test44 file must never be overwritten. Former noncompliant trial-packaging workflows are intentionally archived/blocked from rebuilding.
+
+**Separate OPEN issue:** physical unsolicited Contra JUMP remains undiagnosed. Do not "fix" it by dropping held inputs or changing per-game interpretation. The previous X/Y-only firmware ZIP/UF2 and its checksum remain historical artifacts, **not an architecturally approved candidate**.
+
+---
+
+
 ## 2026-10-24 LATEST — X/Y NATIVE TURBO UF2 BUILT, CHECKSUM VERIFIED; CONTRA JUMP OPEN
 
 **Actual current hardware result:** The PREVIOUS coherent-SPSC UF2 SHA-256 `79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6` was flashed by the user. Street Fighter felt responsive, but **Contra still sporadically JUMPED without intentional input**, and holding X/Y **failed to generate native XGO turbo**. This is a **FAILED acceptance**, not a successful firmware fix. Its UF2 must never be confused with the NEW file.

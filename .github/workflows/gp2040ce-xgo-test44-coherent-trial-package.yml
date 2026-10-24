@@ -1,17 +1,7 @@
-name: XGO Test44 coherent SPSC one-trial UF2 packaging
-
+ARCHIVED - NONCOMPLIANT GP2040-CE ATTACK-PULSE TRIAL (DO# HISTORICAL ONLY: not eligible for new firmware publication under controller transparency contract.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research-gp2040ce-xgo-integration
-    paths:
-      - '.github/workflows/gp2040ce-xgo-test44-coherent-trial-package.yml'
-      - 'integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-coherent-ram/**'
-      - 'integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/**'
-      - 'integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py'
-      - 'integrations/gp2040ce-xgo-test01/tests/test_spsc_chord_atomicity.py'
-      - 'integrations/gp2040ce-xgo-test01/tests/test_irq_window_elf.py'
+ndow_elf.py'
 
 # Keep only the newest offline SRAM audit when source/workflow changes.
 concurrency:
@@ -30,6 +20,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Guard protected Test44 ancestry and trial source pins
         run: |
+          # Intentionally fail closed: legacy trial output truncates physical holds.
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py --candidate integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-coherent-ram/XGODriver.cpp
           test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/XGODriver.cpp)" = "f445a1a6d8f9c871a80532e25cc5b1a3ac3b32a0"
           test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/offline-test44-spsc-coherent-ram/XGODriver.cpp)" = "9b23cd633635a400dcfb8257a9f874085857f9f5"
           python3 integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py

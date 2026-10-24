@@ -22,6 +22,8 @@ on:
       - 'integrations/gp2040ce-xgo-test01/tests/test_xgo_native_xy_turbo.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_nes_jump_origins.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_passive_phy_jump_baseline.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py'
+      - 'integrations/gp2040ce-xgo-test01/CONTROLLER-TRANSPARENCY-CONTRACT.md'
       - 'integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py'
       - 'integrations/gp2040ce-xgo-test01/tests/audit_ram_hotpath_elf.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test49_attack_edge_provenance.py'
@@ -65,6 +67,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_xgo_native_xy_turbo.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_nes_jump_origins.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_passive_phy_jump_baseline.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py
       - name: Report fast regression result for downstream review
         if: always()
         env:
