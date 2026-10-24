@@ -59,6 +59,28 @@ class TestNesJumpOrigins(unittest.TestCase):
                 self.assertTrue(raw & (1<<WIRE_SLOT["X"]))
         # This is a mathematical possibility, not an electrical measurement.
 
+    def test_monotonic_release_tail_must_produce_prefix_not_isolated_x(self):
+        # If the host-generated DATA LOW persists monotonically after LOAD,
+        # later false slot2 necessarily implies earlier slot0 and slot1.
+        # A later isolated false-X would demand a different glitch/phase
+        # mechanism, not this simple one-parameter slow-rise model.
+        for delay in [x / 10.0 for x in range(0, 221)]:
+            raw=modeled_host_bits_if_load_release_is_delayed(delay)
+            if raw & (1 << WIRE_SLOT["X"]):
+                self.assertEqual(raw & 0x7, 0x7)
+            if raw & (1 << WIRE_SLOT["Y"]):
+                self.assertTrue(raw & (1 << WIRE_SLOT["R"]))
+            self.assertIn(raw, (0, 1, 3, 7))
+
+    def test_false_x_tail_also_activates_y_shoot_mapping(self):
+        raw=modeled_host_bits_if_load_release_is_delayed(7.5)
+        m=embedded_nes_map()
+        self.assertEqual(raw & 0x7, 0x7)
+        self.assertEqual(m["Y"] & 0xffff, SHOOT_TARGET)
+        self.assertEqual(m["X"] & 0xffff, JUMP_TARGET)
+        # Source/model prediction: simultaneous R+Y+X, not X alone.
+        # No hardware capture establishes this in the actual XGO game.
+
     def test_slot0_only_inference_is_incomplete(self):
         jump_slots={WIRE_SLOT[k] for k,v in embedded_nes_map().items()
                     if v&0xffff==JUMP_TARGET}
