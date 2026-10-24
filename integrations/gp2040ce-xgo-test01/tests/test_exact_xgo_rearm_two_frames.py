@@ -43,13 +43,13 @@ bool clock_level(){
   now+=0.035;
   for(int frame=0;frame<2;frame++){
     double t=now-frame*cadence;
-    if(frame==0 && fault==2 && t>=47.2 && t<70.0)return false;
+    if(frame==0 && fault==12 && t>=47.2 && t<70.0)return false;
     if(t>=1.2 && t<1.2+12*period){
       int pulse=(int)std::floor((t-1.2)/period);
       bool in_low=std::fmod(t-1.2,period)<low_width;
       // The XGO clock #4 exists on the wire but a synthetic RP2040
       // receive/observation fault hides it from wait_clock().
-      if(frame==0 && fault==1 && pulse==3)return true;
+      if(frame==0 && fault>=1 && fault<=11 && pulse==(int)fault-1)return true;
       return !in_low;
     }
   }
@@ -86,7 +86,7 @@ MAIN=r'''
 int main(int argc,char**argv){
   if(argc!=2)return 99;
   fault=(unsigned)std::atoi(argv[1]);
-  if(fault>2)return 98;
+  if(fault>12)return 98;
   const uint16_t A=1u<<4;
   published_mask.store(A);
   // Exact source under test invoked twice; the local require_idle_high
@@ -106,13 +106,15 @@ int main(int argc,char**argv){
     if(!first || first_word!=0x0080
        || xgo_diag_active_failures.load()!=0)return 2;
   }
-  if(fault==1){
+  if(fault>=1 && fault<=11){
     if(first || xgo_diag_active_failures.load()!=1
        || xgo_diag_clock_timeouts.load()!=1
        || xgo_diag_last_failure_slot.load()!=12)return 3;
-    if(first_word==0x0080)return 4;
+    // An early missed clock can shift A into B; later missed
+    // clocks may leave A unaffected but corrupt later positions.
+    if(fault==4 && first_word!=0x0040)return 4;
   }
-  if(fault==2){
+  if(fault==12){
     // The 12 button bits were transmitted BEFORE the failed trailing HIGH.
     // Protected source returns false, re-arms, but increments no CLK error.
     if(first || first_word!=0x0080
@@ -134,11 +136,11 @@ def run():
                           "-Werror",str(p),"-o",str(exe)],
                          capture_output=True,text=True)
         if c.returncode: raise RuntimeError("compile: "+c.stderr)
-        for fault in (0,1,2):
+        for fault in range(13):
             r=subprocess.run([str(exe),str(fault)],capture_output=True,text=True)
             print(r.stdout.strip())
             if r.returncode: raise RuntimeError("fault "+str(fault)+": "+
                                                 r.stdout+"\n"+r.stderr)
-    print("PASS all: normal, one RP missed CLOCK, and false terminal HIGH timeout")
+    print("PASS all: normal, eleven individually missed CLOCK pulses, and false terminal HIGH timeout")
 
 if __name__=="__main__": run()
