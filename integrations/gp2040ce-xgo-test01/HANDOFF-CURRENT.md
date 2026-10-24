@@ -2,6 +2,30 @@
 
 **Updated 2026-10-24. Read the CURRENT ADDENDUM first, then the historical record.**
 
+## 2026-10-24 LATEST — X/Y NATIVE TURBO UF2 BUILT, CHECKSUM VERIFIED; CONTRA JUMP OPEN
+
+**Actual current hardware result:** The PREVIOUS coherent-SPSC UF2 SHA-256 `79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6` was flashed by the user. Street Fighter felt responsive, but **Contra still sporadically JUMPED without intentional input**, and holding X/Y **failed to generate native XGO turbo**. This is a **FAILED acceptance**, not a successful firmware fix. Its UF2 must never be confused with the NEW file.
+
+**Proven SOURCE correction:** New isolated X/Y held-level source `candidates/offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp`, Git blob `dff1a7b344655e2614f371325a21767d11a455a2`, preserves physical Y wire slot1 and X wire slot2 for the full duration of a pressed button, so XGO itself may perform autofire/turbo. The R/L/A/B one-shot 18ms coherent queue remains. Does not modify XGO ROM mapping, firmware, BIOS, Frankie, GP2040 startup, 18µs CLOCK timeout, or 12-slot ordering. This addresses X/Y native hold **only**. Hardware effect is not yet verified.
+
+**New independently BUILT and HASH-VERIFIED UF2, controller only:**
+- [GitHub packaging run 40067746050](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40067746050) **SUCCESS**, source commit `73882bf02c827119f23cf9e3592b4f40ad32f349`, pinned original GP2040-CE `3d1f32f7d02d418826b725b60208278d3be878c3` and Pico SDK `2.3.1`.
+- Firmware: `XGO-XY-Native-Turbo-Hold-HARDWARE-UNVERIFIED.uf2` exactly **2,518,528 bytes**, SHA-256 **`638e0be17762fab86541a5afdb5c5db0230f7bb7ecccc1e96be862e6de4bfac6`**. Verified by downloading the actual CI ZIP to the container, examining its five files, checking UF2 magic and calculating byte-level SHA-256 against both `SHA256SUMS.txt` and `PROVENANCE.json`.
+- [Workflow `.github/workflows/gp2040ce-xgo-xy-turbo-trial-package.yml`](../../.github/workflows/gp2040ce-xgo-xy-turbo-trial-package.yml) publishes artifact ID **12549893125** `XGO-XY-NATIVE-TURBO-HOLD-SINGLE-TRIAL-HARDWARE-UNVERIFIED`. ZIP also includes `README-FIRST.txt`, `HARDWARE-ACCEPTANCE.md`, `SHA256SUMS.txt`, and `PROVENANCE.json`. Full linked disassembly artifact ID **12550570504**.
+- Recompiled `emit_frame()` at SRAM `0x200000f0`, **1048 bytes**, actual reachable IRQ-masked BL calls **0**, XIP calls **0**. This is a **BIN/CI PASS**, not a hardware/gameplay pass.
+- Independent source/C++/MODEL regressions [fast run 40067746137](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40067746137), [follow-on 40067763322](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40067763322), and [P3/evidence run 40067871264](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40067871264) all **SUCCESS**.
+
+**Contra jump offline causal narrowing (do not make it a firmware fix):**
+- Prior **P3 passive native-USB-PHY hardware experiment** observed unintended P2 JUMP despite **no active DATA serializer** and disabled output-enable. Its ten `USB_USBPHY_DIRECT_OVERRIDE_*` settings exactly match our current active responder's. This confirms that the SPSC code is NOT required for *all* historical phantom JUMPs; it does not prove the same fault today. P3 used an ordinary cable while the present active responder relies on Frankie V2 Jr with unusual pad 2/4 bridge. Causal equivalence is **OPEN**.
+- Stock FC defaults permit NES A/JUMP from **R/slot0**, **X/slot2**, **A/slot4**, not only R. Per-game `.kmp` overrides might change that and have not been verified for the user’s ROM.
+- An HYPOTHETICAL monotonic slow DATA rise that contaminates X2 would also contaminate preceding R0 and Y1 (R+Y+X prefix), not isolated X. This is a **MODEL prediction**, no analog/host bit waveform has been measured on the current cable. Existing P0 HW baseline had 7.8µs host LOAD-low and only 1.2µs to first CLOCK fall. Fast CI now explicitly enforces the prefix implication.
+- Evidence and competing explanations documented under `findings/2026-10-24-CONTRA-JUMP-CAUSAL-DISCRIMINATORS.md` (HW/SRC/BIN/MODEL/OPEN separate), with fast model and register-equivalence tests in `tests/test_nes_jump_origins.py`, `tests/test_passive_phy_jump_baseline.py`.
+
+**Next ONE controlled trial, when user chooses:** preserve proven Test44 rollback UF2; run NEW X/Y-HOLD UF2 only on RP2040; hold Y in Contra (XGO shoots repeatedly), hold X (XGO jumps repeatedly), confirm immediate release, and independently classify RIGHT+FIRE spontaneous jump and normal Street Fighter responsiveness. No new equipment, Frankie changes, XGO `bisrv.asd`, additional OLED instrumentation or diagnostic flash sequence. X/Y turbo PASS does not imply phantom JUMP fixed.
+
+---
+
+
 ## 2026-10-24 VERIFIED X/Y HOLD SOURCE/BINARY, CONTRA PHANTOM JUMP STILL OPEN
 
 **Current HW verdict (user's real testing):** The 2026-10-23 coherent SPSC hardware trial (UF2 SHA-256 `79ebcff4f2bf5196ff986c68c1665eb315b9e7a6ef5d434d175741cab901abd6`) **FAILED complete gameplay acceptance**: Street Fighter feels responsive but Contra still has sporadic unintended JUMP, and sustained X/Y input fails to cause stock XGO's expected native turbo actions.
