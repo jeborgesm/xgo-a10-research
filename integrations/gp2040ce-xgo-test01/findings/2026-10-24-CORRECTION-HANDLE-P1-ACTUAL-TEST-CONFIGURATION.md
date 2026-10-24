@@ -90,3 +90,33 @@ The new serial scanner explicitly clears the raw serial input pair earlier at `0
 **Consequences:** the P1 merge helper reading physical Handle raw P2 at `0x80C33A4C` is **not** automatically defeated by a preceding P1 normalizer iteration clearing that raw address; the older "consumes and clears raw" wording is wrong. Nor is a phantom periodic release established from this code path. Other global writes and exact runtime scheduling are not fully excluded by this limited original-image analysis. This correction comes from **original unmodified XGO BIN**, not a direct disassembly of current GOLD modified BIOS. The GOLD helper's own semantic provenance remains pinned separately.
 
 A reproducible [13-opcode original BIOS verifier](../tests/verify_xgo_raw_vs_logical_clear.py) was executed offline against the actual user-supplied original ZIP and PASSed, without modifying any binary. The original older note is retained for archaeology; this new evidence supersedes its incorrect pointer interpretation.
+
+## ADDENDUM — Contra ghost JUMP also occurs when user operates BUILT-IN P1 and leaves external GP2040 UNTOUCHED (2026-10-24)
+
+**NEW HW observation from user, narrowly scoped:** With the XGO native `Handle=P1` setting still selected and the external GP2040-CE connected, the user actively plays Contra with the **built-in XGO controls**, **does not touch the external controller**, and still observes the spontaneous P1 JUMP. The user describes the external P1 function as "hijacking" P1. This explicitly rules out *intentional contemporaneous external button presses* as a necessary trigger for the ghost jump. It does **not** rule out electrical/serial false-pressed bits from that physically connected but idle external controller, built-in stream faults, a mapped key, or game interpretation. No P2-mode, unplugged, or other comparison has been reported in this new clarification: DO NOT invent one. The SFII LP behavior was not retested or attributed to built-in versus external by this clarification.
+
+**Verified routing explanation [SRC/BIN]:** The GOLD firmware's Handle-P1 helper ORs the two **pressed** masks. It does not give the local controls exclusive priority or temporarily disable the Handle when built-in buttons are pressed. In the absence of RF activity:
+
+```text
+user drives built-in P1; external RP2040 physically idle/connected
+       host raw local P1 (B15) -------+
+                                      OR ---> game-visible logical P1
+       host raw Handle P2 (L0) -------+
+          (should be zero if truly clean)
+```
+
+Thus the model's distinction is *physical GP2040 buttons idle* != *XGO host successfully sampled Handle raw P2 as all-zero*. A transient false pressed bit from L0 is transmitted through the OR as logical P1. Under embedded FC defaults, R, X, and A can all map to Jump; exact loaded Contra `.kmp` unknown. If physical local P1/B15 or auxiliary P1 yields the erroneous bit instead, that too reaches logical P1. The OR cannot generate a one when every input source was zero.
+
+**Prior passive P3 corroboration [historical HW with different cable]:** An RP2040 connected via an ordinary passive-USB-PHY configuration had already caused unintended P2 jumps without sending intentional active DATA. It supplies precedent for connected-but-not-actively-pressed electrical perturbation, **not** proof that the current transparent firmware, Frankie V2 Jr, and P1-mode test share the same root cause.
+
+### Single high-value *future* logical-mode discriminator (not a request for new testing now)
+
+Keep the **same connected, untouched external controller and same built-in P1 Contra gameplay**, change **only** the GOLD Setup setting between Handle=P1 and Handle=P2. The serial reader still polls physical L0 in both cases; mode changes the logical destination for its decoded pressed state.
+
+- Ghost jump appears with Handle=P1 but disappears when set to P2: consistent with a spurious Handle raw P2 bit being merged into P1 (or a mode-specific normalizer defect). Does NOT prove electrical cause.
+- Ghost jump persists with Handle=P2 while playing built-in P1: external-to-P1 merge is not necessary; prioritize local B15/aux/P1 mapping or other common input path. It does NOT prove external cable electrically harmless.
+- No ghost during a limited run in either mode: **inconclusive** for an intermittent symptom; do not mark fixed based only on absence.
+
+This is a targeted **conditional discriminator**, not a completed test, new firmware candidate, or user instruction to repeatedly reproduce the issue.
+
+**Immediate engineering direction:** prioritize idle-L0 DATA/LOAD recovery and false-positive bit attribution, not SFII tap sampling, and *do not* patch one-sided R/button filtering, physical holds, native P1 mode, Frankie wiring, BIOS, or PHY pull-up based on this one observation. Preserve protected XGO GOLD SHA `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b` and transparent GP2040 A UF2 SHA `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`. Paged OLED B remains unflashed and cannot be credited for curing ghosting.
