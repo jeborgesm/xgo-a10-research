@@ -229,6 +229,16 @@ int main() {
     require(emit_frame(),"Synthetic slot0 settle lag should complete");
     require(host.decoded==(RIGHT|FIRE|JUMP_R),
             "Synthetic slow DATA rise must cause isolated slot0 false jump");
+    // XGO NES default also maps X/slot2 to turbo A/JUMP.
+    // If a HYPOTHETICAL unusually long DATA-low tail persists through
+    // slot2's model sample, a jump can occur without R/slot0 being the
+    // uniquely relevant button. This is NOT a measured voltage/rise-time.
+    init_host(RIGHT|FIRE,0,7.5);
+    (void)emit_frame();
+    require((host.decoded & (1u<<2)) != 0,
+            "Synthetic 7.5us DATA settling tail should falsely assert X/slot2");
+    std::printf("synthetic slow DATA release: false X/slot2=YES "
+                "(NES turbo jump mapping, UNMEASURED)\\n");
 
     // Model a CPU stall after completing FIRE slot5 CLOCK-high handshake.
     // A sufficiently long stall leaves FIRE asserted while host advances
