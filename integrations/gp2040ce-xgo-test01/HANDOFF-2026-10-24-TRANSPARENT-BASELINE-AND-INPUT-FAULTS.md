@@ -1,3 +1,16 @@
+## SF900/SF2000 KNOWN-GOOD RF COMPARATOR — NEW OFFLINE EVIDENCE (2026-10-24)
+
+User owns SF900 wireless controllers that reliably operate their SF2000 and select P1/P2 with physical switch. User suggested comparing those with ongoing XGO/GP2040 transparent-controller fault research, **not changing direction or requesting a radio redesign**. Work completed offline:
+
+- **XGO original BIN verified**: the five stock SF2000/SF900 XN297L RF channel/address/calibration sequences are each present exactly once at 0xC2D0E8..0xC2D10C; MIPS at 0x35D6E8 RX-ready 0x40, 0x35DE44 payload command 0x61, 0x35DE4C 2-byte length, and 0x35DE7C P1/P2 status 0x02. Exact original `bios/bisrv.asd` hash 869e056d000337e1b10c834f0a93244c0abd99457c1c8374367f7dff20e43daf. Read-only verifier PASS.
+- **Upstream SRC cross-check**: pinned 2026-10-24 UniFrog XN297L driver and independently implemented ESP32-S3 SF900 receiver confirm `raw=(pkt[0]<<8)|(~pkt[1]&255)`, status/pipe P1=0x40, P2=0x42, all twelve XGO pressed-button masks match. Wireless uses complete CRC-protected packets; wired XGO remains vulnerable to host-driven DATA release and bit0 sampling. Hardware XGO RF receiver population **still OPEN**.
+- **Specific wired family clue:** current *UniFrog replacement SF2000/GB300 scanner* inserts deliberate **4us DATA settle** after 4us host LOAD-low and before sampling R0; original XGO host scanner explicitly lacks the same settle. This is SRC design evidence and a falsifiable comparator, **not stock SF2000 proof, XGO measured threshold, or permission to patch GOLD firmware**.
+- Offline MODEL PASS: 4096 distinct button masks in P1 and P2 from a correctly decoded RF packet match XGO's correctly decoded wired serial bits; hypothetical first-slot false R can contaminate only the wired acquired state in this constructed comparison.
+
+[Full SF900/SF2000 comparison](findings/2026-10-24-SF900-SF2000-KNOWN-GOOD-RF-VERSUS-XGO-HANDLE.md), [original XGO RF byte verifier](tests/test_sf900_sf2000_rf_lineage_original_xgo.py), [4096x2 mask model](tests/test_sf900_xgo_button_state_boundary.py). Preserve XGO GOLD firmware and user-tested GP2040 A, paged OLED B stays unflashed. No new hardware trials.
+
+---
+
 ## NEW RETROSPECTIVE — OLED ERROR COUNTERS WERE REAL RESPONDER TIMEOUTS, NOT CONFIRMED WRONG BUTTONS (2026-10-24)
 
 The user's observation that diagnostic OLED screens *always recorded errors* is supported by hardware photo logs. Test48 final **ERR=628=CLK597+REL31**, of which **S12=421**. Test49 controlled final **CLK=320, S12=226**; phantom JUMPs and unsolicited PAUSE occurred before/during those photos while GP2040 P0..P4 processed-edge counts stayed zero. **~70% of CLOCK timeouts were classified as slot12 in each final photo**, yet S12 can be missed *terminal falling edge* OR missed *trailing rise* **after all 12 button slots were output**. Those may be false-negative completion status without wrong XGO bits. Conversely 176 Test48 and 94 Test49 controlled errors classified at **non-S12** clock waits and present a stronger mid-frame integrity risk. Derived accounting lower bounds: at least 304 of 421 Test48 S12 and 165 of 226 Test49 S12 were terminal **falling** timeout classifications, using available LO/HI totals. This distinction is SOURCE+HW-RETRO, not a current firmware error frequency measurement.
