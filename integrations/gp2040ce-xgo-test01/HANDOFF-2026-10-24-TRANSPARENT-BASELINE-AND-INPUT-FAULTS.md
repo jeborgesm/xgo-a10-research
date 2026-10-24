@@ -1,3 +1,11 @@
+## CRITICAL NEW HW CONTEXT — RECENT SFII/CONTRA TESTS WERE LOGICAL P1 (2026-10-24)
+
+The user explicitly clarified that ALL their recently reported transparent-controller gameplay observations (SFII defeated Dhalsim; LP missed/triple punch; Contra playable with/without X/Y native turbo and intermittent unsolicited JUMP) were observed with the **XGO native Setup Handle=P1 setting selected**. This is not ordinary stock Handle=P2 gameplay. The **RP2040 still transmits on the physical Handle P2/L0 serial line**; the GOLD XGO firmware merges **built-in physical P1/B15 OR physical Handle P2/L0** (plus existing P1 auxiliary input) into **logical P1** at the native normalizer. It suppresses physical Handle contribution to logical P2. Full source/binary provenance, verified GOLD hashes, correction of fault attribution, and 3,200-case SOURCE-derived MODEL are in [CRITICAL actual-P1 configuration findings](findings/2026-10-24-CORRECTION-HANDLE-P1-ACTUAL-TEST-CONFIGURATION.md).
+
+**Binding correction:** P2-slot0 scanner remains physically relevant, but current user-visible JUMP/LP actions are **P1 game input** and can arise from either physical channel or downstream P1 mapping. A correct OR merge cannot fabricate a pressed bit. Prior P2-only claims for the recent tests are superseded. Historical P2 passive probes remain P2 observations. Do not confuse this GOLD XGO host BIOS with the separate protected GP2040 transparent UF2. Neither device's firmware was modified in response to this clarification.
+
+---
+
 # XGO A10 / GP2040-CE — DEFINITIVE ENGINEERING HANDOFF
 
 **Checkpoint:** 2026-10-24, after user's successful transparent-controller gameplay test and subsequent offline OLED-pagination investigation  
