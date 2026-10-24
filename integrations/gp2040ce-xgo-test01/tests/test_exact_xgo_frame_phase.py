@@ -84,12 +84,20 @@ int main(){
     }
   }
   std::printf("PASS policy=%d: all 4096 ideal masks\n",CLOCK_FIRST);
-  for(double rise:{0.,.7,2.1,3.6}){
+  // R0 pressed takes the protected early-sink path, which does NOT gate
+  // the later bits on DATA HIGH. Even there the host can sample a false Y
+  // when the external line remains low into the second bit's sample.
+  auto held_r_a=trial((1u<<0)|(1u<<4),3.6);
+  std::printf("policy=%d HELD_R_A rise=3.6 host=%04x ok=%d clkerr=%u\\n",
+      CLOCK_FIRST,held_r_a.host,held_r_a.ok,held_r_a.clk);
+  if(!held_r_a.ok||held_r_a.host!=0x3080||held_r_a.clk)return 6;
+  for(double rise:{0.,.3,.7,2.1,3.0,3.6}){
     auto r=trial(1<<4,rise);
     std::printf("policy=%d rise=%.1f host=%04x ok=%d clkerr=%u slot=%u\n",
       CLOCK_FIRST,rise,r.host,r.ok,r.clk,r.slot);
     if(rise==0 && (!r.ok||r.host!=0x0080))return 2;
-    if((rise==.7||rise==2.1)&&(!r.ok||r.host!=0x1080))return 3;
+    if((rise==.3||rise==.7||rise==2.1||rise==3.0)
+       &&(!r.ok||r.host!=0x1080))return 3;
     if(rise==3.6){
       if(CLOCK_FIRST){if(!r.ok||r.host!=0x3080||r.clk)return 4;}
       else{if(r.ok||r.host!=0x3040||r.clk!=1||r.slot!=12)return 5;}
