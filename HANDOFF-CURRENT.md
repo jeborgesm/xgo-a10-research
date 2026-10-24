@@ -1,3 +1,11 @@
+# CRITICAL USER HW CLARIFICATION — HANDLE=P1 IN CURRENT CONTROLLER TESTS (2026-10-24)
+
+User reports latest transparent GP2040-CE SFII and Contra testing was done in **XGO GOLD Setup Handle=P1 mode**, so game-visible actions are **logical Player 1**, NOT stock Player 2. The physical RP2040 still drives the **external P2/L0 serial line**, while XGO's native normalizer merges its raw active-high pressed word with **built-in P1/B15** into logical P1 (normal RF P1 preserved). This creates **two physical sources** for P1. A correct OR cannot invent an input bit, so physical false R from EITHER source or later P1 mapping remains possible. The previous P2-only fault attribution must be revised without discarding historical P2 passive sessions. See [actual-P1 configuration correction](integrations/gp2040ce-xgo-test01/findings/2026-10-24-CORRECTION-HANDLE-P1-ACTUAL-TEST-CONFIGURATION.md) and the [updated master handoff](integrations/gp2040ce-xgo-test01/HANDOFF-2026-10-24-TRANSPARENT-BASELINE-AND-INPUT-FAULTS.md).
+
+**Protected separately:** XGO GOLD host BIOS SHA `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`; user-tested GP2040 transparent UF2 A SHA `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`; paged-OLED GP2040 UF2 B SHA `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b` STILL UNFLASHED. Neither firmware has been modified. Do not request repeat hardware tests at this point.
+
+---
+
 # XGO ARCHEOLOGY — CURRENT CHECKPOINT (2026-10-24)
 
 **Authoritative active thread:** GP2040-CE transparent controller signal reliability; do not restart the historical Test14/Test15 project detailed below. Read [the current October 24 master handoff](integrations/gp2040ce-xgo-test01/HANDOFF-2026-10-24-TRANSPARENT-BASELINE-AND-INPUT-FAULTS.md), [controller-transparency contract](integrations/gp2040ce-xgo-test01/CONTROLLER-TRANSPARENCY-CONTRACT.md) and the [branch-local handoff](integrations/gp2040ce-xgo-test01/HANDOFF-CURRENT.md) **before** the old text below. Branch `research-gp2040ce-xgo-integration`.
