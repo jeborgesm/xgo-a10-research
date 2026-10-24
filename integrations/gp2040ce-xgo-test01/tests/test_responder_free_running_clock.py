@@ -20,6 +20,7 @@ SOURCES = (
     ('Test44-playable-SPSC', ROOT / 'offline-test44-spsc-ram-playable/XGODriver.cpp'),
     ('Test44-coherent-SPSC', ROOT / 'offline-test44-spsc-coherent-ram/XGODriver.cpp'),
     ('Test44-XGO-native-XY-hold', ROOT / 'offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp'),
+    ('XGO-transparent-controller', ROOT / 'offline-test44-transparent-controller/XGODriver.cpp'),
 )
 
 PRELUDE = r"""

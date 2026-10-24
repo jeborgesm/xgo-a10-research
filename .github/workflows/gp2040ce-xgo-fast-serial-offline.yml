@@ -23,6 +23,9 @@ on:
       - 'integrations/gp2040ce-xgo-test01/tests/test_nes_jump_origins.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_passive_phy_jump_baseline.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_transparent_controller_end_to_end.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/**'
       - 'integrations/gp2040ce-xgo-test01/CONTROLLER-TRANSPARENCY-CONTRACT.md'
       - 'integrations/gp2040ce-xgo-test01/tests/test_test44_spsc_lineage.py'
       - 'integrations/gp2040ce-xgo-test01/tests/audit_ram_hotpath_elf.py'
@@ -68,6 +71,9 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_nes_jump_origins.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_passive_phy_jump_baseline.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py --candidate integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/XGODriver.cpp
+          python3 integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_transparent_controller_end_to_end.py
       - name: Report fast regression result for downstream review
         if: always()
         env:

@@ -22,6 +22,7 @@ SOURCES = (
     ("Test44-playable-SPSC", ROOT / "offline-test44-spsc-ram-playable/XGODriver.cpp", True),
     ("Test44-coherent-SPSC", ROOT / "offline-test44-spsc-coherent-ram/XGODriver.cpp", True),
     ("Test44-XGO-native-XY-hold", ROOT / "offline-test44-spsc-xy-native-turbo-hold/XGODriver.cpp", True),
+    ("XGO-transparent-controller", ROOT / "offline-test44-transparent-controller/XGODriver.cpp", True),
 )
 
 PRELUDE = r"""
@@ -244,7 +245,8 @@ def extract(source):
     assert function.count("bool emit_frame()") == 1
     assert ("pending_press_edges.exchange(0, std::memory_order_acq_rel)" in function
             or "attack_edge_generation[bit].load(std::memory_order_acquire)" in function
-            or "attack_edge_generation[bit].load(std::memory_order_seq_cst)" in function)
+            or "attack_edge_generation[bit].load(std::memory_order_seq_cst)" in function
+            or "const uint16_t mask = physical;" in function)
     assert "if (!complete) require_idle_high = true;" in function
     return function
 
