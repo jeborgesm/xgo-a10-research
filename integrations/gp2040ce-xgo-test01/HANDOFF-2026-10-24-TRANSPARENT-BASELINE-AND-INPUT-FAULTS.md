@@ -1,3 +1,13 @@
+## 2026-10-24 LATEST: XGO P1 R CONDITIONALLY SHIFTS EXTERNAL R0 SAMPLE; PASSIVE USB PHY GHOST
+
+[New evidence report](findings/2026-10-24-USBPHY-PASSIVE-GHOST-AND-P1-CONDITIONED-P2-R-WINDOW.md). The real original XGO firmware BIN verifier [here](tests/verify_xgo_p1_r_conditioned_p2_first_sample.py) passed on original SHA-pinned `XGoAnalisis.zip`. Native P1 R **released/HIGH** makes MIPS BNE at `0x8035D878` take the short path to L0 physical P2 R0 read `0x8035D890`. Native P1 R **pressed/LOW** executes 4 extra instructions before the P2 R0 sample. This *polarity* and instruction count are confirmed BIN, not a measured voltage or sample timing delta.
+
+[Current-versus-P3 native PHY audit](tests/test_current_phy_passive_ghost_comparator.py), [GREEN CI #40153719664](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40153719664), confirms identical ten PHY override settings, native RX, source P3 output completely disabled. Yet actual passive P3 hardware with ordinary cable caused unsolicited P2 JUMPs, so active transmitted button masks are not necessary for that earlier electrical symptom. Historical forced DM-pullup override froze XGO. P0 actual DATA rise is 0.9–1.3us before first CLOCK FALL; actual first-bit sample before FALL, voltage at that time OPEN. Current working Frankie V2 Jr has a bridge between **physical pads 2 and 4 via WHITE**; earlier passive ordinary cable does not. Do not assume the two conditions have identical electrical loading.
+
+Remain on protected GP2040 transparent controller A, XGO GOLD BIOS, and current Frankie cable; paged OLED B unflashed. No new firmware/hardware tests; no DM pullup changes or timing guesses.
+
+---
+
 ## LATEST CI-PASSED EXACT C++ TWO-FRAME REARM + MISSED CLOCK SWEEP (2026-10-24)
 
 New investigation [full bounded fault report](findings/2026-10-24-TWO-FRAME-RECOVERY-AND-SLOT12-ERROR-AMBIGUITY.md), [exact protected responder chronological source test](tests/test_exact_xgo_rearm_two_frames.py), [GREEN CI #40129993336](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40129993336). **No firmware edited.**
