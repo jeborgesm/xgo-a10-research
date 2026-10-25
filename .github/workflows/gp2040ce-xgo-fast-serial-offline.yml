@@ -24,6 +24,7 @@ on:
       - 'integrations/gp2040ce-xgo-test01/tests/test_xgo_native_xy_turbo.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_nes_jump_origins.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_passive_phy_jump_baseline.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_current_phy_passive_ghost_comparator.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_transparent_controller_end_to_end.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py'
@@ -76,6 +77,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_xgo_native_xy_turbo.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_nes_jump_origins.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_passive_phy_jump_baseline.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_current_phy_passive_ghost_comparator.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py --candidate integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/XGODriver.cpp
           python3 integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py
