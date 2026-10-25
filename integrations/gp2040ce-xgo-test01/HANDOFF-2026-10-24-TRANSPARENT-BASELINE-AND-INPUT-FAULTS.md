@@ -1,3 +1,13 @@
+## LATEST 2026-10-24 — P0 PER-FRAME DIGITAL TRACE ANALYZER GREEN CI; ROOT CAUSE STILL OPEN
+
+[Forensic checkpoint](findings/2026-10-24-P0-PER-FRAME-FORENSIC-DIAGNOSTIC.md): new [P0 analyzer](../../tools/rp2040-xgo-p0/analyze_frames.py) and [four synthetic tests](../../tools/rp2040-xgo-p0/test_analyze_frames.py), [CI SUCCESS #40163021139](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40163021139). Runs **host-side** on existing 10MHz passive PIO two-bit `BEGIN XGO_P0` dumps; no Pico firmware modification. Separates per-frame 12 pulse count anomalies, clock LOW/HIGH min/max and >18us stretches, DATA load/release offset to first CLOCK, and DATA transitions; exports JSON/CSV. Tests verify two valid frames, eleven-clock input, both stretched clock phases, and DATA near initial R-bit ambiguity. Existing fast-serial regressions remain GREEN.
+
+**Critical hardware proof gap:** XGO original BIN reads external R/slot0 **BEFORE first CLOCK fall**, so DATA voltage at first CLOCK fall is not the actual host-decoded R. P0 digital threshold captures alone cannot reveal the MIPS read strobe, actual host threshold, analog rise time, or current Frankie V2 Jr PHY timing. No saved complete P0 raw dataset is present in the repository; previous P0 timing data is summarized in historical HW notes. Historical P0 loose-wire probe differs electrically from the current Frankie bridged connector and probe connections previously induced P2 phantom jump. Do not attach extra Pico casually or claim old P0 is current fault capture.
+
+The protected transparent A `XGODriver.cpp` and XGO GOLD firmware remain unchanged. The optional paged OLED B stays unflashed. A proper independent nonperturbing electrical DATA/CLOCK capture is still needed; do not manufacture a new firmware timing fix from this tool alone.
+
+---
+
 ## LATEST — REAL P0 CLOCK HIGH IS ~1.36US AVERAGE; PROTECTED ARM POLLING LOOP AUDITED (2026-10-24)
 
 The source-first reliability investigation found a material correction to previous host models. Actual P0 **10MHz digital HW** complete 12-pulse capture (from `experiments/rp2040-passive-probe-p0.md`): clock first FALL 13675.5µs, last RISE 13723.6µs = **48.1µs** span. Individual 12 LOW widths sum **33.1µs** = mean LOW 2.7583µs, leaving **15.0µs** across **11** inter-pulse HIGH gaps = **mean HIGH 1.3636µs** (not the 2/2µs assumed in older models). These are one historical P0 frame, NOT actual current Frankie trace, individual HIGH minima UNKNOWN.
