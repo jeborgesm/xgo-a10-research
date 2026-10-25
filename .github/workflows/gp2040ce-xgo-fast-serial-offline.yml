@@ -40,6 +40,8 @@ on:
       - 'integrations/gp2040ce-xgo-test01/candidates/offline-terminal-postamble/**'
       - 'integrations/gp2040ce-xgo-test01/candidates/test49-attack-edge-provenance/XGODriver.cpp'
       - 'integrations/gp2040ce-xgo-test01/candidates/test50-pause-edge-provenance/XGODriver.cpp'
+      - 'tools/rp2040-xgo-p0/analyze_frames.py'
+      - 'tools/rp2040-xgo-p0/test_analyze_frames.py'
       - 'tools/rp2040-xgo-live-controller/main.c'
       - 'tools/rp2040-xgo-native-contra/main.c'
 
@@ -71,6 +73,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_rearm_two_frames.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_xgo_irq_stretched_clock_exact_cpp.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_p0_measured_short_clock_high_exact_cpp.py
+          python3 tools/rp2040-xgo-p0/test_analyze_frames.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_armv6m_atomic_codegen.py
