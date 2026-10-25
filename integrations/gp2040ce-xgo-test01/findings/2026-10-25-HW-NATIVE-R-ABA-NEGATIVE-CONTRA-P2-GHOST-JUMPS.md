@@ -47,7 +47,7 @@ The *physical* P2 scanner still makes this decision in both logical Handle=P1 an
 
 Do not make a GP2040 firmware change, XGO GOLD sampling-delay patch, DM pull-up override change (previously froze XGO), or Frankie wiring adjustment based on the A–B–A result. No need to repeat this exact experiment.
 
-The next offline discriminator should inspect the **actual active P2 Contra keymap** if the matching 48-byte `.kmp` exists in available SD evidence, and distinguish jump-capable physical R/X/A bits and START-related anomalies. If no loaded `.kmp` available, state the OPEN gate rather than assuming stock fallback.
+The next offline discriminator should inspect the **actual active P2 Contra keymap** if the matching 48-byte `.kmp` becomes available, and distinguish jump-capable physical R/X/A bits and START-related anomalies. **Local artifact inventory this turn:** the mounted `XGoAnalisis.zip` contains **115 entries, zero `.kmp` files and zero `Contra`-named paths**; the other three mounted ZIPs (the controller baseline, paged OLED candidate, and linked ELF audit) also contain no `.kmp` or `Contra` paths. No actual active SD save-directory `.kmp` has been supplied here. Therefore **the loaded Contra mapping remains OPEN**; do not silently substitute the embedded NES fallback for it.
 
 For direct root-cause closure, instrument real raw XGO L0 and CLK during a ghost under a non-perturbing capture setup, or obtain a verified per-frame host decoded word. The now-green P0 per-frame analyzer can process a valid clock/data dump but cannot see the host's first R sample strobe. Current Frankie V2 Jr self-DMA tracing has not been cleared as noninterfering and must not be silently flashed.
 
