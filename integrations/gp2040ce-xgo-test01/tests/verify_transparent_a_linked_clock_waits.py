@@ -25,7 +25,7 @@ def verify(path):
     text=data.decode()
     assert "200000f0 <(anonymous namespace)::emit_frame()>:" in text
     inst={}
-    for a,word in re.findall(r"^([a-f0-9]{8}):\\s+([a-f0-9]{4,8})\\s+",text,re.M):
+    for a,word in re.findall(r"^([a-f0-9]{8}):\s+([a-f0-9]{4,8})\s+",text,re.M):
         inst[int(a,16)]=word
     for group in (LOW,HIGH,LITERALS):
         for offset,expected in group.items():
