@@ -2,6 +2,8 @@
 
 **Date:** 2026-10-25. Branch: `research-gp2040ce-xgo-integration`. **Status:** verified XGO-original [BIN], verified GOLD mode semantics [SRC/MODEL], old passive spontaneous P2 jumps [HW], new reversible single-session diagnostic [PROPOSED HW]. No firmware or wiring changes.
 
+> **EXPERIMENT CLOSED — HW NEGATIVE (2026-10-25):** The user has now executed this A–B–A with spontaneous P2 Contra jumps in all three phases and approximately the same observed rate. There was **no observable change** when native R was held. Do NOT present Section 3 below as a pending test or re-request it. The original first-bit four-instruction branch is real, but its marginal timing shift is **not a supported practical cure/primary discriminator** in this observed condition. Treat remaining PHY loading, later serial bits, and CLOCK alignment separately. [Full user hardware result and revised fault tree](2026-10-25-HW-NATIVE-R-ABA-NEGATIVE-CONTRA-P2-GHOST-JUMPS.md). No firmware or cable changes.
+
 ## 1. Stop designing synthetic timeouts and target the known idle ghost
 
 The hardware root cause of ghost Contra jumps remains OPEN. In earlier independent electrical tests, merely attaching a passive native-USB-PHY Pico via ordinary Micro-USB cable caused P2 spontaneous JUMP with no transmitted button bits; connecting a scope probe to GREEN P2 DATA also produced unsolicited P2 jump. Protected GP2040 transparent A is playable (including SFII); live held-button faults and idle ghost action remain OPEN. The current Frankie V2 Jr has its own special physical pad bridge and is **not** electrically identical to the P3 cable.
