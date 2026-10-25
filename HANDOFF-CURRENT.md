@@ -1,3 +1,11 @@
+# LATEST — P0 DATA/CLOCK FRAME-LEVEL ANALYZER IMPLEMENTED AND VALIDATED (2026-10-24)
+
+[New finding](integrations/gp2040ce-xgo-test01/findings/2026-10-24-P0-PER-FRAME-FORENSIC-DIAGNOSTIC.md), [analyzer](tools/rp2040-xgo-p0/analyze_frames.py), [four synthetic P0 capture tests](tools/rp2040-xgo-p0/test_analyze_frames.py), [GREEN existing fast XGO CI #40163021139](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40163021139). New analyzer decodes unchanged P0 `BEGIN XGO_P0` packed 10MHz CLOCK+DATA text captures per polling frame: number of real clock pulses, each LOW/HIGH length/min/max, >18us clock stretches, DATA host load and release-to-first-clock interval, and DATA edges. JSON/CSV exports; no new UF2 or firmware changes. CI regression passed two scans, missing pulse/truncated input, stretched clock HIGH/LOW and R0 ambiguous DATA scenario.
+
+**Important limit:** external R/slot0 is sampled on XGO MIPS **before first CLOCK**, so no P0 digital GPIO capture by itself can prove what R bit the host read. Historical P0 pulse averages do not equal current Frankie analog timing. The old P0 breakout probe and bridged Frankie V2 Jr cable are distinct, and old probing itself induced P2 jumps. There is no complete original raw P0 capture in this repository. This closes trace-decoder tooling, **NOT** the live ghost-input root cause. Protected transparent controller A and GOLD firmware unchanged, paged OLED B not flashed. Actual nonperturbing DATA/CLOCK physical evidence still required to distinguish false-R electrical recovery from missed/stretched CLOCK; do not guess a firmware patch.
+
+---
+
 # LATEST — HARDWARE CLOCK HIGH ~1.36US VS LINKED RP2040 SEVEN-INSTRUCTION POLLING (2026-10-24)
 
 [New HW/source/CI comparison](integrations/gp2040ce-xgo-test01/findings/2026-10-24-P0-CLOCK-HIGH-DUTY-CYCLE-AND-LINKED-RP-POLL-LATENCY.md). Original user P0 10MHz capture: 12 clock LOW widths total **33.1µs** in first FALL→final RISE **48.1µs**; eleven intervening HIGH phases total 15.0µs = **mean HIGH 1.364µs**, mean LOW 2.758µs, not the prior ideal model's 2us HIGH/2us LOW. HIGH mean is one old idle capture, no individual distribution nor current Frankie waveform; at least one HIGH <=1.364µs, but exact minimum OPEN.
