@@ -59,7 +59,7 @@ Code: [`tests/test_xgo_irq_stretched_clock_exact_cpp.py`](../tests/test_xgo_irq_
 - Eleven separate cases: adds 25us HIGH gap after host pulse #1 through #11.
 - The second host scan is normal, scheduled after a virtual 16,030us cadence; physical RP `published_mask` remains A held for both.
 
-The first Actions execution [run #40160312569](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40160312569) was **GREEN** with all assertions. Afterward the test corrected an output label from "23" to "**24**" because there are 1+12+11 cases; no algorithm/expected-outcome change. CI is triggered again for that label-only commit. **All virtual times/lengths are constructed tests, not real measurements.**
+The first Actions execution [run #40160312569](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40160312569) was **GREEN** with all assertions. Afterward the test corrected an output label from "23" to "**24**" because there are 1+12+11 cases; no algorithm/expected-outcome change. [Latest CI #40160377104](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40160377104) **GREEN** after the label-only correction. **All virtual times/lengths are constructed tests, not real measurements.**
 
 ### Classification results
 
