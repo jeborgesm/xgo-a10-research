@@ -64,7 +64,7 @@ Pico SDK 2.3.1 source exposes `dma_timer_set_fraction(timer,numerator,denominato
 
 However, **this is not yet a validated noninterfering instrument**, for five reasons:
 
-1. At a *hypothetical* 10 MHz sampling rate the DMA would consume **40 MB/s of extra peripheral-read/SRAM-write traffic**. The exact protected RP Core1 seven-Thumb-instruction polling loops ALSO read that USB PHY register and a timer; shared bus arbitration can alter the event being measured.
+1. At a *hypothetical* 10 MHz sampling rate the DMA would consume **40 MB/s of MMIO reads plus 40 MB/s of SRAM writes, approximately 80 MB/s aggregate data movement**. The exact protected RP Core1 seven-Thumb-instruction polling loops ALSO read that USB PHY register and a timer; shared bus arbitration can alter the event being measured.
 2. A 16 KiB write-wrapping ring holds about **409.6us** at 10Msamples/s (4096 32-bit samples), enough for an ~50us burst **only if DMA is actually paced evenly and frozen promptly**.
 3. DMA request pacing does not prove that reads complete at evenly spaced instants when MMIO/AXI/APB fabric is contended. The RP2040 bus/PHY access and chosen timer need independent timing qualification.
 4. Capturing a host DATA/CLOCK waveform still cannot read the actual XGO MIPS instruction/sample register; **false R0 can be decoded in an otherwise responder-successful frame**, so triggering a buffer only on RP CLK timeout misses crucial ghosts.
