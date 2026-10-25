@@ -33,7 +33,7 @@ mock=mock.replace("constexpr double first_fall=1.2, low_width=2.0, period=4.0;",
                   "constexpr double first_fall=1.2;\n"
                   "double low_width=2.0, period=4.0;\n"
                   "double observation_us=.035, arming_phase_us=0;")
-assert mock.count("now+=0.035;")==4
+assert mock.count("now+=0.035;")==3
 mock=mock.replace("now+=0.035;", "now+=observation_us;")
 
 # The original trial() sets now=-6. This is harmless when frames finish, but
