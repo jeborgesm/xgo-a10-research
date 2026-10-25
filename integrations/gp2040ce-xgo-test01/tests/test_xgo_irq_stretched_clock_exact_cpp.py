@@ -83,7 +83,7 @@ def run():
             if case.returncode:raise RuntimeError(
                 f"CASE {scenario} FAILED={case.returncode}:\n"
                 +case.stdout+"\n"+case.stderr)
-    print("PASS: all 23 synthetic host-IRQ pulse/gap cases; "
+    print("PASS: all 24 synthetic host-IRQ pulse/gap cases; "
           "actual XGO IRQ timings remain OPEN")
 
 if __name__=="__main__":run()
