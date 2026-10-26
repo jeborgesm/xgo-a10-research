@@ -61,6 +61,6 @@ Before any *transport-only* fix: establish DATA HIGH-bias source and compatible 
 
 ## 6. Preservation and next gate
 
-**Protected:** XGO GOLD `bios/bisrv.asd` SHA256 `75f858b6d9a1eb81235ae8e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`; transparent A GP2040 source Git blob `cccb985a05baa8bb9078b6e336eb5f991c1a7a8f`, UF2 SHA256 `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`; page-OLED B UF2 SHA256 `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b` unflashed.
+**Protected:** XGO GOLD `bios/bisrv.asd` SHA256 `75f858b6d9a1eb81235ae9e9c9b449a6a3052ad4365e5411b8ce041075e99d6b`; transparent A GP2040 source Git blob `cccb985a05baa8bb9078b6e336eb5f991c1a7a8f`, UF2 SHA256 `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`; page-OLED B UF2 SHA256 `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b` unflashed.
 
 The new read-only source guard runs in the **existing XGO fast-serial CI**. Its optional user-stock image mode validates actual MIPS bytes when the original archive is provided locally. There is NO new hardware measurement or proven physical fix in this report. **Next investigation focus is a voltage/bias ownership audit for DP/L0**, not a Contra ROM or keymap, and not a speculative GPU/display effect on idle phantom inputs.
