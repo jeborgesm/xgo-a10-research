@@ -1,6 +1,8 @@
 # Controller reliability — connected vs disconnected Handle electrical isolation gate
 
-**Created 2026-10-26**. Experimental protocol **PROPOSED, NOT YET EXECUTED**, designed after verifying original XGO L0 low-drive/input release, RP2040 DP pull-up forced OFF/Hi-Z idle and HC15xx GPIO family source. **No firmware, cable wiring, probes or external resistors modified.**
+**Created 2026-10-26**. Experimental protocol **EXECUTED: positive connected-dependent result**; originally designed after verifying original XGO L0 low-drive/input release, RP2040 DP pull-up forced OFF/Hi-Z idle and HC15xx GPIO family source. **No firmware, cable wiring, probes or external resistors modified.**
+
+> **EXPERIMENT EXECUTED — POSITIVE CONNECTION DEPENDENCY (2026-10-26) [HW].** The user completed the proposed three-phase comparison. **Connected:** spontaneous P2 actions with controller untouched. **Disconnected:** no spontaneous P2 actions observed. **Reconnected:** spontaneous P2 actions returned. The external-controller connection is a reproducible requirement for the observed symptom *in these sessions*, but this does not attribute the cause to PHY pull-up, cable, Pico firmware or XGO port. Exact counts and host decoded states unavailable. **DO NOT re-request this already completed A1–B–A2 test or treat Section 2 below as pending.** See [full executed HW report, revised causal ranking, and proposed same-cable receive-only gate](2026-10-26-HW-HANDLE-CONNECTION-A-B-A-GHOST-DEPENDENCY.md). No firmware or wiring changes.
 
 ## Why this comparison is informative
 
