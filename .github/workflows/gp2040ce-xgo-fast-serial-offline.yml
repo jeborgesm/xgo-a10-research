@@ -44,6 +44,7 @@ on:
       - 'tools/rp2040-xgo-p0/test_analyze_frames.py'
       - 'tools/xgo-protocol-audit/audit_fc_keymap.py'
       - 'tools/xgo-protocol-audit/test_audit_fc_keymap.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/verify_xgo_data_line_bias_contract.py'
       - 'tools/rp2040-xgo-live-controller/main.c'
       - 'tools/rp2040-xgo-native-contra/main.c'
 
@@ -77,6 +78,7 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_p0_measured_short_clock_high_exact_cpp.py
           python3 tools/rp2040-xgo-p0/test_analyze_frames.py
           python3 tools/xgo-protocol-audit/test_audit_fc_keymap.py
+          python3 integrations/gp2040ce-xgo-test01/tests/verify_xgo_data_line_bias_contract.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_armv6m_atomic_codegen.py
