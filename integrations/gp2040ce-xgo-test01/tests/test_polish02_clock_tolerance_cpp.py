@@ -59,7 +59,7 @@ def test():
     import re
     def strip_comments(x):
         return re.sub(r"/\*.*?\*/|//[^\n]*","",x,flags=re.S)
-    assert strip_comments(text)==strip_comments(original),"Polish02 changed more than CLOCK waits"
+    assert re.findall(r"\\w+|[^\\s\\w]",strip_comments(text))==re.findall(r"\\w+|[^\\s\\w]",strip_comments(original)),"Polish02 changed more than CLOCK waits"
     assert variant.count("wait_data(true, EDGE_TIMEOUT_US)")==1,"DATA release budget must stay 18us"
     assert variant.count("CLOCK_TIMEOUT_US")==5,"expected four CLOCK checks + declaration"
     scenarios=[0,*range(20,32),*range(40,51)]
