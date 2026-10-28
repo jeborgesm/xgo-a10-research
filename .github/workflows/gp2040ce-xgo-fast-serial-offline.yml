@@ -12,6 +12,8 @@ on:
       - 'integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_frame_phase.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_rearm_two_frames.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_xgo_irq_stretched_clock_exact_cpp.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_polish02_clock_tolerance_cpp.py'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/**'
       - 'integrations/gp2040ce-xgo-test01/tests/test_p0_measured_short_clock_high_exact_cpp.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py'
       - 'integrations/gp2040ce-xgo-test01/tests/test_slot0_release_settle_offline.py'
@@ -75,6 +77,8 @@ jobs:
           python3 integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_frame_phase.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_exact_xgo_rearm_two_frames.py
           python3 integrations/gp2040ce-xgo-test01/tests/test_xgo_irq_stretched_clock_exact_cpp.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_polish02_clock_tolerance_cpp.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py --candidate integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/XGODriver.cpp
           python3 integrations/gp2040ce-xgo-test01/tests/test_p0_measured_short_clock_high_exact_cpp.py
           python3 tools/rp2040-xgo-p0/test_analyze_frames.py
           python3 tools/xgo-protocol-audit/test_audit_fc_keymap.py
