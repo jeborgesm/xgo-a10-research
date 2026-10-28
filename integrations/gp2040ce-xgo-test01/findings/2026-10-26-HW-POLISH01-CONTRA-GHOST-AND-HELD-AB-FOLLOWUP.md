@@ -19,10 +19,10 @@ This is the latest explicit ghost result **on the hardware-positive paged-OLED P
 |---|---|---|
 | External P2 untouched | Intermittent unsolicited JUMP continues | **Confirmed unresolved controller reliability defect** |
 | A held in Contra | Owner sees repeat JUMP | Repetitions are real observed behavior, but input state vs game reaction is unmeasured |
-| B held in Contra | Owner sees repeat FIRE | Repetitions are real observed behavior; may be intended for some NES weapon types, not universally proof of pulses |
+| B held in Contra | Owner sees repeat FIRE | With the owner's confirmed initial single-shot rifle, repeated FIRE under one B hold is abnormal; do not attribute this case to Machine Gun autofire |
 | SFII gameplay | No missed inputs noticed; occasional held LP/MP repetition; beat opponents to bonus car | Paged OLED hardware-positive for practical responsiveness; not total correctness |
 
-**Important nuance:** The original NES Contra can continuously fire some equipped weapons (especially Machine Gun) while B remains held, per NES-period guides and gameplay documentation. This has **no bearing** on the undeniable phantom JUMP with the controller physically idle. Do not claim all repeated shots are malicious pulses or normal in all weapon states. Whether continuous held A makes the particular game build jump again on landing has **not been established** in this trial.
+**Corrected nuance:** Contra's starting rifle is manually triggered. The owner confirmed the unwanted B repetition happens with that rifle, before a Machine Gun upgrade. This is an abnormal held-B game action; it must not be dismissed as intentional weapon autofire. A continuous GP2040 physical hold still must remain a continuous *wire-level* held state—its intermittent decoded release/re-press remains a hypothesis, not a captured frame. Idle phantom jumping independently remains abnormal.
 
 ## Generic physical transparency contract [SRC]
 
