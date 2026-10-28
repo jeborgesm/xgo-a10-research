@@ -1,0 +1,195 @@
+name: XGO Polish02 clock tolerance + paged OLED build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research-gp2040ce-xgo-integration
+    paths:
+      - '.github/workflows/gp2040ce-xgo-polish02-build.yml'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/**'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/**'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_polish02_clock_tolerance_cpp.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_transparent_controller_end_to_end.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_xgo_oled_page_cpp.py'
+      - 'integrations/gp2040ce-xgo-test01/candidates/offline-transparent-page-oled/**'
+      - 'integrations/gp2040ce-xgo-test01/findings/OLED-PAGE-LATENCY-AND-CONTRA-JUMP-2026-10-24.md'
+      - 'integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py'
+      - 'integrations/gp2040ce-xgo-test01/findings/TRANSPARENT-CONTROLLER-SINGLE-TRIAL.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xgo-polish02-build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+  compile-audit-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate physical button transparency and historical Test44 provenance
+        run: |
+          set -euo pipefail
+          test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/XGODriver.cpp)" = "f445a1a6d8f9c871a80532e25cc5b1a3ac3b32a0"
+          test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/XGODriver.cpp)" = "cccb985a05baa8bb9078b6e336eb5f991c1a7a8f"
+          test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/ButtonLayoutScreen.cpp)" = "d15cfdc4953647c9d67e7467e244bf5da7233d76"
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py --candidate integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/XGODriver.cpp
+          test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/XGODriver.cpp)" = "eff10e585ee46805801c3d218d5d8412630dd650"
+          python3 integrations/gp2040ce-xgo-test01/tests/test_controller_transparency_contract.py --candidate integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/XGODriver.cpp
+          python3 integrations/gp2040ce-xgo-test01/tests/test_polish02_clock_tolerance_cpp.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py
+          test "$(git hash-object integrations/gp2040ce-xgo-test01/candidates/offline-transparent-page-oled/tiny_ssd1306.cpp)" = "e441ecc441a1d495413fbd56171a9a72e7321883"
+          python3 integrations/gp2040ce-xgo-test01/tests/test_xgo_oled_page_cpp.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_transparent_controller_end_to_end.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_responder_compiled_mock.py
+          python3 integrations/gp2040ce-xgo-test01/tests/test_responder_free_running_clock.py
+
+      - name: Cache ARM toolchain archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-arm-gp2040ce-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu2404
+      - name: Install cross-compiler and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --download-only cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+          sudo apt-get install -y --no-download cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi python3 python3-pip protobuf-compiler
+
+      - name: Clone pinned GP2040-CE and Pico SDK
+        run: |
+          git clone https://github.com/OpenStickCommunity/GP2040-CE.git upstream
+          git -C upstream checkout 3d1f32f7d02d418826b725b60208278d3be878c3
+          git -C upstream submodule update --init --recursive
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git pico-sdk
+          git -C pico-sdk submodule update --init --recursive
+
+      - name: Reconstruct protected Test14 and Test13 screen plus XGO-only paged OLED
+        run: |
+          set -euo pipefail
+          python3 integrations/gp2040ce-xgo-test01/preflight.py upstream
+          python3 integrations/gp2040ce-xgo-test01/apply.py upstream
+          python3 integrations/gp2040ce-xgo-test01/validate_generated_headers.py upstream
+          python3 integrations/gp2040ce-xgo-test01/audit_test14.py upstream
+          test "$(git -C upstream hash-object src/interfaces/i2c/ssd1306/tiny_ssd1306.cpp)" = "ecc750d00324a6da368f6d78d9afa40c4eb0e632"
+          python3 integrations/gp2040ce-xgo-test01/tests/test_transparent_ui.py --upstream upstream
+          cp integrations/gp2040ce-xgo-test01/candidates/test44-clock-timeout-18us/XGODiagnostics.h upstream/headers/drivers/xgo/XGODiagnostics.h
+          cp integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/ButtonLayoutScreen.cpp upstream/src/display/ui/screens/ButtonLayoutScreen.cpp
+          cp integrations/gp2040ce-xgo-test01/candidates/offline-transparent-page-oled/tiny_ssd1306.cpp upstream/src/interfaces/i2c/ssd1306/tiny_ssd1306.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/offline-polish02-clock-tolerance/XGODriver.cpp upstream/src/drivers/xgo/XGODriver.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/offline-test44-transparent-controller/ButtonLayoutScreen.cpp upstream/src/display/ui/screens/ButtonLayoutScreen.cpp
+          cmp integrations/gp2040ce-xgo-test01/candidates/offline-transparent-page-oled/tiny_ssd1306.cpp upstream/src/interfaces/i2c/ssd1306/tiny_ssd1306.cpp
+          python3 - <<'PY'
+          from pathlib import Path
+          led=Path("upstream/src/addons/neopicoleds.cpp").read_text()
+          assert led.count("else if (gamepad->pressedR1())")==1
+          assert "inputMode != INPUT_MODE_XGO && gamepad->pressedR1()" not in led
+          ui=Path("upstream/src/display/ui/screens/ButtonLayoutScreen.cpp").read_text()
+          assert "SERIAL DIAG" not in ui and "xgo_diag_" not in ui
+          assert 'getRenderer()->drawText(0, 7, footer);' in ui
+          print("PASS protected LED shortcut + stock button layout + XGO footer")
+          PY
+
+      - name: Build unchanged transparent controller + short OLED I2C chunks
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          GP2040_BOARDCONFIG: Pico
+        run: |
+          cmake -S upstream -B upstream/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build upstream/build --parallel 2
+
+      - name: Verify actual linked RP2040 output and prepare trial
+        run: |
+          set -euo pipefail
+          readarray -t UF2S < <(find upstream/build -name '*.uf2' -type f)
+          test "${#UF2S[@]}" -eq 1
+          ELF="${UF2S[0]%.uf2}.elf"
+          test -f "$ELF"
+          mkdir -p xgo-polish02-elf xgo-polish02-trial
+          echo "RESEARCH_COMMIT=$GITHUB_SHA" > xgo-polish02-elf/README.txt
+          arm-none-eabi-nm --defined-only -n -S -C "$ELF" > xgo-polish02-elf/linked-symbols.txt
+          arm-none-eabi-objdump -d -C "$ELF" > xgo-polish02-elf/linked-disassembly.txt
+          python3 integrations/gp2040ce-xgo-test01/tests/test_irq_window_elf.py xgo-polish02-elf/linked-disassembly.txt xgo-polish02-elf/linked-symbols.txt EXPECT_CLEAN
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          table=Path("xgo-polish02-elf/linked-symbols.txt").read_text()
+          matches=re.findall(r'^([0-9a-f]{8})\s+([0-9a-f]{8})\s+[tTwW]\s+\(anonymous namespace\)::emit_frame\(\)$',table,re.M)
+          assert len(matches)==1,matches
+          addr,size=(int(v,16) for v in matches[0])
+          assert 0x20000000 <= addr < 0x20042000, f"Frame code not in SRAM: {addr:#x}"
+          print(f"PASS: RP2040 physical-state responder SRAM {addr:#x}, bytes={size}")
+          PY
+          cp "${UF2S[0]}" xgo-polish02-trial/XGO-Polish02-CLOCK48-PAGED-OLED-HARDWARE-UNVERIFIED.uf2
+          cp integrations/gp2040ce-xgo-test01/findings/OLED-PAGE-LATENCY-AND-CONTRA-JUMP-2026-10-24.md xgo-polish02-trial/TECHNICAL-INVESTIGATION.md
+          cp integrations/gp2040ce-xgo-test01/findings/TRANSPARENT-CONTROLLER-SINGLE-TRIAL.md xgo-polish02-trial/ACCEPTANCE-AND-ROLLBACK.md
+          (cd xgo-polish02-trial && sha256sum ./*.uf2 > SHA256SUMS.txt)
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path("xgo-polish02-trial")
+          uf2=next(root.glob("*.uf2"))
+          data=uf2.read_bytes()
+          assert data[:4] == bytes.fromhex("5546320a"), "Not UF2 magic"
+          manifest={
+              "status":"OFFLINE-VERIFIED - NOT YET TESTED ON XGO HARDWARE",
+              "architecture":"TRANSPARENT PHYSICAL CONTROLLER; NO TURBO/PULSES IN RP2040",
+              "display":"Preserved button layouts and XGO bottom input history",
+              "core0_oled_change":"One synchronous I2C display page per Core0 input scan, XGO ONLY",
+              "paged_display_source_blob":"e441ecc441a1d495413fbd56171a9a72e7321883",
+              "original_pinned_display_source_blob":"ecc750d00324a6da368f6d78d9afa40c4eb0e632",
+              "candidate_source_blob":"eff10e585ee46805801c3d218d5d8412630dd650",
+              "protected_prior_source_blob":"cccb985a05baa8bb9078b6e336eb5f991c1a7a8f",
+              "clock_timeout_us":48,
+              "DATA_release_timeout_us":18,
+              "IRQ_clock_stretch_pass":"24 source-extracted host C++ cases; synthetic, not live XGO measurement",
+              "display_source_blob":"d15cfdc4953647c9d67e7467e244bf5da7233d76",
+              "protected_test44_blob":"f445a1a6d8f9c871a80532e25cc5b1a3ac3b32a0",
+              "research_commit":os.environ["GITHUB_SHA"],
+              "pinned_gp2040ce":"3d1f32f7d02d418826b725b60208278d3be878c3",
+              "pico_sdk":"2.3.1",
+              "uf2_filename":uf2.name,
+              "uf2_size":len(data),
+              "uf2_sha256":hashlib.sha256(data).hexdigest(),
+              "irq_masked_sram_audit":"PASS, no external calls",
+              "contra_phantom_jump":"OPEN: NOT CLAIMED FIXED",
+              "hardware_test":"POLISH02 UNVERIFIED ON DEVICE; preserves HW-proven Polish01 OLED, models host-IRQ-stretched CLOCK tolerance",
+              "ghost_inputs":"OPEN / NOT CLAIMED FIXED",
+              "user_current_baseline":"Polish01 paged OLED, hardware-accepted for responsiveness"
+          }
+          (root/"PROVENANCE.json").write_text(json.dumps(manifest,indent=2)+"\n")
+          (root/"README-FIRST.txt").write_text(
+              "XGO POLISH02: CLOCK 48us + PAGED OLED - HARDWARE UNVERIFIED\n"
+              "Every physical button stays pressed while held; released when released.\n"
+              "The XGO alone handles keymaps, turbo and gameplay interpretation.\n"
+              "Preserves OLED button layouts and bottom history. XGO sends ONE page per input scan.\n"
+              "Idle phantom jumping remains OPEN; 48us CLOCK tolerance is not a demonstrated ghost fix.\n"
+              "Use ONLY on the RP2040 controller, NOT on XGO bios/bisrv.asd.\n"
+              "KEEP YOUR HW-TESTED POLISH01 UF2 FOR IMMEDIATE ROLLBACK.\n"
+              "See ACCEPTANCE-AND-ROLLBACK.md before a single controlled trial.\n"
+          )
+          print(json.dumps(manifest,indent=2))
+          PY
+          test "$(find xgo-polish02-trial -name '*.uf2' | wc -l)" -eq 1
+
+      - name: Publish complete transparent-controller UF2 with provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGO-POLISH02-CLOCK48-PAGED-OLED-UNVERIFIED
+          path: xgo-polish02-trial/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish linked ELF evidence separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGO-POLISH02-CLOCK48-LINKED-ELF-AUDIT
+          path: xgo-polish02-elf/
+          if-no-files-found: warn
+          retention-days: 30
