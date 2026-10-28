@@ -41,7 +41,13 @@ int main(int argc,char**argv){
 
 def compile_cpp(src,out):
     cpp=out.with_suffix(".cpp")
-    cpp.write_text(GLOBALS+STALLED+extract(src.read_text())+MAIN)
+    # extract() selects emit_frame() only; preserve its source-defined global
+    # CLOCK timeout when linking the host C++ harness.
+    header=GLOBALS
+    if src==CANDIDATE:
+        assert "constexpr uint32_t CLOCK_TIMEOUT_US = 48;" in src.read_text()
+        header+="constexpr uint32_t CLOCK_TIMEOUT_US = 48;\n"
+    cpp.write_text(header+STALLED+extract(src.read_text())+MAIN)
     build=subprocess.run(
         ["g++","-std=c++17","-O2","-Wall","-Wextra","-Werror",
          str(cpp),"-o",str(out)],text=True,capture_output=True)
