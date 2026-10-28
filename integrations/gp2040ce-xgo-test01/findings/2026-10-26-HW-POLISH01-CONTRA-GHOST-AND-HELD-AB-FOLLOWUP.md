@@ -3,6 +3,10 @@
 **Date:** 2026-10-26. **Branch:** `research-gp2040ce-xgo-integration`.
 **Evidence:** [HW] owner's latest direct report on installed paged-OLED Polish 01; [SRC] protected GP2040 direct-held serial output; [EXT] established gameplay behavior in NES Contra; [OPEN] exact RP-to-XGO DATA waveform and cause of intermittent false inputs.
 
+## Owner correction: standard rifle, no weapon upgrade
+
+The owner's repeated B shots occurred with the **initial single-shot weapon**, not the automatic Machine Gun. The previous conditional suggestion that repeated shots might be normal weapon autofire does NOT apply to this specific observation. A physical B hold causing repeated standard-rifle shots is an unwanted game action and remains a genuine reliability symptom. It may indicate repeated press edges reaching the game, but the physical serial waveform was not captured. Do not rewrite continuous held input into a synthetic one-shot pulse as a workaround.
+
 ## Actual hardware observation — current Polish 01
 
 Owner reports verbatim:
