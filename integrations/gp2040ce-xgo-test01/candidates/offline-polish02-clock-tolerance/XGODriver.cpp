@@ -42,7 +42,8 @@ namespace { uint16_t previous_snapshot = 0; }
 namespace {
 // Polish 02: host CLOCK can have an IRQ-extended phase; allow 48us before abort.
 // Native 12-slot wire order, DATA handling, and true physical holds unchanged.
-constexpr uint32_t EDGE_TIMEOUT_US = 48;
+constexpr uint32_t EDGE_TIMEOUT_US = 18;
+constexpr uint32_t CLOCK_TIMEOUT_US = 48;
 constexpr uint32_t LOAD_TIMEOUT_US = 20000;
 usb_hw_t *const set_alias = (usb_hw_t *)hw_set_alias_untyped(usb_hw);
 usb_hw_t *const clear_alias = (usb_hw_t *)hw_clear_alias_untyped(usb_hw);
@@ -152,15 +153,15 @@ bool __no_inline_not_in_flash_func(emit_frame)() {
  unsigned failed_slot = 0;
  bool clock_timeout = false;
  for (unsigned slot = 1; complete && slot < 12; ++slot) {
-  if (!wait_clock(false, EDGE_TIMEOUT_US)) { clock_timeout = true; failed_slot = slot; complete = false; break; }
+  if (!wait_clock(false, CLOCK_TIMEOUT_US)) { clock_timeout = true; failed_slot = slot; complete = false; break; }
   if (mask & (1u << slot)) data_sink(); else data_release();
-  if (!wait_clock(true, EDGE_TIMEOUT_US)) { clock_timeout = true; failed_slot = slot; complete = false; break; }
+  if (!wait_clock(true, CLOCK_TIMEOUT_US)) { clock_timeout = true; failed_slot = slot; complete = false; break; }
  }
  if (complete) {
-  if (!wait_clock(false, EDGE_TIMEOUT_US)) { clock_timeout = true; failed_slot = 12; complete = false; }
+  if (!wait_clock(false, CLOCK_TIMEOUT_US)) { clock_timeout = true; failed_slot = 12; complete = false; }
  }
  data_release();
- if (complete && !wait_clock(true, EDGE_TIMEOUT_US)) { complete = false; }
+ if (complete && !wait_clock(true, CLOCK_TIMEOUT_US)) { complete = false; }
  restore_interrupts(irq_state);
  // A failed host frame does not synthesize, delay, or latch button
  // events. A subsequent frame uses the latest real physical snapshot.
