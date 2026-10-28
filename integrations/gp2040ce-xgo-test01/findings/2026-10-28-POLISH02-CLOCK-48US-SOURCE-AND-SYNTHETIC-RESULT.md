@@ -1,6 +1,6 @@
 # Polish 02 — clock-only 48us wait tolerance, retain user-validated Polish 01 OLED
 
-**Date:** 2026-10-28. **Branch:** `research-gp2040ce-xgo-integration`. **State:** offline candidate [SRC], source-extracted virtual XGO IRQ tests [MODEL], fast CI [CI], full RP2040 build [CI in progress at first report creation], user hardware [UNTESTED]. No GOLD BIOS/cable edits.
+**Date:** 2026-10-28. **Branch:** `research-gp2040ce-xgo-integration`. **State:** offline candidate [SRC], source-extracted virtual XGO IRQ tests [MODEL], fast CI [CI PASS], full RP2040 linked firmware [CI PASS], user hardware [UNTESTED]. No GOLD BIOS/cable edits.
 
 ## Scope: actual controller reliability improvements, not more diagnostics
 
@@ -35,6 +35,18 @@ The new [Polish02 exact extracted C++ test](../tests/test_polish02_clock_toleran
 - Also passes the existing transparency contract (all 12 buttons stay physical, no artificial pulse/edge queues).
 
 Initial fast-CI attempts failed due to two test harness mistakes (overescaped Python regex and omitted global CLOCK constant when extracting `emit_frame()`); corrected before the successful test. Those were harness failures, not RP2040 compile/hardware failures.
+
+## Completed real ARM firmware build and verified distribution (Oct 28)
+
+[Full RP2040 build and ELF audit #40696044674](https://github.com/jeborgesm/xgo-a10-research/actions/runs/40696044674) is **SUCCESS**. The workflow pinned GP2040-CE `3d1f32f7d02d418826b725b60208278d3be878c3`, Pico SDK 2.3.1, original input UI blob, unchanged paged OLED source blob, and Polish02 driver Git blob `eff10e585ee46805801c3d218d5d8412630dd650`. It compiled a full Cortex-M0+ UF2, verified `emit_frame()` remains in SRAM, and ran the masked IRQ/no-XIP linked ELF audit successfully. GitHub artifact ID **12819837151** is the full candidate, artifact ID **12820245338** the separate linked disassembly/symbols.
+
+The downloaded candidate ZIP, UF2 magic and manifest/SHASUM were checked locally. The new UF2 is **2,515,968 bytes**, SHA256 **`699e46f1e157510e6fda03534700ba80824966bf74663c87c6457396986bce72`**. It is NOT user-tested. To avoid regressions, produced a checksum-verified local distribution `XGO-Controller-Polish-02-Clock-Tolerance-With-Rollback.zip` (SHA256 `f70e2c5733a80445e209a21c8a23bd1cd423a2c841ab53ddc578039f92239f4e`), containing:
+
+- `01-TEST-POLISH02-CLOCK48-PAGED-OLED.uf2` (new compiled controller).
+- `02-ROLLBACK-POLISH01-PAGED-OLED-HW-PASS.uf2` (current owner's tested working build).
+- `03-ROLLBACK-ORIGINAL-TRANSPARENT-A-HW-PASS.uf2` (earlier accepted baseline).
+
+The package is generated in this conversation's container; it is not committed to Git. **No XGO BIOS changes, no pad-bridge or cable work, no added electronics, no one-shot/pulse logic.** Current owner must choose whether to flash; no device action has happened in this research turn.
 
 ## Promotion criteria and honest limits
 
