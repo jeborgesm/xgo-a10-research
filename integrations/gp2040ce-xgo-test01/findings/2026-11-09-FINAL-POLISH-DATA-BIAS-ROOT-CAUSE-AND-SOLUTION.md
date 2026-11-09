@@ -64,6 +64,22 @@ Per Raspberry Pi [SDK USB PHY direct register definitions](https://github.com/ra
 | Force RP DP actively HIGH | Risk of contention when XGO deliberately drives LOAD LOW | **Rejected** |
 | Change RP DM/CLOCK pull-up override | Historical XGO freeze on different ordinary cable | **Rejected** |
 
+## Real ARM firmware, binary confirmation and exact release package (2026-11-09)
+
+**[CI PASS]** [Dedicated Polish03 build #42662084401](https://github.com/jeborgesm/xgo-a10-research/actions/runs/42662084401) completed **successfully**, including exact source-token differential guard, 12-button transparency checks, paged OLED and existing C++ serial tests, pinned `GP2040-CE 3d1f32f...` + `pico-sdk 2.3.1` ARM compilation, linked SRAM `emit_frame()` audit, and independent UF2 artifact. Main firmware artifact ID **13694602823**; linked ARM ELF disassembly/symbol artifact ID **13695686824**.
+
+**[BIN] Linked ARM confirmation, not just source:** At `XGODriver::runResponder()` around `0x10010A08`, machine code stores value **0x00000002** at USB controller base `0x50110000 + 0x7C` (`USBPHY_DIRECT.DP_PULLUP_EN`), then writes unchanged override value **0x000087FC** at offset `+0x80`. This is the precisely intended DP-only weaker pull-up. The previous transparent A linked build stored **0x00000000** at offset `+0x7C`; thus the new PHY bit is physically represented in the compiled binary. The same startup path clears `TX_DP_OE` via the USB register CLEAR alias; no active-HIGH drive was introduced. Linked responder `emit_frame()` is in SRAM at `0x200000F0` and the IRQ/no-XIP test passed.
+
+**[UF2] SHA and structure checked against downloaded GitHub artifact:** `XGO-POLISH03-DP-RPU2-PAGED-OLED-HARDWARE-UNVERIFIED.uf2`, **2,515,968 bytes**, **SHA256 `3a10ae43a6bca262bdc2f94887fe7cc0ebe55ceab6f99deb9df8d29e89e99de4`**. All **4,914** UF2 blocks checked: first and second magic, end-of-block magic, sequential block IDs 0..4913, count field, RP2040 family ID `0xE48BFF56`, target flash-address band; PASS.
+
+**[PACKAGE] One test plus two rollback builds:** `/mnt/data/XGO-Controller-Polish-03-DATA-Stability-With-Rollback.zip`, **2,968,610 bytes**, ZIP **SHA256 `1d2eb9575ff4dded8cbf09ad93d55ce3d63d17ab4fbf8fdb2c1babc1690ad482`**. Includes:
+- `01-TEST-POLISH03-DATA-PULLUP-PAGED-OLED.uf2`, hash as above, **UNTESTED ON XGO**.
+- `02-ROLLBACK-POLISH01-PAGED-OLED-HW-PASS.uf2` **SHA256 `5dcc28132ca54293a3d27dc2a452269bc47a1e7f141bd49c2c7e296918071b5b`** (owner's current real HW positive baseline).
+- `03-ROLLBACK-TRANSPARENT-A-HW-PASS.uf2` **SHA256 `94ea7228c774a67e8252e7e09d94938530e5d74572d985332e6840ae09fe8b84`** (older HW-proven baseline).
+- `README-FIRST.txt`, `PROVENANCE.json` and `SHA256SUMS.txt`.
+
+**No hardware has been changed or tested by the assistant**. The package provides a **source and linked-binary verified single-variable repair candidate** with proven rollback. It is not a claim of guaranteed compatibility with the exact XGO GPIO low-current rating, which remains undocumented. The user should power OFF and revert to Polish01 if the console freezes or controller behavior worsens. Success or failure must be recorded from the next user physical observation, not inferred from CI.
+
 ## Verification gates and test acceptance
 
 The code is pinned to the current hardware-accepted transparent source, not the untested Polish02. It is checked by [`test_polish03_dp_rpu2_source.py`](../tests/test_polish03_dp_rpu2_source.py), which token-compares original vs candidate after reversing **only** the DP value assignment. It requires the unchanged 18us DATA and CLOCK bound, unchanged `data_sink/data_release()`, published physical mask, all pull-up and pull-down override ownership flags, and no DM pull-up. The existing C++ 4096/4096 button mask and held/released tests, paged OLED I2C source test, full linked SRAM critical path audit, pinned GP2040-CE/Pico SDK revisions and UF2 SHA are required by [dedicated Polish03 workflow](../../../.github/workflows/gp2040ce-xgo-polish03-dp-rpu2-build.yml).
